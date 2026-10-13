@@ -1,20 +1,22 @@
 import { describe, expect, it } from 'vitest';
 import { Hotbar } from '../src/player/hotbar';
 import { blockIntersectsBody, canBreak, placementTarget } from '../src/player/interaction';
+import { PLAYER_SHAPE } from '../src/player/player';
 import { BlockId } from '../src/world/blocks';
 
-const shape = { halfWidth: 0.3, height: 1.8 };
+const shape = PLAYER_SHAPE; // half width 0.4, height ~2.917 (1.75 m)
 const feet = { x: 0.5, y: 10, z: 0.5 }; // standing on block (0, 9, 0)
 
 describe('blockIntersectsBody', () => {
   it('detects overlap with the cells the body occupies', () => {
     expect(blockIntersectsBody(0, 10, 0, feet, shape)).toBe(true);
     expect(blockIntersectsBody(0, 11, 0, feet, shape)).toBe(true);
+    expect(blockIntersectsBody(0, 12, 0, feet, shape)).toBe(true);
   });
   it('touching is not overlapping', () => {
     expect(blockIntersectsBody(0, 9, 0, feet, shape)).toBe(false); // block under the feet
-    expect(blockIntersectsBody(0, 12, 0, feet, shape)).toBe(false); // above the head (10 + 1.8 = 11.8 < 12)
-    expect(blockIntersectsBody(1, 10, 0, feet, shape)).toBe(false); // body spans x 0.2..0.8
+    expect(blockIntersectsBody(0, 13, 0, feet, shape)).toBe(false); // above the head (10 + 2.917 < 13)
+    expect(blockIntersectsBody(1, 10, 0, feet, shape)).toBe(false); // body spans x 0.1..0.9
   });
 });
 

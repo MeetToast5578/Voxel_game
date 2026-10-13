@@ -1,6 +1,6 @@
 import {
-  AUTOSAVE_INTERVAL_S, BREAK_REPEAT_S, DAY_LENGTH_S, DEFAULT_MOUSE_SENSITIVITY, FIXED_DT, GEN_BUDGET_MS,
-  HOTBAR_SIZE, MAX_FRAME_DT, MESH_BUDGET_MS, REACH, SAVE_KEY, SETTINGS_KEY, SPAWN_READY_RADIUS, START_TIME_OF_DAY,
+  AUTOSAVE_INTERVAL_S, BREAK_REPEAT_S, DAY_LENGTH_S, DEFAULT_MOUSE_SENSITIVITY, FIXED_DT, FOOTSTEP_DISTANCE,
+  FOOTSTEP_MIN_SPEED, GEN_BUDGET_MS, HOTBAR_SIZE, MAX_FRAME_DT, MESH_BUDGET_MS, REACH, SAVE_KEY, SETTINGS_KEY, SPAWN_READY_RADIUS, START_TIME_OF_DAY,
 } from './config';
 import { Sounds } from './audio/sounds';
 import { FixedStepLoop } from './core/loop';
@@ -261,13 +261,13 @@ export class Game {
     return ok;
   }
 
-  /** A footstep sound every 1.8 blocks walked on the ground. */
+  /** A footstep sound every FOOTSTEP_DISTANCE walked on the ground. */
   private updateFootsteps(dt: number): void {
     const p = this.player;
     const speed = Math.hypot(p.velocity.x, p.velocity.z);
-    if (!p.onGround || p.flying || speed < 1) return;
+    if (!p.onGround || p.flying || speed < FOOTSTEP_MIN_SPEED) return;
     this.stepDistance += speed * dt;
-    if (this.stepDistance >= 1.8) {
+    if (this.stepDistance >= FOOTSTEP_DISTANCE) {
       this.stepDistance = 0;
       this.sounds.play('step');
     }

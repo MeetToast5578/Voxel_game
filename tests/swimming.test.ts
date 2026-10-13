@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { metersToBlocks } from '../src/config';
 import { NO_CONTROLS, Player } from '../src/player/player';
 
 const DT = 1 / 60;
@@ -14,9 +15,9 @@ describe('swimming', () => {
     p.update(DT, NO_CONTROLS, solid, water);
     expect(p.inWater).toBe(true);
     for (let i = 0; i < 30; i++) p.update(DT, NO_CONTROLS, solid, water);
-    expect(p.velocity.y).toBeGreaterThanOrEqual(-2 - 1e-9);
+    expect(p.velocity.y).toBeGreaterThanOrEqual(-metersToBlocks(2) - 1e-9);
     expect(p.position.y).toBeLessThan(13);
-    expect(p.position.y).toBeGreaterThan(12);
+    expect(p.position.y).toBeGreaterThan(13 - metersToBlocks(1)); // less than 1 m in half a second
   });
   it('swims up while holding jump', () => {
     const p = new Player();
@@ -39,6 +40,17 @@ describe('swimming', () => {
     p.setPosition(0.5, 10, 0.5);
     p.yaw = Math.PI; // facing +Z
     for (let i = 0; i < 60; i++) p.update(DT, { ...NO_CONTROLS, forward: true }, solid, water);
-    expect(p.position.z - 0.5).toBeLessThan(4.3 * 0.7);
+    expect(p.position.z - 0.5).toBeLessThan(metersToBlocks(4.3) * 0.7);
+  });
+  it('checks for water at waist height (0.6 m = 1 block above the feet)', () => {
+    const floor = (_x: number, y: number) => y < 10;
+    const deep = new Player();
+    deep.setPosition(0.5, 10, 0.5);
+    deep.update(DT, NO_CONTROLS, floor, (_x, y) => y >= 10 && y <= 12);
+    expect(deep.inWater).toBe(true);
+    const puddle = new Player();
+    puddle.setPosition(0.5, 10, 0.5);
+    puddle.update(DT, NO_CONTROLS, floor, (_x, y) => y === 10);
+    expect(puddle.inWater).toBe(false);
   });
 });

@@ -1,6 +1,7 @@
 import {
-  AIR_ACCEL, EYE_HEIGHT, FLY_SPEED, GRAVITY, GROUND_ACCEL, JUMP_SPEED, PLAYER_HALF_WIDTH, PLAYER_HEIGHT,
-  SPRINT_SPEED, SWIM_GRAVITY, SWIM_SINK_SPEED, SWIM_SPEED_FACTOR, SWIM_UP_SPEED, TERMINAL_VELOCITY, WALK_SPEED,
+  AIR_ACCEL, EYE_HEIGHT, FEET_WATER_HEIGHT, FLY_SPEED, GRAVITY, GROUND_ACCEL, JUMP_SPEED, PLAYER_HALF_WIDTH,
+  PLAYER_HEIGHT, SPRINT_SPEED, SWIM_GRAVITY, SWIM_SINK_SPEED, SWIM_SPEED_FACTOR, SWIM_UP_SPEED, SWIM_WAIST_HEIGHT,
+  TERMINAL_VELOCITY, WALK_SPEED,
 } from '../config';
 import { clamp, lerp } from '../core/math';
 import { moveAndCollide, type BodyShape, type SolidFn, type Vec3 } from './physics';
@@ -62,8 +63,8 @@ export class Player {
     this.prevPosition.z = this.position.z;
     const bx = Math.floor(this.position.x);
     const bz = Math.floor(this.position.z);
-    this.inWater = isWater(bx, Math.floor(this.position.y + 0.6), bz); // water at waist height
-    const feetInWater = isWater(bx, Math.floor(this.position.y + 0.1), bz);
+    this.inWater = isWater(bx, Math.floor(this.position.y + SWIM_WAIST_HEIGHT), bz); // water at waist height
+    const feetInWater = isWater(bx, Math.floor(this.position.y + FEET_WATER_HEIGHT), bz);
     const swimming = this.inWater && !this.flying;
 
     // Horizontal wish direction from yaw. Yaw 0 looks toward -Z.
