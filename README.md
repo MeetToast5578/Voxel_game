@@ -53,6 +53,8 @@ The pause menu has a **New world** button that deletes the save and generates a 
 
 `npm run smoke` needs a Chromium for Playwright; run `npx playwright install chromium` once if it is missing.
 
+CI (GitHub Actions) runs `npm run check` and `npm run smoke` on every pull request and every push to `main`.
+
 ### Layout
 
 | Folder | Contents |
