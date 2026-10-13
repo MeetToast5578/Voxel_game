@@ -5,7 +5,7 @@ import { BlockId } from './blocks';
 export class Chunk {
   readonly cx: number;
   readonly cz: number;
-  readonly blocks = new Uint8Array(CHUNK_VOLUME);
+  readonly blocks = new Uint16Array(CHUNK_VOLUME); // block states
 
   constructor(cx: number, cz: number) {
     this.cx = cx;

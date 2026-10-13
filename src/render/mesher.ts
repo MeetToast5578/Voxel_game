@@ -1,6 +1,6 @@
 import { CHUNK_SIZE, WORLD_HEIGHT } from '../config';
 import { localIndex } from '../core/coords';
-import { BLOCKS, BlockId, isOpaque, lightEmission } from '../world/blocks';
+import { BlockId, getBlockDef, isOpaque, lightEmission } from '../world/blocks';
 import { LIGHT_CURVE, MAX_LIGHT, buildRegion, computeBlockLight, computeSkyLight, regionIndex } from '../world/light';
 import { FACES, FACE_UVS } from './faces';
 import { tileUV } from './tiles';
@@ -35,8 +35,8 @@ export function padIndex(px: number, py: number, pz: number): number {
  * neighbors: 9 chunk block arrays, index (dz + 1) * 3 + (dx + 1); center chunk is index 4.
  * Returns an (18 x 130 x 18) volume: the center chunk plus a 1-block border on every side.
  */
-export function buildPaddedVolume(neighbors: readonly Uint8Array[]): Uint8Array {
-  const vol = new Uint8Array(P * P * PH);
+export function buildPaddedVolume(neighbors: readonly Uint16Array[]): Uint16Array {
+  const vol = new Uint16Array(P * P * PH);
   vol.fill(BlockId.BEDROCK, 0, STRIDE_Y); // y = -1 is solid so bottom faces at y = 0 are never built
   for (let pz = 0; pz < P; pz++) {
     const rz = pz - 1;
@@ -87,7 +87,7 @@ class MeshBuilder {
   }
 }
 
-export function buildChunkMesh(neighbors: readonly Uint8Array[]): ChunkMeshData {
+export function buildChunkMesh(neighbors: readonly Uint16Array[]): ChunkMeshData {
   const vol = buildPaddedVolume(neighbors);
   const region = buildRegion(neighbors);
   const skyLight = computeSkyLight(region);
@@ -102,7 +102,7 @@ export function buildChunkMesh(neighbors: readonly Uint8Array[]): ChunkMeshData 
         const i = padIndex(lx + 1, y + 1, lz + 1);
         const id = vol[i]!;
         if (id === BlockId.AIR) continue;
-        const def = BLOCKS[id]!;
+        const def = getBlockDef(id);
         const out = def.layer === 'translucent' ? translucent : solid;
 
         for (let f = 0; f < 6; f++) {

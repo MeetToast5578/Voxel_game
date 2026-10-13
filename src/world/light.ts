@@ -16,8 +16,8 @@ export function regionIndex(rx: number, y: number, rz: number): number {
 }
 
 /** Copies 9 chunks (index (dz + 1) * 3 + (dx + 1)) into one REGION_SIZE x WORLD_HEIGHT x REGION_SIZE array. */
-export function buildRegion(neighbors: readonly Uint8Array[]): Uint8Array {
-  const region = new Uint8Array(R * R * WORLD_HEIGHT);
+export function buildRegion(neighbors: readonly Uint16Array[]): Uint16Array {
+  const region = new Uint16Array(R * R * WORLD_HEIGHT);
   for (let dz = 0; dz < 3; dz++)
     for (let dx = 0; dx < 3; dx++) {
       const src = neighbors[dz * 3 + dx]!;
@@ -31,7 +31,7 @@ export function buildRegion(neighbors: readonly Uint8Array[]): Uint8Array {
 }
 
 /** Breadth-first flood fill: every queued cell spreads (its light - 1) to non-opaque neighbors. */
-function propagate(region: Uint8Array, light: Uint8Array, queue: Int32Array, tail: number): void {
+function propagate(region: Uint16Array, light: Uint8Array, queue: Int32Array, tail: number): void {
   let head = 0;
   const visit = (n: number, nl: number) => {
     if (light[n]! < nl && !isOpaque(region[n]!)) {
@@ -57,7 +57,7 @@ function propagate(region: Uint8Array, light: Uint8Array, queue: Int32Array, tai
 }
 
 /** Sky light (0..15) for every cell of a region. Sunlight falls straight down at full strength through air and glass. */
-export function computeSkyLight(region: Uint8Array): Uint8Array {
+export function computeSkyLight(region: Uint16Array): Uint8Array {
   const light = new Uint8Array(region.length);
   const skyTop = new Int32Array(R * R); // per column: lowest y that still gets full sunlight
   for (let z = 0; z < R; z++)
@@ -91,7 +91,7 @@ export function computeSkyLight(region: Uint8Array): Uint8Array {
 }
 
 /** Block light (0..15) from light-emitting blocks such as glowstone. */
-export function computeBlockLight(region: Uint8Array): Uint8Array {
+export function computeBlockLight(region: Uint16Array): Uint8Array {
   const light = new Uint8Array(region.length);
   const queue = new Int32Array(region.length);
   let tail = 0;

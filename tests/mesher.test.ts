@@ -1,14 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import { CHUNK_VOLUME } from '../src/config';
 import { localIndex } from '../src/core/coords';
-import { buildChunkMesh, type MeshData } from '../src/render/mesher';
+import { buildChunkMesh, buildPaddedVolume, padIndex, type MeshData } from '../src/render/mesher';
 import { BlockId } from '../src/world/blocks';
 import { Chunk } from '../src/world/chunk';
 import { TerrainGenerator } from '../src/world/generator';
 
 /** 9 empty chunks. Index (dz + 1) * 3 + (dx + 1); the center chunk is index 4. */
-function emptyNeighbors(): Uint8Array[] {
-  return Array.from({ length: 9 }, () => new Uint8Array(CHUNK_VOLUME));
+function emptyNeighbors(): Uint16Array[] {
+  return Array.from({ length: 9 }, () => new Uint16Array(CHUNK_VOLUME));
 }
 const quads = (m: MeshData) => m.indices.length / 6;
 
@@ -104,7 +104,7 @@ describe('buildChunkMesh', () => {
   });
   it('meshes a generated chunk in reasonable time', () => {
     const g = new TerrainGenerator(5);
-    const chunks: Uint8Array[] = [];
+    const chunks: Uint16Array[] = [];
     for (let dz = -1; dz <= 1; dz++)
       for (let dx = -1; dx <= 1; dx++) {
         const c = new Chunk(dx, dz);
@@ -119,5 +119,14 @@ describe('buildChunkMesh', () => {
     console.log(`buildChunkMesh: ${ms.toFixed(2)} ms, ${quads(m.solid)} solid quads`);
     expect(quads(m.solid)).toBeGreaterThan(256);
     expect(ms).toBeLessThan(50);
+  });
+});
+
+describe('buildPaddedVolume', () => {
+  it('copies 16-bit block states without truncating them', () => {
+    const neighbors = emptyNeighbors();
+    neighbors[5]![localIndex(0, 20, 3)] = 300; // the +X neighbor's first column, inside the padding
+    const vol = buildPaddedVolume(neighbors);
+    expect(vol[padIndex(17, 21, 4)]).toBe(300);
   });
 });
