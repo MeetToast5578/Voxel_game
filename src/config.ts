@@ -44,6 +44,8 @@ export const BREAK_REPEAT_S = 0.25; // holding a mouse button repeats break/plac
 export const DEFAULT_MOUSE_SENSITIVITY = 0.0025; // radians per pixel of mouse movement
 export const FOOTSTEP_DISTANCE = metersToBlocks(1.8); // a footstep sound every this far walked on the ground
 export const FOOTSTEP_MIN_SPEED = metersToBlocks(1); // no footsteps below this horizontal speed
+export const STEP_HEIGHT = 1; // highest ledge, in blocks, the player walks up onto without jumping
+export const STEP_SMOOTH_S = 0.12; // seconds the camera takes to catch up after a full 1-block step
 
 // ---- Swimming ----
 export const SWIM_GRAVITY = metersToBlocks(6);
