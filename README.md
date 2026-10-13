@@ -8,7 +8,8 @@ A Minecraft-like voxel sandbox that runs in the browser, built with TypeScript, 
 - Break and place 14 block types, 9-slot hotbar, pick-block
 - Day/night cycle, sky and block lighting (glowstone), clouds, simple sound effects
 - Start/pause menu with render distance, field of view and mouse sensitivity
-- Automatic saving to `localStorage`
+- Automatic saving in the browser (IndexedDB), including the hotbar and time of day
+- Saves from versions before the cubic-chunk update are not loaded.
 - Terrain generation and meshing run in Web Workers
 - 1 block = 0.6 m; the player is about 3 blocks tall.
 - No height limit: the world is made of 16×16×16 chunks, so you can dig down or build up as far as you like

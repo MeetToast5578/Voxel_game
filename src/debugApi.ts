@@ -13,7 +13,10 @@ export interface DebugApi {
   placeTarget(): boolean;
   pickTarget(): boolean;
   selectSlot(index: number): void;
-  save(): void;
+  /** Puts a block state into a hotbar slot; an invalid index or state is ignored. */
+  setHotbarSlot(index: number, state: number): void;
+  /** Resolves once the write has completed (true) or failed or was skipped (false). */
+  save(): Promise<boolean>;
   setTimeOfDay(t: number): void;
 }
 
@@ -43,6 +46,7 @@ export function installDebugApi(game: Game): void {
     placeTarget: () => game.placeTarget(),
     pickTarget: () => game.pickTarget(),
     selectSlot: (index) => game.hotbar.select(index),
+    setHotbarSlot: (index, state) => game.hotbar.setSlot(index, state),
     save: () => game.saveNow(),
     setTimeOfDay: (t) => {
       game.timeOfDay = ((t % 1) + 1) % 1;

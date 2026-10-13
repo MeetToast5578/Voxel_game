@@ -1,6 +1,6 @@
 import {
   AUTOSAVE_INTERVAL_S, BREAK_REPEAT_S, DAY_LENGTH_S, DEFAULT_MOUSE_SENSITIVITY, EYE_HEIGHT, FIXED_DT, FOOTSTEP_DISTANCE,
-  FOOTSTEP_MIN_SPEED, GEN_BUDGET_MS, HOTBAR_SIZE, MAX_FRAME_DT, MESH_BUDGET_MS, REACH, SAVE_KEY, SEA_LEVEL, SETTINGS_KEY,
+  FOOTSTEP_MIN_SPEED, GEN_BUDGET_MS, HOTBAR_SIZE, MAX_FRAME_DT, MESH_BUDGET_MS, REACH, SEA_LEVEL, SETTINGS_KEY,
   SPAWN_READY_RADIUS, START_TIME_OF_DAY,
 } from './config';
 import { Sounds } from './audio/sounds';
@@ -16,9 +16,11 @@ import { ChunkMeshes } from './render/chunkMeshes';
 import { Clouds } from './render/clouds';
 import { BlockHighlight } from './render/highlight';
 import { Renderer } from './render/renderer';
-import { SAVE_VERSION, editsToRecord, loadSave, recordToEdits, writeSave, type SavedPlayer } from './storage/save';
+import type { LoadedSave, SavedPlayer, WorldMeta } from './storage/save';
+import { WorldSaver } from './storage/saver';
 import { loadSettings, saveSettings, type Settings } from './storage/settings';
 import { MemoryStore, browserStore, type KeyValueStore } from './storage/store';
+import type { WorldStore } from './storage/worldStore';
 import { DebugOverlay } from './ui/debugOverlay';
 import { formatDebugLines } from './ui/debugText';
 import { Hud } from './ui/hud';
@@ -31,6 +33,17 @@ import { findSpawnColumn, surfaceY } from './world/spawn';
 import { daylightAt, skyColorAt } from './world/time';
 import { WorkerPool } from './workers/workerPool';
 import { World } from './world/world';
+
+/** The world save the game starts with (opened and read by main.ts before the game is created). */
+export interface GameSave {
+  store: WorldStore;
+  /** The loaded save, or null for a new world. */
+  loaded: LoadedSave | null;
+  /** False for throw-away worlds (?nosave=1, ?seed=) and when saving is unavailable. */
+  persistent: boolean;
+  /** True when the browser could not open IndexedDB; the menu says saving is unavailable. */
+  unavailable: boolean;
+}
 
 export class Game {
   readonly world: World;
@@ -63,8 +76,10 @@ export class Game {
   private readonly hud: Hud;
   private readonly menu: Menu;
   private readonly debugOverlay: DebugOverlay;
-  /** False with ?nosave=1 or ?seed=..., and after "New world" was clicked. */
+  /** False with ?nosave=1 or ?seed=..., without IndexedDB, and after "New world" was clicked. */
   private savingEnabled: boolean;
+  private readonly worldStore: WorldStore;
+  private readonly saver: WorldSaver;
   private saveTimer = 0;
   /** Where the player was when the game was saved; used instead of the spawn search. */
   private readonly savedPlayer: SavedPlayer | null;
@@ -72,14 +87,15 @@ export class Game {
   private stepDistance = 0;
   private readonly usingWorkers: boolean;
 
-  constructor(container: HTMLElement, readonly options: GameOptions) {
+  constructor(container: HTMLElement, readonly options: GameOptions, save: GameSave) {
     this.store = options.nosave ? new MemoryStore() : browserStore();
     this.settings = loadSettings(this.store, SETTINGS_KEY);
 
     // A ?seed= URL starts a throw-away world: it neither loads nor overwrites the save.
-    this.savingEnabled = !options.nosave && options.seed === null;
-    const save = this.savingEnabled ? loadSave(this.store, SAVE_KEY) : null;
-    const seed = options.seed ?? save?.seed ?? Math.floor(Math.random() * 1_000_000_000);
+    this.savingEnabled = save.persistent;
+    this.worldStore = save.store;
+    const loaded = save.loaded?.meta ?? null;
+    const seed = options.seed ?? loaded?.seed ?? Math.floor(Math.random() * 1_000_000_000);
     this.generator = new TerrainGenerator(seed);
     // Keeping column tops exact can need a chunk that is not loaded; it is generated synchronously, not kept.
     this.world = new World(seed, (cx, cy, cz) => {
@@ -87,11 +103,14 @@ export class Game {
       this.generator.generateChunk(chunk);
       return chunk.blocks;
     });
-    if (save) {
-      this.world.loadEdits(recordToEdits(save.edits));
-      this.hotbar.select(save.selectedSlot);
+    if (save.loaded && loaded) {
+      this.world.loadEdits(save.loaded.edits);
+      for (let i = 0; i < HOTBAR_SIZE; i++) this.hotbar.setSlot(i, loaded.hotbar[i]!);
+      this.hotbar.select(loaded.selectedSlot);
+      this.timeOfDay = loaded.timeOfDay;
     }
-    this.savedPlayer = save?.player ?? null;
+    this.savedPlayer = loaded?.player ?? null;
+    this.saver = new WorldSaver(this.worldStore, this.world, () => this.worldMeta());
     this.renderer = new Renderer(container);
     this.meshes = new ChunkMeshes(this.renderer.scene, this.renderer.solidMaterial, this.renderer.waterMaterial);
     this.usingWorkers = options.workers && typeof Worker !== 'undefined';
@@ -106,7 +125,7 @@ export class Game {
     this.input = new Input(this.renderer.canvas);
     this.hud = new Hud(container, this.renderer.atlasCanvas);
     this.debugOverlay = new DebugOverlay(container);
-    this.menu = new Menu(container, this.settings, {
+    this.menu = new Menu(container, this.settings, save.unavailable ? 'Saving is unavailable in this browser.' : null, {
       onPlay: () => {
         this.sounds.unlock();
         this.input.requestPointerLock();
@@ -128,9 +147,9 @@ export class Game {
       else if (!options.autostart) this.menu.show('paused');
     });
     document.addEventListener('visibilitychange', () => {
-      if (document.hidden) this.saveNow();
+      if (document.hidden) void this.saveNow();
     });
-    window.addEventListener('pagehide', () => this.saveNow());
+    window.addEventListener('pagehide', () => void this.saveNow()); // best effort: the page may be gone first
 
     this.loop = new FixedStepLoop(
       FIXED_DT,
@@ -158,21 +177,28 @@ export class Game {
     this.saveTimer += dt;
     if (this.saveTimer >= AUTOSAVE_INTERVAL_S) {
       this.saveTimer = 0;
-      this.saveNow();
+      void this.saveNow();
     }
   }
 
-  /** Writes the save game (player edits, player state, seed). Does nothing when saving is disabled. */
-  saveNow(): void {
-    if (!this.savingEnabled || !this.ready) return;
+  /**
+   * Writes the world meta and the chunks whose edits changed. Resolves to true once the write has completed;
+   * false when saving is disabled, the player is not placed yet, or the write failed.
+   */
+  saveNow(): Promise<boolean> {
+    if (!this.savingEnabled || !this.ready) return Promise.resolve(false);
+    return this.saver.save();
+  }
+
+  private worldMeta(): WorldMeta {
     const p = this.player;
-    writeSave(this.store, SAVE_KEY, {
-      version: SAVE_VERSION,
+    return {
       seed: this.world.seed,
-      selectedSlot: this.hotbar.selected,
       player: { x: p.position.x, y: p.position.y, z: p.position.z, yaw: p.yaw, pitch: p.pitch, flying: p.flying },
-      edits: editsToRecord(this.world.edits),
-    });
+      selectedSlot: this.hotbar.selected,
+      hotbar: [...this.hotbar.slots],
+      timeOfDay: this.timeOfDay,
+    };
   }
 
   private renderFrame(alpha: number, frameDt: number): void {
@@ -263,8 +289,9 @@ export class Game {
   /** Deletes the save and reloads; with no save, the next start picks a new random seed. */
   private newWorld(): void {
     this.savingEnabled = false; // otherwise 'pagehide' would write the old world back
-    this.store.removeItem(SAVE_KEY);
-    window.location.href = window.location.pathname;
+    void this.worldStore.clear().then(() => {
+      window.location.href = window.location.pathname;
+    });
   }
 
   /** Changes a block and remeshes the affected chunks. Returns false if the chunk is not loaded. */
@@ -378,6 +405,7 @@ export class Game {
       targetName: this.target ? getBlockDef(this.world.getBlock(this.target.x, this.target.y, this.target.z)).name : null,
       selectedSlot: this.hotbar.selected,
       selectedBlock: getBlockDef(this.hotbar.selectedBlock).name,
+      hotbar: [...this.hotbar.slots],
       renderDistance: this.chunks.renderDistance,
       workers: this.usingWorkers,
       drawCalls: this.renderer.webgl.info.render.calls,

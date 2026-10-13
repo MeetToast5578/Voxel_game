@@ -3,7 +3,7 @@ export interface GameOptions {
   seed: number | null;
   /** ?autostart=1 — start playing without the click-to-play menu (used by automated tests). */
   autostart: boolean;
-  /** ?nosave=1 — never read or write localStorage saves. */
+  /** ?nosave=1 — never read or write the world save (settings are still kept). */
   nosave: boolean;
   /** ?workers=0 — generate and mesh on the main thread instead of in Web Workers. */
   workers: boolean;

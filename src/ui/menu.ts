@@ -30,7 +30,13 @@ export class Menu {
   private readonly playButton: HTMLButtonElement;
   private settings: Settings;
 
-  constructor(parent: HTMLElement, settings: Settings, private readonly callbacks: MenuCallbacks) {
+  /** note: one line shown under the Play button (e.g. that saving is unavailable), or null. */
+  constructor(
+    parent: HTMLElement,
+    settings: Settings,
+    note: string | null,
+    private readonly callbacks: MenuCallbacks,
+  ) {
     this.settings = { ...settings };
     this.overlay = el('div', 'menu-overlay');
     const panel = el('div', 'menu-panel');
@@ -57,7 +63,9 @@ export class Menu {
       controls.append(row);
     }
 
-    panel.append(this.title, this.playButton, settingsBox, newWorld, controls);
+    panel.append(this.title, this.playButton);
+    if (note) panel.append(el('p', 'menu-note', note));
+    panel.append(settingsBox, newWorld, controls);
     this.overlay.append(panel);
     parent.append(this.overlay);
   }

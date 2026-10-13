@@ -1,44 +1,99 @@
 import { describe, expect, it } from 'vitest';
-import { editsToRecord, loadSave, parseSave, recordToEdits, writeSave, type SaveData } from '../src/storage/save';
-import { MemoryStore } from '../src/storage/store';
-import { SAVE_KEY } from '../src/config';
+import { START_TIME_OF_DAY } from '../src/config';
+import { DEFAULT_HOTBAR } from '../src/player/hotbar';
+import { metaRecord, parseChunkRecord, parseMeta, readSave, type WorldMeta } from '../src/storage/save';
+import { BlockId } from '../src/world/blocks';
 
-const sample: SaveData = {
-  version: 2,
+const sample: WorldMeta = {
   seed: 42,
   selectedSlot: 3,
   player: { x: 1.5, y: 60, z: -3.25, yaw: 0.5, pitch: -0.2, flying: false },
-  edits: { '0,0,0': [[123, 5], [456, 0]], '-1,-3,2': [[4095, 9]] },
+  hotbar: [BlockId.BRICK, BlockId.SAND, BlockId.GLOWSTONE, BlockId.STONE, BlockId.LEAVES, BlockId.LOG, BlockId.WATER, BlockId.GLASS, BlockId.BEDROCK],
+  timeOfDay: 0.6,
 };
+const stored = () => metaRecord(sample);
 
-describe('save', () => {
-  it('round trips', () => {
-    const store = new MemoryStore();
-    expect(writeSave(store, 'k', sample)).toBe(true);
-    expect(loadSave(store, 'k')).toEqual(sample);
+describe('save meta', () => {
+  it('round trips, with the hotbar stored by name', () => {
+    expect(stored().hotbar).toEqual(['brick', 'sand', 'glowstone', 'stone', 'leaves', 'log', 'water', 'glass', 'bedrock']);
+    expect(parseMeta(stored())).toEqual(sample);
+    expect(parseMeta(JSON.stringify(stored()))).toEqual(sample);
   });
-  it('converts edits between Map and JSON-friendly record', () => {
-    const map = recordToEdits(sample.edits);
-    expect(map.get('0,0,0')!.get(456)).toBe(0);
-    expect(editsToRecord(map)).toEqual(sample.edits);
+  it('rejects other versions', () => {
+    for (const version of [1, 3, 0, undefined]) expect(parseMeta({ ...stored(), version })).toBeNull();
   });
-  it('rejects missing, corrupt or wrong-version data', () => {
-    expect(parseSave(null)).toBeNull();
-    expect(parseSave('not json')).toBeNull();
-    expect(parseSave('{}')).toBeNull();
-    expect(parseSave(JSON.stringify({ ...sample, version: 1 }))).toBeNull(); // 128-high column saves
-    expect(parseSave(JSON.stringify({ ...sample, version: 3 }))).toBeNull();
-    expect(parseSave(JSON.stringify({ ...sample, player: { ...sample.player, x: 'a' } }))).toBeNull();
-    expect(parseSave(JSON.stringify({ ...sample, edits: { '0,0,0': [[1]] } }))).toBeNull();
+  it('repairs a bad hotbar to DEFAULT_HOTBAR and keeps the world', () => {
+    const nine = stored().hotbar;
+    const bad: unknown[] = [
+      undefined,
+      'abc',
+      nine.slice(0, 8),
+      [...nine, 'stone'],
+      ['air', ...nine.slice(1)],
+      ['nope', ...nine.slice(1)],
+      ['stone#5', ...nine.slice(1)],
+      [1, ...nine.slice(1)],
+    ];
+    for (const hotbar of bad) {
+      const meta = parseMeta({ ...stored(), hotbar });
+      expect(meta).not.toBeNull();
+      expect(meta!.hotbar).toEqual(DEFAULT_HOTBAR);
+      expect(meta!.hotbar).not.toBe(DEFAULT_HOTBAR); // a copy
+      expect(meta!.seed).toBe(42);
+      expect(meta!.player).toEqual(sample.player);
+    }
   });
-  it('uses a new key, so v1 saves are neither loaded nor overwritten', () => {
-    expect(SAVE_KEY).toBe('voxel-game-save-v2');
+  it('keeps a valid hotbar as it is', () => {
+    const hotbar = ['stone', 'glowstone', 'bedrock', 'stone', 'glowstone', 'bedrock', 'stone', 'glowstone', 'bedrock'];
+    expect(parseMeta({ ...stored(), hotbar })!.hotbar).toEqual(
+      hotbar.map((n) => ({ stone: BlockId.STONE, glowstone: BlockId.GLOWSTONE, bedrock: BlockId.BEDROCK })[n]),
+    );
   });
-  it('writeSave returns false when storage throws', () => {
-    const broken = new MemoryStore();
-    broken.setItem = () => {
-      throw new Error('quota');
-    };
-    expect(writeSave(broken, 'k', sample)).toBe(false);
+  it('wraps the time of day into [0, 1) and repairs anything else', () => {
+    const time = (timeOfDay: unknown) => parseMeta({ ...stored(), timeOfDay })!.timeOfDay;
+    expect(time(0.6)).toBe(0.6);
+    expect(time(1.25)).toBe(0.25);
+    expect(time(-0.25)).toBe(0.75);
+    expect(Object.is(time(1), 0)).toBe(true);
+    expect(Object.is(time(-0), 0)).toBe(true);
+    expect(time('noon')).toBe(START_TIME_OF_DAY);
+    expect(time(null)).toBe(START_TIME_OF_DAY);
+    const { timeOfDay: _omit, ...missing } = stored();
+    expect(parseMeta(missing)!.timeOfDay).toBe(START_TIME_OF_DAY);
+  });
+  it('rejects corrupt JSON, a bad player or a bad seed', () => {
+    expect(parseMeta(null)).toBeNull();
+    expect(parseMeta('not json')).toBeNull();
+    expect(parseMeta('{}')).toBeNull();
+    expect(parseMeta({ ...stored(), player: { ...sample.player, x: 'a' } })).toBeNull();
+    expect(parseMeta({ ...stored(), player: undefined })).toBeNull();
+    expect(parseMeta({ ...stored(), seed: 'x' })).toBeNull();
+    expect(parseMeta({ ...stored(), selectedSlot: Number.NaN })).toBeNull();
+  });
+});
+
+describe('chunk records', () => {
+  it('drops invalid entries, keeps the rest and counts them', () => {
+    const r = parseChunkRecord({ key: '0,-1,2', edits: [[5, 'stone'], [4096, 'stone'], [7, 'nope'], [2.5, 'dirt']] });
+    expect(r).not.toBeNull();
+    expect([...r!.edits]).toEqual([[5, BlockId.STONE]]);
+    expect(r!.dropped).toBe(3);
+  });
+  it('drops a record whose key is not three integers', () => {
+    expect(parseChunkRecord({ key: '1,2', edits: [[5, 'stone']] })).toBeNull();
+    expect(parseChunkRecord({ key: '1,2,x', edits: [] })).toBeNull();
+    expect(parseChunkRecord('nope')).toBeNull();
+  });
+  it('readSave combines the meta and the chunks, and needs a valid meta', () => {
+    const save = readSave(stored(), [
+      { key: '0,0,0', edits: [[1, 'brick'], [2, 'air']] },
+      { key: 'bad', edits: [] },
+      { key: '3,-4,5', edits: [[4095, 'glass'], [9, 'nope']] },
+    ]);
+    expect(save!.meta).toEqual(sample);
+    expect([...save!.edits.get('0,0,0')!]).toEqual([[1, BlockId.BRICK], [2, BlockId.AIR]]);
+    expect([...save!.edits.get('3,-4,5')!]).toEqual([[4095, BlockId.GLASS]]);
+    expect(save!.dropped).toBe(2);
+    expect(readSave(null, [])).toBeNull();
   });
 });
