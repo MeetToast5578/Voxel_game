@@ -35,8 +35,17 @@ export const Tile = {
 
 export type RenderLayer = 'none' | 'opaque' | 'cutout' | 'translucent';
 
+/**
+ * A block type. Each type owns `variants` consecutive block states, starting at `id`.
+ * Block data (chunks, edits, the hotbar) stores states; a state's variant is `state - id`.
+ */
 export interface BlockDef {
+  /** The type's first block state (its variant 0). */
   id: number;
+  /** Stable lowercase name used in saves, e.g. 'stone'. */
+  key: string;
+  /** Number of block states this type owns (at least 1). */
+  variants: number;
   name: string;
   solid: boolean;
   opaque: boolean;
@@ -49,16 +58,109 @@ export interface BlockDef {
   tiles: { top: number; side: number; bottom: number };
 }
 
+/** What a registry is built from: a type without its assigned first state. */
+export type BlockTypeDef = Omit<BlockDef, 'id'>;
+
+/** Block states are stored in 16-bit arrays. */
+export const MAX_BLOCK_STATES = 0xffff;
+const STATE_SPACE = 0x10000;
+const NO_TYPE = 0xffff;
+const NAME_PATTERN = /^([a-z0-9_]+)(?:#([1-9][0-9]*))?$/;
+
+export interface BlockRegistry {
+  /** Types in registration order. */
+  readonly types: readonly BlockDef[];
+  /** Number of registered states; states 0..stateCount-1 are valid. */
+  readonly stateCount: number;
+  /** The type of a state. Throws on an unregistered state. */
+  getBlockDef(state: number): BlockDef;
+  /** The variant index of a state within its type. Throws on an unregistered state. */
+  variantOf(state: number): number;
+  /** The state for a variant of a type. Throws if the variant is out of range. */
+  makeState(type: BlockDef, variant: number): number;
+  /** 'key' for variant 0, 'key#n' otherwise. Throws on an unregistered state. */
+  stateName(state: number): string;
+  /** The inverse of stateName; null for anything it would not produce. */
+  parseStateName(name: string): number | null;
+  /** Lookups cover all 65,536 states; unregistered states behave like air. */
+  isOpaque(state: number): boolean;
+  isSolid(state: number): boolean;
+  lightEmission(state: number): number;
+}
+
+/** Builds a registry, assigning each type a run of consecutive states in the given order. Pure. */
+export function buildBlockRegistry(defs: readonly BlockTypeDef[]): BlockRegistry {
+  const types: BlockDef[] = [];
+  const byKey = new Map<string, BlockDef>();
+  const typeOf = new Uint16Array(STATE_SPACE).fill(NO_TYPE);
+  const opaque = new Uint8Array(STATE_SPACE);
+  const solid = new Uint8Array(STATE_SPACE);
+  const emission = new Uint8Array(STATE_SPACE);
+  let next = 0;
+  for (const d of defs) {
+    if (!NAME_PATTERN.test(d.key) || d.key.includes('#')) throw new Error(`Invalid block key '${d.key}'`);
+    if (byKey.has(d.key)) throw new Error(`Duplicate block key '${d.key}'`);
+    if (!Number.isInteger(d.variants) || d.variants < 1) throw new Error(`Block '${d.key}' needs at least 1 variant`);
+    if (next + d.variants > MAX_BLOCK_STATES) throw new Error(`Too many block states (more than ${MAX_BLOCK_STATES})`);
+    const type: BlockDef = { ...d, id: next };
+    const index = types.length;
+    types.push(type);
+    byKey.set(type.key, type);
+    for (let s = next; s < next + d.variants; s++) {
+      typeOf[s] = index;
+      opaque[s] = type.opaque ? 1 : 0;
+      solid[s] = type.solid ? 1 : 0;
+      emission[s] = type.lightEmission;
+    }
+    next += d.variants;
+  }
+
+  const getBlockDef = (state: number): BlockDef => {
+    const index = Number.isInteger(state) && state >= 0 && state < next ? typeOf[state]! : NO_TYPE;
+    if (index === NO_TYPE) throw new Error(`Unknown block state ${state}`);
+    return types[index]!;
+  };
+
+  return {
+    types,
+    stateCount: next,
+    getBlockDef,
+    variantOf: (state) => state - getBlockDef(state).id,
+    makeState(type, variant) {
+      if (!Number.isInteger(variant) || variant < 0 || variant >= type.variants)
+        throw new Error(`Block '${type.key}' has no variant ${variant}`);
+      return type.id + variant;
+    },
+    stateName(state) {
+      const type = getBlockDef(state);
+      const variant = state - type.id;
+      return variant === 0 ? type.key : `${type.key}#${variant}`;
+    },
+    parseStateName(name) {
+      const m = NAME_PATTERN.exec(name);
+      if (!m) return null;
+      const type = byKey.get(m[1]!);
+      if (!type) return null;
+      const variant = m[2] === undefined ? 0 : Number(m[2]);
+      return variant < type.variants ? type.id + variant : null;
+    },
+    isOpaque: (state) => opaque[state] === 1,
+    isSolid: (state) => solid[state] === 1,
+    lightEmission: (state) => emission[state] ?? 0,
+  };
+}
+
 function def(
-  id: number,
+  key: string,
   name: string,
   tiles: { top: number; side: number; bottom: number },
-  opts: Partial<Omit<BlockDef, 'id' | 'name' | 'tiles'>> = {},
-): BlockDef {
+  opts: Partial<Omit<BlockTypeDef, 'key' | 'name' | 'tiles'>> = {},
+): BlockTypeDef {
   return {
-    id,
+    key,
     name,
     tiles,
+    variants: 1,
     solid: true,
     opaque: true,
     targetable: true,
@@ -72,45 +174,42 @@ function def(
 
 const all = (t: number) => ({ top: t, side: t, bottom: t });
 
-export const BLOCKS: readonly BlockDef[] = [
-  def(BlockId.AIR, 'Air', all(0), { solid: false, opaque: false, targetable: false, breakable: false, layer: 'none' }),
-  def(BlockId.STONE, 'Stone', all(Tile.STONE)),
-  def(BlockId.DIRT, 'Dirt', all(Tile.DIRT)),
-  def(BlockId.GRASS, 'Grass', { top: Tile.GRASS_TOP, side: Tile.GRASS_SIDE, bottom: Tile.DIRT }),
-  def(BlockId.SAND, 'Sand', all(Tile.SAND)),
-  def(BlockId.WATER, 'Water', all(Tile.WATER), {
+/** The game's block registry. Registration order fixes the state numbers: append new types at the end. */
+export const BLOCK_REGISTRY = buildBlockRegistry([
+  def('air', 'Air', all(0), { solid: false, opaque: false, targetable: false, breakable: false, layer: 'none' }),
+  def('stone', 'Stone', all(Tile.STONE)),
+  def('dirt', 'Dirt', all(Tile.DIRT)),
+  def('grass', 'Grass', { top: Tile.GRASS_TOP, side: Tile.GRASS_SIDE, bottom: Tile.DIRT }),
+  def('sand', 'Sand', all(Tile.SAND)),
+  def('water', 'Water', all(Tile.WATER), {
     solid: false, opaque: false, targetable: false, breakable: false, cullSame: true, layer: 'translucent',
   }),
-  def(BlockId.LOG, 'Log', { top: Tile.LOG_TOP, side: Tile.LOG_SIDE, bottom: Tile.LOG_TOP }),
-  def(BlockId.LEAVES, 'Leaves', all(Tile.LEAVES), { opaque: false, layer: 'cutout' }),
-  def(BlockId.PLANKS, 'Planks', all(Tile.PLANKS)),
-  def(BlockId.GLASS, 'Glass', all(Tile.GLASS), { opaque: false, cullSame: true, layer: 'cutout' }),
-  def(BlockId.BEDROCK, 'Bedrock', all(Tile.BEDROCK), { breakable: false }),
-  def(BlockId.COBBLESTONE, 'Cobblestone', all(Tile.COBBLESTONE)),
-  def(BlockId.BRICK, 'Brick', all(Tile.BRICK)),
-  def(BlockId.GLOWSTONE, 'Glowstone', all(Tile.GLOWSTONE), { lightEmission: 15 }),
-];
+  def('log', 'Log', { top: Tile.LOG_TOP, side: Tile.LOG_SIDE, bottom: Tile.LOG_TOP }),
+  def('leaves', 'Leaves', all(Tile.LEAVES), { opaque: false, layer: 'cutout' }),
+  def('planks', 'Planks', all(Tile.PLANKS)),
+  def('glass', 'Glass', all(Tile.GLASS), { opaque: false, cullSame: true, layer: 'cutout' }),
+  def('bedrock', 'Bedrock', all(Tile.BEDROCK), { breakable: false }),
+  def('cobblestone', 'Cobblestone', all(Tile.COBBLESTONE)),
+  def('brick', 'Brick', all(Tile.BRICK)),
+  def('glowstone', 'Glowstone', all(Tile.GLOWSTONE), { lightEmission: 15 }),
+]);
 
-const OPAQUE = new Uint8Array(256);
-const SOLID = new Uint8Array(256);
-const EMISSION = new Uint8Array(256);
-for (const b of BLOCKS) {
-  OPAQUE[b.id] = b.opaque ? 1 : 0;
-  SOLID[b.id] = b.solid ? 1 : 0;
-  EMISSION[b.id] = b.lightEmission;
+// BlockId.X is variant 0 of the type whose key is x; keep the two lists in step.
+for (const [name, state] of Object.entries(BlockId)) {
+  if (BLOCK_REGISTRY.stateName(state) !== name.toLowerCase())
+    throw new Error(`BlockId.${name} (${state}) does not match the registry`);
 }
 
-export function getBlockDef(id: number): BlockDef {
-  const b = BLOCKS[id];
-  if (!b) throw new Error(`Unknown block id ${id}`);
-  return b;
-}
-export function isOpaque(id: number): boolean {
-  return OPAQUE[id] === 1;
-}
-export function isSolid(id: number): boolean {
-  return SOLID[id] === 1;
-}
-export function lightEmission(id: number): number {
-  return EMISSION[id]!;
-}
+/** Block types, indexed in registration order. */
+export const BLOCKS: readonly BlockDef[] = BLOCK_REGISTRY.types;
+/** Total number of registered block states. */
+export const BLOCK_STATE_COUNT = BLOCK_REGISTRY.stateCount;
+
+export const getBlockDef = BLOCK_REGISTRY.getBlockDef;
+export const blockVariant = BLOCK_REGISTRY.variantOf;
+export const makeBlockState = BLOCK_REGISTRY.makeState;
+export const blockStateName = BLOCK_REGISTRY.stateName;
+export const parseBlockStateName = BLOCK_REGISTRY.parseStateName;
+export const isOpaque = BLOCK_REGISTRY.isOpaque;
+export const isSolid = BLOCK_REGISTRY.isSolid;
+export const lightEmission = BLOCK_REGISTRY.lightEmission;

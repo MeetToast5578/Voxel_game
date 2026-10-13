@@ -12,7 +12,7 @@ class FakeJobs implements ChunkJobs {
   private readonly generator = new TerrainGenerator(7);
   maxQueued = 0;
 
-  generate(cx: number, cz: number): Promise<Uint8Array> {
+  generate(cx: number, cz: number): Promise<Uint16Array> {
     return this.enqueue(() => {
       const chunk = new Chunk(cx, cz);
       this.generator.generateChunk(chunk);
@@ -20,7 +20,7 @@ class FakeJobs implements ChunkJobs {
     });
   }
 
-  mesh(neighbors: Uint8Array[]): Promise<ChunkMeshData> {
+  mesh(neighbors: Uint16Array[]): Promise<ChunkMeshData> {
     return this.enqueue(() => buildChunkMesh(neighbors));
   }
 

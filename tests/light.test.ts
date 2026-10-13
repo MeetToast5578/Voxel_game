@@ -5,9 +5,9 @@ import { BlockId } from '../src/world/blocks';
 import { buildRegion, computeBlockLight, computeSkyLight, regionIndex } from '../src/world/light';
 
 /** 9 chunks filled with stone up to and including y = groundY. Index (dz + 1) * 3 + (dx + 1). */
-function flatNeighbors(groundY: number): Uint8Array[] {
+function flatNeighbors(groundY: number): Uint16Array[] {
   return Array.from({ length: 9 }, () => {
-    const blocks = new Uint8Array(CHUNK_VOLUME);
+    const blocks = new Uint16Array(CHUNK_VOLUME);
     for (let y = 0; y <= groundY; y++)
       for (let z = 0; z < 16; z++) for (let x = 0; x < 16; x++) blocks[localIndex(x, y, z)] = BlockId.STONE;
     return blocks;
@@ -59,5 +59,13 @@ describe('computeBlockLight', () => {
     expect(light[regionIndex(C + 3, 31, C + 5)]).toBe(14);
     expect(light[regionIndex(C + 7, 31, C + 5)]).toBe(10);
     expect(light[regionIndex(C + 10, 31, C + 5)]).toBe(5); // 8 steps along x + 2 to step around the wall = 10
+  });
+});
+
+describe('buildRegion', () => {
+  it('copies 16-bit block states without truncating them', () => {
+    const neighbors = flatNeighbors(10);
+    neighbors[5]![localIndex(0, 20, 3)] = 300; // the +X neighbor
+    expect(buildRegion(neighbors)[regionIndex(2 * C, 20, C + 3)]).toBe(300);
   });
 });

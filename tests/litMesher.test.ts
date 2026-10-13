@@ -8,9 +8,9 @@ import { TerrainGenerator } from '../src/world/generator';
 import { LIGHT_CURVE } from '../src/world/light';
 
 /** 9 chunks filled with stone up to and including y = groundY. Index (dz + 1) * 3 + (dx + 1). */
-function flatNeighbors(groundY: number): Uint8Array[] {
+function flatNeighbors(groundY: number): Uint16Array[] {
   return Array.from({ length: 9 }, () => {
-    const blocks = new Uint8Array(CHUNK_VOLUME);
+    const blocks = new Uint16Array(CHUNK_VOLUME);
     for (let y = 0; y <= groundY; y++)
       for (let z = 0; z < 16; z++) for (let x = 0; x < 16; x++) blocks[localIndex(x, y, z)] = BlockId.STONE;
     return blocks;
@@ -52,7 +52,7 @@ describe('buildChunkMesh lighting', () => {
   });
   it('meshing with lighting stays fast enough', () => {
     const g = new TerrainGenerator(5);
-    const chunks: Uint8Array[] = [];
+    const chunks: Uint16Array[] = [];
     for (let dz = -1; dz <= 1; dz++)
       for (let dx = -1; dx <= 1; dx++) {
         const c = new Chunk(dx, dz);

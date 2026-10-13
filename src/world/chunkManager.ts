@@ -12,9 +12,9 @@ export interface MeshSink {
 
 /** Does generation and meshing somewhere else (Web Workers). Implemented by workers/workerPool.ts. */
 export interface ChunkJobs {
-  generate(cx: number, cz: number): Promise<Uint8Array>;
+  generate(cx: number, cz: number): Promise<Uint16Array>;
   /** Receives copies of the 9 block arrays; may keep them. */
-  mesh(neighbors: Uint8Array[]): Promise<ChunkMeshData>;
+  mesh(neighbors: Uint16Array[]): Promise<ChunkMeshData>;
 }
 
 /** With ChunkJobs: at most this many generate/mesh jobs are waiting for a result at once. */
@@ -233,8 +233,8 @@ export class ChunkManager {
     return dx * dx + dz * dz <= radius * radius;
   }
 
-  private neighborBlocks(cx: number, cz: number): Uint8Array[] {
-    const neighbors: Uint8Array[] = [];
+  private neighborBlocks(cx: number, cz: number): Uint16Array[] {
+    const neighbors: Uint16Array[] = [];
     for (let dz = -1; dz <= 1; dz++)
       for (let dx = -1; dx <= 1; dx++) neighbors.push(this.world.getChunk(cx + dx, cz + dz)!.blocks);
     return neighbors;

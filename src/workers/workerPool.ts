@@ -27,7 +27,7 @@ export class WorkerPool implements ChunkJobs {
     }
   }
 
-  generate(cx: number, cz: number): Promise<Uint8Array> {
+  generate(cx: number, cz: number): Promise<Uint16Array> {
     return this.send({ type: 'generate', id: 0, seed: this.seed, cx, cz }, []).then((r) => {
       if (r.type !== 'generated') throw new Error('unexpected worker reply');
       return r.blocks;
@@ -35,7 +35,7 @@ export class WorkerPool implements ChunkJobs {
   }
 
   /** The neighbor arrays are moved to the worker, so pass copies. */
-  mesh(neighbors: Uint8Array[]): Promise<ChunkMeshData> {
+  mesh(neighbors: Uint16Array[]): Promise<ChunkMeshData> {
     const transfer = neighbors.map((n) => n.buffer as ArrayBuffer);
     return this.send({ type: 'mesh', id: 0, neighbors }, transfer).then((r) => {
       if (r.type !== 'meshed') throw new Error('unexpected worker reply');
