@@ -17,6 +17,8 @@ export class Renderer {
   private skyColor = SKY_COLOR;
   private underwater = false;
   private viewBlocks = 96;
+  /** Vertical distance to the farthest visible surface (from the loaded column tops), in blocks. */
+  private surfaceDistance = 0;
 
   constructor(private readonly container: HTMLElement) {
     this.webgl = new THREE.WebGLRenderer({ antialias: false, powerPreference: 'high-performance' });
@@ -55,9 +57,24 @@ export class Renderer {
   /** Fog hides the edge of the loaded world. renderDistance is in chunks. */
   setViewDistance(renderDistance: number): void {
     this.viewBlocks = renderDistance * CHUNK_SIZE;
-    this.camera.far = this.viewBlocks + 64;
-    this.camera.updateProjectionMatrix();
+    this.updateFar();
     this.applyFog();
+  }
+
+  /**
+   * The far plane covers the horizontal view distance plus the vertical distance to the farthest loaded surface,
+   * so hills seen from a valley (or the valley seen from a mountain) are not clipped. Fog is horizontal only.
+   */
+  setSurfaceDistance(blocks: number): void {
+    const rounded = Math.ceil(blocks / CHUNK_SIZE) * CHUNK_SIZE; // avoid a projection update every frame
+    if (rounded === this.surfaceDistance) return;
+    this.surfaceDistance = rounded;
+    this.updateFar();
+  }
+
+  private updateFar(): void {
+    this.camera.far = Math.hypot(this.viewBlocks, this.surfaceDistance) + 64;
+    this.camera.updateProjectionMatrix();
   }
 
   /** Sky and fog color (changes with the time of day). */

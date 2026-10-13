@@ -5,28 +5,20 @@ Last updated 2026-10-13.
 ## Where things stand
 
 `main` contains:
-- the working browser voxel game (PR #1)
-- the owner's working-style skill (PR #2)
-- specs for the polish batch (PR #3), since replaced by `docs/ROADMAP.md` and the phase 1 specs
+- the working browser voxel game (PR #1) and the owner's working-style skill (PR #2)
+- `docs/ROADMAP.md` and the phase 1 specs in `docs/specs/` (PR #5, with spec 1)
+- phase 1 specs 1–4: CI (PR #5), world scale (PR #6), step-up (PR #7), 16-bit block states (PR #8)
 
-### In progress (stacked branches, pushed; no pull requests opened yet)
-
-1. **`phase1/plan`** (from `main`): `docs/ROADMAP.md` and the phase 1 specs in `docs/specs/`. The latest version of this handoff is on `phase1/01-ci`.
-   - The roadmap's phase 5 now also covers liquid physics: buoyancy, drag, currents, wading, and water breaking falls.
-2. **`phase1/01-ci`** (from `phase1/plan`): spec 1 is implemented in `.github/workflows/ci.yml`, plus one README line. CI has **not run yet**.
-   - **Next step:** open a pull request (or push to a branch with a PR), check that both jobs are green, and download the screenshots artifact (spec 1, test cases 1–4).
-
-Then build specs 2–8 in the order given in `docs/specs/README.md`. Claude was asked to build all of them, including the ones marked "Haiku".
+Specs 5–7 (cubic chunks: data, light and mesher, streaming) are built together on one branch and pull request,
+as `docs/specs/README.md` allows. After they merge, the next step is spec 8 (save v2 in IndexedDB), the last spec
+of phase 1. Claude was asked to build all of them, including the ones marked "Haiku".
 
 ### Local verification on the owner's machine (Windows, slow CPU)
 
 The owner's machine struggles with heavy runs. Prefer CI, or a cloud session, for `npm run check` and `npm run smoke`.
 
-- **`npm run check`.** 117 of 118 tests pass. `tests/mesher.test.ts` "meshes a generated chunk in reasonable time" fails only in the full parallel run: 76 ms against a 50 ms limit. Alone it takes about 19 ms. This was already the case on `main`. Spec 6 rewrites this test for 16³ chunks, which are about 8× smaller. Don't weaken the assertion; if CI also fails on it, raise it with the owner.
-- **`npm run smoke`.** Chromium for Playwright is now installed locally.
-  - The first 8 checks passed, up to and including "saves the world and restores it after a reload".
-  - Then "swims in water…" failed with `page.screenshot: Protocol error (Page.captureScreenshot): Unable to capture screenshot`.
-  - It wasn't re-run, so it's unknown whether this is flaky (SwiftShader under CPU load) or real. CI will tell.
+- CI runs both on every pull request. The two local failures seen before CI existed (the mesher timing test under parallel load, and a screenshot error in "swims in water") both pass in CI.
+- In cloud sessions, `npm run smoke` passes every check but ends with `console.error: Failed to load resource: 404`. The same happens on unchanged `main` there and not in CI; it is the cloud container's full Chromium (most likely its favicon request). Run it with `CHROMIUM_PATH=/opt/pw-browsers/chromium-1194/chrome-linux/chrome`.
 - **No git identity is configured here.** Commits were made with `git -c user.name="Yunus Alizade" -c user.email=62231698+MeetToast5578@users.noreply.github.com`.
 
 ### Still open
@@ -99,15 +91,15 @@ TypeScript 5.9.3, Vite 7.3.6, Vitest 4.0.18, three 0.186.0, simplex-noise 4.0.3,
   - fixed-timestep loop (1/60 s steps, frames clamped to 0.25 s)
 - `src/world`:
   - `blocks.ts`: `BlockId`/`Tile` are objects, not enums. Ids run AIR 0, STONE 1, DIRT 2, GRASS 3, SAND 4, WATER 5, LOG 6, LEAVES 7, PLANKS 8, GLASS 9, BEDROCK 10, COBBLESTONE 11, BRICK 12, GLOWSTONE 13.
-  - `chunk.ts`: 16×128×16 `Uint8Array`, indexed `(y*16+lz)*16+lx`.
-  - `world.ts`: the chunk map plus the `edits` map, which is what gets saved.
-  - `generator.ts`:
-    - fbm height map, beaches, sea at y = 40
+  - `chunk.ts`: 16×16×16 `Uint16Array` of block states, indexed `(ly*16+lz)*16+lx`, addressed by `(cx, cy, cz)`. No height limit.
+  - `world.ts`: the chunk map, the `edits` map (what gets saved), and per-column **tops** (world y of the highest sky-blocking block per cell), kept exact on every edit.
+  - `generator.ts` (phase 1 interim):
+    - the old 128-high terrain as a "legacy column" (y 0..127): fbm height map, beaches, sea at y = 40, spaghetti caves
+    - solid stone below y = 0, air above y = 127; bedrock is no longer generated
     - trees only at local x/z 2–13 (the phase 3 feature system replaces this)
-    - spaghetti caves
   - Also: `chunkManager.ts`, `light.ts`, `spawn.ts`, `time.ts`.
 - `src/render`:
-  - `mesher.ts`: pure. Does face culling, per-vertex AO and lighting, and takes 9 neighbour chunks.
+  - `mesher.ts`: pure. Does face culling, per-vertex AO and lighting, and takes 27 neighbour chunks plus 9 column-top arrays.
   - Also: `faces.ts`, `tiles.ts`, `atlasPixels.ts` (procedural textures), `renderer.ts`, `chunkMeshes.ts`, `lightMaterial.ts`, `highlight.ts`, `clouds.ts`.
 - `src/player`:
   - `physics.ts`: AABB sweep in the order Y → X → Z.
@@ -116,7 +108,7 @@ TypeScript 5.9.3, Vite 7.3.6, Vitest 4.0.18, three 0.186.0, simplex-noise 4.0.3,
   - Also: `interaction.ts`, `hotbar.ts`.
 - `src/ui`: HUD, menu, F3 overlay.
 - `src/input`, `src/audio`: procedural noise SFX.
-- `src/storage`: settings, and save v1 in `localStorage`.
+- `src/storage`: settings, and a temporary save (`voxel-game-save-v2`, 3D chunk keys) in `localStorage`. Spec 8 replaces it.
 - `src/workers`: `WorkerPool`, which implements `ChunkJobs`.
 - `src/game.ts` wires everything together. `src/debugApi.ts` exposes `window.__game`.
 
@@ -124,14 +116,13 @@ TypeScript 5.9.3, Vite 7.3.6, Vitest 4.0.18, three 0.186.0, simplex-noise 4.0.3,
 
 - **Pure modules.** `core`, `world`, `player`, the mesher, `storage` and `ui/debugText` must not import three or touch the DOM. They are unit-tested in Node.
 - **ChunkManager.**
-  - Generates chunks within renderDistance + 2.
-  - Meshes chunks within renderDistance once all 8 neighbours exist.
-  - Unloads chunks beyond renderDistance + 3.
-  - Time budgets apply on the main thread.
-  - With workers, at most 8 jobs are in flight, and a per-chunk version counter drops stale results.
+  - Loads column tops within renderDistance + 2, then chunks; one list sorted by distance from the eye.
+  - Meshes the near cylinder (renderDistance horizontally, `VERTICAL_RENDER_DISTANCE` = 4 up and down) plus each column's surface band (lowest top − 1 up to highest top), once all 26 neighbours and 9 column tops exist.
+  - Unloads with hysteresis (meshes beyond +1, blocks beyond +3; surface bands are kept).
+  - Time budgets apply on the main thread. With workers, at most 16 jobs are in flight, slots are refilled as soon as results arrive, and a per-chunk version counter drops stale results.
 - **Lighting.**
-  - Sky light and block light are computed fresh for each mesh from the 3×3 chunk region. This is exact because light reaches at most 14 blocks.
-  - An edit remeshes its chunk immediately and marks the 8 neighbours dirty.
+  - Sky light and block light are computed fresh for each mesh from the 3×3×3 chunk region. This is exact because light reaches at most 14 blocks. Sunlight is seeded from the column tops, so it is right even when the chunks above are not loaded.
+  - An edit remeshes its chunk (and any neighbour whose padded volume holds the block) immediately and marks the rest of the 3×3×3 dirty; if it moved a column top, chunks around the old and new top are marked dirty too.
 - **Day/night.**
   - A shader patch (`onBeforeCompile`) multiplies colour by `max(aLight.sky * uDaylight, aLight.block)`.
   - Every chunk geometry MUST have an `aLight` attribute, or it renders black.

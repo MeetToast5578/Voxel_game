@@ -35,9 +35,11 @@ describe('placementTarget', () => {
     expect(placementTarget(hit, () => BlockId.WATER, BlockId.STONE, feet, shape)).not.toBeNull();
     expect(placementTarget(hit, () => BlockId.DIRT, BlockId.STONE, feet, shape)).toBeNull();
   });
-  it('refuses to place outside the world height', () => {
-    const hit = { x: 5, y: 127, z: 5, nx: 0, ny: 1, nz: 0, distance: 3 };
-    expect(placementTarget(hit, air, BlockId.STONE, feet, shape)).toBeNull();
+  it('places at any height (the world has no height limit)', () => {
+    const high = { x: 5, y: 127, z: 5, nx: 0, ny: 1, nz: 0, distance: 3 };
+    expect(placementTarget(high, air, BlockId.STONE, feet, shape)).toEqual({ x: 5, y: 128, z: 5 });
+    const deep = { x: 5, y: -300, z: 5, nx: 0, ny: -1, nz: 0, distance: 3 };
+    expect(placementTarget(deep, air, BlockId.STONE, feet, shape)).toEqual({ x: 5, y: -301, z: 5 });
   });
   it('canBreak', () => {
     expect(canBreak(BlockId.STONE)).toBe(true);

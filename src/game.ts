@@ -1,6 +1,7 @@
 import {
-  AUTOSAVE_INTERVAL_S, BREAK_REPEAT_S, DAY_LENGTH_S, DEFAULT_MOUSE_SENSITIVITY, FIXED_DT, FOOTSTEP_DISTANCE,
-  FOOTSTEP_MIN_SPEED, GEN_BUDGET_MS, HOTBAR_SIZE, MAX_FRAME_DT, MESH_BUDGET_MS, REACH, SAVE_KEY, SETTINGS_KEY, SPAWN_READY_RADIUS, START_TIME_OF_DAY,
+  AUTOSAVE_INTERVAL_S, BREAK_REPEAT_S, DAY_LENGTH_S, DEFAULT_MOUSE_SENSITIVITY, EYE_HEIGHT, FIXED_DT, FOOTSTEP_DISTANCE,
+  FOOTSTEP_MIN_SPEED, GEN_BUDGET_MS, HOTBAR_SIZE, MAX_FRAME_DT, MESH_BUDGET_MS, REACH, SAVE_KEY, SEA_LEVEL, SETTINGS_KEY,
+  SPAWN_READY_RADIUS, START_TIME_OF_DAY,
 } from './config';
 import { Sounds } from './audio/sounds';
 import { FixedStepLoop } from './core/loop';
@@ -15,7 +16,7 @@ import { ChunkMeshes } from './render/chunkMeshes';
 import { Clouds } from './render/clouds';
 import { BlockHighlight } from './render/highlight';
 import { Renderer } from './render/renderer';
-import { editsToRecord, loadSave, recordToEdits, writeSave, type SavedPlayer } from './storage/save';
+import { SAVE_VERSION, editsToRecord, loadSave, recordToEdits, writeSave, type SavedPlayer } from './storage/save';
 import { loadSettings, saveSettings, type Settings } from './storage/settings';
 import { MemoryStore, browserStore, type KeyValueStore } from './storage/store';
 import { DebugOverlay } from './ui/debugOverlay';
@@ -23,6 +24,7 @@ import { formatDebugLines } from './ui/debugText';
 import { Hud } from './ui/hud';
 import { Menu } from './ui/menu';
 import { BlockId, getBlockDef, isSolid } from './world/blocks';
+import { Chunk } from './world/chunk';
 import { ChunkManager } from './world/chunkManager';
 import { TerrainGenerator } from './world/generator';
 import { findSpawnColumn, surfaceY } from './world/spawn';
@@ -51,6 +53,8 @@ export class Game {
   timeOfDay = START_TIME_OF_DAY;
   private readonly loop: FixedStepLoop;
   private readonly spawn: { x: number; z: number };
+  /** Feet height at the spawn column, once its column top and the chunks below it are loaded. */
+  private spawnFeetY: number | null = null;
   private readonly highlight: BlockHighlight;
   private actionCooldown = 0;
   private readonly store: KeyValueStore;
@@ -76,13 +80,18 @@ export class Game {
     this.savingEnabled = !options.nosave && options.seed === null;
     const save = this.savingEnabled ? loadSave(this.store, SAVE_KEY) : null;
     const seed = options.seed ?? save?.seed ?? Math.floor(Math.random() * 1_000_000_000);
-    this.world = new World(seed);
+    this.generator = new TerrainGenerator(seed);
+    // Keeping column tops exact can need a chunk that is not loaded; it is generated synchronously, not kept.
+    this.world = new World(seed, (cx, cy, cz) => {
+      const chunk = new Chunk(cx, cy, cz);
+      this.generator.generateChunk(chunk);
+      return chunk.blocks;
+    });
     if (save) {
-      for (const [key, chunkEdits] of recordToEdits(save.edits)) this.world.edits.set(key, chunkEdits);
+      this.world.loadEdits(recordToEdits(save.edits));
       this.hotbar.select(save.selectedSlot);
     }
     this.savedPlayer = save?.player ?? null;
-    this.generator = new TerrainGenerator(seed);
     this.renderer = new Renderer(container);
     this.meshes = new ChunkMeshes(this.renderer.scene, this.renderer.solidMaterial, this.renderer.waterMaterial);
     this.usingWorkers = options.workers && typeof Worker !== 'undefined';
@@ -135,9 +144,9 @@ export class Game {
     this.loop.start();
   }
 
-  /** Solid test used by physics. Unloaded chunks count as solid so the player can never fall out of the world. */
+  /** Solid test used by physics. Unloaded chunks count as solid so the player can never fall into one. */
   readonly isSolidAt = (x: number, y: number, z: number): boolean =>
-    !this.world.isLoadedAt(x, z) || isSolid(this.world.getBlock(x, y, z));
+    !this.world.isLoadedAt(x, y, z) || isSolid(this.world.getBlock(x, y, z));
 
   readonly isWaterAt = (x: number, y: number, z: number): boolean => this.world.getBlock(x, y, z) === BlockId.WATER;
 
@@ -158,7 +167,7 @@ export class Game {
     if (!this.savingEnabled || !this.ready) return;
     const p = this.player;
     writeSave(this.store, SAVE_KEY, {
-      version: 1,
+      version: SAVE_VERSION,
       seed: this.world.seed,
       selectedSlot: this.hotbar.selected,
       player: { x: p.position.x, y: p.position.y, z: p.position.z, yaw: p.yaw, pitch: p.pitch, flying: p.flying },
@@ -175,24 +184,12 @@ export class Game {
     }
     if (this.input.consumePressed('F3') || this.input.consumePressed('Backquote')) this.debugOverlay.toggle();
 
-    const focus = this.ready ? this.player.position : { x: this.spawn.x, z: this.spawn.z };
-    this.chunks.update(focus.x, focus.z, GEN_BUDGET_MS, MESH_BUDGET_MS);
-
-    if (!this.ready && this.chunks.isAreaMeshed(this.spawn.x, this.spawn.z, SPAWN_READY_RADIUS)) {
-      const saved = this.savedPlayer;
-      if (saved) {
-        this.player.setPosition(saved.x, saved.y, saved.z);
-        this.player.yaw = saved.yaw;
-        this.player.pitch = saved.pitch;
-        this.player.flying = saved.flying;
-      } else {
-        const y = surfaceY((x, yy, z) => this.world.getBlock(x, yy, z), this.spawn.x, this.spawn.z);
-        this.player.setPosition(this.spawn.x, y, this.spawn.z);
-      }
-      this.ready = true;
-    }
+    const focus = this.ready ? this.player.eyePosition(alpha) : this.spawnFocus();
+    this.chunks.update(focus.x, focus.y, focus.z, GEN_BUDGET_MS, MESH_BUDGET_MS);
+    if (!this.ready) this.trySpawn();
 
     const eye = this.player.eyePosition(alpha);
+    this.renderer.setSurfaceDistance(this.chunks.surfaceDistance(eye.y));
     this.renderer.setCamera(eye.x, eye.y, eye.z, this.player.yaw, this.player.pitch);
     this.renderer.setDaylight(daylightAt(this.timeOfDay));
     this.renderer.setSkyColor(skyColorAt(this.timeOfDay));
@@ -204,6 +201,50 @@ export class Game {
     this.renderer.render();
     this.hud.update(this.hotbar.slots, this.hotbar.selected, frameDt);
     this.debugOverlay.update(frameDt, () => formatDebugLines(this.debugState()));
+  }
+
+  /** Where chunks are loaded around before the player is placed: the spawn point (or its column top). */
+  private spawnFocus(): Vec3 {
+    const saved = this.savedPlayer;
+    if (saved) return { x: saved.x, y: saved.y + EYE_HEIGHT, z: saved.z };
+    const top = this.world.topAt(Math.floor(this.spawn.x), Math.floor(this.spawn.z));
+    return { x: this.spawn.x, y: (this.spawnFeetY ?? top ?? SEA_LEVEL) + EYE_HEIGHT, z: this.spawn.z };
+  }
+
+  /**
+   * Places the player once the 3x3x3 chunks around the feet are meshed. A new player stands on the surface of the
+   * spawn column, found by scanning down from its column top (which needs those chunks loaded first).
+   */
+  private trySpawn(): void {
+    const saved = this.savedPlayer;
+    if (saved) {
+      if (!this.chunks.isAreaMeshed(saved.x, saved.y, saved.z, SPAWN_READY_RADIUS)) return;
+      this.player.setPosition(saved.x, saved.y, saved.z);
+      this.player.yaw = saved.yaw;
+      this.player.pitch = saved.pitch;
+      this.player.flying = saved.flying;
+      this.ready = true;
+      return;
+    }
+    if (this.spawnFeetY === null) {
+      const top = this.world.topAt(Math.floor(this.spawn.x), Math.floor(this.spawn.z));
+      if (top === undefined) return;
+      let missing = false;
+      const y = surfaceY(
+        (x, yy, z) => {
+          if (!this.world.isLoadedAt(x, yy, z)) missing = true;
+          return this.world.getBlock(x, yy, z);
+        },
+        this.spawn.x,
+        this.spawn.z,
+        top,
+      );
+      if (missing) return;
+      this.spawnFeetY = y;
+    }
+    if (!this.chunks.isAreaMeshed(this.spawn.x, this.spawnFeetY, this.spawn.z, SPAWN_READY_RADIUS)) return;
+    this.player.setPosition(this.spawn.x, this.spawnFeetY, this.spawn.z);
+    this.ready = true;
   }
 
   private applySettings(s: Settings): void {
@@ -228,8 +269,9 @@ export class Game {
 
   /** Changes a block and remeshes the affected chunks. Returns false if the chunk is not loaded. */
   setBlock(x: number, y: number, z: number, id: number): boolean {
+    const oldTop = this.world.topAt(x, z);
     if (!this.world.setBlock(x, y, z, id)) return false;
-    this.chunks.onBlockChanged(x, y, z);
+    this.chunks.onBlockChanged(x, y, z, oldTop, this.world.topAt(x, z));
     return true;
   }
 
@@ -338,6 +380,9 @@ export class Game {
       selectedBlock: getBlockDef(this.hotbar.selectedBlock).name,
       renderDistance: this.chunks.renderDistance,
       workers: this.usingWorkers,
+      drawCalls: this.renderer.webgl.info.render.calls,
+      /** True when the 3x3x3 chunks around the player's feet are meshed. */
+      areaMeshed: this.chunks.isAreaMeshed(p.position.x, p.position.y, p.position.z, SPAWN_READY_RADIUS),
       ...this.chunks.stats,
     };
   }

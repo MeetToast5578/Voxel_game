@@ -4,9 +4,8 @@
  */
 
 // ---- World ----
-export const CHUNK_SIZE = 16; // blocks along X and Z
-export const WORLD_HEIGHT = 128; // blocks along Y (y = 0..127)
-export const CHUNK_VOLUME = CHUNK_SIZE * CHUNK_SIZE * WORLD_HEIGHT;
+export const CHUNK_SIZE = 16; // blocks along each axis; chunks are cubes and the world has no height limit
+export const CHUNK_VOLUME = CHUNK_SIZE * CHUNK_SIZE * CHUNK_SIZE;
 export const SEA_LEVEL = 40; // air at y <= SEA_LEVEL becomes water during generation
 export const DEFAULT_SEED = 1337;
 
@@ -24,7 +23,10 @@ export const MIN_RENDER_DISTANCE = 2;
 export const MAX_RENDER_DISTANCE = 16;
 export const GEN_BUDGET_MS = 4; // max time per frame spent generating terrain
 export const MESH_BUDGET_MS = 4; // max time per frame spent building meshes
-export const SPAWN_READY_RADIUS = 1; // chunks around spawn that must be meshed before the player spawns
+export const SPAWN_READY_RADIUS = 1; // the 3x3x3 chunks around the spawn point must be meshed before the player spawns
+export const VERTICAL_RENDER_DISTANCE = 4; // chunks above and below the player's chunk that are always loaded
+export const SURFACE_BAND = 1; // extra chunks loaded below each column's lowest top, so the surface is always shown
+export const MAX_JOBS_IN_FLIGHT = 16; // with Web Workers: at most this many tops/generate/mesh jobs at once
 
 // ---- Player ----
 // Distances, speeds and accelerations are written in meters (m/s, m/s²) and converted to blocks.
@@ -77,6 +79,6 @@ export const MIN_DAYLIGHT = 0.15;
 export const HOTBAR_SIZE = 9;
 
 // ---- Storage ----
-export const SAVE_KEY = 'voxel-game-save-v1';
+export const SAVE_KEY = 'voxel-game-save-v2'; // v1 saves (128-high columns) are neither loaded nor overwritten
 export const SETTINGS_KEY = 'voxel-game-settings-v1';
 export const AUTOSAVE_INTERVAL_S = 10;

@@ -27,17 +27,24 @@ export class WorkerPool implements ChunkJobs {
     }
   }
 
-  generate(cx: number, cz: number): Promise<Uint16Array> {
-    return this.send({ type: 'generate', id: 0, seed: this.seed, cx, cz }, []).then((r) => {
+  columnTops(cx: number, cz: number): Promise<Int32Array> {
+    return this.send({ type: 'tops', id: 0, seed: this.seed, cx, cz }, []).then((r) => {
+      if (r.type !== 'tops') throw new Error('unexpected worker reply');
+      return r.tops;
+    });
+  }
+
+  generate(cx: number, cy: number, cz: number): Promise<Uint16Array> {
+    return this.send({ type: 'generate', id: 0, seed: this.seed, cx, cy, cz }, []).then((r) => {
       if (r.type !== 'generated') throw new Error('unexpected worker reply');
       return r.blocks;
     });
   }
 
-  /** The neighbor arrays are moved to the worker, so pass copies. */
-  mesh(neighbors: Uint16Array[]): Promise<ChunkMeshData> {
-    const transfer = neighbors.map((n) => n.buffer as ArrayBuffer);
-    return this.send({ type: 'mesh', id: 0, neighbors }, transfer).then((r) => {
+  /** The block and top arrays are moved to the worker, so pass copies. */
+  mesh(_cx: number, cy: number, _cz: number, neighbors: Uint16Array[], tops: Int32Array[]): Promise<ChunkMeshData> {
+    const transfer = [...neighbors, ...tops].map((a) => a.buffer as ArrayBuffer);
+    return this.send({ type: 'mesh', id: 0, cy, neighbors, tops }, transfer).then((r) => {
       if (r.type !== 'meshed') throw new Error('unexpected worker reply');
       return r.mesh;
     });

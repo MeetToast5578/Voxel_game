@@ -12,8 +12,9 @@ describe('spawn', () => {
       expect(g.getHeight(Math.floor(s.x), Math.floor(s.z))).toBeGreaterThan(SEA_LEVEL + 1);
     }
   });
-  it('surfaceY returns the y just above the highest solid block (water is not solid)', () => {
-    expect(surfaceY((_x, y) => (y <= 50 ? BlockId.STONE : BlockId.AIR), 0.5, 0.5)).toBe(51);
-    expect(surfaceY((_x, y) => (y <= 50 ? BlockId.STONE : y <= 55 ? BlockId.WATER : BlockId.AIR), 0.5, 0.5)).toBe(51);
+  it('surfaceY scans down from the column top to just above the highest solid block (water is not solid)', () => {
+    expect(surfaceY((_x, y) => (y <= 50 ? BlockId.STONE : BlockId.AIR), 0.5, 0.5, 50)).toBe(51);
+    expect(surfaceY((_x, y) => (y <= 50 ? BlockId.STONE : y <= 55 ? BlockId.WATER : BlockId.AIR), 0.5, 0.5, 55)).toBe(51);
+    expect(surfaceY((_x, y) => (y <= -300 ? BlockId.STONE : BlockId.AIR), 0.5, 0.5, -300)).toBe(-299);
   });
 });

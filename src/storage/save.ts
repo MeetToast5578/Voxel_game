@@ -1,6 +1,6 @@
 import type { KeyValueStore } from './store';
 
-export const SAVE_VERSION = 1;
+export const SAVE_VERSION = 2;
 
 export interface SavedPlayer {
   x: number;
@@ -16,7 +16,7 @@ export interface SaveData {
   seed: number;
   player: SavedPlayer;
   selectedSlot: number;
-  /** chunkKey -> list of [localIndex, blockId] */
+  /** chunkKey "cx,cy,cz" -> list of [localIndex 0..4095, block state] */
   edits: Record<string, [number, number][]>;
 }
 
