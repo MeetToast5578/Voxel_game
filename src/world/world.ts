@@ -18,6 +18,8 @@ export class World {
   private readonly chunkMap = new Map<string, Chunk>();
   /** Player edits: chunkKey -> (localIndex -> block state). Survives chunk unloading. */
   private readonly editMap = new Map<string, Map<number, number>>();
+  /** Chunk keys whose edits changed since the last takeDirtyEdits (what the next save must write). */
+  private readonly dirtyEdits = new Set<string>();
   /** columnKey -> chunk keys in that column that have edits. */
   private readonly editedChunksByColumn = new Map<string, Set<string>>();
   /** columnKey -> world y of the highest sky-blocking block per cell (index lz * 16 + lx). */
@@ -37,11 +39,24 @@ export class World {
     return this.editMap;
   }
 
-  /** Replaces all edits (when loading a save). Call before any column tops are installed. */
+  /** Replaces all edits (when loading a save). Call before any column tops are installed. Nothing is dirty after. */
   loadEdits(edits: ReadonlyMap<string, ReadonlyMap<number, number>>): void {
     this.editMap.clear();
     this.editedChunksByColumn.clear();
     for (const [key, chunkEdits] of edits) for (const [index, id] of chunkEdits) this.recordEdit(key, index, id);
+    this.dirtyEdits.clear();
+  }
+
+  /** Returns the chunk keys whose edits changed since the last call, and forgets them. */
+  takeDirtyEdits(): string[] {
+    const keys = [...this.dirtyEdits];
+    this.dirtyEdits.clear();
+    return keys;
+  }
+
+  /** Marks chunk keys as changed again (for example because writing them failed). */
+  restoreDirtyEdits(keys: readonly string[]): void {
+    for (const key of keys) this.dirtyEdits.add(key);
   }
 
   getChunk(cx: number, cy: number, cz: number): Chunk | undefined {
@@ -201,6 +216,7 @@ export class World {
       set.add(key);
     }
     chunkEdits.set(index, id);
+    this.dirtyEdits.add(key);
   }
 
   /**

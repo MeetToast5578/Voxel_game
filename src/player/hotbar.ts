@@ -1,6 +1,6 @@
 import { HOTBAR_SIZE } from '../config';
 import { mod } from '../core/math';
-import { BlockId } from '../world/blocks';
+import { BLOCK_STATE_COUNT, BlockId } from '../world/blocks';
 
 export const DEFAULT_HOTBAR: readonly number[] = [
   BlockId.STONE,
@@ -35,6 +35,13 @@ export class Hotbar {
   /** steps > 0 moves right, steps < 0 moves left; wraps around. */
   scroll(steps: number): void {
     this.selected = mod(this.selected + steps, HOTBAR_SIZE);
+  }
+
+  /** Puts a block state into slot index (0..8). An invalid index, air, or an unregistered state is ignored. */
+  setSlot(index: number, state: number): void {
+    if (!Number.isInteger(index) || index < 0 || index >= HOTBAR_SIZE) return;
+    if (!Number.isInteger(state) || state <= BlockId.AIR || state >= BLOCK_STATE_COUNT) return;
+    this.slots[index] = state;
   }
 
   /** "Pick block": select the slot holding `id`, or put `id` into the selected slot. */

@@ -7,11 +7,10 @@ Last updated 2026-10-13.
 `main` contains:
 - the working browser voxel game (PR #1) and the owner's working-style skill (PR #2)
 - `docs/ROADMAP.md` and the phase 1 specs in `docs/specs/` (PR #5, with spec 1)
-- phase 1 specs 1–4: CI (PR #5), world scale (PR #6), step-up (PR #7), 16-bit block states (PR #8)
+- phase 1 specs 1–7: CI (PR #5), world scale (PR #6), step-up (PR #7), 16-bit block states (PR #8), cubic chunks (PR #9)
 
-Specs 5–7 (cubic chunks: data, light and mesher, streaming) are built together on one branch and pull request,
-as `docs/specs/README.md` allows. After they merge, the next step is spec 8 (save v2 in IndexedDB), the last spec
-of phase 1. Claude was asked to build all of them, including the ones marked "Haiku".
+Spec 8 (save v2 in IndexedDB) is the last spec of phase 1 and is in its own pull request. After it merges,
+phase 1 is done; the next step is planning phase 2 (terrain) from `docs/ROADMAP.md`, after the playtest below.
 
 ### Local verification on the owner's machine (Windows, slow CPU)
 
@@ -108,7 +107,10 @@ TypeScript 5.9.3, Vite 7.3.6, Vitest 4.0.18, three 0.186.0, simplex-noise 4.0.3,
   - Also: `interaction.ts`, `hotbar.ts`.
 - `src/ui`: HUD, menu, F3 overlay.
 - `src/input`, `src/audio`: procedural noise SFX.
-- `src/storage`: settings, and a temporary save (`voxel-game-save-v2`, 3D chunk keys) in `localStorage`. Spec 8 replaces it.
+- `src/storage`:
+  - settings in `localStorage`
+  - the world save in IndexedDB (`voxel-game`): one meta record (seed, player, hotbar and block states by name, time of day) plus one record per edited chunk. Only chunks edited since the last write are written; `WorldSaver` never runs two writes at once.
+  - `main.ts` opens and loads the save before creating the `Game`; without IndexedDB the game runs on a memory store and the menu says so.
 - `src/workers`: `WorkerPool`, which implements `ChunkJobs`.
 - `src/game.ts` wires everything together. `src/debugApi.ts` exposes `window.__game`.
 

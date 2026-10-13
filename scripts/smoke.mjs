@@ -106,18 +106,48 @@ const CHECKS = [
       const before = await p.evaluate(() => window.__game.state());
       const [x, y, z] = before.position.map(Math.floor);
       await p.evaluate(([x, y, z]) => window.__game.setBlock(x + 2, y + 3, z, 12), [x, y, z]); // a floating brick
-      await p.evaluate(() => {
+      // Bricks 40 blocks below and above the player: teleport there first so their chunks are loaded.
+      const waitMeshed = () => p.waitForFunction(() => window.__game.state().areaMeshed, null, { timeout: 60_000 });
+      for (const dy of [-40, 40]) {
+        await p.evaluate(([x, y, z]) => {
+          window.__game.setFlying(true);
+          window.__game.teleport(x + 0.5, y, z + 0.5);
+        }, [x, y + dy, z]);
+        await waitMeshed();
+        const placed = await p.evaluate(([x, y, z]) => window.__game.setBlock(x + 2, y, z, 12), [x, y + dy, z]);
+        if (!placed) throw new Error(`could not place a brick at y ${y + dy}`);
+      }
+      await p.evaluate(([px, py, pz, flying]) => {
+        window.__game.teleport(px, py, pz);
+        window.__game.setFlying(flying);
+      }, [...before.position, before.flying]);
+      await waitMeshed();
+      const saved = await p.evaluate(() => {
         window.__game.selectSlot(4);
-        window.__game.save();
+        window.__game.setHotbarSlot(0, 13); // glowstone
+        window.__game.setTimeOfDay(0.6);
+        return window.__game.save();
       });
+      if (!saved) throw new Error('save() resolved to false');
       await p.reload();
       await p.waitForFunction(() => window.__game?.ready === true, null, { timeout: 60_000 });
       const after = await p.evaluate(() => window.__game.state());
       const brick = await p.evaluate(([x, y, z]) => window.__game.getBlock(x + 2, y + 3, z), [x, y, z]);
+      // The chunks 40 blocks away load shortly after the player is placed.
+      const deepAndHigh = await p
+        .waitForFunction(
+          ([x, y, z]) => window.__game.getBlock(x + 2, y - 40, z) === 12 && window.__game.getBlock(x + 2, y + 40, z) === 12,
+          [x, y, z],
+          { timeout: 30_000 },
+        )
+        .then(() => true, () => false);
       await context.close();
       if (after.seed !== before.seed) throw new Error(`seed changed: ${before.seed} -> ${after.seed}`);
       if (brick !== 12) throw new Error(`saved brick missing, found block ${brick}`);
+      if (!deepAndHigh) throw new Error('the bricks 40 blocks below and above were not restored');
       if (after.selectedSlot !== 4) throw new Error(`selected slot not restored: ${after.selectedSlot}`);
+      if (after.hotbar[0] !== 13) throw new Error(`hotbar not restored: ${JSON.stringify(after.hotbar)}`);
+      if (Math.abs(after.timeOfDay - 0.6) > 0.01) throw new Error(`time of day not restored: ${after.timeOfDay}`);
       const moved = Math.hypot(after.position[0] - before.position[0], after.position[2] - before.position[2]);
       if (moved > 1) throw new Error(`player position not restored: ${before.position} -> ${after.position}`);
     },

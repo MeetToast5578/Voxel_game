@@ -79,6 +79,9 @@ export const MIN_DAYLIGHT = 0.15;
 export const HOTBAR_SIZE = 9;
 
 // ---- Storage ----
-export const SAVE_KEY = 'voxel-game-save-v2'; // v1 saves (128-high columns) are neither loaded nor overwritten
+export const SAVE_DB_NAME = 'voxel-game'; // IndexedDB database holding the world save
+// localStorage keys of old saves. v1 (128-high columns) is never read, written or deleted; the interim v2 key
+// (cubic chunks, development builds only) is deleted on start.
+export const INTERIM_SAVE_KEY = 'voxel-game-save-v2';
 export const SETTINGS_KEY = 'voxel-game-settings-v1';
 export const AUTOSAVE_INTERVAL_S = 10;
