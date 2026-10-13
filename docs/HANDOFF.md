@@ -4,66 +4,75 @@ Last updated 2026-10-13.
 
 ## Where things stand
 
-`main` contains:
-- the working browser voxel game (PR #1) and the owner's working-style skill (PR #2)
-- `docs/ROADMAP.md` and the phase 1 specs in `docs/specs/` (PR #5, with spec 1)
-- phase 1 specs 1–7: CI (PR #5), world scale (PR #6), step-up (PR #7), 16-bit block states (PR #8), cubic chunks (PR #9)
+**Phase 1 of `docs/ROADMAP.md` is complete and merged** (PRs #5–#10):
+- CI (spec 1), world scale with 0.6 m blocks (spec 2), step-up (spec 3)
+- 16-bit block states with names (spec 4)
+- cubic 16³ chunks with no height limit, 3D light and mesher, 3D streaming (specs 5–7)
+- the world save in IndexedDB, including the hotbar and time of day (spec 8)
 
-Spec 8 (save v2 in IndexedDB) is the last spec of phase 1 and is in its own pull request. After it merges,
-phase 1 is done; the next step is planning phase 2 (terrain) from `docs/ROADMAP.md`, after the playtest below.
+`npm run check` (183 tests in 30 files) and `npm run smoke` (15 checks) are green in CI on `main`.
 
-### Local verification on the owner's machine (Windows, slow CPU)
+The owner is continuing with **Claude Haiku 5.5** to save tokens. The next section is written for that.
 
-The owner's machine struggles with heavy runs. Prefer CI, or a cloud session, for `npm run check` and `npm run smoke`.
+## For the next session (Haiku)
 
-- CI runs both on every pull request. The two local failures seen before CI existed (the mesher timing test under parallel load, and a screenshot error in "swims in water") both pass in CI.
-- In cloud sessions, `npm run smoke` passes every check but ends with `console.error: Failed to load resource: 404`. The same happens on unchanged `main` there and not in CI; it is the cloud container's full Chromium (most likely its favicon request). Run it with `CHROMIUM_PATH=/opt/pw-browsers/chromium-1194/chrome-linux/chrome`.
-- **No git identity is configured here.** Commits were made with `git -c user.name="Yunus Alizade" -c user.email=62231698+MeetToast5578@users.noreply.github.com`.
+### Do first
 
-### Still open
+1. Read `.claude/skills/working-style/SKILL.md`. It overrides everything else: do exactly what is asked, ask before big decisions, keep replies short.
+2. Ask the owner what they want next. Don't start phase 2 on your own.
 
-- Not hand-tested with a real mouse and keyboard (pointer lock, mouse look, audio). It has only been tested headless. A 5–10 minute playtest is worth doing before new features; anything broken there should jump the queue.
+### Waiting on the owner (not code)
 
-## How the owner wants to work
+- **Playtest.** 5–10 minutes with a real mouse and keyboard. Everything so far has only been tested headless.
+  - Check pointer lock, mouse look, audio, and stepping up 1-block ledges.
+  - Check that a 3-high, 1-wide tunnel fits the player and a 2-high one doesn't.
+  - Anything broken here jumps the queue.
+- **Frame rate on the owner's machine.** Cubic chunks mean more draw calls. CI's headless Chromium shows about 18 FPS once everything is loaded (303 draw calls). The owner's machine has a slow CPU.
+- **Manual checks from the phase 1 PRs:**
+  - Dig a shaft 100 blocks down: chunks keep appearing below and the sky shows above.
+  - From a valley, hills are visible to the full render distance.
+  - Pick a new block into the hotbar, dig 30 blocks down, wait 10 s and reload: the hotbar, the hole and roughly the same time of day come back.
 
-Read `.claude/skills/working-style/SKILL.md` first. In short:
-- Do exactly what is asked. A request for a plan or spec gets a plan or spec, not a build.
-- Ask before big decisions (scope, tech, plan detail, build vs plan).
-- Be token-conscious.
-- Specs meant for Claude Haiku 5.5 are prose only: requirements, acceptance criteria and test cases, with no implementation code unless asked.
+### Good Haiku-sized tasks (only when the owner asks)
 
-## Next up: phase 1 of the roadmap
+- **Cloud smoke test favicon.** In cloud sessions `npm run smoke` passes every check, then fails on `console.error: Failed to load resource: 404`. That's the full Chromium's favicon request; CI doesn't hit it.
+  - A likely fix is `<link rel="icon" href="data:,">` in `index.html`.
+  - Verify: smoke passes in the cloud with `CHROMIUM_PATH=/opt/pw-browsers/chromium-1194/chrome-linux/chrome`.
+- **Bug fixes from the playtest**, one per branch and pull request.
+- **Any spec written in `docs/specs/` style:** prose requirements, acceptance criteria and test cases.
 
-The polish batch grew into a full plan. **Read `docs/ROADMAP.md`**: it has the vision, the decisions, the scale reference and phases 0–8.
+### Not Haiku-sized (raise with the owner first)
 
-Decided (2026-10-13):
-- **A.** Physics step-up (no auto-jump).
-- **B.** Superseded. The world format changes completely, so the new save lives in IndexedDB and old saves aren't loaded.
-- **C.** Accepted, and now moot.
-- **Scale.** 1 block = 0.6 m; the player is about 3 blocks tall.
+- **Phase 2: terrain.** Climate noise, region drainage and erosion, rock layers, horizon LOD.
+  - It needs a plan and specs first, and the roadmap marks region simulation as work for a larger model.
+  - Haiku should not design it. Suggest the owner use a larger model for the phase 2 plan, then hand Haiku the small specs.
+- **The mesher, lighting, worker pipeline, chunk streaming and renderer core.** Changes there are easy to get subtly wrong; light must stay exact across chunk borders.
+- **Mesh time.** It averages 3.1–3.7 ms per surface chunk in Node, against spec 6's 3 ms target. The remaining cost is region building and the face loop.
+- **Draw calls.** Cave culling and batching are phase 8.
+
+### How to work in this repo
+
+- **One spec or fix per branch and per pull request.**
+  - Don't refactor code the task doesn't mention.
+  - Don't add, remove or upgrade packages (see Stack).
+- **Run `npm run check` before every push.** Smoke runs in CI; locally it's heavy on the owner's machine.
+- **Pure modules stay pure:** `src/core`, `src/world`, `src/player`, `src/render/mesher.ts`, `src/storage` (except `worldStore.ts`'s IndexedDB class) and `src/ui/debugText.ts`. No three.js and no DOM; they're tested in Node.
+- **Tunable numbers live in `src/config.ts`.** Distances and speeds are written in meters and converted with `metersToBlocks`.
+- **Test helpers** live in `tests/support/`:
+  - `stackedColumn.ts`: stacks chunks cy 0..7 into the old column shape
+  - `testWorld.ts`: 27 neighbour arrays plus exact column tops for light and mesher tests
+  - `fakeGenerator.ts`: given tops, for ChunkManager tests
+- **No git identity is configured in cloud sessions.** Commit with `git -c user.name="Yunus Alizade" -c user.email=62231698+MeetToast5578@users.noreply.github.com`.
+- **The owner's machine is Windows with a slow CPU.** Prefer CI or a cloud session for `npm run check` and `npm run smoke`.
+
+## Decisions so far (2026-10-13)
+
+- **Scale.** 1 block = 0.6 m. The player is 1.75 m, about 2.9 blocks tall and 0.8 blocks wide.
+- **Step-up.** Physics step-up, not auto-jump.
 - **Height.** Cubic chunks with unlimited height.
-- **Terrain.** Hybrid: noise plus region drainage and erosion.
-- **Scope.** Everything: ecology, fluids, creatures and survival.
-
-Delivery is mixed:
-- Small, self-contained specs go to Haiku.
-- Work on the mesher, lighting, worker pipeline, region simulation or renderer core is built directly by Claude.
-
-The phase 1 specs are in `docs/specs/`. Its `README.md` has the order, who builds each spec, and the rules every spec shares.
-
-### Reviewing the phase 1 pull requests
-
-- **Spec 2 (scale).** Every distance or speed constant is written in meters and converted in `config.ts`. There are no stray literals left in `player.ts` or `game.ts`.
-- **Spec 3 (step-up).**
-  - `moveAndCollide` with no step height behaves exactly as before.
-  - The camera offset is interpolated between ticks.
-  - No stepping happens while flying, swimming or airborne.
-- **Specs 5–7 (cubic).**
-  - Column tops always equal a scan of generated-plus-edited blocks.
-  - Light stays exact across vertical borders.
-  - Surface-band loading keeps hills visible from valleys.
-- **Spec 8 (save).** Hotbar and time are repaired, never rejected. `voxel-game-save-v1` is never touched.
-- **All specs.** `package.json` and `package-lock.json` are not in the diff.
+- **Terrain (phase 2).** Hybrid: noise plus region drainage and erosion.
+- **Scope.** Everything on the roadmap: ecology, fluids (including liquid physics), creatures and survival. Multiplayer is parked.
+- **Saves.** IndexedDB, block states stored by name. `voxel-game-save-v1` (the 128-high world) is never read, written or deleted.
 
 ## Stack (versions pinned on purpose)
 
@@ -74,11 +83,12 @@ TypeScript 5.9.3, Vite 7.3.6, Vitest 4.0.18, three 0.186.0, simplex-noise 4.0.3,
 ## Commands
 
 - `npm run dev`: opens http://localhost:5173; click Play.
-- `npm run check`: typecheck, 118 unit tests in 28 files, then build.
+- `npm run check`: typecheck, 183 unit tests in 30 files, then build.
 - `npm run smoke`:
   - Builds, then opens `/?seed=1&autostart=1&nosave=1` in headless Chromium (SwiftShader WebGL).
-  - Runs 14 checks through `window.__game` and writes `screenshots/*.png`.
-  - Needs `npx playwright install chromium`, or set `CHROMIUM_PATH`.
+  - Runs 15 checks through `window.__game` and writes `screenshots/*.png`.
+  - Then logs a measurement: the time until everything is loaded, the FPS, and the chunk and draw-call counts.
+  - Needs `npx playwright install chromium`, or set `CHROMIUM_PATH`. In cloud sessions, use `/opt/pw-browsers/chromium-1194/chrome-linux/chrome`.
 
 ## Architecture
 
@@ -136,7 +146,9 @@ TypeScript 5.9.3, Vite 7.3.6, Vitest 4.0.18, three 0.186.0, simplex-noise 4.0.3,
 - **URL params.**
   - `?seed=N` also disables saving.
   - `?nosave=1`, `?autostart=1`, `?workers=0`.
-- **Debug API.** `ready`, `state()`, `teleport`, `look`, `setFlying`, `getBlock`, `setBlock`, `breakTarget`, `placeTarget`, `pickTarget`, `selectSlot`, `save`, `setTimeOfDay`. Spec 8 adds `setHotbarSlot` and `state().hotbar`.
+- **Debug API.**
+  - Methods: `ready`, `state()`, `teleport`, `look`, `setFlying`, `getBlock`, `setBlock`, `breakTarget`, `placeTarget`, `pickTarget`, `selectSlot`, `setHotbarSlot`, `save()` (returns a promise), `setTimeOfDay`.
+  - `state()` also includes `hotbar`, `areaMeshed` (the 3×3×3 around the feet is meshed), `drawCalls` and the chunk stats.
 
 ### Gotchas
 
@@ -147,16 +159,9 @@ TypeScript 5.9.3, Vite 7.3.6, Vitest 4.0.18, three 0.186.0, simplex-noise 4.0.3,
 
 ## Known gaps and backlog
 
-See `docs/ROADMAP.md`. Phase 1 covers:
-- CI
-- the scale change
-- step-up
-- the height limit
-- saving the hotbar and time
-- the `localStorage` size limit
-
-Later phases cover everything else from the old backlog. Multiplayer is still parked.
-
-Still true until phase 1 lands:
-- Not hand-tested with a real mouse and keyboard.
-- Each edit causes a ~20 ms main-thread remesh when lighting is on.
+See `docs/ROADMAP.md` for phases 2–8. Known gaps after phase 1:
+- **Testing.** No real mouse-and-keyboard playtest yet.
+- **Mesh time.** 3.1–3.7 ms per surface chunk, against a 3 ms target.
+- **Draw calls.** A loaded world has ~1,800 meshed chunks, ~300 drawn after frustum culling. Cave culling and batching are phase 8.
+- **Edits.** An edit remeshes up to 8 chunks on the main thread at once, about 3 ms each.
+- **Terrain.** Still the old 128-high terrain, with stone below y = 0. Phase 2 replaces it.
