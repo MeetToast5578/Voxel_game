@@ -1,18 +1,19 @@
 # Spec 3: Auto step-up onto 1-block ledges
 
+Depends on spec 2 (world scale). All numbers below use the new scale:
+- the player is `PLAYER_HEIGHT` ≈ 2.917 blocks tall, with `PLAYER_HALF_WIDTH` = 0.4
+- 1 block = 0.6 m
+
 ## Goal
 
 Walking into a ledge 1 block high carries the player up onto it without pressing jump. The movement doesn't stop, there's no hop, and the camera rises smoothly instead of snapping.
 
-## Design decision (confirm before starting)
+## Design decision (confirmed)
 
-This spec uses **physics step-up**: the body rises as part of the horizontal move, and the camera catches up over about 0.12 s.
-
-The alternative is Minecraft-style **auto-jump** (trigger a real jump when blocked by a 1-block ledge). Step-up was chosen because:
-
-- it keeps horizontal speed
-- it works at any angle and at corners
-- it avoids a visible hop
+**Physics step-up**: the body rises as part of the horizontal move, and the camera catches up over about 0.12 s. Minecraft-style auto-jump was considered and rejected, because step-up:
+- keeps horizontal speed
+- works at any angle and at corners
+- avoids a visible hop
 
 ## Current behaviour
 
@@ -49,11 +50,11 @@ The alternative is Minecraft-style **auto-jump** (trigger a real jump when block
 7. Two cases that never happen:
    - **No stepping while airborne.** Jumping next to a wall, or falling past a ledge, must not snap the player up.
    - **No snapping down.** Walking off a ledge still falls normally.
-8. The existing precondition (each axis moves less than 0.6 per call) must still hold. Don't change it.
+8. The existing preconditions on how far each axis moves per call must still hold. Don't change them.
 
 ### Player (`src/player/player.ts`)
 
-9. `Player.update` passes `STEP_HEIGHT` only when the player is neither flying nor swimming (waist in water). Otherwise it passes 0. The existing "climb out of the water onto a ledge" jump is unchanged.
+9. `Player.update` passes `STEP_HEIGHT` only when the player is neither flying nor swimming (`inWater`). Otherwise it passes 0. The existing "climb out of the water onto a ledge" jump is unchanged.
 10. Camera smoothing:
     - The player keeps a visual eye offset. When a step happens, the offset decreases by the rise, so the eye starts where it was.
     - Each update the offset moves back toward 0 at `STEP_HEIGHT / STEP_SMOOTH_S` blocks per second, clamped so it never goes past 0.
@@ -77,11 +78,11 @@ The alternative is Minecraft-style **auto-jump** (trigger a real jump when block
 ## Acceptance criteria
 
 - All test cases below pass in a new file, `tests/stepUp.test.ts`.
-- All existing tests pass unchanged, including `physics.test.ts`, `player.test.ts` and `swimming.test.ts`.
+- All existing tests pass unchanged (as updated by spec 2), including `physics.test.ts`, `player.test.ts` and `swimming.test.ts`.
 - `npm run smoke` still passes.
 - Manual check with `npm run dev`:
   - Walk into a single block placed on flat ground: you glide up onto it with no hop and no camera snap.
-  - A 2-block wall still blocks you.
+  - A 2-block wall still blocks you (you can still jump onto it).
 
 ## Test cases
 
@@ -96,7 +97,7 @@ The alternative is Minecraft-style **auto-jump** (trigger a real jump when block
 - "Ledge at x = 3" means a raised floor: the block at y = 10 is solid for every x ≥ 3 and every z. The player can't walk off the far side and fall back down.
 - "Wall at x = 3" means blocks at y = 10 and y = 11 are solid for every x ≥ 3.
 - A single "block at (x, y)" is solid for every z.
-- The player starts at x = 2.5, z = 0.5.
+- The player starts at x = 2.5, z = 0.5. The body then spans x 2.1–2.9 and y 10–12.917.
 
 ### Cases
 
@@ -105,21 +106,23 @@ The alternative is Minecraft-style **auto-jump** (trigger a real jump when block
    - `position.x` > 3.5.
    - `onGround` is true.
 2. **2-block wall.** Wall at x = 3.
-   - `position.x` stops at about 2.7 (3 − half width, within 0.001).
+   - `position.x` stops at about 2.6 (3 − half width, within 0.001).
    - `position.y` stays 10.
-3. **No headroom above the ledge.** Ledge at x = 3 plus a block at (3, 12), so only 1 block of air sits above the ledge.
-   - No step: `x` ≈ 2.7, `y` = 10.
-4. **Ceiling above the player.** Ledge at x = 3 plus a block at (2, 12), directly over the player's head.
-   - No step: `x` ≈ 2.7, `y` = 10.
+3. **No headroom above the ledge.** Ledge at x = 3, plus a block at (3, 13).
+   - Above the ledge there are only 2 blocks of air (y 11 and 12), and the player needs 2.917.
+   - Expect no step: `x` ≈ 2.6, `y` = 10.
+4. **Ceiling above the player.** Ledge at x = 3, plus a block at (2, 13), just above the player's head (the head is at 12.917).
+   - Raising the body by 1 would overlap it.
+   - Expect no step: `x` ≈ 2.6, `y` = 10.
 5. **Flying.** A flying player hovering at y = 10.5, no vertical input, ledge at x = 3.
-   - No step: `x` ≈ 2.7, `y` stays 10.5.
-6. **Swimming.** Water at y 10–12 wherever there's no solid block, ledge at x = 3, jump not held.
-   - After 1 second, `x` ≤ 2.71.
+   - No step: `x` ≈ 2.6, `y` stays 10.5.
+6. **Swimming.** Water at y 10–13 wherever there's no solid block, ledge at x = 3, jump not held.
+   - After 1 second, `x` ≤ 2.61.
 7. **Airborne.** Call `moveAndCollide` directly with step height 1:
-   - start at x = 2.65, y = 10.2, so this one move reaches the ledge
+   - start at x = 2.55, y = 10.2, so this one move reaches the ledge
    - velocity +3 on Y (rising) and +5 on X
    - ledge at x = 3
-   - Expect `hitX` to be true, `stepped` to be 0, and `x` ≈ 2.7.
+   - Expect `hitX` to be true, `stepped` to be 0, and `x` ≈ 2.6.
 8. **Default is off.** Calling `moveAndCollide` without a step height into the case 1 ledge is blocked.
 9. **Diagonal.**
    - Setup: yaw = −π/4 (the yaw that faces +X and −Z at 45°), ledge at x = 3, 2 seconds of updates.
