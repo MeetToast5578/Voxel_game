@@ -7,11 +7,30 @@ Last updated 2026-10-13.
 `main` contains:
 - the working browser voxel game (PR #1)
 - the owner's working-style skill (PR #2)
-- specs for the next batch of work (PR #3)
+- specs for the polish batch (PR #3), since replaced by `docs/ROADMAP.md` and the phase 1 specs
 
-Nothing is in progress, and no code has changed since PR #1.
+### In progress (stacked branches, pushed; no pull requests opened yet)
 
-- No CI exists yet. Spec 1 adds it. Until then, verify locally with `npm run check` and `npm run smoke`.
+1. **`phase1/plan`** (from `main`): `docs/ROADMAP.md` and the phase 1 specs in `docs/specs/`. The latest version of this handoff is on `phase1/01-ci`.
+   - The roadmap's phase 5 now also covers liquid physics: buoyancy, drag, currents, wading, and water breaking falls.
+2. **`phase1/01-ci`** (from `phase1/plan`): spec 1 is implemented in `.github/workflows/ci.yml`, plus one README line. CI has **not run yet**.
+   - **Next step:** open a pull request (or push to a branch with a PR), check that both jobs are green, and download the screenshots artifact (spec 1, test cases 1–4).
+
+Then build specs 2–8 in the order given in `docs/specs/README.md`. Claude was asked to build all of them, including the ones marked "Haiku".
+
+### Local verification on the owner's machine (Windows, slow CPU)
+
+The owner's machine struggles with heavy runs. Prefer CI, or a cloud session, for `npm run check` and `npm run smoke`.
+
+- **`npm run check`.** 117 of 118 tests pass. `tests/mesher.test.ts` "meshes a generated chunk in reasonable time" fails only in the full parallel run: 76 ms against a 50 ms limit. Alone it takes about 19 ms. This was already the case on `main`. Spec 6 rewrites this test for 16³ chunks, which are about 8× smaller. Don't weaken the assertion; if CI also fails on it, raise it with the owner.
+- **`npm run smoke`.** Chromium for Playwright is now installed locally.
+  - The first 8 checks passed, up to and including "saves the world and restores it after a reload".
+  - Then "swims in water…" failed with `page.screenshot: Protocol error (Page.captureScreenshot): Unable to capture screenshot`.
+  - It wasn't re-run, so it's unknown whether this is flaky (SwiftShader under CPU load) or real. CI will tell.
+- **No git identity is configured here.** Commits were made with `git -c user.name="Yunus Alizade" -c user.email=62231698+MeetToast5578@users.noreply.github.com`.
+
+### Still open
+
 - Not hand-tested with a real mouse and keyboard (pointer lock, mouse look, audio). It has only been tested headless. A 5–10 minute playtest is worth doing before new features; anything broken there should jump the queue.
 
 ## How the owner wants to work
@@ -22,50 +41,38 @@ Read `.claude/skills/working-style/SKILL.md` first. In short:
 - Be token-conscious.
 - Specs meant for Claude Haiku 5.5 are prose only: requirements, acceptance criteria and test cases, with no implementation code unless asked.
 
-## Next up: the polish batch
+## Next up: phase 1 of the roadmap
 
-Decided:
-- The next work is the polish batch.
-- Delivery is mixed:
-  - Small, self-contained items are given to Haiku as specs.
-  - Work touching the mesher, the lighting or the worker pipeline is built directly by Claude.
+The polish batch grew into a full plan. **Read `docs/ROADMAP.md`**: it has the vision, the decisions, the scale reference and phases 0–8.
 
-The specs are in `docs/specs/`. Its `README.md` has the order and the rules every spec shares.
+Decided (2026-10-13):
+- **A.** Physics step-up (no auto-jump).
+- **B.** Superseded. The world format changes completely, so the new save lives in IndexedDB and old saves aren't loaded.
+- **C.** Accepted, and now moot.
+- **Scale.** 1 block = 0.6 m; the player is about 3 blocks tall.
+- **Height.** Cubic chunks with unlimited height.
+- **Terrain.** Hybrid: noise plus region drainage and erosion.
+- **Scope.** Everything: ecology, fluids, creatures and survival.
 
-| # | Spec | Size | Status |
-|---|------|------|--------|
-| 1 | CI (GitHub Actions: `check` and `smoke` jobs) | small | ready; do first |
-| 2 | Save hotbar contents and time of day | small | ready once decision B is confirmed |
-| 3 | Auto step-up onto 1-block ledges | medium | ready once decision A is confirmed |
-| 4 | Trees at chunk borders | medium | ready once decision C is confirmed |
+Delivery is mixed:
+- Small, self-contained specs go to Haiku.
+- Work on the mesher, lighting, worker pipeline, region simulation or renderer core is built directly by Claude.
 
-Specs 2–4 are independent and can be done in any order after spec 1. Each spec gets its own branch and pull request.
+The phase 1 specs are in `docs/specs/`. Its `README.md` has the order, who builds each spec, and the rules every spec shares.
 
-### Open decisions (owner has not confirmed yet)
+### Reviewing the phase 1 pull requests
 
-- **A. Spec 3, step-up style.** The spec uses physics step-up: the body rises as part of the move and the camera catches up over 0.12 s. The alternative is Minecraft-style auto-jump. If the owner prefers auto-jump, rewrite spec 3 before handing it off.
-- **B. Spec 2, save key.** The spec keeps the storage key `voxel-game-save-v1` and bumps the version field inside the save to 2, upgrading v1 saves on load. Renaming the key would orphan existing saves.
-- **C. Spec 4, existing worlds.** Existing worlds will gain trees in the formerly empty border lanes, including areas already explored. Player edits still win. The spec treats this as accepted.
-
-### Reviewing the Haiku pull requests
-
-Specs 3 and 4 are the trickiest. When reviewing them, check:
-
-- **Spec 3**
-  - `moveAndCollide` with no step height behaves exactly as before, and `tests/physics.test.ts` is unchanged.
-  - The camera offset is interpolated between ticks, so the eye never dips below its pre-step height.
+- **Spec 2 (scale).** Every distance or speed constant is written in meters and converted in `config.ts`. There are no stray literals left in `player.ts` or `game.ts`.
+- **Spec 3 (step-up).**
+  - `moveAndCollide` with no step height behaves exactly as before.
+  - The camera offset is interpolated between ticks.
   - No stepping happens while flying, swimming or airborne.
-- **Spec 4**
-  - The generator stays stateless, with no caches.
-  - The new pure cave helper doesn't change carving (`tests/caves.test.ts` is unchanged).
-  - `getHeight` is called only for columns that pass the hash check.
-- **All specs**
-  - `package.json` and `package-lock.json` are not in the diff.
-
-### Deferred from the polish batch
-
-- **Smooth lighting.** It changes the mesher and interacts with AO, so it should be built directly.
-- **Torches.** They need a non-cube mesh, the same work as cross-shaped plants in the Variety backlog, so do them together.
+- **Specs 5–7 (cubic).**
+  - Column tops always equal a scan of generated-plus-edited blocks.
+  - Light stays exact across vertical borders.
+  - Surface-band loading keeps hills visible from valleys.
+- **Spec 8 (save).** Hotbar and time are repaired, never rejected. `voxel-game-save-v1` is never touched.
+- **All specs.** `package.json` and `package-lock.json` are not in the diff.
 
 ## Stack (versions pinned on purpose)
 
@@ -96,7 +103,7 @@ TypeScript 5.9.3, Vite 7.3.6, Vitest 4.0.18, three 0.186.0, simplex-noise 4.0.3,
   - `world.ts`: the chunk map plus the `edits` map, which is what gets saved.
   - `generator.ts`:
     - fbm height map, beaches, sea at y = 40
-    - trees only at local x/z 2–13 (spec 4 changes this)
+    - trees only at local x/z 2–13 (the phase 3 feature system replaces this)
     - spaghetti caves
   - Also: `chunkManager.ts`, `light.ts`, `spawn.ts`, `time.ts`.
 - `src/render`:
@@ -136,7 +143,7 @@ TypeScript 5.9.3, Vite 7.3.6, Vitest 4.0.18, three 0.186.0, simplex-noise 4.0.3,
 - **URL params.**
   - `?seed=N` also disables saving.
   - `?nosave=1`, `?autostart=1`, `?workers=0`.
-- **Debug API.** `ready`, `state()`, `teleport`, `look`, `setFlying`, `getBlock`, `setBlock`, `breakTarget`, `placeTarget`, `pickTarget`, `selectSlot`, `save`, `setTimeOfDay`. Spec 2 adds `setHotbarSlot` and `state().hotbar`.
+- **Debug API.** `ready`, `state()`, `teleport`, `look`, `setFlying`, `getBlock`, `setBlock`, `breakTarget`, `placeTarget`, `pickTarget`, `selectSlot`, `save`, `setTimeOfDay`. Spec 8 adds `setHotbarSlot` and `state().hotbar`.
 
 ### Gotchas
 
@@ -145,36 +152,18 @@ TypeScript 5.9.3, Vite 7.3.6, Vitest 4.0.18, three 0.186.0, simplex-noise 4.0.3,
 - Catch `requestPointerLock()` rejections.
 - Create the worker as `new Worker(new URL('./chunkWorker.ts', import.meta.url), { type: 'module' })`.
 
-## Known gaps
+## Known gaps and backlog
 
-- No CI (spec 1).
-- Hotbar contents (after pick-block) and time of day aren't saved (spec 2).
-- No auto step-up onto 1-block ledges (spec 3).
-- Tree-free lanes along chunk borders (spec 4).
-- Flat lighting, not smooth (deferred).
-- Each edit causes a ~20 ms main-thread remesh when lighting is on.
-- Water is static; it doesn't flow.
-- World height is capped at 128.
+See `docs/ROADMAP.md`. Phase 1 covers:
+- CI
+- the scale change
+- step-up
+- the height limit
+- saving the hotbar and time
+- the `localStorage` size limit
+
+Later phases cover everything else from the old backlog. Multiplayer is still parked.
+
+Still true until phase 1 lands:
 - Not hand-tested with a real mouse and keyboard.
-
-## Backlog (multiplayer is parked)
-
-1. **Polish:** CI, save hotbar + time, step-up, chunk-edge trees (all specced), smooth lighting, torches.
-2. **Variety:** biomes, ores and more blocks, plants (cross-shaped meshes), tree types, falling sand/gravel, structures, a taller world.
-3. **Survival:**
-   1. health, fall damage, drowning, respawn
-   2. mining time and a crack overlay
-   3. an inventory with drops
-   4. crafting and tools
-   5. hunger (optional)
-   6. a creative/survival toggle
-4. **Living world:** passive animals (needs an entity system), hostile mobs at night, flowing water.
-5. **Building tools:** undo/redo; fill, copy and paste; slabs, stairs and doors; world export/import and IndexedDB.
-6. **Visuals:**
-   - sun, moon and stars
-   - particles
-   - view bobbing, sprint FOV
-   - animated water, 3D clouds
-   - settings for gamma, invert, fullscreen and screenshots
-   - isometric hotbar icons
-7. **Platform/perf:** greedy meshing (conflicts with AO), far-terrain LOD, gamepad, touch controls, PWA.
+- Each edit causes a ~20 ms main-thread remesh when lighting is on.
