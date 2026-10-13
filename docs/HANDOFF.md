@@ -9,9 +9,28 @@ Last updated 2026-10-13.
 - the owner's working-style skill (PR #2)
 - specs for the polish batch (PR #3), since replaced by `docs/ROADMAP.md` and the phase 1 specs
 
-Nothing is in progress, and no code has changed since PR #1.
+### In progress (stacked branches, pushed; no pull requests opened yet)
 
-- No CI exists yet. Spec 1 adds it. Until then, verify locally with `npm run check` and `npm run smoke`.
+1. **`phase1/plan`** (from `main`): `docs/ROADMAP.md` and the phase 1 specs in `docs/specs/`. The latest version of this handoff is on `phase1/01-ci`.
+   - The roadmap's phase 5 now also covers liquid physics: buoyancy, drag, currents, wading, and water breaking falls.
+2. **`phase1/01-ci`** (from `phase1/plan`): spec 1 is implemented in `.github/workflows/ci.yml`, plus one README line. CI has **not run yet**.
+   - **Next step:** open a pull request (or push to a branch with a PR), check that both jobs are green, and download the screenshots artifact (spec 1, test cases 1–4).
+
+Then build specs 2–8 in the order given in `docs/specs/README.md`. Claude was asked to build all of them, including the ones marked "Haiku".
+
+### Local verification on the owner's machine (Windows, slow CPU)
+
+The owner's machine struggles with heavy runs. Prefer CI, or a cloud session, for `npm run check` and `npm run smoke`.
+
+- **`npm run check`.** 117 of 118 tests pass. `tests/mesher.test.ts` "meshes a generated chunk in reasonable time" fails only in the full parallel run: 76 ms against a 50 ms limit. Alone it takes about 19 ms. This was already the case on `main`. Spec 6 rewrites this test for 16³ chunks, which are about 8× smaller. Don't weaken the assertion; if CI also fails on it, raise it with the owner.
+- **`npm run smoke`.** Chromium for Playwright is now installed locally.
+  - The first 8 checks passed, up to and including "saves the world and restores it after a reload".
+  - Then "swims in water…" failed with `page.screenshot: Protocol error (Page.captureScreenshot): Unable to capture screenshot`.
+  - It wasn't re-run, so it's unknown whether this is flaky (SwiftShader under CPU load) or real. CI will tell.
+- **No git identity is configured here.** Commits were made with `git -c user.name="Yunus Alizade" -c user.email=62231698+MeetToast5578@users.noreply.github.com`.
+
+### Still open
+
 - Not hand-tested with a real mouse and keyboard (pointer lock, mouse look, audio). It has only been tested headless. A 5–10 minute playtest is worth doing before new features; anything broken there should jump the queue.
 
 ## How the owner wants to work
