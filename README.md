@@ -9,6 +9,7 @@ A Minecraft-like voxel sandbox that runs in the browser, built with TypeScript, 
 - Start/pause menu with render distance, field of view and mouse sensitivity
 - Automatic saving to `localStorage`
 - Terrain generation and meshing run in Web Workers
+- 1 block = 0.6 m; the player is about 3 blocks tall.
 
 All textures and sounds are generated in code; there are no asset files.
 

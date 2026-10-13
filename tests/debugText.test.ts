@@ -20,6 +20,11 @@ describe('debugText', () => {
     expect(lines[0]).toBe('FPS 60');
     expect(lines[1]).toBe('XYZ 12.35 / 65.00 / -3.20');
     expect(lines[2]).toBe('Block 12 65 -4   Chunk 0 -1');
+    // 1 block = 0.6 m; elevation is (y - SEA_LEVEL) * 0.6 = (65 - 40) * 0.6
+    expect(lines[3]).toBe('Meters 7.4 / 39.0 / -1.9   Elevation 15.0 m');
+    const belowSea = formatDebugLines({ ...info, position: [0, 39.95, 0] });
+    expect(belowSea[3]).toBe('Meters 0.0 / 24.0 / 0.0   Elevation 0.0 m');
+    expect(formatDebugLines({ ...info, position: [0, 30, 0] })[3]).toContain('Elevation -6.0 m');
     expect(lines).toContain('Target Stone @ 12 64 -4');
     expect(formatDebugLines({ ...info, target: null, targetName: null })).toContain('Target none');
   });

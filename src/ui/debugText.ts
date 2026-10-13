@@ -1,3 +1,5 @@
+import { BLOCK_SIZE_M, SEA_LEVEL } from '../config';
+
 /** The fields the debug overlay shows (a subset of Game.debugState()). */
 export interface DebugInfo {
   fps: number;
@@ -24,6 +26,11 @@ export function compassDirection(yaw: number): 'north' | 'west' | 'south' | 'eas
   return (['north', 'west', 'south', 'east'] as const)[index]!;
 }
 
+/** Meters rounded to 0.1, without a "-0.0". */
+function meters(blocks: number): string {
+  return (Math.round(blocks * BLOCK_SIZE_M * 10) / 10 + 0).toFixed(1);
+}
+
 /** Lines of text for the F3 overlay. Pure, so it can be unit-tested. */
 export function formatDebugLines(info: DebugInfo): string[] {
   const [x = 0, y = 0, z = 0] = info.position;
@@ -35,6 +42,7 @@ export function formatDebugLines(info: DebugInfo): string[] {
     `FPS ${info.fps}`,
     `XYZ ${x.toFixed(2)} / ${y.toFixed(2)} / ${z.toFixed(2)}`,
     `Block ${bx} ${by} ${bz}   Chunk ${Math.floor(bx / 16)} ${Math.floor(bz / 16)}`,
+    `Meters ${meters(x)} / ${meters(y)} / ${meters(z)}   Elevation ${meters(y - SEA_LEVEL)} m`,
     `Facing ${compassDirection(info.yaw)} (yaw ${info.yaw.toFixed(2)}, pitch ${info.pitch.toFixed(2)})`,
     `Target ${info.target ? `${info.targetName} @ ${info.target.join(' ')}` : 'none'}`,
     `Selected ${info.selectedBlock}`,

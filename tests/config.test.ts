@@ -14,6 +14,13 @@ describe('config', () => {
     expect(C.DEFAULT_FOV).toBeLessThanOrEqual(C.MAX_FOV);
     expect(C.EYE_HEIGHT).toBeLessThan(C.PLAYER_HEIGHT);
   });
+  it('converts meters to blocks (1 block = 0.6 m)', () => {
+    expect(C.metersToBlocks(0.6)).toBeCloseTo(1, 9);
+    expect(C.metersToBlocks(1.75)).toBeCloseTo(1.75 / 0.6, 9);
+    expect(C.PLAYER_HEIGHT).toBeCloseTo(2.917, 3);
+    expect(C.EYE_HEIGHT).toBeCloseTo(2.7, 9);
+    expect(C.PLAYER_HALF_WIDTH).toBeCloseTo(0.4, 9);
+  });
   it('keeps physics steps smaller than the player (no tunneling)', () => {
     expect(C.FLY_SPEED * C.FIXED_DT).toBeLessThan(C.PLAYER_HALF_WIDTH * 2);
     expect(C.TERMINAL_VELOCITY * C.FIXED_DT).toBeLessThan(C.PLAYER_HEIGHT);

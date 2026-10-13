@@ -10,35 +10,48 @@ export const CHUNK_VOLUME = CHUNK_SIZE * CHUNK_SIZE * WORLD_HEIGHT;
 export const SEA_LEVEL = 40; // air at y <= SEA_LEVEL becomes water during generation
 export const DEFAULT_SEED = 1337;
 
+// ---- Scale ----
+export const BLOCK_SIZE_M = 0.6; // one block is 0.6 m; the player is about 3 blocks tall
+
+/** Converts a length in meters to blocks. Speeds (m/s) and accelerations (m/s²) convert the same way. */
+export function metersToBlocks(meters: number): number {
+  return meters / BLOCK_SIZE_M;
+}
+
 // ---- Chunk streaming ----
-export const DEFAULT_RENDER_DISTANCE = 6; // radius, in chunks
+export const DEFAULT_RENDER_DISTANCE = 8; // radius, in chunks (a chunk is 9.6 m wide)
 export const MIN_RENDER_DISTANCE = 2;
-export const MAX_RENDER_DISTANCE = 12;
+export const MAX_RENDER_DISTANCE = 16;
 export const GEN_BUDGET_MS = 4; // max time per frame spent generating terrain
 export const MESH_BUDGET_MS = 4; // max time per frame spent building meshes
 export const SPAWN_READY_RADIUS = 1; // chunks around spawn that must be meshed before the player spawns
 
 // ---- Player ----
-export const PLAYER_HALF_WIDTH = 0.3;
-export const PLAYER_HEIGHT = 1.8;
-export const EYE_HEIGHT = 1.62;
-export const WALK_SPEED = 4.3; // blocks per second
-export const SPRINT_SPEED = 6.0;
-export const FLY_SPEED = 12;
-export const GRAVITY = 28; // blocks per second squared
-export const JUMP_SPEED = 8.7; // jump height ~1.28 blocks
-export const TERMINAL_VELOCITY = 50;
+// Distances, speeds and accelerations are written in meters (m/s, m/s²) and converted to blocks.
+export const PLAYER_HALF_WIDTH = metersToBlocks(0.24); // 0.4 blocks
+export const PLAYER_HEIGHT = metersToBlocks(1.75); // ~2.917 blocks
+export const EYE_HEIGHT = metersToBlocks(1.62); // 2.7 blocks
+export const WALK_SPEED = metersToBlocks(4.3);
+export const SPRINT_SPEED = metersToBlocks(6.0);
+export const FLY_SPEED = metersToBlocks(12);
+export const GRAVITY = metersToBlocks(28);
+export const JUMP_SPEED = metersToBlocks(8.7); // jump height ~1.35 m (~2.25 blocks)
+export const TERMINAL_VELOCITY = metersToBlocks(50);
 export const GROUND_ACCEL = 20; // how quickly velocity reaches the target speed (per second)
 export const AIR_ACCEL = 5;
-export const REACH = 6; // max distance for breaking/placing blocks
+export const REACH = metersToBlocks(6); // max distance for breaking/placing blocks
 export const BREAK_REPEAT_S = 0.25; // holding a mouse button repeats break/place this often
 export const DEFAULT_MOUSE_SENSITIVITY = 0.0025; // radians per pixel of mouse movement
+export const FOOTSTEP_DISTANCE = metersToBlocks(1.8); // a footstep sound every this far walked on the ground
+export const FOOTSTEP_MIN_SPEED = metersToBlocks(1); // no footsteps below this horizontal speed
 
 // ---- Swimming ----
-export const SWIM_GRAVITY = 6;
-export const SWIM_UP_SPEED = 4;
-export const SWIM_SINK_SPEED = 2;
+export const SWIM_GRAVITY = metersToBlocks(6);
+export const SWIM_UP_SPEED = metersToBlocks(4);
+export const SWIM_SINK_SPEED = metersToBlocks(2);
 export const SWIM_SPEED_FACTOR = 0.6;
+export const SWIM_WAIST_HEIGHT = metersToBlocks(0.6); // "in water" is checked this far above the feet
+export const FEET_WATER_HEIGHT = metersToBlocks(0.1); // "feet in water" is checked this far above the feet
 
 // ---- Game loop ----
 export const FIXED_DT = 1 / 60; // physics step, seconds

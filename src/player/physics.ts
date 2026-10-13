@@ -24,7 +24,8 @@ const SKIN = 1e-4;
 /**
  * Moves an axis-aligned box (pos = center of the feet) by vel * dt, one axis at a time (Y, X, Z).
  * Mutates pos, and zeroes the velocity component on each axis that collides.
- * Precondition: the box does not overlap a solid block before the move, and |vel * dt| < 0.6 on each axis.
+ * Precondition: the box does not overlap a solid block before the move, and per call each axis moves less than
+ * the body's width (X, Z) or height (Y).
  */
 export function moveAndCollide(pos: Vec3, vel: Vec3, dt: number, shape: BodyShape, isSolid: SolidFn): CollisionResult {
   const result: CollisionResult = { onGround: false, hitX: false, hitY: false, hitZ: false };
