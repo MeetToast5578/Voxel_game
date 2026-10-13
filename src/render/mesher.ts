@@ -1,7 +1,7 @@
-import { CHUNK_SIZE, WORLD_HEIGHT } from '../config';
+import { CHUNK_SIZE } from '../config';
 import { localIndex } from '../core/coords';
-import { BlockId, getBlockDef, isOpaque, lightEmission } from '../world/blocks';
-import { LIGHT_CURVE, MAX_LIGHT, buildRegion, computeBlockLight, computeSkyLight, regionIndex } from '../world/light';
+import { BlockId, EMISSION_TABLE, OPAQUE_TABLE, getBlockDef, isOpaque } from '../world/blocks';
+import { LIGHT_CURVE, buildRegion, computeBlockLight, computeSkyLight, neighborIndex, regionIndex } from '../world/light';
 import { FACES, FACE_UVS } from './faces';
 import { tileUV } from './tiles';
 
@@ -20,40 +20,74 @@ export interface ChunkMeshData {
 }
 
 const P = CHUNK_SIZE + 2;
-const PH = WORLD_HEIGHT + 2;
 const STRIDE_X = 1;
 const STRIDE_Z = P;
 const STRIDE_Y = P * P;
 const AXIS_STRIDE = [STRIDE_X, STRIDE_Y, STRIDE_Z] as const;
 const AO_LEVELS = [0.5, 0.7, 0.85, 1.0] as const;
+const CENTER = 13; // neighborIndex(0, 0, 0)
 
 export function padIndex(px: number, py: number, pz: number): number {
   return (py * P + pz) * P + px;
 }
 
+/** Which neighbour chunk (-1, 0, 1) and local coordinate a padded coordinate 0..17 falls in. */
+function split(p: number): [number, number] {
+  const r = p - 1;
+  const d = r < 0 ? -1 : r >= CHUNK_SIZE ? 1 : 0;
+  return [d, r - d * CHUNK_SIZE];
+}
+
 /**
- * neighbors: 9 chunk block arrays, index (dz + 1) * 3 + (dx + 1); center chunk is index 4.
- * Returns an (18 x 130 x 18) volume: the center chunk plus a 1-block border on every side.
+ * neighbors: 27 chunk block arrays, index (dy + 1) * 9 + (dz + 1) * 3 + (dx + 1); the centre chunk is index 13.
+ * Returns an 18 x 18 x 18 volume: the centre chunk plus a 1-block border on every side.
  */
 export function buildPaddedVolume(neighbors: readonly Uint16Array[]): Uint16Array {
-  const vol = new Uint16Array(P * P * PH);
-  vol.fill(BlockId.BEDROCK, 0, STRIDE_Y); // y = -1 is solid so bottom faces at y = 0 are never built
-  for (let pz = 0; pz < P; pz++) {
-    const rz = pz - 1;
-    const dz = rz < 0 ? -1 : rz >= CHUNK_SIZE ? 1 : 0;
-    const lz = rz - dz * CHUNK_SIZE;
-    for (let px = 0; px < P; px++) {
-      const rx = px - 1;
-      const dx = rx < 0 ? -1 : rx >= CHUNK_SIZE ? 1 : 0;
-      const lx = rx - dx * CHUNK_SIZE;
-      const src = neighbors[(dz + 1) * 3 + (dx + 1)];
-      if (!src) throw new Error('buildPaddedVolume needs 9 chunks');
-      for (let y = 0; y < WORLD_HEIGHT; y++) {
-        vol[padIndex(px, y + 1, pz)] = src[localIndex(lx, y, lz)]!;
+  if (neighbors.length !== 27) throw new Error('buildPaddedVolume needs 27 chunks');
+  const vol = new Uint16Array(P * P * P);
+  for (let py = 0; py < P; py++) {
+    const [dy, ly] = split(py);
+    for (let pz = 0; pz < P; pz++) {
+      const [dz, lz] = split(pz);
+      for (let px = 0; px < P; px++) {
+        const [dx, lx] = split(px);
+        vol[padIndex(px, py, pz)] = neighbors[neighborIndex(dx, dy, dz)]![localIndex(lx, ly, lz)]!;
       }
     }
   }
   return vol;
+}
+
+/** The padded volume cut out of a light region (which already holds the 27 chunks). */
+function paddedFromRegion(region: Uint16Array): Uint16Array {
+  const vol = new Uint16Array(P * P * P);
+  for (let py = 0; py < P; py++)
+    for (let pz = 0; pz < P; pz++) {
+      const to = padIndex(0, py, pz);
+      const from = regionIndex(CHUNK_SIZE - 1, CHUNK_SIZE - 1 + py, CHUNK_SIZE - 1 + pz);
+      for (let px = 0; px < P; px++) vol[to + px] = region[from + px]!;
+    }
+  return vol;
+}
+
+/** True if no face of the centre chunk can be visible: it is all opaque and so is every cell touching it. */
+function fullyHidden(neighbors: readonly Uint16Array[]): boolean {
+  const center = neighbors[CENTER]!;
+  for (let i = 0; i < center.length; i++) if (!isOpaque(center[i]!)) return false;
+  const last = CHUNK_SIZE - 1;
+  for (let a = 0; a < CHUNK_SIZE; a++)
+    for (let b = 0; b < CHUNK_SIZE; b++) {
+      if (
+        !isOpaque(neighbors[neighborIndex(-1, 0, 0)]![localIndex(last, a, b)]!) ||
+        !isOpaque(neighbors[neighborIndex(1, 0, 0)]![localIndex(0, a, b)]!) ||
+        !isOpaque(neighbors[neighborIndex(0, -1, 0)]![localIndex(a, last, b)]!) ||
+        !isOpaque(neighbors[neighborIndex(0, 1, 0)]![localIndex(a, 0, b)]!) ||
+        !isOpaque(neighbors[neighborIndex(0, 0, -1)]![localIndex(a, b, last)]!) ||
+        !isOpaque(neighbors[neighborIndex(0, 0, 1)]![localIndex(a, b, 0)]!)
+      )
+        return false;
+    }
+  return true;
 }
 
 // Precomputed per face: neighbor offset and, per vertex, the [side1, side2, corner] AO sample offsets.
@@ -87,16 +121,31 @@ class MeshBuilder {
   }
 }
 
-export function buildChunkMesh(neighbors: readonly Uint16Array[]): ChunkMeshData {
-  const vol = buildPaddedVolume(neighbors);
+function emptyMesh(): ChunkMeshData {
+  return { solid: new MeshBuilder().build(), translucent: new MeshBuilder().build() };
+}
+
+/**
+ * Meshes chunk (cx, cy, cz). neighbors: the 27 block arrays around it (see buildPaddedVolume). tops: the 9
+ * column-top arrays around its column, index (dz + 1) * 3 + (dx + 1). Positions are relative to the chunk origin.
+ */
+export function buildChunkMesh(neighbors: readonly Uint16Array[], tops: readonly Int32Array[], cy: number): ChunkMeshData {
+  if (neighbors.length !== 27) throw new Error('buildChunkMesh needs 27 chunks');
+  if (tops.length !== 9) throw new Error('buildChunkMesh needs 9 column-top arrays');
+  // Quick exits; both give exactly what full meshing would (no faces), without computing light.
+  if (neighbors[CENTER]!.every((b) => b === BlockId.AIR)) return emptyMesh();
+  if (fullyHidden(neighbors)) return emptyMesh();
+
   const region = buildRegion(neighbors);
-  const skyLight = computeSkyLight(region);
+  const vol = paddedFromRegion(region);
+  const opaque = OPAQUE_TABLE;
+  const skyLight = computeSkyLight(region, tops, (cy - 1) * CHUNK_SIZE);
   const blockLight = computeBlockLight(region);
   const solid = new MeshBuilder();
   const translucent = new MeshBuilder();
   const ao = [0, 0, 0, 0];
 
-  for (let y = 0; y < WORLD_HEIGHT; y++) {
+  for (let y = 0; y < CHUNK_SIZE; y++) {
     for (let lz = 0; lz < CHUNK_SIZE; lz++) {
       for (let lx = 0; lx < CHUNK_SIZE; lx++) {
         const i = padIndex(lx + 1, y + 1, lz + 1);
@@ -108,29 +157,23 @@ export function buildChunkMesh(neighbors: readonly Uint16Array[]): ChunkMeshData
         for (let f = 0; f < 6; f++) {
           const n = i + FACE_NEIGHBOR[f]!;
           const nid = vol[n]!;
-          if (isOpaque(nid)) continue;
+          if (opaque[nid]) continue;
           if (nid === id && def.cullSame) continue;
 
           const face = FACES[f]!;
           const aoOffsets = FACE_AO[f]!;
           for (let k = 0; k < 4; k++) {
             const [s1, s2, c] = aoOffsets[k]!;
-            const side1 = isOpaque(vol[n + s1]!) ? 1 : 0;
-            const side2 = isOpaque(vol[n + s2]!) ? 1 : 0;
-            const corner = isOpaque(vol[n + c]!) ? 1 : 0;
+            const side1 = opaque[vol[n + s1]!]!;
+            const side2 = opaque[vol[n + s2]!]!;
+            const corner = opaque[vol[n + c]!]!;
             ao[k] = side1 && side2 ? 0 : 3 - (side1 + side2 + corner);
           }
 
-          // Flat lighting: the whole face uses the light of the cell it faces.
-          const ny = y + face.dir[1];
-          let sky = MAX_LIGHT;
-          let blk = 0;
-          if (ny >= 0 && ny < WORLD_HEIGHT) {
-            const r = regionIndex(lx + CHUNK_SIZE + face.dir[0], ny, lz + CHUNK_SIZE + face.dir[2]);
-            sky = skyLight[r]!;
-            blk = blockLight[r]!;
-          }
-          blk = Math.max(blk, lightEmission(id)); // glowing blocks are always fully lit
+          // Flat lighting: the whole face uses the light of the cell it faces (always inside the region).
+          const r = regionIndex(lx + CHUNK_SIZE + face.dir[0], y + CHUNK_SIZE + face.dir[1], lz + CHUNK_SIZE + face.dir[2]);
+          const sky = skyLight[r]!;
+          const blk = Math.max(blockLight[r]!, EMISSION_TABLE[id]!); // glowing blocks are always fully lit
           const skyB = LIGHT_CURVE[sky]!;
           const blkB = LIGHT_CURVE[blk]!;
 

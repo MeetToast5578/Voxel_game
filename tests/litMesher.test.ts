@@ -1,69 +1,86 @@
 import { describe, expect, it } from 'vitest';
-import { CHUNK_VOLUME } from '../src/config';
-import { localIndex } from '../src/core/coords';
 import { buildChunkMesh } from '../src/render/mesher';
 import { BlockId } from '../src/world/blocks';
 import { Chunk } from '../src/world/chunk';
 import { TerrainGenerator } from '../src/world/generator';
-import { LIGHT_CURVE } from '../src/world/light';
+import { LIGHT_CURVE, neighborIndex } from '../src/world/light';
+import { TestWorld } from './support/testWorld';
 
-/** 9 chunks filled with stone up to and including y = groundY. Index (dz + 1) * 3 + (dx + 1). */
-function flatNeighbors(groundY: number): Uint16Array[] {
-  return Array.from({ length: 9 }, () => {
-    const blocks = new Uint16Array(CHUNK_VOLUME);
-    for (let y = 0; y <= groundY; y++)
-      for (let z = 0; z < 16; z++) for (let x = 0; x < 16; x++) blocks[localIndex(x, y, z)] = BlockId.STONE;
-    return blocks;
-  });
-}
+/** Stone up to and including y = groundY, air above. */
+const ground = (groundY: number) => new TestWorld((_x, y) => (y <= groundY ? BlockId.STONE : BlockId.AIR));
+
 describe('buildChunkMesh lighting', () => {
   it('faces open to the sky get full sky light; faces in a sealed cave get none', () => {
-    const n = flatNeighbors(50);
-    for (let x = 3; x <= 8; x++) n[4]![localIndex(x, 30, 3)] = BlockId.AIR;
-    const m = buildChunkMesh(n).solid;
+    const w = ground(50);
+    for (let x = 3; x <= 8; x++) w.set(x, 30, 3, BlockId.AIR);
+    const surface = buildChunkMesh(w.neighbors(3), w.tops(), 3).solid; // y 48..63
     let sawSky = false;
-    let sawDark = false;
-    for (let v = 0; v < m.positions.length / 3; v++) {
-      const y = m.positions[v * 3 + 1]!;
-      const sky = m.light[v * 2]!;
-      if (y === 51) {
-        expect(sky).toBe(1);
+    for (let v = 0; v < surface.positions.length / 3; v++) {
+      if (surface.positions[v * 3 + 1] === 51 - 48) {
+        expect(surface.light[v * 2]).toBe(1);
         sawSky = true;
       }
-      if (y > 29 && y < 31.5 && m.positions[v * 3 + 2]! >= 3 && m.positions[v * 3 + 2]! <= 4) {
-        expect(sky).toBeCloseTo(LIGHT_CURVE[0]!);
+    }
+    const cave = buildChunkMesh(w.neighbors(1), w.tops(), 1).solid; // y 16..31
+    let sawDark = false;
+    for (let v = 0; v < cave.positions.length / 3; v++) {
+      const y = cave.positions[v * 3 + 1]! + 16;
+      const z = cave.positions[v * 3 + 2]!;
+      if (y > 29 && y < 31.5 && z >= 3 && z <= 4) {
+        expect(cave.light[v * 2]).toBeCloseTo(LIGHT_CURVE[0]!);
         sawDark = true;
       }
     }
     expect(sawSky && sawDark).toBe(true);
   });
   it('glowstone faces are fully lit by block light', () => {
-    const n = flatNeighbors(50);
-    n[4]![localIndex(5, 51, 5)] = BlockId.GLOWSTONE;
-    const m = buildChunkMesh(n).solid;
+    const w = ground(50).set(5, 51, 5, BlockId.GLOWSTONE);
+    const m = buildChunkMesh(w.neighbors(3), w.tops(), 3).solid;
     let found = false;
     for (let v = 0; v < m.positions.length / 3; v++) {
-      if (m.positions[v * 3 + 1] === 52 && m.positions[v * 3] === 5 && m.positions[v * 3 + 2] === 5) {
+      if (m.positions[v * 3 + 1] === 52 - 48 && m.positions[v * 3] === 5 && m.positions[v * 3 + 2] === 5) {
         expect(m.light[v * 2 + 1]).toBe(1);
         found = true;
       }
     }
     expect(found).toBe(true);
   });
-  it('meshing with lighting stays fast enough', () => {
-    const g = new TerrainGenerator(5);
-    const chunks: Uint16Array[] = [];
-    for (let dz = -1; dz <= 1; dz++)
-      for (let dx = -1; dx <= 1; dx++) {
-        const c = new Chunk(dx, dz);
+  it('meshes 50 surface chunks of seed 42 fast enough', () => {
+    const g = new TerrainGenerator(42);
+    const tops = new Map<string, Int32Array>();
+    const columnTops = (cx: number, cz: number) => {
+      const key = `${cx},${cz}`;
+      if (!tops.has(key)) tops.set(key, g.columnTops(cx, cz));
+      return tops.get(key)!;
+    };
+    const chunks = new Map<string, Uint16Array>();
+    const blocks = (cx: number, cy: number, cz: number) => {
+      const key = `${cx},${cy},${cz}`;
+      if (!chunks.has(key)) {
+        const c = new Chunk(cx, cy, cz);
         g.generateChunk(c);
-        chunks.push(c.blocks);
+        chunks.set(key, c.blocks);
       }
-    buildChunkMesh(chunks);
+      return chunks.get(key)!;
+    };
+    // 50 surface chunks: the chunk holding the top of each column's centre cell, over a 10 x 5 area.
+    const jobs: { n: Uint16Array[]; t: Int32Array[]; cy: number }[] = [];
+    for (let cz = 0; cz < 5; cz++)
+      for (let cx = 0; cx < 10; cx++) {
+        const cy = Math.floor(columnTops(cx, cz)[8 * 16 + 8]! / 16);
+        const n: Uint16Array[] = new Array(27);
+        for (let dy = -1; dy <= 1; dy++)
+          for (let dz = -1; dz <= 1; dz++)
+            for (let dx = -1; dx <= 1; dx++) n[neighborIndex(dx, dy, dz)] = blocks(cx + dx, cy + dy, cz + dz);
+        const t: Int32Array[] = [];
+        for (let dz = -1; dz <= 1; dz++) for (let dx = -1; dx <= 1; dx++) t.push(columnTops(cx + dx, cz + dz));
+        jobs.push({ n, t, cy });
+      }
+    for (const j of jobs.slice(0, 5)) buildChunkMesh(j.n, j.t, j.cy); // warm up
     const t0 = performance.now();
-    for (let i = 0; i < 10; i++) buildChunkMesh(chunks);
-    const ms = (performance.now() - t0) / 10;
-    console.log(`buildChunkMesh with light: ${ms.toFixed(2)} ms`);
-    expect(ms).toBeLessThan(80);
+    for (const j of jobs) buildChunkMesh(j.n, j.t, j.cy);
+    const ms = (performance.now() - t0) / jobs.length;
+    console.log(`buildChunkMesh, 50 surface chunks of seed 42: ${ms.toFixed(2)} ms average`);
+    expect(ms).toBeLessThan(50);
   });
 });

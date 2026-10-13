@@ -1,4 +1,3 @@
-import { WORLD_HEIGHT } from '../config';
 import { BlockId, getBlockDef, isSolid } from '../world/blocks';
 import type { BodyShape, Vec3 } from './physics';
 import type { RaycastHit } from './raycast';
@@ -30,7 +29,6 @@ export function placementTarget(
   const x = hit.x + hit.nx;
   const y = hit.y + hit.ny;
   const z = hit.z + hit.nz;
-  if (y < 0 || y >= WORLD_HEIGHT) return null;
   const existing = getBlock(x, y, z);
   if (existing !== BlockId.AIR && existing !== BlockId.WATER) return null;
   if (isSolid(blockToPlace) && blockIntersectsBody(x, y, z, playerPos, shape)) return null;

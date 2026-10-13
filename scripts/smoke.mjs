@@ -205,6 +205,37 @@ const CHECKS = [
     },
   },
   {
+    name: 'deep and high chunks',
+    run: async (page) => {
+      const start = await page.evaluate(() => window.__game.state());
+      const [x, , z] = start.position;
+      const bx = Math.floor(x);
+      const bz = Math.floor(z);
+      const waitMeshed = () => page.waitForFunction(() => window.__game.state().areaMeshed, null, { timeout: 60_000 });
+
+      await page.evaluate(([x, z]) => {
+        window.__game.setFlying(true); // hover: no gravity, and no input moves the player
+        window.__game.teleport(x, -200, z);
+      }, [x, z]);
+      await waitMeshed();
+      const below = await page.evaluate(([x, z]) => window.__game.getBlock(x, -205, z), [bx, bz]);
+      if (below !== 1) throw new Error(`expected stone 5 blocks below y = -200, found ${below}`);
+
+      await page.evaluate(([x, z]) => window.__game.teleport(x, 300, z), [x, z]);
+      await waitMeshed();
+      const placed = await page.evaluate(([x, z]) => window.__game.setBlock(x + 2, 301, z, 9), [bx, bz]); // glass
+      const glass = await page.evaluate(([x, z]) => window.__game.getBlock(x + 2, 301, z), [bx, bz]);
+      if (!placed || glass !== 9) throw new Error(`glass at y = 301: placed ${placed}, read back ${glass}`);
+      await page.screenshot({ path: 'screenshots/high.png' });
+
+      await page.evaluate(([x, y, z, flying]) => {
+        window.__game.teleport(x, y, z);
+        window.__game.setFlying(flying);
+      }, [...start.position, start.flying]);
+      await waitMeshed();
+    },
+  },
+  {
     name: 'chunks are built by Web Workers',
     run: async (page) => {
       const s = await page.evaluate(() => window.__game.state());
@@ -229,8 +260,10 @@ try {
   });
   page.on('pageerror', (err) => errors.push(`page error: ${err.message}`));
 
+  const t0 = Date.now();
   await page.goto(`http://localhost:${PORT}${URL_PATH}`);
   await page.waitForFunction(() => window.__game?.ready === true, null, { timeout: 60_000 });
+  console.log(`ready ${Date.now() - t0} ms after opening the page`);
   await page.waitForTimeout(1000);
   console.log('state:', JSON.stringify(await page.evaluate(() => window.__game.state())));
   await page.screenshot({ path: 'screenshots/smoke.png' });
@@ -240,6 +273,20 @@ try {
     await check.run(page);
     console.log(`check passed: ${check.name}`);
   }
+
+  // Measurement only (not a check): time until nothing is left to load or mesh, then the steady frame rate.
+  const loadStart = Date.now();
+  await page.evaluate(() => window.__game.look(0, -0.1));
+  await page
+    .waitForFunction(() => {
+      const s = window.__game.state();
+      return s.pendingGen === 0 && s.pendingMesh === 0;
+    }, null, { timeout: 120_000, polling: 250 })
+    .catch(() => console.log('still loading after 120 s'));
+  const loadMs = Date.now() - loadStart;
+  await page.waitForTimeout(3000);
+  const steady = await page.evaluate(() => window.__game.state());
+  console.log(`fully loaded ${loadMs} ms after the checks; then ${steady.fps} fps, ${steady.loaded} chunks loaded, ${steady.meshed} meshed, ${steady.drawCalls} draw calls`);
 } catch (err) {
   errors.push(`smoke failure: ${err instanceof Error ? err.message : String(err)}`);
 } finally {

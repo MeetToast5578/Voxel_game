@@ -1,24 +1,20 @@
 import { describe, expect, it } from 'vitest';
 import { localIndex } from '../src/core/coords';
 import { BlockId } from '../src/world/blocks';
-import { Chunk } from '../src/world/chunk';
 import { TerrainGenerator } from '../src/world/generator';
+import { stackedColumn, type StackedColumn } from './support/stackedColumn';
 
 describe('trees', () => {
   const g = new TerrainGenerator(42);
-  const chunks: Chunk[] = [];
-  for (let i = 0; i < 40; i++) {
-    const c = new Chunk(i, 7);
-    g.generateChunk(c);
-    chunks.push(c);
-  }
-  it('some chunks have trees, not all', () => {
-    const withTrees = chunks.filter((c) => c.blocks.includes(BlockId.LOG)).length;
+  const columns: StackedColumn[] = [];
+  for (let i = 0; i < 40; i++) columns.push(stackedColumn(g, i, 7));
+  it('some columns have trees, not all', () => {
+    const withTrees = columns.filter((c) => c.blocks.includes(BlockId.LOG)).length;
     expect(withTrees).toBeGreaterThan(5);
     expect(withTrees).toBeLessThan(40);
   });
   it('every log stands on dirt or another log, and trunks stay 2+ blocks from chunk edges', () => {
-    for (const c of chunks)
+    for (const c of columns)
       for (let y = 1; y < 128; y++)
         for (let lz = 0; lz < 16; lz++)
           for (let lx = 0; lx < 16; lx++) {
@@ -31,7 +27,7 @@ describe('trees', () => {
           }
   });
   it('every tree has leaves directly above its trunk', () => {
-    for (const c of chunks)
+    for (const c of columns)
       for (let lz = 2; lz <= 13; lz++)
         for (let lx = 2; lx <= 13; lx++) {
           let top = -1;

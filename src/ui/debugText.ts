@@ -16,6 +16,8 @@ export interface DebugInfo {
   meshed: number;
   pendingGen: number;
   pendingMesh: number;
+  columns: number;
+  jobsInFlight: number;
   renderDistance: number;
 }
 
@@ -41,13 +43,14 @@ export function formatDebugLines(info: DebugInfo): string[] {
   return [
     `FPS ${info.fps}`,
     `XYZ ${x.toFixed(2)} / ${y.toFixed(2)} / ${z.toFixed(2)}`,
-    `Block ${bx} ${by} ${bz}   Chunk ${Math.floor(bx / 16)} ${Math.floor(bz / 16)}`,
+    `Block ${bx} ${by} ${bz}   Chunk ${Math.floor(bx / 16)}, ${Math.floor(by / 16)}, ${Math.floor(bz / 16)}`,
     `Meters ${meters(x)} / ${meters(y)} / ${meters(z)}   Elevation ${meters(y - SEA_LEVEL)} m`,
     `Facing ${compassDirection(info.yaw)} (yaw ${info.yaw.toFixed(2)}, pitch ${info.pitch.toFixed(2)})`,
     `Target ${info.target ? `${info.targetName} @ ${info.target.join(' ')}` : 'none'}`,
     `Selected ${info.selectedBlock}`,
     `On ground ${yes(info.onGround)}   Flying ${yes(info.flying)}`,
     `Chunks loaded ${info.loaded}  meshed ${info.meshed}  pending ${info.pendingGen}/${info.pendingMesh}`,
+    `Columns ${info.columns}   Jobs in flight ${info.jobsInFlight}`,
     `Render distance ${info.renderDistance}   Seed ${info.seed}`,
   ];
 }

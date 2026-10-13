@@ -4,13 +4,20 @@ export interface LightUniforms {
   uDaylight: { value: number };
 }
 
-/** Multiplies the final color by max(skyLight * daylight, blockLight). Geometry MUST have an `aLight` vec2 attribute. */
+/**
+ * Multiplies the final color by max(skyLight * daylight, blockLight). Geometry MUST have an `aLight` vec2 attribute.
+ * Fog uses the horizontal distance from the camera, so terrain far below or above is not fogged by height alone.
+ */
 export function patchLightMaterial(material: THREE.MeshBasicMaterial, uniforms: LightUniforms): void {
   material.onBeforeCompile = (shader) => {
     shader.uniforms.uDaylight = uniforms.uDaylight;
     shader.vertexShader = shader.vertexShader
       .replace('#include <common>', '#include <common>\nattribute vec2 aLight;\nvarying vec2 vLight;')
-      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvLight = aLight;');
+      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvLight = aLight;')
+      .replace(
+        '#include <fog_vertex>',
+        '#ifdef USE_FOG\nvFogDepth = length((modelMatrix * vec4(transformed, 1.0)).xz - cameraPosition.xz);\n#endif',
+      );
     shader.fragmentShader = shader.fragmentShader
       .replace('#include <common>', '#include <common>\nuniform float uDaylight;\nvarying vec2 vLight;')
       .replace(

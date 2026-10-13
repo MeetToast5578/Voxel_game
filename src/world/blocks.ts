@@ -56,10 +56,15 @@ export interface BlockDef {
   lightEmission: number;
   layer: RenderLayer;
   tiles: { top: number; side: number; bottom: number };
+  /**
+   * Derived: true if direct sunlight stops at this block. Everything except air and glass blocks the sky
+   * (water and leaves included); column tops are the highest such block.
+   */
+  blocksSky: boolean;
 }
 
-/** What a registry is built from: a type without its assigned first state. */
-export type BlockTypeDef = Omit<BlockDef, 'id'>;
+/** What a registry is built from: a type without its assigned first state or derived flags. */
+export type BlockTypeDef = Omit<BlockDef, 'id' | 'blocksSky'>;
 
 /** Block states are stored in 16-bit arrays. */
 export const MAX_BLOCK_STATES = 0xffff;
@@ -86,6 +91,16 @@ export interface BlockRegistry {
   isOpaque(state: number): boolean;
   isSolid(state: number): boolean;
   lightEmission(state: number): number;
+  blocksSky(state: number): boolean;
+  /** The lookup tables behind isOpaque and lightEmission, indexed by state, for hot loops. Do not modify. */
+  readonly opaqueTable: Uint8Array;
+  readonly emissionTable: Uint8Array;
+}
+
+/** Air lets sunlight through because it is empty; glass because it is clear and not culled against itself. */
+function derivedBlocksSky(d: BlockTypeDef): boolean {
+  const clear = d.layer === 'none' || (d.layer === 'cutout' && d.cullSame);
+  return !clear;
 }
 
 /** Builds a registry, assigning each type a run of consecutive states in the given order. Pure. */
@@ -96,13 +111,14 @@ export function buildBlockRegistry(defs: readonly BlockTypeDef[]): BlockRegistry
   const opaque = new Uint8Array(STATE_SPACE);
   const solid = new Uint8Array(STATE_SPACE);
   const emission = new Uint8Array(STATE_SPACE);
+  const sky = new Uint8Array(STATE_SPACE);
   let next = 0;
   for (const d of defs) {
     if (!NAME_PATTERN.test(d.key) || d.key.includes('#')) throw new Error(`Invalid block key '${d.key}'`);
     if (byKey.has(d.key)) throw new Error(`Duplicate block key '${d.key}'`);
     if (!Number.isInteger(d.variants) || d.variants < 1) throw new Error(`Block '${d.key}' needs at least 1 variant`);
     if (next + d.variants > MAX_BLOCK_STATES) throw new Error(`Too many block states (more than ${MAX_BLOCK_STATES})`);
-    const type: BlockDef = { ...d, id: next };
+    const type: BlockDef = { ...d, id: next, blocksSky: derivedBlocksSky(d) };
     const index = types.length;
     types.push(type);
     byKey.set(type.key, type);
@@ -111,6 +127,7 @@ export function buildBlockRegistry(defs: readonly BlockTypeDef[]): BlockRegistry
       opaque[s] = type.opaque ? 1 : 0;
       solid[s] = type.solid ? 1 : 0;
       emission[s] = type.lightEmission;
+      sky[s] = type.blocksSky ? 1 : 0;
     }
     next += d.variants;
   }
@@ -147,6 +164,9 @@ export function buildBlockRegistry(defs: readonly BlockTypeDef[]): BlockRegistry
     isOpaque: (state) => opaque[state] === 1,
     isSolid: (state) => solid[state] === 1,
     lightEmission: (state) => emission[state] ?? 0,
+    blocksSky: (state) => sky[state] === 1,
+    opaqueTable: opaque,
+    emissionTable: emission,
   };
 }
 
@@ -213,3 +233,8 @@ export const parseBlockStateName = BLOCK_REGISTRY.parseStateName;
 export const isOpaque = BLOCK_REGISTRY.isOpaque;
 export const isSolid = BLOCK_REGISTRY.isSolid;
 export const lightEmission = BLOCK_REGISTRY.lightEmission;
+export const blocksSky = BLOCK_REGISTRY.blocksSky;
+/** 1 where a state is opaque (all 65,536 states). For hot loops; do not modify. */
+export const OPAQUE_TABLE = BLOCK_REGISTRY.opaqueTable;
+/** Light emitted by each state (all 65,536 states). For hot loops; do not modify. */
+export const EMISSION_TABLE = BLOCK_REGISTRY.emissionTable;

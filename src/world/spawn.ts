@@ -1,4 +1,4 @@
-import { SEA_LEVEL, WORLD_HEIGHT } from '../config';
+import { SEA_LEVEL } from '../config';
 import { isSolid } from './blocks';
 import type { TerrainGenerator } from './generator';
 
@@ -15,12 +15,18 @@ export function findSpawnColumn(generator: TerrainGenerator): { x: number; z: nu
   return { x: 0.5, z: 0.5 };
 }
 
-/** Y coordinate just above the highest solid block of a column (where the player's feet go). */
-export function surfaceY(getBlock: (x: number, y: number, z: number) => number, x: number, z: number): number {
+/** A spawn search never scans further than this below the column top (through water, for example). */
+const MAX_SURFACE_SCAN = 256;
+
+/**
+ * Y coordinate just above the highest solid block of a column (where the player's feet go). The scan starts at
+ * the column top (the highest sky-blocking block; nothing above it is solid).
+ */
+export function surfaceY(getBlock: (x: number, y: number, z: number) => number, x: number, z: number, top: number): number {
   const bx = Math.floor(x);
   const bz = Math.floor(z);
-  for (let y = WORLD_HEIGHT - 1; y >= 0; y--) {
+  for (let y = top; y > top - MAX_SURFACE_SCAN; y--) {
     if (isSolid(getBlock(bx, y, bz))) return y + 1;
   }
-  return WORLD_HEIGHT;
+  return top + 1;
 }
