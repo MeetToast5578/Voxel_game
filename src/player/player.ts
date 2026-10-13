@@ -1,7 +1,7 @@
 import {
   AIR_ACCEL, EYE_HEIGHT, FEET_WATER_HEIGHT, FLY_SPEED, GRAVITY, GROUND_ACCEL, JUMP_SPEED, PLAYER_HALF_WIDTH,
-  PLAYER_HEIGHT, SPRINT_SPEED, SWIM_GRAVITY, SWIM_SINK_SPEED, SWIM_SPEED_FACTOR, SWIM_UP_SPEED, SWIM_WAIST_HEIGHT,
-  TERMINAL_VELOCITY, WALK_SPEED,
+  PLAYER_HEIGHT, SPRINT_SPEED, STEP_HEIGHT, STEP_SMOOTH_S, SWIM_GRAVITY, SWIM_SINK_SPEED, SWIM_SPEED_FACTOR,
+  SWIM_UP_SPEED, SWIM_WAIST_HEIGHT, TERMINAL_VELOCITY, WALK_SPEED,
 } from '../config';
 import { clamp, lerp } from '../core/math';
 import { moveAndCollide, type BodyShape, type SolidFn, type Vec3 } from './physics';
@@ -35,12 +35,19 @@ export class Player {
   inWater = false;
   /** True when the last step bumped into a wall horizontally. */
   private againstWall = false;
+  /**
+   * Visual-only eye offset (<= 0) after stepping up a ledge, so the camera rises smoothly instead of snapping.
+   * Never used by physics.
+   */
+  private eyeOffset = 0;
+  private prevEyeOffset = 0;
 
   setPosition(x: number, y: number, z: number): void {
     this.position.x = this.prevPosition.x = x;
     this.position.y = this.prevPosition.y = y;
     this.position.z = this.prevPosition.z = z;
     this.velocity.x = this.velocity.y = this.velocity.z = 0;
+    this.eyeOffset = this.prevEyeOffset = 0;
   }
 
   /** dx, dy: mouse movement in pixels. sensitivity: radians per pixel. */
@@ -61,6 +68,8 @@ export class Player {
     this.prevPosition.x = this.position.x;
     this.prevPosition.y = this.position.y;
     this.prevPosition.z = this.position.z;
+    this.prevEyeOffset = this.eyeOffset;
+    this.eyeOffset = Math.min(0, this.eyeOffset + (STEP_HEIGHT / STEP_SMOOTH_S) * dt);
     const bx = Math.floor(this.position.x);
     const bz = Math.floor(this.position.z);
     this.inWater = isWater(bx, Math.floor(this.position.y + SWIM_WAIST_HEIGHT), bz); // water at waist height
@@ -97,7 +106,9 @@ export class Player {
       this.velocity.y = Math.max(this.velocity.y - GRAVITY * dt, -TERMINAL_VELOCITY);
     }
 
-    const r = moveAndCollide(this.position, this.velocity, dt, PLAYER_SHAPE, isSolid);
+    const stepHeight = this.flying || this.inWater ? 0 : STEP_HEIGHT;
+    const r = moveAndCollide(this.position, this.velocity, dt, PLAYER_SHAPE, isSolid, stepHeight);
+    this.eyeOffset -= r.stepped; // the body rose; keep the eye where it was and let it catch up
     this.onGround = r.onGround;
     this.againstWall = r.hitX || r.hitZ;
     if (this.flying && r.onGround) this.flying = false; // landing ends flight
@@ -107,7 +118,7 @@ export class Player {
   eyePosition(alpha: number): Vec3 {
     return {
       x: lerp(this.prevPosition.x, this.position.x, alpha),
-      y: lerp(this.prevPosition.y, this.position.y, alpha) + EYE_HEIGHT,
+      y: lerp(this.prevPosition.y, this.position.y, alpha) + EYE_HEIGHT + lerp(this.prevEyeOffset, this.eyeOffset, alpha),
       z: lerp(this.prevPosition.z, this.position.z, alpha),
     };
   }

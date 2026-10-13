@@ -4,6 +4,7 @@ A Minecraft-like voxel sandbox that runs in the browser, built with TypeScript, 
 
 - Endless procedural terrain: hills, mountains, beaches, lakes, trees and caves
 - Walk, sprint, jump, fly and swim, with block collisions
+- 1-block ledges are stepped up automatically, no jump needed
 - Break and place 14 block types, 9-slot hotbar, pick-block
 - Day/night cycle, sky and block lighting (glowstone), clouds, simple sound effects
 - Start/pause menu with render distance, field of view and mouse sensitivity
