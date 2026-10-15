@@ -1,167 +1,110 @@
 # Handoff: Voxel Game (MeetToast5578/Voxel_game)
 
-Last updated 2026-10-13.
+Last updated 2026-10-15. Read this first, then `docs/ROADMAP.md` and the specs in `docs/specs/`.
+
+## Start here: the world generation is wrong
+
+The owner says the world generation is "messed up" after spec 13. They have not said what they see. **Ask them first**
+for specifics: which look is wrong, where (coordinates or a screenshot), and whether it is slow loading, shape or
+something else. Do not guess a fix before knowing the symptom.
+
+What was observed on 2026-10-15 (seed 1, spawn at about (−26.5, 8, −26.5)):
+
+- **Terraced look on gentle slopes.** Screenshots show flat horizontal bands of grass and dirt. The surface heights are
+  smooth (8 → 6 blocks over 20 blocks, so one step every three blocks). The bands are whole-block steps. It may not be
+  a bug, but it reads as one.
+- **Slow generation.** `generateChunk` takes about 8 ms, against 2.5 ms before spec 13 (six climate fields per column,
+  where there were two noises). On first load the game had about 2,600 chunks pending at 15 fps. The main-thread budget
+  is 4 ms per frame, so this is only hidden by Web Workers.
+- **Mountains.** The tallest column within about 450 m of spawn is 770 m, at (−990, −1500). Nobody has looked at it
+  in the game yet.
+- Nothing is reported as broken by the tests or the smoke test. The problem is in how the terrain looks and feels,
+  which the tests do not cover.
 
 ## Where things stand
 
-**Phase 1 of `docs/ROADMAP.md` is complete and merged** (PRs #5–#10):
-- CI (spec 1), world scale with 0.6 m blocks (spec 2), step-up (spec 3)
-- 16-bit block states with names (spec 4)
-- cubic 16³ chunks with no height limit, 3D light and mesher, 3D streaming (specs 5–7)
-- the world save in IndexedDB, including the hotbar and time of day (spec 8)
+- Phase 0 (CI), Phase 1 (cubic chunks, 0.6 m → 0.3 m blocks) and Phase 1b (meter-based scale and trees) are done.
+- Phase 2 (terrain), roadmap items:
+  1. Debug map (`?map=1`): done, spec 11.
+  2. Climate and shape fields: done, spec 12 (`src/world/shape.ts`).
+  3. Region simulation (rivers, lakes, erosion, moisture): **not started**. The roadmap says to spike seam continuity
+     first. Spec 13 was the switch-over that the item 2 fields needed; it is not item 3.
+  4–8. Upsampling, geology, caves, coasts, horizon LOD: not started.
+- Phases 3–8 and the Later items: not started. Physics (Phase 5 fluids, buoyancy, currents) is not started.
+- Assets: the owner chose **CC0 only, with a license file per asset**. Candidates were found but nothing is imported.
+  The README still says there are no asset files. Kenney's Nature Kit (CC0) is the candidate for trees and plants.
 
-`npm run check` (183 tests in 30 files) and `npm run smoke` (15 checks) are green in CI on `main`.
+## Terrain as it is now
 
-The owner is continuing with **Claude Haiku 5.5** to save tokens. The next section is written for that.
+Files:
 
-## For the next session (Haiku)
+- `src/world/shape.ts` (pure): six fields, each in [−1, 1], sampled in meters: continentalness (6000 m), erosion
+  (1500 m), peaks (700 m, ridged), temperature (4000 m), humidity (3000 m), weirdness (2000 m). `heightMeters(fields)` is
+  a spline of continentalness (−300 m deep ocean to 150 m inland), plus `2300 m × land × rugged × ridge` for mountains.
+  Temperature, humidity and weirdness are sampled but unused.
+- `src/world/generator.ts`: `getHeight(wx, wz)` = `floor(metersToBlocks(heightMeters(...)))`, clamped to the band.
+  Heights are cached per column (`columnHeights`, `heightAt`). `fillRange` writes a y range of one column: terrain
+  layers (stone below soil, dirt, grass or sand on beaches, water up to y = 0), caves, then trees. Caves are the
+  "spaghetti" noise and only carve y ≥ 2. `columnTops` scans chunks from the top down, starting above
+  `reachMaxHeight + MAX_TREE_RISE`, and stops once every cell has a sky-blocking block.
+- `src/world/trees.ts` (pure): a 2×2 trunk (0.6 m), 4–6 branches that step one axis at a time, a crown from the trunk top
+  to the tree top. Heights 8–12 m. Trees are generated whole per anchor and clipped to the chunk being filled, so
+  crowns across chunk borders match. There is no slope check: trees can grow on steep mountain sides.
 
-### Do first
+Key numbers (`src/config.ts`): `BLOCK_SIZE_M` 0.3; `CHUNK_SIZE` 16 (4.8 m); `SEA_LEVEL` 0; `TERRAIN_MAX_M` 2450;
+`TERRAIN_CHUNK_BOTTOM` −84 (about −400 m; chunks below are stone); `LEGACY_HEIGHT` 8672 and `LEGACY_CHUNKS` 542 (top of
+the band, about 2,600 m; the name is from phase 1); `DEFAULT_RENDER_DISTANCE` 8 (about 38 m); `STEP_HEIGHT` 2 blocks
+(0.6 m); `TREE_CHANCE` 0.00108 per column.
 
-1. Read `.claude/skills/working-style/SKILL.md`. It overrides everything else: do exactly what is asked, ask before big decisions, keep replies short.
-2. Ask the owner what they want next. Don't start phase 2 on your own.
+## Suspects, in order of likelihood
 
-### Waiting on the owner (not code)
+1. **Stepped heights.** Heights are whole blocks, so a slope of one block per three becomes regular steps. Options: keep
+   it and say so, or smooth it (for example sub-block surface or a dithered top layer). The owner decides.
+2. **Generation cost.** Sample the fields on a coarse grid per column and interpolate, or skip the three unused fields
+   until biomes need them. Check `generateChunk` with the timing test in `tests/generator.test.ts` (threshold 30 ms, so
+   it will not catch a slowdown; measure in a probe).
+3. **Mountain shape.** Erosion and peaks decide how steep and how often mountains appear. Check the slope of the
+   2300 m term near the peak above.
+4. **Trees on steep ground.** `placeTrees` checks only the anchor column's height and cave state.
+5. **Caves.** Only y ≥ 2 is carved, and the rate is about 1% of the underground. Check that caves are not cut open to
+   the sky under mountains.
 
-- **Playtest.** 5–10 minutes with a real mouse and keyboard. Everything so far has only been tested headless.
-  - Check pointer lock, mouse look, audio, and stepping up 1-block ledges.
-  - Check that a 3-high, 1-wide tunnel fits the player and a 2-high one doesn't.
-  - Anything broken here jumps the queue.
-- **Frame rate on the owner's machine.** Cubic chunks mean more draw calls. CI's headless Chromium shows about 18 FPS once everything is loaded (303 draw calls). The owner's machine has a slow CPU.
-- **Manual checks from the phase 1 PRs:**
-  - Dig a shaft 100 blocks down: chunks keep appearing below and the sky shows above.
-  - From a valley, hills are visible to the full render distance.
-  - Pick a new block into the hotbar, dig 30 blocks down, wait 10 s and reload: the hotbar, the hole and roughly the same time of day come back.
+## How to look at the terrain
 
-### Good Haiku-sized tasks (only when the owner asks)
+- `/?map=1&seed=N`: top-down map, 512 px at 31 m per pixel (about 16 km). Blue is sea, green to white is height.
+  `src/world/debugMap.ts` is pure and tested.
+- In Playwright (`/opt/pw-browsers/chromium-1194/chrome-linux/chrome`), the approach that worked here: `preview` from
+  `vite` on a free port, then `window.__game` (`ready`, `state()`, `teleport`, `look`, `getBlock`, `setBlock`). Wait for
+  `state().areaMeshed` and then `state().onGround` or `state().inWater` before reading. Delete throw-away scripts from
+  `scripts/` afterwards.
+- Seed 1: nearest deep ocean to spawn is (−40, 84). Seed 42 has land in the window (3..6, −4..−1) at chunk scale.
 
-- **Cloud smoke test favicon.** In cloud sessions `npm run smoke` passes every check, then fails on `console.error: Failed to load resource: 404`. That's the full Chromium's favicon request; CI doesn't hit it.
-  - A likely fix is `<link rel="icon" href="data:,">` in `index.html`.
-  - Verify: smoke passes in the cloud with `CHROMIUM_PATH=/opt/pw-browsers/chromium-1194/chrome-linux/chrome`.
-- **Bug fixes from the playtest**, one per branch and pull request.
-- **Any spec written in `docs/specs/` style:** prose requirements, acceptance criteria and test cases.
+## Commands and checks
 
-### Not Haiku-sized (raise with the owner first)
+- `npm run check`: typecheck, 197 unit tests in 32 files, build. Must pass before any push.
+- `CHROMIUM_PATH=/opt/pw-browsers/chromium-1194/chrome-linux/chrome npm run smoke`: all 15 checks pass in this container.
+  The one failure is a console 404 for the favicon, which is known (fix: `<link rel="icon" href="data:,">` in
+  `index.html`). The smoke script's positions: "deep" at y = −205, "high" at y = 8,400 (above the highest terrain), swim
+  at seed 1's ocean (−39.5, 84.5).
+- Tests build fixtures with `tests/support/stackedColumn.ts`: `stackedColumn` stacks a column only up to its highest
+  sky-blocking block; `landColumns(g, n, minHeight)` picks dry land near the origin (the first columns are ocean now).
 
-- **Phase 2: terrain.** Climate noise, region drainage and erosion, rock layers, horizon LOD.
-  - It needs a plan and specs first, and the roadmap marks region simulation as work for a larger model.
-  - Haiku should not design it. Suggest the owner use a larger model for the phase 2 plan, then hand Haiku the small specs.
-- **The mesher, lighting, worker pipeline, chunk streaming and renderer core.** Changes there are easy to get subtly wrong; light must stay exact across chunk borders.
-- **Mesh time.** It averages 3.1–3.7 ms per surface chunk in Node, against spec 6's 3 ms target. The remaining cost is region building and the face loop.
-- **Draw calls.** Cave culling and batching are phase 8.
+## Working rules
 
-### How to work in this repo
+- Branch: `claude/serene-brown-4izylj`. Push with `git push -u origin claude/serene-brown-4izylj`. Never force-push.
+  If its PR is merged, restart the branch from `origin/main` (`git checkout -B … origin/main`), then push a new PR.
+- Commits: `git -c user.name="Yunus Alizade" -c user.email=62231698+MeetToast5578@users.noreply.github.com commit`,
+  with the Co-Authored-By and Claude-Session trailers from the session instructions.
+- One spec per PR. Specs 12 and 13 were on one branch and one PR (#15) because of that; do not repeat it.
+- Pure modules (`core`, `world`, `player`, mesher, `storage`, `ui/debugText`) must not import three.js or the DOM.
+- Tunable numbers live in `src/config.ts`. Lengths are in meters and converted with `metersToBlocks`.
+- Old PR history: #5–#15 merged. #14 is the debug map, #15 is specs 12 and 13.
 
-- **One spec or fix per branch and per pull request.**
-  - Don't refactor code the task doesn't mention.
-  - Don't add, remove or upgrade packages (see Stack).
-- **Run `npm run check` before every push.** Smoke runs in CI; locally it's heavy on the owner's machine.
-- **Pure modules stay pure:** `src/core`, `src/world`, `src/player`, `src/render/mesher.ts`, `src/storage` (except `worldStore.ts`'s IndexedDB class) and `src/ui/debugText.ts`. No three.js and no DOM; they're tested in Node.
-- **Tunable numbers live in `src/config.ts`.** Distances and speeds are written in meters and converted with `metersToBlocks`.
-- **Test helpers** live in `tests/support/`:
-  - `stackedColumn.ts`: stacks chunks cy 0..7 into the old column shape
-  - `testWorld.ts`: 27 neighbour arrays plus exact column tops for light and mesher tests
-  - `fakeGenerator.ts`: given tops, for ChunkManager tests
-- **No git identity is configured in cloud sessions.** Commit with `git -c user.name="Yunus Alizade" -c user.email=62231698+MeetToast5578@users.noreply.github.com`.
-- **The owner's machine is Windows with a slow CPU.** Prefer CI or a cloud session for `npm run check` and `npm run smoke`.
+## Gotchas
 
-## Decisions so far (2026-10-13)
-
-- **Scale.** 1 block = 0.6 m. The player is 1.75 m, about 2.9 blocks tall and 0.8 blocks wide.
-- **Step-up.** Physics step-up, not auto-jump.
-- **Height.** Cubic chunks with unlimited height.
-- **Terrain (phase 2).** Hybrid: noise plus region drainage and erosion.
-- **Scope.** Everything on the roadmap: ecology, fluids (including liquid physics), creatures and survival. Multiplayer is parked.
-- **Saves.** IndexedDB, block states stored by name. `voxel-game-save-v1` (the 128-high world) is never read, written or deleted.
-
-## Stack (versions pinned on purpose)
-
-TypeScript 5.9.3, Vite 7.3.6, Vitest 4.0.18, three 0.186.0, simplex-noise 4.0.3, Playwright 1.56.1.
-- Do NOT upgrade Vitest to 4.1.x: `npm install` crashes ("Cannot read properties of null (reading 'edgesOut')").
-- Node 20+ works; the dev container runs Node 22, and spec 1 uses Node 22 in CI.
-
-## Commands
-
-- `npm run dev`: opens http://localhost:5173; click Play.
-- `npm run check`: typecheck, 183 unit tests in 30 files, then build.
-- `npm run smoke`:
-  - Builds, then opens `/?seed=1&autostart=1&nosave=1` in headless Chromium (SwiftShader WebGL).
-  - Runs 15 checks through `window.__game` and writes `screenshots/*.png`.
-  - Then logs a measurement: the time until everything is loaded, the FPS, and the chunk and draw-call counts.
-  - Needs `npx playwright install chromium`, or set `CHROMIUM_PATH`. In cloud sessions, use `/opt/pw-browsers/chromium-1194/chrome-linux/chrome`.
-
-## Architecture
-
-- `src/config.ts`: every tunable constant (world size, physics, render, storage keys).
-- `src/core`:
-  - math (`floorDiv`/`mod`)
-  - seeded random (`mulberry32`, `hash2`)
-  - coords
-  - fixed-timestep loop (1/60 s steps, frames clamped to 0.25 s)
-- `src/world`:
-  - `blocks.ts`: `BlockId`/`Tile` are objects, not enums. Ids run AIR 0, STONE 1, DIRT 2, GRASS 3, SAND 4, WATER 5, LOG 6, LEAVES 7, PLANKS 8, GLASS 9, BEDROCK 10, COBBLESTONE 11, BRICK 12, GLOWSTONE 13.
-  - `chunk.ts`: 16×16×16 `Uint16Array` of block states, indexed `(ly*16+lz)*16+lx`, addressed by `(cx, cy, cz)`. No height limit.
-  - `world.ts`: the chunk map, the `edits` map (what gets saved), and per-column **tops** (world y of the highest sky-blocking block per cell), kept exact on every edit.
-  - `generator.ts` (phase 1 interim):
-    - the old 128-high terrain as a "legacy column" (y 0..127): fbm height map, beaches, sea at y = 40, spaghetti caves
-    - solid stone below y = 0, air above y = 127; bedrock is no longer generated
-    - trees only at local x/z 2–13 (the phase 3 feature system replaces this)
-  - Also: `chunkManager.ts`, `light.ts`, `spawn.ts`, `time.ts`.
-- `src/render`:
-  - `mesher.ts`: pure. Does face culling, per-vertex AO and lighting, and takes 27 neighbour chunks plus 9 column-top arrays.
-  - Also: `faces.ts`, `tiles.ts`, `atlasPixels.ts` (procedural textures), `renderer.ts`, `chunkMeshes.ts`, `lightMaterial.ts`, `highlight.ts`, `clouds.ts`.
-- `src/player`:
-  - `physics.ts`: AABB sweep in the order Y → X → Z.
-  - `player.ts`: walk, sprint, jump, fly, swim.
-  - `raycast.ts`: Amanatides–Woo.
-  - Also: `interaction.ts`, `hotbar.ts`.
-- `src/ui`: HUD, menu, F3 overlay.
-- `src/input`, `src/audio`: procedural noise SFX.
-- `src/storage`:
-  - settings in `localStorage`
-  - the world save in IndexedDB (`voxel-game`): one meta record (seed, player, hotbar and block states by name, time of day) plus one record per edited chunk. Only chunks edited since the last write are written; `WorldSaver` never runs two writes at once.
-  - `main.ts` opens and loads the save before creating the `Game`; without IndexedDB the game runs on a memory store and the menu says so.
-- `src/workers`: `WorkerPool`, which implements `ChunkJobs`.
-- `src/game.ts` wires everything together. `src/debugApi.ts` exposes `window.__game`.
-
-### Key mechanics
-
-- **Pure modules.** `core`, `world`, `player`, the mesher, `storage` and `ui/debugText` must not import three or touch the DOM. They are unit-tested in Node.
-- **ChunkManager.**
-  - Loads column tops within renderDistance + 2, then chunks; one list sorted by distance from the eye.
-  - Meshes the near cylinder (renderDistance horizontally, `VERTICAL_RENDER_DISTANCE` = 4 up and down) plus each column's surface band (lowest top − 1 up to highest top), once all 26 neighbours and 9 column tops exist.
-  - Unloads with hysteresis (meshes beyond +1, blocks beyond +3; surface bands are kept).
-  - Time budgets apply on the main thread. With workers, at most 16 jobs are in flight, slots are refilled as soon as results arrive, and a per-chunk version counter drops stale results.
-- **Lighting.**
-  - Sky light and block light are computed fresh for each mesh from the 3×3×3 chunk region. This is exact because light reaches at most 14 blocks. Sunlight is seeded from the column tops, so it is right even when the chunks above are not loaded.
-  - An edit remeshes its chunk (and any neighbour whose padded volume holds the block) immediately and marks the rest of the 3×3×3 dirty; if it moved a column top, chunks around the old and new top are marked dirty too.
-- **Day/night.**
-  - A shader patch (`onBeforeCompile`) multiplies colour by `max(aLight.sky * uDaylight, aLight.block)`.
-  - Every chunk geometry MUST have an `aLight` attribute, or it renders black.
-- **Conventions.**
-  - Y is up.
-  - Yaw 0 looks toward −Z, and moving the mouse right decreases yaw.
-  - Camera rotation order is `'YXZ'`.
-  - Player position is the centre of the feet.
-- **URL params.**
-  - `?seed=N` also disables saving.
-  - `?nosave=1`, `?autostart=1`, `?workers=0`.
-- **Debug API.**
-  - Methods: `ready`, `state()`, `teleport`, `look`, `setFlying`, `getBlock`, `setBlock`, `breakTarget`, `placeTarget`, `pickTarget`, `selectSlot`, `setHotbarSlot`, `save()` (returns a promise), `setTimeOfDay`.
-  - `state()` also includes `hotbar`, `areaMeshed` (the 3×3×3 around the feet is meshed), `drawCalls` and the chunk stats.
-
-### Gotchas
-
-- TS 5.9 needs `Uint8ClampedArray<ArrayBuffer>` for `new ImageData`.
+- `hash2` returns a fraction in [0, 1). Never pass it to `mulberry32` as a seed; scale it to a 32-bit integer first.
+- `ImageData` in TypeScript 5.9 needs `Uint8ClampedArray<ArrayBuffer>`.
+- Vitest is pinned to 4.0.18. Do not upgrade to 4.1.x (`npm install` crashes).
 - `toEqual` treats −0 and 0 as different.
-- Catch `requestPointerLock()` rejections.
-- Create the worker as `new Worker(new URL('./chunkWorker.ts', import.meta.url), { type: 'module' })`.
-
-## Known gaps and backlog
-
-See `docs/ROADMAP.md` for phases 2–8. Known gaps after phase 1:
-- **Testing.** No real mouse-and-keyboard playtest yet.
-- **Mesh time.** 3.1–3.7 ms per surface chunk, against a 3 ms target.
-- **Draw calls.** A loaded world has ~1,800 meshed chunks, ~300 drawn after frustum culling. Cave culling and batching are phase 8.
-- **Edits.** An edit remeshes up to 8 chunks on the main thread at once, about 3 ms each.
-- **Terrain.** Still the old 128-high terrain, with stone below y = 0. Phase 2 replaces it.
+- Vitest's default timeout is 5 s. Stacking or generating many columns needs an explicit `{ timeout }`.
+- The owner's machine is Windows with a slow CPU. Prefer CI or a cloud session for `npm run check` and `npm run smoke`.
