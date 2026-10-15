@@ -12,6 +12,8 @@ export interface DebugInfo {
   target: number[] | null;
   targetName: string | null;
   selectedBlock: string;
+  /** Items the player has picked up (spec 23). */
+  held: number;
   loaded: number;
   meshed: number;
   pendingGen: number;
@@ -47,7 +49,7 @@ export function formatDebugLines(info: DebugInfo): string[] {
     `Meters ${meters(x)} / ${meters(y)} / ${meters(z)}   Elevation ${meters(y - SEA_LEVEL)} m`,
     `Facing ${compassDirection(info.yaw)} (yaw ${info.yaw.toFixed(2)}, pitch ${info.pitch.toFixed(2)})`,
     `Target ${info.target ? `${info.targetName} @ ${info.target.join(' ')}` : 'none'}`,
-    `Selected ${info.selectedBlock}`,
+    `Selected ${info.selectedBlock}   Held items ${info.held}`,
     `On ground ${yes(info.onGround)}   Flying ${yes(info.flying)}`,
     `Chunks loaded ${info.loaded}  meshed ${info.meshed}  pending ${info.pendingGen}/${info.pendingMesh}`,
     `Columns ${info.columns}   Jobs in flight ${info.jobsInFlight}`,

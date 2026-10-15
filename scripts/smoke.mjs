@@ -68,6 +68,27 @@ const CHECKS = [
     },
   },
   {
+    name: 'a dropped item lands, and the player picks it up (spec 23)',
+    run: async (page) => {
+      const s = await page.evaluate(() => window.__game.state());
+      const [x, y, z] = s.position.map(Math.floor);
+      // 8 blocks away (2.4 m), outside the 1 m pickup radius, so the item can't be picked up while it falls.
+      await page.evaluate(([cx, cy, cz]) => window.__game.dropItem(cx + 8, cy + 3, cz, 1), [x, y, z]);
+      await page.waitForTimeout(2000); // it falls and lands
+      const landed = (await page.evaluate(() => window.__game.droppedItems())).at(-1);
+      if (!landed) throw new Error('no dropped item after dropItem');
+      await page.waitForTimeout(500);
+      const rest = (await page.evaluate(() => window.__game.droppedItems())).at(-1);
+      if (Math.abs(rest.y - landed.y) > 1e-3) throw new Error(`item still moving: ${landed.y} -> ${rest.y}`);
+      if (landed.y >= y + 3) throw new Error(`item did not fall: ${JSON.stringify(landed)}`);
+      const before = (await page.evaluate(() => window.__game.state())).held;
+      await page.evaluate(([px, py, pz]) => window.__game.teleport(px, py, pz), [rest.x, rest.y, rest.z]);
+      await page.waitForTimeout(800); // past the pickup delay, within reach
+      const after = (await page.evaluate(() => window.__game.state())).held;
+      if (after <= before) throw new Error(`no pickup: held ${before} -> ${after}`);
+    },
+  },
+  {
     name: 'HUD shows 9 hotbar slots and the debug overlay toggles with F3',
     run: async (page) => {
       const slots = await page.locator('.hotbar .slot').count();
