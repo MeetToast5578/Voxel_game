@@ -16,6 +16,7 @@ import {
   SHORE_ROOF,
   SOIL_DEPTH,
   DANDELION_CHANCE,
+  DEEPSLATE_DEPTH_M,
   FERN_CHANCE,
   POPPY_CHANCE,
   TALL_GRASS_CHANCE,
@@ -36,7 +37,9 @@ const CAVE_THRESHOLD = 0.012;
 /** The column cache is only a cache, so clearing it never changes a result. */
 const COLUMN_CACHE_LIMIT = 2048;
 /** Rock types of the strata, in layer order (the layer index wraps around this list). */
-const ROCKS = [BlockId.GRANITE, BlockId.DIORITE, BlockId.ANDESITE, BlockId.SANDSTONE] as const;
+const ROCKS = [
+  BlockId.GRANITE, BlockId.DIORITE, BlockId.ANDESITE, BlockId.SANDSTONE, BlockId.LIMESTONE, BlockId.SLATE, BlockId.BASALT,
+] as const;
 
 /** Per-column terrain, indexed by columnIndex: the top solid block and the two inputs of the density. */
 interface Column {
@@ -242,8 +245,12 @@ export class TerrainGenerator {
     return r < edge ? BlockId.FERN : BlockId.AIR;
   }
 
-  /** The rock of a solid block at height y: the strata layer it sits in, bent by the warp noise. */
+  /**
+   * The rock of a solid block at height y: deepslate below DEEPSLATE_DEPTH_M, otherwise the strata layer it sits in,
+   * bent by the warp noise.
+   */
   private rockAt(y: number, warp: number): number {
+    if (y * BLOCK_SIZE_M < DEEPSLATE_DEPTH_M) return BlockId.DEEPSLATE;
     const layer = Math.floor((y * BLOCK_SIZE_M) / GEOLOGY_LAYER_M + 3 * warp);
     return ROCKS[((layer % ROCKS.length) + ROCKS.length) % ROCKS.length]!;
   }

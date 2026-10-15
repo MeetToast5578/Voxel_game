@@ -17,6 +17,7 @@ Last updated 2026-10-15.
 - terrain from those fields (spec 13)
 - Minecraft-style 3D density, so the surface is lumpy and can overhang (spec 14, PR #16)
 - rock strata (granite, diorite, andesite, sandstone) and bare rock on steep ground (spec 15, PR #18)
+- seven strata rocks (adds limestone, slate, basalt) and deepslate below −100 m (spec 20)
 
 **Phase 5 item 5 (liquid physics) is partly done**, brought forward at the owner's request:
 - buoyancy and quadratic drag for the player in water (spec 16, PR #19)
@@ -26,7 +27,7 @@ Last updated 2026-10-15.
 - tall grass and poppies, on a new cross-shaped plant mesh (spec 18, PR #21)
 - ferns and dandelions (spec 19, PR #22)
 
-`npm run check` (211 tests in 34 files) and `npm run smoke` (15 checks) are green on `main`. Smoke's only error in cloud sessions is the favicon 404 (see below).
+`npm run check` (213 tests in 34 files) and `npm run smoke` (15 checks) are green on `main`. Cloud smoke passes with no console error now that the favicon link is in (see below).
 
 The owner is continuing with **Claude Haiku 5.5** to save tokens. The next section is written for that.
 
@@ -52,10 +53,8 @@ The owner is continuing with **Claude Haiku 5.5** to save tokens. The next secti
 ### Good Haiku-sized tasks (only when the owner asks)
 
 - **Refresh these docs** if they drift from the code again.
-- **Cloud smoke test favicon.** In cloud sessions `npm run smoke` passes every check, then fails on `console.error: Failed to load resource: 404`. That's the full Chromium's favicon request; CI doesn't hit it.
-  - A likely fix is `<link rel="icon" href="data:,">` in `index.html`.
-  - Verify: smoke passes in the cloud with `CHROMIUM_PATH=/opt/pw-browsers/chromium-1194/chrome-linux/chrome`.
-- **Geology, phase 2 item 5, more slices** (ores, deepslate, limestone, slate, basalt, gravel and clay). Spec 15 (first slice: strata and bare rock) is done. Write the next spec first. Gravel and clay in riverbeds wait for rivers (item 3).
+- **Cloud smoke test favicon.** Done: `<link rel="icon" href="data:,">` is in `index.html`, and smoke passes in the cloud with no console error (`CHROMIUM_PATH=/opt/pw-browsers/chromium-1194/chrome-linux/chrome`).
+- **Geology, phase 2 item 5, more slices** (ores, gravel and clay). Specs 15 (strata and bare rock) and 20 (limestone, slate, basalt, deepslate) are done. Write the next spec first. Gravel and clay in riverbeds wait for rivers (item 3).
 - **More ground cover, phase 3 item 6** (mushrooms, reeds, boulders, fallen logs). Spec 18 and spec 19 set the pattern: a `cross` block type, a placement band in `plantAt` (generator), and a painted tile. Write the next spec first. Flowers by biome wait for biomes (phase 3 items 1–2).
 - **Bug fixes from the playtest**, one per branch and pull request.
 - **Any spec written in `docs/specs/` style:** prose requirements, acceptance criteria and test cases.
@@ -107,7 +106,7 @@ TypeScript 5.9.3, Vite 7.3.6, Vitest 4.0.18, three 0.186.0, simplex-noise 4.0.3,
 ## Commands
 
 - `npm run dev`: opens http://localhost:5173; click Play.
-- `npm run check`: typecheck, 211 unit tests in 34 files, then build.
+- `npm run check`: typecheck, 213 unit tests in 34 files, then build.
 - `npm run smoke`:
   - Builds, then opens `/?seed=1&autostart=1&nosave=1` in headless Chromium (SwiftShader WebGL).
   - Runs 15 checks through `window.__game` and writes `screenshots/*.png`.
@@ -123,7 +122,7 @@ TypeScript 5.9.3, Vite 7.3.6, Vitest 4.0.18, three 0.186.0, simplex-noise 4.0.3,
   - coords
   - fixed-timestep loop (1/60 s steps, frames clamped to 0.25 s)
 - `src/world`:
-  - `blocks.ts`: `BlockId`/`Tile` are objects, not enums. Ids run AIR 0, STONE 1, DIRT 2, GRASS 3, SAND 4, WATER 5, LOG 6, LEAVES 7, PLANKS 8, GLASS 9, BEDROCK 10, COBBLESTONE 11, BRICK 12, GLOWSTONE 13, GRANITE 14, DIORITE 15, ANDESITE 16, SANDSTONE 17, TALL_GRASS 18, POPPY 19, FERN 20, DANDELION 21. Each type has a `shape`: `'cube'` (default) or `'cross'` for plants.
+  - `blocks.ts`: `BlockId`/`Tile` are objects, not enums. Ids run AIR 0, STONE 1, DIRT 2, GRASS 3, SAND 4, WATER 5, LOG 6, LEAVES 7, PLANKS 8, GLASS 9, BEDROCK 10, COBBLESTONE 11, BRICK 12, GLOWSTONE 13, GRANITE 14, DIORITE 15, ANDESITE 16, SANDSTONE 17, TALL_GRASS 18, POPPY 19, FERN 20, DANDELION 21, LIMESTONE 22, SLATE 23, BASALT 24, DEEPSLATE 25. Each type has a `shape`: `'cube'` (default) or `'cross'` for plants.
   - `chunk.ts`: 16×16×16 `Uint16Array` of block states, indexed `(ly*16+lz)*16+lx`, addressed by `(cx, cy, cz)`. No height limit.
   - `world.ts`: the chunk map, the `edits` map (what gets saved), and per-column **tops** (world y of the highest sky-blocking block per cell), kept exact on every edit.
   - `shape.ts`: the six climate fields and `heightMeters` (a spline of continentalness, plus mountains), and `detailAmpMeters` (the density's amplitude).
@@ -133,7 +132,7 @@ TypeScript 5.9.3, Vite 7.3.6, Vitest 4.0.18, three 0.186.0, simplex-noise 4.0.3,
     - sea level 0: air at or below it becomes water
     - stone below the band, air above it
     - caves carved below the surface, trees (`trees.ts`) from anchors within reach
-    - rock: below the soil, a block's rock comes from its strata layer, bent by a 2D warp noise (spec 15). Columns with a detail amplitude of at least 12 m are bare rock.
+    - rock: below the soil, a block's rock comes from its strata layer, bent by a 2D warp noise (spec 15). The layers cycle through seven rocks (spec 20). Below −100 m the rock is deepslate. Columns with a detail amplitude of at least 12 m are bare rock.
     - plants: `plantAt` picks one plant per grass column from one hash, in bands (spec 18, spec 19). Trees skip bare columns.
     - per-column data (surface, offsets, amplitudes) cached, `COLUMN_CACHE_LIMIT` columns
   - `debugMap.ts`: the colouring for `?map=1`.
@@ -199,6 +198,6 @@ See `docs/ROADMAP.md` for phases 2–8. Known gaps after phase 2 items 1–2 and
 - **Mesh time.** 3.1–3.7 ms per surface chunk, against a 3 ms target.
 - **Cold column generation.** About 8.4 ms median (see above).
 - **Plains.** Some stepped ground remains on gentle slopes (spec 14 out-of-scope note).
-- **Terrain.** Geology beyond spec 15 (item 5), region simulation with rivers and erosion (item 3), caves beyond spaghetti (item 6), coasts (item 7) and horizon LOD (item 8) are still to come.
+- **Terrain.** Geology beyond specs 15 and 20 (item 5), region simulation with rivers and erosion (item 3), caves beyond spaghetti (item 6), coasts (item 7) and horizon LOD (item 8) are still to come.
 - **Draw calls.** A loaded world has ~1,800 meshed chunks, ~300 drawn after frustum culling. Cave culling and batching are phase 8.
 - **Edits.** An edit remeshes up to 8 chunks on the main thread at once, about 3 ms each.

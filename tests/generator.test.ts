@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  DEEPSLATE_DEPTH_M,
   LEGACY_CHUNKS,
   metersToBlocks,
   SEA_LEVEL,
@@ -20,6 +21,10 @@ const ROCK_IDS = new Set<number>([
   BlockId.DIORITE,
   BlockId.ANDESITE,
   BlockId.SANDSTONE,
+  BlockId.LIMESTONE,
+  BlockId.SLATE,
+  BlockId.BASALT,
+  BlockId.DEEPSLATE,
 ]);
 
 function generate(seed: number, cx: number, cy: number, cz: number): Chunk {
@@ -137,6 +142,40 @@ describe('TerrainGenerator', () => {
       }
     }
     expect(rocks.size).toBeGreaterThanOrEqual(3);
+  });
+  it('uses all seven strata rocks above the deepslate, and deepslate only below it', { timeout: 60000 }, () => {
+    // Seed 1, the mountain near (1480, -3040): the column runs from -100 m (the deepslate line) up to the surface.
+    const g = new TerrainGenerator(1);
+    const x = 1480;
+    const z = -3040;
+    const top = g.getHeight(x, z);
+    const deepslateTop = Math.ceil(metersToBlocks(DEEPSLATE_DEPTH_M)); // the first block at or above -100 m
+    const strata = new Set<number>();
+    for (let cy = Math.floor(deepslateTop / 16); cy <= Math.floor(top / 16); cy++) {
+      const c = new Chunk(Math.floor(x / 16), cy, Math.floor(z / 16));
+      g.generateChunk(c);
+      for (let ly = 0; ly < 16; ly++) {
+        const y = cy * 16 + ly;
+        const id = c.get(((x % 16) + 16) % 16, ly, ((z % 16) + 16) % 16);
+        if (y > top - SOIL_DEPTH || !ROCK_IDS.has(id)) continue;
+        if (y < deepslateTop) expect(id).toBe(BlockId.DEEPSLATE);
+        else {
+          expect(id).not.toBe(BlockId.DEEPSLATE);
+          strata.add(id);
+        }
+      }
+    }
+    const strataRocks = [
+      BlockId.GRANITE, BlockId.DIORITE, BlockId.ANDESITE, BlockId.SANDSTONE, BlockId.LIMESTONE, BlockId.SLATE, BlockId.BASALT,
+    ];
+    for (const rock of strataRocks) expect(strata.has(rock)).toBe(true);
+  });
+  it('is deepslate for a whole chunk below -100 m, away from the soil', { timeout: 60000 }, () => {
+    const g = new TerrainGenerator(1);
+    const c = new Chunk(Math.floor(1480 / 16), Math.floor(metersToBlocks(-200) / 16), Math.floor(-3040 / 16));
+    g.generateChunk(c);
+    const rocks = new Set<number>(c.blocks.filter((id) => ROCK_IDS.has(id)));
+    expect([...rocks]).toEqual([BlockId.DEEPSLATE]);
   });
   it('has bare rock on the mountains and grass on the plains, and no trees on bare rock', { timeout: 60000 }, () => {
     const g = new TerrainGenerator(1);

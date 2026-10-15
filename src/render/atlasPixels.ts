@@ -52,6 +52,19 @@ const PAINTERS: Record<number, PixelFn> = {
     const band = Math.floor(y / 4) % 2 === 0; // horizontal bands, 4 px each
     return shade(band ? [205, 186, 130] : [190, 168, 112], 1 + (r() - 0.5) * 0.12);
   },
+  [Tile.LIMESTONE]: (_x, y, r) => {
+    const bedding = y % 6 === 5; // faint horizontal lines between beds
+    return shade([205, 200, 185], (bedding ? 0.9 : 1) + (r() - 0.5) * 0.15);
+  },
+  [Tile.SLATE]: (_x, y, r) => {
+    const cleavage = y % 5 === 0; // flat planes split the slate into sheets
+    return shade([70, 80, 95], (cleavage ? 0.8 : 1) + (r() - 0.5) * 0.2);
+  },
+  [Tile.BASALT]: noisy([50, 48, 52], 0.4),
+  [Tile.DEEPSLATE]: (x, y, r) => {
+    const grain = (x + y) % 7 === 0; // diagonal grain
+    return shade([80, 80, 86], (grain ? 0.75 : 1) + (r() - 0.5) * 0.2);
+  },
   [Tile.TALL_GRASS]: (x, y, r) => {
     // Blades rising from the bottom, staggered; the rest is transparent.
     const blade = y > 3 && (x % 4 === 1 || (x % 4 === 2 && y > 9) || (x % 4 === 3 && y > 6));
