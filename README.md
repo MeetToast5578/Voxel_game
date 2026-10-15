@@ -2,7 +2,7 @@
 
 A Minecraft-like voxel sandbox that runs in the browser, built with TypeScript, Vite and three.js.
 
-- Endless procedural terrain: hills, mountains, beaches, lakes, trees and caves, with layers of granite, diorite, andesite and sandstone underground, bare rock on steep ground, and tall grass and poppies on the grass
+- Endless procedural terrain: hills, mountains, beaches, lakes, trees and caves, with layers of granite, diorite, andesite and sandstone underground, bare rock on steep ground, and tall grass, ferns, poppies and dandelions on the grass
 - Walk, sprint, jump, fly and swim, with block collisions
 - Ledges up to 0.6 m are stepped up automatically, no jump needed
 - Break and place 14 block types, 9-slot hotbar, pick-block

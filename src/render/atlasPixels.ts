@@ -57,6 +57,18 @@ const PAINTERS: Record<number, PixelFn> = {
     const blade = y > 3 && (x % 4 === 1 || (x % 4 === 2 && y > 9) || (x % 4 === 3 && y > 6));
     return blade ? shade(GRASS, 0.9 + (r() - 0.5) * 0.25) : [0, 0, 0, 0];
   },
+  [Tile.FERN]: (x, y, r) => {
+    // Fronds fanning out from the base: a striped leaf shape; the rest is transparent.
+    const half = (y - 2) * 0.55;
+    const inLeaf = y > 2 && Math.abs(x - 7.5) <= half;
+    return inLeaf && (x + y) % 3 !== 0 ? shade([60, 120, 45], 0.9 + (r() - 0.5) * 0.2) : [0, 0, 0, 0];
+  },
+  [Tile.DANDELION]: (x, y, r) => {
+    // A yellow head on a green stem; the rest is transparent.
+    if (Math.hypot(x - 7.5, y - 5) <= 2.5) return shade([250, 225, 50], 1 + (r() - 0.5) * 0.15);
+    if ((x === 7 || x === 8) && y >= 8) return shade([60, 130, 40], 1 + (r() - 0.5) * 0.2);
+    return [0, 0, 0, 0];
+  },
   [Tile.POPPY]: (x, y, r) => {
     // A red head on a green stem; the rest is transparent.
     if (Math.hypot(x - 7.5, y - 6) <= 3) return shade([200, 30, 30], (x === 7 || x === 8) && y === 6 ? 0.4 : 1 + (r() - 0.5) * 0.2);
