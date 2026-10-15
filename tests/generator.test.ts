@@ -13,6 +13,15 @@ import { Chunk } from '../src/world/chunk';
 import { TerrainGenerator } from '../src/world/generator';
 import { landColumns, stackedColumn } from './support/stackedColumn';
 
+/** Any rock of the strata or the deep stone. */
+const ROCK_IDS = new Set<number>([
+  BlockId.STONE,
+  BlockId.GRANITE,
+  BlockId.DIORITE,
+  BlockId.ANDESITE,
+  BlockId.SANDSTONE,
+]);
+
 function generate(seed: number, cx: number, cy: number, cz: number): Chunk {
   const c = new Chunk(cx, cy, cz);
   new TerrainGenerator(seed).generateChunk(c);
@@ -44,7 +53,7 @@ describe('TerrainGenerator', () => {
     for (let lx = 0; lx < 16; lx++)
       for (let lz = 0; lz < 16; lz++) {
         const h = g.getHeight(cx! * 16 + lx, cz! * 16 + lz);
-        if (c.get(lx, h - 3 * SOIL_DEPTH, lz) === BlockId.STONE) stoneBelowSoil++; // deep enough to be past most caves
+        if (ROCK_IDS.has(c.get(lx, h - 3 * SOIL_DEPTH, lz))) stoneBelowSoil++; // deep enough to be past most caves
         if (h < SEA_LEVEL) expect(c.get(lx, SEA_LEVEL, lz)).toBe(BlockId.WATER);
         expect(c.get(lx, h + 1, lz)).not.toBe(BlockId.STONE);
       }
@@ -104,13 +113,54 @@ describe('TerrainGenerator', () => {
         for (let ly = top - cy * 16; ly >= 0; ly--) {
           const id = c.get(lx, ly, lz);
           if (id === BlockId.AIR) airSeen = true;
-          else if (airSeen && id === BlockId.STONE) {
+          else if (airSeen && id !== BlockId.WATER) {
             overhangs++;
             break;
           }
         }
       }
     expect(overhangs).toBeGreaterThan(0);
+  });
+  it('lays rock strata: several rock types in one mountain column', { timeout: 60000 }, () => {
+    // Seed 1, the mountain near (1480, -3040): the column's rock changes with depth.
+    const g = new TerrainGenerator(1);
+    const x = 1480;
+    const z = -3040;
+    const top = g.getHeight(x, z);
+    const rocks = new Set<number>();
+    for (let cy = Math.floor((top - 100) / 16); cy <= Math.floor(top / 16); cy++) {
+      const c = new Chunk(Math.floor(x / 16), cy, Math.floor(z / 16));
+      g.generateChunk(c);
+      for (let ly = 0; ly < 16; ly++) {
+        const id = c.get(((x % 16) + 16) % 16, ly, ((z % 16) + 16) % 16);
+        if (cy * 16 + ly <= top - SOIL_DEPTH && cy * 16 + ly >= top - 100 && ROCK_IDS.has(id)) rocks.add(id);
+      }
+    }
+    expect(rocks.size).toBeGreaterThanOrEqual(3);
+  });
+  it('has bare rock on the mountains and grass on the plains, and no trees on bare rock', { timeout: 60000 }, () => {
+    const g = new TerrainGenerator(1);
+    const surface = (x: number, z: number) => {
+      const top = g.getHeight(x, z);
+      const cy = Math.floor(top / 16);
+      const c = new Chunk(Math.floor(x / 16), cy, Math.floor(z / 16));
+      g.generateChunk(c);
+      const lx = ((x % 16) + 16) % 16;
+      const lz = ((z % 16) + 16) % 16;
+      return { id: c.get(lx, top - cy * 16, lz), above: top + 1 < (cy + 1) * 16 ? c.get(lx, top + 1 - cy * 16, lz) : null };
+    };
+    let plains = 0;
+    for (let z = -40; z < 40; z += 5) for (let x = -40; x < 40; x += 5) if (surface(x, z).id === BlockId.GRASS) plains++;
+    let bare = 0;
+    for (let z = -3040; z < -3040 + 48; z += 6)
+      for (let x = 1480; x < 1480 + 48; x += 6) {
+        const s = surface(x, z);
+        if (s.id === BlockId.GRASS || s.id === BlockId.SAND) continue;
+        bare++;
+        expect(s.above).not.toBe(BlockId.LOG);
+      }
+    expect(plains).toBeGreaterThan(0);
+    expect(bare).toBeGreaterThan(0);
   });
   it('generates a chunk in a few milliseconds', () => {
     const g = new TerrainGenerator(99);

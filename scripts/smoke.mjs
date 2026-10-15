@@ -255,7 +255,8 @@ const CHECKS = [
       }, [x, z]);
       await waitMeshed();
       const below = await page.evaluate(([x, z]) => window.__game.getBlock(x, -205, z), [bx, bz]);
-      if (below !== 1) throw new Error(`expected stone 5 blocks below y = -200, found ${below}`);
+      const ROCKS = [1, 14, 15, 16, 17]; // stone, granite, diorite, andesite, sandstone (spec 15)
+      if (!ROCKS.includes(below)) throw new Error(`expected rock 5 blocks below y = -200, found ${below}`);
 
       await page.evaluate(([x, z]) => window.__game.teleport(x, 8400, z), [x, z]); // above the highest terrain (2,450 m, 8,167 blocks)
       await waitMeshed();

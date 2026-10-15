@@ -45,6 +45,13 @@ const PAINTERS: Record<number, PixelFn> = {
     const bright = (x * 3 + y * 5) % 7 < 3;
     return shade(bright ? [255, 236, 150] : [214, 160, 70], 1 + (r() - 0.5) * 0.2);
   },
+  [Tile.GRANITE]: noisy([150, 100, 90], 0.35),
+  [Tile.DIORITE]: noisy([190, 190, 190], 0.3),
+  [Tile.ANDESITE]: noisy([130, 135, 128], 0.3),
+  [Tile.SANDSTONE]: (_x, y, r) => {
+    const band = Math.floor(y / 4) % 2 === 0; // horizontal bands, 4 px each
+    return shade(band ? [205, 186, 130] : [190, 168, 112], 1 + (r() - 0.5) * 0.12);
+  },
   [Tile.BRICK]: (x, y, r) => {
     const mortar = y % 4 === 3 || (x + (Math.floor(y / 4) % 2) * 4) % 8 === 0;
     return mortar ? shade([200, 200, 190], 1) : shade([150, 60, 50], 1 + (r() - 0.5) * 0.2);

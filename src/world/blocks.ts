@@ -13,6 +13,10 @@ export const BlockId = {
   COBBLESTONE: 11,
   BRICK: 12,
   GLOWSTONE: 13,
+  GRANITE: 14,
+  DIORITE: 15,
+  ANDESITE: 16,
+  SANDSTONE: 17,
 } as const;
 
 export const Tile = {
@@ -31,6 +35,10 @@ export const Tile = {
   COBBLESTONE: 12,
   BRICK: 13,
   GLOWSTONE: 14,
+  GRANITE: 15,
+  DIORITE: 16,
+  ANDESITE: 17,
+  SANDSTONE: 18,
 } as const;
 
 export type RenderLayer = 'none' | 'opaque' | 'cutout' | 'translucent';
@@ -212,6 +220,10 @@ export const BLOCK_REGISTRY = buildBlockRegistry([
   def('cobblestone', 'Cobblestone', all(Tile.COBBLESTONE)),
   def('brick', 'Brick', all(Tile.BRICK)),
   def('glowstone', 'Glowstone', all(Tile.GLOWSTONE), { lightEmission: 15 }),
+  def('granite', 'Granite', all(Tile.GRANITE)),
+  def('diorite', 'Diorite', all(Tile.DIORITE)),
+  def('andesite', 'Andesite', all(Tile.ANDESITE)),
+  def('sandstone', 'Sandstone', all(Tile.SANDSTONE)),
 ]);
 
 // BlockId.X is variant 0 of the type whose key is x; keep the two lists in step.

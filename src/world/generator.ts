@@ -1,10 +1,13 @@
-import { createNoise3D, type NoiseFunction3D } from 'simplex-noise';
+import { createNoise2D, createNoise3D, type NoiseFunction2D, type NoiseFunction3D } from 'simplex-noise';
 import {
+  BARE_ROCK_AMP_M,
   BEACH_BAND,
   BLOCK_SIZE_M,
   CAVE_SCALE_H_M,
   CAVE_SCALE_V_M,
   CHUNK_SIZE,
+  GEOLOGY_LAYER_M,
+  GEOLOGY_WARP_M,
   LEGACY_CHUNKS,
   LEGACY_HEIGHT,
   metersToBlocks,
@@ -28,6 +31,8 @@ import { MAX_TREE_RISE, treeBlocks } from './trees';
 const CAVE_THRESHOLD = 0.012;
 /** The column cache is only a cache, so clearing it never changes a result. */
 const COLUMN_CACHE_LIMIT = 2048;
+/** Rock types of the strata, in layer order (the layer index wraps around this list). */
+const ROCKS = [BlockId.GRANITE, BlockId.DIORITE, BlockId.ANDESITE, BlockId.SANDSTONE] as const;
 
 /** Per-column terrain, indexed by columnIndex: the top solid block and the two inputs of the density. */
 interface Column {
@@ -37,12 +42,15 @@ interface Column {
   offsets: Float64Array;
   /** Detail amplitude, in meters. */
   amps: Float64Array;
+  /** Rock-layer warp: 2D noise in [-1, 1]. */
+  warp: Float64Array;
 }
 
 export class TerrainGenerator {
   readonly seed: number;
   private readonly climate: ClimateSampler;
   private readonly density: TerrainDensity;
+  private readonly rockNoise: NoiseFunction2D;
   private readonly caveNoiseA: NoiseFunction3D;
   private readonly caveNoiseB: NoiseFunction3D;
   private readonly columnCache = new Map<string, Column>();
@@ -51,6 +59,7 @@ export class TerrainGenerator {
     this.seed = seed;
     this.climate = new ClimateSampler(seed);
     this.density = new TerrainDensity(seed);
+    this.rockNoise = createNoise2D(mulberry32(seed + 300));
     this.caveNoiseA = createNoise3D(mulberry32(seed + 3));
     this.caveNoiseB = createNoise3D(mulberry32(seed + 4));
   }
@@ -148,14 +157,17 @@ export class TerrainGenerator {
         const offsetM = column.offsets[i]!;
         const ampM = column.amps[i]!;
         const beach = h <= SEA_LEVEL + BEACH_BAND;
+        // shortcut: steepness is the detail amplitude, not the real slope, so lumpy flat ground can be bare; upgrade to finite differences if it looks wrong
+        const soil = ampM < BARE_ROCK_AMP_M;
+        const warp = column.warp[i]!;
         const wx = cx * CHUNK_SIZE + lx;
         const wz = cz * CHUNK_SIZE + lz;
         for (let y = y0; y < y1; y++) {
           let id: number;
           if (this.density.isSolid(wx, y, wz, offsetM, ampM)) {
-            if (y === h) id = beach ? BlockId.SAND : BlockId.GRASS;
-            else if (y >= h - SOIL_DEPTH) id = beach ? BlockId.SAND : BlockId.DIRT;
-            else id = BlockId.STONE;
+            if (soil && y === h) id = beach ? BlockId.SAND : BlockId.GRASS;
+            else if (soil && y >= h - SOIL_DEPTH) id = beach ? BlockId.SAND : BlockId.DIRT;
+            else id = this.rockAt(y, warp);
           } else id = y <= SEA_LEVEL ? BlockId.WATER : BlockId.AIR;
           out[localIndex(lx, y - y0, lz)] = id;
         }
@@ -181,6 +193,7 @@ export class TerrainGenerator {
       solidTop: new Int32Array(CHUNK_SIZE * CHUNK_SIZE),
       offsets: new Float64Array(CHUNK_SIZE * CHUNK_SIZE),
       amps: new Float64Array(CHUNK_SIZE * CHUNK_SIZE),
+      warp: new Float64Array(CHUNK_SIZE * CHUNK_SIZE),
     };
     for (let lz = 0; lz < CHUNK_SIZE; lz++)
       for (let lx = 0; lx < CHUNK_SIZE; lx++) {
@@ -190,6 +203,7 @@ export class TerrainGenerator {
         const fields = this.climate.fields(wx * BLOCK_SIZE_M, wz * BLOCK_SIZE_M);
         column.offsets[i] = heightMeters(fields);
         column.amps[i] = detailAmpMeters(fields);
+        column.warp[i] = this.rockNoise((wx * BLOCK_SIZE_M) / GEOLOGY_WARP_M, (wz * BLOCK_SIZE_M) / GEOLOGY_WARP_M);
         column.solidTop[i] = this.solidTop(wx, wz, column.offsets[i]!, column.amps[i]!);
       }
     this.columnCache.set(key, column);
@@ -205,6 +219,12 @@ export class TerrainGenerator {
     let y = Math.floor(metersToBlocks(offsetM + ampM)) + 2;
     while (y > bottom && !this.density.isSolid(wx, y, wz, offsetM, ampM)) y--;
     return y;
+  }
+
+  /** The rock of a solid block at height y: the strata layer it sits in, bent by the warp noise. */
+  private rockAt(y: number, warp: number): number {
+    const layer = Math.floor((y * BLOCK_SIZE_M) / GEOLOGY_LAYER_M + 3 * warp);
+    return ROCKS[((layer % ROCKS.length) + ROCKS.length) % ROCKS.length]!;
   }
 
   /**
@@ -226,6 +246,13 @@ export class TerrainGenerator {
     return a * a + c * c < CAVE_THRESHOLD;
   }
 
+  /** Detail amplitude of the cell at (wx, wz). */
+  private amplitudeAt(wx: number, wz: number): number {
+    const cx = floorDiv(wx, CHUNK_SIZE);
+    const cz = floorDiv(wz, CHUNK_SIZE);
+    return this.column(cx, cz).amps[columnIndex(wx - cx * CHUNK_SIZE, wz - cz * CHUNK_SIZE)]!;
+  }
+
   /** Trees whose anchor is in this column or within reach of it. Each tree is computed whole, then clipped. */
   private placeTrees(cx: number, cz: number, y0: number, y1: number, out: Uint16Array): void {
     const x0 = cx * CHUNK_SIZE;
@@ -236,6 +263,7 @@ export class TerrainGenerator {
         const h = this.getHeight(wx, wz);
         // Trees grow on grass: not a beach, and the cave carver left the surface block alone.
         if (h <= SEA_LEVEL + BEACH_BAND) continue;
+        if (this.amplitudeAt(wx, wz) >= BARE_ROCK_AMP_M) continue; // no trees on bare rock
         if (h >= 2 && h <= this.caveTop(h) && this.isCave(wx, h, wz)) continue;
         if (h >= y1 || h + MAX_TREE_RISE < y0) continue; // this tree has no block in the range
         for (const b of treeBlocks(this.seed, wx, h, wz)) {
