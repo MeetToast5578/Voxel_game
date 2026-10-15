@@ -7,14 +7,15 @@ import { TerrainGenerator } from '../src/world/generator';
 import { landColumns, stackedColumn } from './support/stackedColumn';
 import { uniformTops } from './support/testWorld';
 
-const PLANTS: number[] = [BlockId.TALL_GRASS, BlockId.POPPY];
+const PLANTS: number[] = [BlockId.TALL_GRASS, BlockId.POPPY, BlockId.FERN, BlockId.DANDELION];
 
 describe('ground cover (spec 18)', () => {
-  it('registers tall grass and poppies as cross-shaped plants, and round-trips their names', () => {
-    for (const id of PLANTS) {
+  it('registers the plants as cross-shaped blocks, and round-trips their names', () => {
+    const names = ['tall_grass', 'poppy', 'fern', 'dandelion'];
+    PLANTS.forEach((id, i) => {
       expect(getBlockDef(id).shape).toBe('cross');
-      expect(blockStateName(id)).toBe(id === BlockId.TALL_GRASS ? 'tall_grass' : 'poppy');
-    }
+      expect(blockStateName(id)).toBe(names[i]);
+    });
   });
 
   it('lets plants be walked through and lets sun through, while cubes still block it', () => {
@@ -30,6 +31,7 @@ describe('ground cover (spec 18)', () => {
     const g = new TerrainGenerator(1);
     let plants = 0;
     let bareGrass = 0;
+    const seen = new Set<number>();
     for (const { cx, cz } of landColumns(g, 40, 60)) {
       const c = stackedColumn(g, cx, cz);
       for (let lz = 0; lz < 16; lz++)
@@ -38,12 +40,14 @@ describe('ground cover (spec 18)', () => {
           const above = c.get(lx, h + 1, lz);
           if (PLANTS.includes(above)) {
             plants++;
+            seen.add(above);
             expect(c.get(lx, h, lz)).toBe(BlockId.GRASS);
           } else if (c.get(lx, h, lz) === BlockId.GRASS) bareGrass++;
         }
     }
     expect(plants).toBeGreaterThan(0);
     expect(bareGrass).toBeGreaterThan(0); // not every grass cell grows a plant
+    expect(seen.has(BlockId.FERN)).toBe(true);
   });
 
   it('meshes one plant as two quads seen from both sides, with no cube faces', () => {

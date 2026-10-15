@@ -15,6 +15,8 @@ import {
   SHORE_CAVE_BAND,
   SHORE_ROOF,
   SOIL_DEPTH,
+  DANDELION_CHANCE,
+  FERN_CHANCE,
   POPPY_CHANCE,
   TALL_GRASS_CHANCE,
   TERRAIN_CHUNK_BOTTOM,
@@ -230,8 +232,14 @@ export class TerrainGenerator {
   private plantAt(wx: number, wz: number, h: number): number {
     if (this.isCave(wx, h, wz)) return BlockId.AIR;
     const r = hash2(this.seed + 11, wx, wz);
-    if (r < POPPY_CHANCE) return BlockId.POPPY;
-    return r < POPPY_CHANCE + TALL_GRASS_CHANCE ? BlockId.TALL_GRASS : BlockId.AIR;
+    let edge = DANDELION_CHANCE;
+    if (r < edge) return BlockId.DANDELION;
+    edge += POPPY_CHANCE;
+    if (r < edge) return BlockId.POPPY;
+    edge += TALL_GRASS_CHANCE;
+    if (r < edge) return BlockId.TALL_GRASS;
+    edge += FERN_CHANCE;
+    return r < edge ? BlockId.FERN : BlockId.AIR;
   }
 
   /** The rock of a solid block at height y: the strata layer it sits in, bent by the warp noise. */

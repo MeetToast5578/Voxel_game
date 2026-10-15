@@ -19,6 +19,8 @@ export const BlockId = {
   SANDSTONE: 17,
   TALL_GRASS: 18,
   POPPY: 19,
+  FERN: 20,
+  DANDELION: 21,
 } as const;
 
 export const Tile = {
@@ -43,6 +45,8 @@ export const Tile = {
   SANDSTONE: 18,
   TALL_GRASS: 19,
   POPPY: 20,
+  FERN: 21,
+  DANDELION: 22,
 } as const;
 
 export type RenderLayer = 'none' | 'opaque' | 'cutout' | 'translucent';
@@ -233,6 +237,8 @@ export const BLOCK_REGISTRY = buildBlockRegistry([
   def('sandstone', 'Sandstone', all(Tile.SANDSTONE)),
   def('tall_grass', 'Tall grass', all(Tile.TALL_GRASS), { solid: false, opaque: false, layer: 'cutout', shape: 'cross' }),
   def('poppy', 'Poppy', all(Tile.POPPY), { solid: false, opaque: false, layer: 'cutout', shape: 'cross' }),
+  def('fern', 'Fern', all(Tile.FERN), { solid: false, opaque: false, layer: 'cutout', shape: 'cross' }),
+  def('dandelion', 'Dandelion', all(Tile.DANDELION), { solid: false, opaque: false, layer: 'cutout', shape: 'cross' }),
 ]);
 
 // BlockId.X is variant 0 of the type whose key is x; keep the two lists in step.

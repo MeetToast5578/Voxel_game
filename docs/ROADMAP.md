@@ -169,7 +169,7 @@ Goal: every place has a recognisable character.
    - size and age variation
 
    Species: oak, birch, maple, spruce, pine, fir, larch, acacia, baobab, jungle giant, palm, willow, mangrove, saguaro, dead snag, and bushes. Real proportions apply: a mature oak is 30–35 blocks tall. The maximum feature extent is about 24 blocks horizontally.
-6. **Ground cover and non-cube meshes.** *Status: tall grass and poppies are done (spec 18), with the cross-shaped mesh. Ferns, flowers by biome and the rest are open.*
+6. **Ground cover and non-cube meshes.** *Status: tall grass, poppies (spec 18), ferns and dandelions (spec 19) are done, with the cross-shaped mesh. Flowers by biome, mushrooms, reeds, boulders and the rest are open.*
    - New mesh shapes: cross-shaped plants, thin layers, and torches (deferred earlier; built here because they need the same mesh work).
    - Ground cover: grass tufts, ferns, flowers by biome, reeds, lily pads, mushrooms, moss, fallen logs, boulders.
 7. **New blocks and textures** for all of the above, still generated procedurally in code.
