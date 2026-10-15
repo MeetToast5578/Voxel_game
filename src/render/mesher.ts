@@ -26,6 +26,11 @@ const STRIDE_Y = P * P;
 const AXIS_STRIDE = [STRIDE_X, STRIDE_Y, STRIDE_Z] as const;
 const AO_LEVELS = [0.5, 0.7, 0.85, 1.0] as const;
 const CENTER = 13; // neighborIndex(0, 0, 0)
+/** The two diagonal quads of a cross block (plants). Corners as in FACES: counter-clockwise from the front. */
+const CROSS_QUADS: readonly (readonly (readonly [number, number, number])[])[] = [
+  [[0, 0, 0], [1, 0, 1], [1, 1, 1], [0, 1, 0]],
+  [[1, 0, 0], [0, 0, 1], [0, 1, 1], [1, 1, 0]],
+];
 
 export function padIndex(px: number, py: number, pz: number): number {
   return (py * P + pz) * P + px;
@@ -152,6 +157,32 @@ export function buildChunkMesh(neighbors: readonly Uint16Array[], tops: readonly
         const id = vol[i]!;
         if (id === BlockId.AIR) continue;
         const def = getBlockDef(id);
+        if (def.shape === 'cross') {
+          // Plants: two diagonal quads, each drawn from both sides, lit by their own cell. No neighbour culling.
+          const r = regionIndex(lx + CHUNK_SIZE, y + CHUNK_SIZE, lz + CHUNK_SIZE);
+          const skyB = LIGHT_CURVE[skyLight[r]!]!;
+          const blkB = LIGHT_CURVE[Math.max(blockLight[r]!, EMISSION_TABLE[id]!)]!;
+          const uv = tileUV(def.tiles.side);
+          const base = solid.vertexCount;
+          for (const quad of CROSS_QUADS) {
+            for (let k = 0; k < 4; k++) {
+              const c = quad[k]!;
+              solid.positions.push(lx + c[0], y + c[1], lz + c[2]);
+              const fu = FACE_UVS[k]!;
+              solid.uvs.push(fu[0] === 0 ? uv.u0 : uv.u1, fu[1] === 0 ? uv.v0 : uv.v1);
+              solid.colors.push(1, 1, 1);
+              solid.light.push(skyB, blkB);
+            }
+          }
+          // Both windings, so each quad is visible from either side.
+          const [a, b] = [base, base + 4];
+          solid.indices.push(
+            a, a + 1, a + 2, a, a + 2, a + 3, a, a + 2, a + 1, a, a + 3, a + 2,
+            b, b + 1, b + 2, b, b + 2, b + 3, b, b + 2, b + 1, b, b + 3, b + 2,
+          );
+          solid.vertexCount += 8;
+          continue;
+        }
         const out = def.layer === 'translucent' ? translucent : solid;
 
         for (let f = 0; f < 6; f++) {

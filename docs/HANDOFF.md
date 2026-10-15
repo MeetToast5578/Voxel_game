@@ -123,7 +123,7 @@ TypeScript 5.9.3, Vite 7.3.6, Vitest 4.0.18, three 0.186.0, simplex-noise 4.0.3,
   - `debugMap.ts`: the colouring for `?map=1`.
   - Also: `chunkManager.ts`, `light.ts`, `spawn.ts`, `time.ts`.
 - `src/render`:
-  - `mesher.ts`: pure. Does face culling, per-vertex AO and lighting, and takes 27 neighbour chunks plus 9 column-top arrays.
+  - `mesher.ts`: pure. Does face culling, per-vertex AO and lighting, and takes 27 neighbour chunks plus 9 column-top arrays. Cube blocks give faces; `shape: 'cross'` blocks (plants, spec 18) give two diagonal quads, drawn from both sides.
   - Also: `faces.ts`, `tiles.ts`, `atlasPixels.ts` (procedural textures), `renderer.ts`, `chunkMeshes.ts`, `lightMaterial.ts`, `highlight.ts`, `clouds.ts`.
 - `src/player`:
   - `physics.ts`: AABB sweep in the order Y → X → Z.
