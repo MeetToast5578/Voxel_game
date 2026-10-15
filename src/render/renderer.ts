@@ -9,10 +9,16 @@ import { patchLightMaterial, type LightUniforms } from './lightMaterial';
 export class Renderer {
   readonly webgl: THREE.WebGLRenderer;
   readonly scene = new THREE.Scene();
+  /** The block in hand, drawn after the world with the depth buffer cleared (spec 24). */
+  readonly handScene = new THREE.Scene();
   readonly camera: THREE.PerspectiveCamera;
   readonly atlasCanvas: HTMLCanvasElement;
   readonly solidMaterial: THREE.MeshBasicMaterial;
   readonly waterMaterial: THREE.MeshBasicMaterial;
+  /** Dropped items and the block in hand: double-sided, lit like the world. */
+  readonly itemMaterial: THREE.MeshBasicMaterial;
+  /** The crack overlay on a block being broken. */
+  readonly crackMaterial: THREE.MeshBasicMaterial;
   readonly fog: THREE.Fog;
   /** Shared by both block materials; uDaylight is 1 at noon and MIN_DAYLIGHT at midnight. */
   readonly lightUniforms: LightUniforms = { uDaylight: { value: 1 } };
@@ -22,6 +28,8 @@ export class Renderer {
   private viewBlocks = DEFAULT_RENDER_DISTANCE * CHUNK_SIZE;
   /** Vertical distance to the farthest visible surface (from the loaded column tops), in blocks. */
   private surfaceDistance = 0;
+  /** Draw calls of the world pass in the last frame (the hand pass is not counted). */
+  drawCalls = 0;
 
   constructor(private readonly container: HTMLElement) {
     this.webgl = new THREE.WebGLRenderer({ antialias: false, powerPreference: 'high-performance' });
@@ -30,6 +38,7 @@ export class Renderer {
 
     this.camera = new THREE.PerspectiveCamera(DEFAULT_FOV, 1, 0.1, metersToBlocks(CAMERA_FAR_M));
     this.camera.rotation.order = 'YXZ'; // yaw around Y first, then pitch around X
+    this.handScene.add(this.camera); // the held block hangs off the camera
 
     this.scene.background = this.background;
     this.fog = new THREE.Fog(SKY_COLOR, 50, 100);
@@ -46,8 +55,14 @@ export class Renderer {
       depthWrite: false,
       side: THREE.DoubleSide,
     });
+    this.itemMaterial = new THREE.MeshBasicMaterial({ map: atlas, vertexColors: true, alphaTest: 0.5, side: THREE.DoubleSide });
+    this.crackMaterial = new THREE.MeshBasicMaterial({
+      map: atlas, vertexColors: true, alphaTest: 0.5, side: THREE.DoubleSide,
+      polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4,
+    });
     patchLightMaterial(this.solidMaterial, this.lightUniforms);
     patchLightMaterial(this.waterMaterial, this.lightUniforms);
+    patchLightMaterial(this.itemMaterial, this.lightUniforms);
 
     window.addEventListener('resize', this.resize);
     this.resize();
@@ -109,7 +124,13 @@ export class Renderer {
   }
 
   render(): void {
+    this.camera.updateMatrixWorld(); // the camera is in handScene, so it is not updated by the world pass
+    this.webgl.autoClear = true;
     this.webgl.render(this.scene, this.camera);
+    this.drawCalls = this.webgl.info.render.calls;
+    this.webgl.autoClear = false; // keep the world; clear only the depth so the hand is never inside a wall
+    this.webgl.clearDepth();
+    this.webgl.render(this.handScene, this.camera);
   }
 
   private applyFog(): void {

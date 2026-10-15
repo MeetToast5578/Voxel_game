@@ -272,8 +272,8 @@ Goal: a reason to engage with every system above.
    - Fall damage from impact speed in m/s.
    - Drowning (air meter), hunger and saturation.
    - **Body temperature** from biome, altitude, weather, season, wetness, shelter, fire and clothing. Hypothermia and heatstroke. This is where the simulation pays off.
-3. **Mining.** Mining time comes from block hardness and tool. A crack overlay shows progress, and broken blocks drop items.
-4. **Items and inventory.** Stacks and an inventory grid UI. The hotbar becomes inventory-backed in survival.
+3. **Mining.** Mining time comes from block hardness and tool. A crack overlay shows progress, and broken blocks drop items. *Status: hardness and the crack overlay are done (spec 24). Tools are still open.*
+4. **Items and inventory.** Stacks and an inventory grid UI. The hotbar becomes inventory-backed in survival. *Status: a 36-slot inventory with stacks, the grid screen (E), the held block, dropped items and pick-up are done (spec 24). Placing uses up the stack. Survival modes and tools are still open.*
 5. **Crafting.** A 2×2 grid in the inventory and a 3×3 crafting table, with recipes as a data table. Tools have tiers and durability. Furnaces smelt (a block entity with timers).
 6. **Food.** Hunting, farming and cooking.
 7. **Beds** to sleep through the night and set a spawn point.

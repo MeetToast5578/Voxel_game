@@ -13,8 +13,10 @@ export interface DebugApi {
   placeTarget(): boolean;
   pickTarget(): boolean;
   selectSlot(index: number): void;
-  /** Puts a block state into a hotbar slot; an invalid index or state is ignored. */
+  /** Puts a full stack of a block state into a hotbar slot; an invalid index or state is ignored. */
   setHotbarSlot(index: number, state: number): void;
+  /** Presses (down) or releases a mouse button, for the smoke test: 0 left, 1 middle, 2 right (spec 24). */
+  holdButton(button: number, down: boolean): void;
   /** Resolves once the write has completed (true) or failed or was skipped (false). */
   save(): Promise<boolean>;
   setTimeOfDay(t: number): void;
@@ -45,8 +47,9 @@ export function installDebugApi(game: Game): void {
     breakTarget: () => game.breakTarget(),
     placeTarget: () => game.placeTarget(),
     pickTarget: () => game.pickTarget(),
-    selectSlot: (index) => game.hotbar.select(index),
-    setHotbarSlot: (index, state) => game.hotbar.setSlot(index, state),
+    selectSlot: (index) => game.inventory.select(index),
+    setHotbarSlot: (index, state) => game.inventory.setSlot(index, state),
+    holdButton: (button, down) => game.input.simulateButton(button, down),
     save: () => game.saveNow(),
     setTimeOfDay: (t) => {
       game.timeOfDay = ((t % 1) + 1) % 1;

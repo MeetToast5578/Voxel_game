@@ -153,7 +153,8 @@ TypeScript 5.9.3, Vite 7.3.6, Vitest 4.0.18, three 0.186.0, simplex-noise 4.0.3,
   - `physics.ts`: AABB sweep in the order Y → X → Z.
   - `player.ts`: walk, sprint, jump, fly, swim. Swimming uses buoyancy and quadratic drag (spec 16); `submergedFraction` gives how much of the body is under water. Wading slows the walk (spec 17), and `splashSpeed` is set on the frame a fast fall enters water.
   - `raycast.ts`: Amanatides–Woo.
-  - Also: `interaction.ts`, `hotbar.ts`.
+  - Also: `interaction.ts`, `inventory.ts` (36 slots, the hotbar is the first 9, spec 24), `breaking.ts` (timed breaking with crack stages).
+- `src/items`: `itemEntities.ts`, dropped items: gravity, friction, lifetime, the cap of 256, pick-up (spec 24).
 - `src/ui`: HUD, menu, F3 overlay.
 - `src/input`, `src/audio`: procedural noise SFX.
 - `src/storage`:
@@ -186,7 +187,7 @@ TypeScript 5.9.3, Vite 7.3.6, Vitest 4.0.18, three 0.186.0, simplex-noise 4.0.3,
   - `?seed=N` also disables saving.
   - `?nosave=1`, `?autostart=1`, `?workers=0`, `?map=1`.
 - **Debug API.**
-  - Methods: `ready`, `state()`, `teleport`, `look`, `setFlying`, `getBlock`, `setBlock`, `breakTarget`, `placeTarget`, `pickTarget`, `selectSlot`, `setHotbarSlot`, `save()` (returns a promise), `setTimeOfDay`.
+  - Methods: `ready`, `state()`, `teleport`, `look`, `setFlying`, `getBlock`, `setBlock`, `breakTarget`, `placeTarget`, `pickTarget`, `selectSlot`, `setHotbarSlot`, `holdButton` (presses a mouse button, for timed breaking), `save()` (returns a promise), `setTimeOfDay`.
   - `state()` also includes `hotbar`, `areaMeshed` (the 3×3×3 around the feet is meshed), `drawCalls` and the chunk stats.
 
 ### Gotchas

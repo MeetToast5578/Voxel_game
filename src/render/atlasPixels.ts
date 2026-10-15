@@ -13,6 +13,17 @@ const DIRT: RGB = [134, 96, 67];
 const GRASS: RGB = [95, 159, 53];
 const BARK: RGB = [102, 81, 51];
 
+/** A fixed random rank for each pixel of a tile, so each crack stage keeps the one before it (spec 24). */
+const crackRandom = mulberry32(77);
+const CRACK_RANK = Array.from({ length: TILE_SIZE * TILE_SIZE }, () => crackRandom());
+const CRACK_SHADE: RGB = [25, 22, 20];
+
+/** Stage 0 has a few cracks; each later stage adds more, up to about a third of the pixels at stage 9. */
+function crackPainter(stage: number): PixelFn {
+  const limit = ((stage + 1) / 10) * 0.35;
+  return (x, y) => (CRACK_RANK[y * TILE_SIZE + x]! < limit ? shade(CRACK_SHADE, 1, 255) : [0, 0, 0, 0]);
+}
+
 const PAINTERS: Record<number, PixelFn> = {
   [Tile.STONE]: noisy([125, 125, 125], 0.25),
   [Tile.DIRT]: noisy(DIRT, 0.3),
@@ -100,6 +111,16 @@ const PAINTERS: Record<number, PixelFn> = {
     if ((x === 7 || x === 8) && y >= 9) return shade([60, 130, 40], 1 + (r() - 0.5) * 0.2);
     return [0, 0, 0, 0];
   },
+  [Tile.CRACK_0]: crackPainter(0),
+  [Tile.CRACK_1]: crackPainter(1),
+  [Tile.CRACK_2]: crackPainter(2),
+  [Tile.CRACK_3]: crackPainter(3),
+  [Tile.CRACK_4]: crackPainter(4),
+  [Tile.CRACK_5]: crackPainter(5),
+  [Tile.CRACK_6]: crackPainter(6),
+  [Tile.CRACK_7]: crackPainter(7),
+  [Tile.CRACK_8]: crackPainter(8),
+  [Tile.CRACK_9]: crackPainter(9),
   [Tile.BRICK]: (x, y, r) => {
     const mortar = y % 4 === 3 || (x + (Math.floor(y / 4) % 2) * 4) % 8 === 0;
     return mortar ? shade([200, 200, 190], 1) : shade([150, 60, 50], 1 + (r() - 0.5) * 0.2);

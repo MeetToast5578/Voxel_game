@@ -154,6 +154,29 @@ export const MIN_DAYLIGHT = 0.15;
 // ---- UI ----
 export const HOTBAR_SIZE = 9;
 
+// ---- Inventory, held block and dropped items (spec 24) ----
+export const INVENTORY_SIZE = 36; // 9 hotbar slots, then 27 in the grid
+export const MAX_STACK = 64;
+export const STARTING_STACK = 64; // each default hotbar block starts with this many
+export const ITEM_SIZE_M = 0.15; // edge of a dropped item (about half a block)
+export const ITEM_SIZE = metersToBlocks(ITEM_SIZE_M);
+export const ITEM_LIFETIME_S = 300; // a dropped item disappears after this long
+export const MAX_ITEMS = 256; // at most this many dropped items; a new one removes the oldest
+export const ITEM_POP_SPEED_M_S = 1.5; // upward speed when a block drops
+export const ITEM_SPREAD_M_S = 0.8; // sideways speed when a block drops (random, up to this)
+export const ITEM_FRICTION = 8; // per second: how fast an item slows down while it rests on the ground
+export const ITEM_PICKUP_RADIUS_M = 0.9; // walk within this distance (horizontally) to pick an item up
+export const ITEM_PICKUP_BELOW_M = 0.3; // and an item this far below the feet still counts, so one dug under you is reachable
+export const ITEM_PICKUP_DELAY_S = 0.6; // a new item cannot be picked up for this long
+export const HAND_BLOCK_SIZE = 0.3; // edge of the block in hand, in blocks (0.09 m)
+// Position in view space (right, up, forward of the eye, in blocks). Far enough forward and low enough that the block
+// stays on screen when the player looks straight down.
+export const HAND_X = 0.3;
+export const HAND_Y = -0.28;
+export const HAND_Z = -1;
+export const HAND_SWING_S = 0.25; // one swing of the hand when a block is broken or placed
+export const HAND_BOB = 0.025; // how far the block in hand bobs while the player walks, in blocks
+
 // ---- Storage ----
 export const SAVE_DB_NAME = 'voxel-game'; // IndexedDB database holding the world save
 // localStorage keys of old saves. v1 (128-high columns) is never read, written or deleted; the interim v2 key

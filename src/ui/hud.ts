@@ -1,4 +1,5 @@
 import { HOTBAR_SIZE } from '../config';
+import type { ItemStack } from '../player/inventory';
 import { ATLAS_TILES, TILE_SIZE } from '../render/tiles';
 import { getBlockDef } from '../world/blocks';
 import { el } from './dom';
@@ -6,13 +7,28 @@ import { el } from './dom';
 const ICON_SIZE = 32;
 const NAME_VISIBLE_S = 1.5;
 
-/** Crosshair, hotbar with block icons, and the name of the selected block (fades out). */
+/** Draws a block's side texture into a square canvas, scaled up without smoothing. State 0 clears the canvas. */
+export function drawBlockIcon(canvas: HTMLCanvasElement, atlas: HTMLCanvasElement, state: number): void {
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return;
+  ctx.imageSmoothingEnabled = false;
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  if (state === 0) return;
+  const tile = getBlockDef(state).tiles.side;
+  const sx = (tile % ATLAS_TILES) * TILE_SIZE;
+  const sy = Math.floor(tile / ATLAS_TILES) * TILE_SIZE;
+  ctx.drawImage(atlas, sx, sy, TILE_SIZE, TILE_SIZE, 0, 0, canvas.width, canvas.height);
+}
+
+/** Crosshair, hotbar with block icons and stack counts, and the name of the selected block (fades out). */
 export class Hud {
   private readonly root: HTMLDivElement;
   private readonly slotElements: HTMLDivElement[] = [];
   private readonly icons: HTMLCanvasElement[] = [];
+  private readonly counts: HTMLSpanElement[] = [];
   private readonly nameLabel: HTMLDivElement;
-  private readonly shownSlots: number[] = [];
+  private readonly shownStates: number[] = [];
+  private readonly shownCounts: number[] = [];
   private shownSelected = -1;
   private nameTimer = 0;
 
@@ -26,28 +42,43 @@ export class Hud {
       const icon = el('canvas', 'icon');
       icon.width = ICON_SIZE;
       icon.height = ICON_SIZE;
-      slot.append(icon, el('span', 'key', String(i + 1)));
+      const count = el('span', 'count');
+      slot.append(icon, el('span', 'key', String(i + 1)), count);
       bar.append(slot);
       this.slotElements.push(slot);
       this.icons.push(icon);
+      this.counts.push(count);
+      this.shownStates.push(-1);
+      this.shownCounts.push(-1);
     }
     this.root.append(crosshair, this.nameLabel, bar);
     parent.append(this.root);
   }
 
   /** Call once per frame. Only touches the DOM when something changed. */
-  update(slots: readonly number[], selected: number, frameDt: number): void {
-    let selectedBlockChanged = false;
+  update(stacks: readonly (ItemStack | null)[], selected: number, frameDt: number): void {
+    let selectedChanged = false;
     for (let i = 0; i < HOTBAR_SIZE; i++) {
-      const id = slots[i]!;
-      if (this.shownSlots[i] === id) continue;
-      this.shownSlots[i] = id;
-      this.drawIcon(this.icons[i]!, id);
-      if (i === selected) selectedBlockChanged = true;
+      const stack = stacks[i] ?? null;
+      const state = stack?.state ?? 0;
+      const count = stack?.count ?? 0;
+      if (this.shownStates[i] !== state) {
+        this.shownStates[i] = state;
+        drawBlockIcon(this.icons[i]!, this.atlas, state);
+        if (i === selected) selectedChanged = true;
+      }
+      if (this.shownCounts[i] !== count) {
+        this.shownCounts[i] = count;
+        this.counts[i]!.textContent = count > 1 ? String(count) : '';
+      }
     }
-    if (selected !== this.shownSelected || selectedBlockChanged) {
+    if (selected !== this.shownSelected || selectedChanged) {
       this.slotElements.forEach((s, i) => s.classList.toggle('selected', i === selected));
-      if (this.shownSelected !== -1) this.showName(getBlockDef(slots[selected]!).name);
+      if (this.shownSelected !== -1) {
+        const state = this.shownStates[selected]!;
+        if (state === 0) this.nameLabel.classList.remove('visible');
+        else this.showName(getBlockDef(state).name);
+      }
       this.shownSelected = selected;
     }
     if (this.nameTimer > 0) {
@@ -64,17 +95,5 @@ export class Hud {
     this.nameLabel.textContent = name;
     this.nameLabel.classList.add('visible');
     this.nameTimer = NAME_VISIBLE_S;
-  }
-
-  /** Draws the block's side texture, scaled up without smoothing. */
-  private drawIcon(canvas: HTMLCanvasElement, blockId: number): void {
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-    const tile = getBlockDef(blockId).tiles.side;
-    const sx = (tile % ATLAS_TILES) * TILE_SIZE;
-    const sy = Math.floor(tile / ATLAS_TILES) * TILE_SIZE;
-    ctx.imageSmoothingEnabled = false;
-    ctx.clearRect(0, 0, ICON_SIZE, ICON_SIZE);
-    ctx.drawImage(this.atlas, sx, sy, TILE_SIZE, TILE_SIZE, 0, 0, ICON_SIZE, ICON_SIZE);
   }
 }

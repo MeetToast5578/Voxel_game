@@ -1,29 +1,53 @@
 import { describe, expect, it } from 'vitest';
-import { START_TIME_OF_DAY } from '../src/config';
-import { DEFAULT_HOTBAR } from '../src/player/hotbar';
+import { INVENTORY_SIZE, START_TIME_OF_DAY, STARTING_STACK } from '../src/config';
+import { DEFAULT_HOTBAR, type ItemStack } from '../src/player/inventory';
 import { metaRecord, parseChunkRecord, parseMeta, readSave, SAVE_VERSION, type WorldMeta } from '../src/storage/save';
 import { BlockId } from '../src/world/blocks';
+
+const inventory: (ItemStack | null)[] = Array.from({ length: INVENTORY_SIZE }, () => null);
+[BlockId.BRICK, BlockId.SAND, BlockId.GLOWSTONE, BlockId.STONE, BlockId.LEAVES, BlockId.LOG, BlockId.WATER, BlockId.GLASS, BlockId.BEDROCK]
+  .forEach((state, i) => (inventory[i] = { state, count: 64 }));
+inventory[20] = { state: BlockId.GLASS, count: 1 };
 
 const sample: WorldMeta = {
   seed: 42,
   selectedSlot: 3,
   player: { x: 1.5, y: 60, z: -3.25, yaw: 0.5, pitch: -0.2, flying: false },
-  hotbar: [BlockId.BRICK, BlockId.SAND, BlockId.GLOWSTONE, BlockId.STONE, BlockId.LEAVES, BlockId.LOG, BlockId.WATER, BlockId.GLASS, BlockId.BEDROCK],
+  inventory,
+  items: [{ state: BlockId.STONE, count: 1, x: 3.5, y: 40, z: 2.25 }],
   timeOfDay: 0.6,
 };
 const stored = () => metaRecord(sample);
+/** A save from before spec 24: a hotbar of names and no inventory or items. */
+const legacy = (hotbar: unknown) => {
+  const { inventory: _inventory, items: _items, ...rest } = stored();
+  return { ...rest, hotbar };
+};
+const hotbarStates = (meta: WorldMeta | null) => meta!.inventory.slice(0, 9).map((s) => s?.state);
 
 describe('save meta', () => {
-  it('round trips, with the hotbar stored by name', () => {
-    expect(stored().hotbar).toEqual(['brick', 'sand', 'glowstone', 'stone', 'leaves', 'log', 'water', 'glass', 'bedrock']);
+  it('round trips, with the inventory and items stored by name', () => {
+    expect(stored().inventory[0]).toEqual({ name: 'brick', count: 64 });
+    expect(stored().inventory[20]).toEqual({ name: 'glass', count: 1 });
+    expect(stored().items).toEqual([{ name: 'stone', count: 1, x: 3.5, y: 40, z: 2.25 }]);
     expect(parseMeta(stored())).toEqual(sample);
     expect(parseMeta(JSON.stringify(stored()))).toEqual(sample);
   });
   it('rejects other versions', () => {
     for (const version of [SAVE_VERSION - 1, SAVE_VERSION + 1, 0, undefined]) expect(parseMeta({ ...stored(), version })).toBeNull();
   });
-  it('repairs a bad hotbar to DEFAULT_HOTBAR and keeps the world', () => {
-    const nine = stored().hotbar;
+  it('loads a save from before spec 24: the hotbar gets full stacks and the grid is empty', () => {
+    const nine = ['brick', 'sand', 'glowstone', 'stone', 'leaves', 'log', 'water', 'glass', 'bedrock'];
+    const meta = parseMeta(legacy(nine));
+    expect(hotbarStates(meta)).toEqual([
+      BlockId.BRICK, BlockId.SAND, BlockId.GLOWSTONE, BlockId.STONE, BlockId.LEAVES, BlockId.LOG, BlockId.WATER, BlockId.GLASS, BlockId.BEDROCK,
+    ]);
+    expect(meta!.inventory[0]).toEqual({ state: BlockId.BRICK, count: STARTING_STACK });
+    expect(meta!.inventory.slice(9).every((s) => s === null)).toBe(true);
+    expect(meta!.items).toEqual([]);
+  });
+  it('repairs a bad hotbar in an old save to DEFAULT_HOTBAR and keeps the world', () => {
+    const nine = ['brick', 'sand', 'glowstone', 'stone', 'leaves', 'log', 'water', 'glass', 'bedrock'];
     const bad: unknown[] = [
       undefined,
       'abc',
@@ -35,19 +59,30 @@ describe('save meta', () => {
       [1, ...nine.slice(1)],
     ];
     for (const hotbar of bad) {
-      const meta = parseMeta({ ...stored(), hotbar });
+      const meta = parseMeta(legacy(hotbar));
       expect(meta).not.toBeNull();
-      expect(meta!.hotbar).toEqual(DEFAULT_HOTBAR);
-      expect(meta!.hotbar).not.toBe(DEFAULT_HOTBAR); // a copy
+      expect(hotbarStates(meta)).toEqual(DEFAULT_HOTBAR);
       expect(meta!.seed).toBe(42);
       expect(meta!.player).toEqual(sample.player);
     }
   });
-  it('keeps a valid hotbar as it is', () => {
-    const hotbar = ['stone', 'glowstone', 'bedrock', 'stone', 'glowstone', 'bedrock', 'stone', 'glowstone', 'bedrock'];
-    expect(parseMeta({ ...stored(), hotbar })!.hotbar).toEqual(
-      hotbar.map((n) => ({ stone: BlockId.STONE, glowstone: BlockId.GLOWSTONE, bedrock: BlockId.BEDROCK })[n]),
-    );
+  it('empties a bad slot in the inventory and keeps the rest', () => {
+    const broken = stored().inventory.map((s) => s) as unknown[];
+    broken[0] = { name: 'nope', count: 3 };
+    broken[1] = { name: 'sand', count: 0 };
+    broken[2] = { name: 'stone', count: 65 };
+    broken[3] = 'stone';
+    const meta = parseMeta({ ...stored(), inventory: broken });
+    expect(meta!.inventory.slice(0, 4)).toEqual([null, null, null, null]);
+    expect(meta!.inventory[4]).toEqual({ state: BlockId.LEAVES, count: 64 });
+  });
+  it('drops invalid items and keeps the rest', () => {
+    const items = [
+      { name: 'nope', count: 1, x: 0, y: 0, z: 0 },
+      { name: 'stone', count: 1, x: 'a', y: 0, z: 0 },
+      { name: 'dirt', count: 2, x: 1, y: 2, z: 3 },
+    ];
+    expect(parseMeta({ ...stored(), items })!.items).toEqual([{ state: BlockId.DIRT, count: 2, x: 1, y: 2, z: 3 }]);
   });
   it('wraps the time of day into [0, 1) and repairs anything else', () => {
     const time = (timeOfDay: unknown) => parseMeta({ ...stored(), timeOfDay })!.timeOfDay;

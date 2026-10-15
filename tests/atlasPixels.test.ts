@@ -46,6 +46,13 @@ describe('generateAtlasPixels', () => {
     expect(tileRgb(Tile.GRASS_SIDE).every(isGreen)).toBe(true);
     expect(tileRgb(Tile.GRASS_TOP).every(isGreen)).toBe(true);
   });
+  it('the crack stages add cracks from stage 0 to stage 9', () => {
+    const opaque = (tile: number) => tileAlphas(tile).filter((a) => a === 255).length;
+    const counts = Array.from({ length: 10 }, (_, i) => opaque(Tile.CRACK_0 + i));
+    expect(counts[0]).toBeGreaterThan(0);
+    for (let i = 1; i < 10; i++) expect(counts[i]).toBeGreaterThanOrEqual(counts[i - 1]!);
+    expect(counts[9]).toBeGreaterThan(counts[0]!);
+  });
   it('the dirt tile is still brown', () => {
     expect(tileRgb(Tile.DIRT).every(([r, g]) => r > g)).toBe(true);
   });

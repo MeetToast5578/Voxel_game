@@ -39,6 +39,21 @@ export class Input {
     }
   }
 
+  /** Frees the pointer, e.g. to use the inventory screen. The pause menu does not show for this (spec 24). */
+  releasePointerLock(): void {
+    if (this.pointerLocked) document.exitPointerLock();
+  }
+
+  /** Test hook (debug API): presses or releases a mouse button as if the pointer were locked. */
+  simulateButton(button: number, down: boolean): void {
+    if (down) {
+      this.buttonsDown.add(button);
+      this.buttonsClicked.add(button);
+    } else {
+      this.buttonsDown.delete(button);
+    }
+  }
+
   onPointerLockChanged(listener: (locked: boolean) => void): void {
     this.lockListeners.push(listener);
   }

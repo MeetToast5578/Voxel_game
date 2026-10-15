@@ -112,3 +112,18 @@ describe('block states', () => {
     });
   });
 });
+
+describe('breaking (spec 24)', () => {
+  it('every breakable block has a finite hardness, and plants break at once', () => {
+    for (const b of BLOCKS) {
+      if (!b.breakable) continue;
+      expect(Number.isFinite(b.hardness)).toBe(true);
+      expect(b.hardness).toBeGreaterThanOrEqual(0);
+    }
+    for (const id of [BlockId.TALL_GRASS, BlockId.POPPY, BlockId.FERN, BlockId.DANDELION, BlockId.BROWN_MUSHROOM, BlockId.RED_MUSHROOM]) {
+      expect(getBlockDef(id).hardness).toBe(0);
+    }
+    expect(getBlockDef(BlockId.STONE).hardness).toBeGreaterThan(getBlockDef(BlockId.DIRT).hardness);
+  });
+});
+

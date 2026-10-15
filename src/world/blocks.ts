@@ -59,6 +59,16 @@ export const Tile = {
   DEEPSLATE: 26,
   BROWN_MUSHROOM: 27,
   RED_MUSHROOM: 28,
+  CRACK_0: 29,
+  CRACK_1: 30,
+  CRACK_2: 31,
+  CRACK_3: 32,
+  CRACK_4: 33,
+  CRACK_5: 34,
+  CRACK_6: 35,
+  CRACK_7: 36,
+  CRACK_8: 37,
+  CRACK_9: 38,
 } as const;
 
 export type RenderLayer = 'none' | 'opaque' | 'cutout' | 'translucent';
@@ -83,6 +93,8 @@ export interface BlockDef {
   cullSame: boolean;
   /** Block light this block emits, 0..15. */
   lightEmission: number;
+  /** Seconds to break the block by hand, held down (0 breaks at once). Spec 24. */
+  hardness: number;
   layer: RenderLayer;
   /** 'cross' blocks are two crossed quads (plants), not cubes. Spec 18. */
   shape: BlockShape;
@@ -95,7 +107,10 @@ export interface BlockDef {
 }
 
 /** What a registry is built from: a type without its assigned first state or derived flags. */
-export type BlockTypeDef = Omit<BlockDef, 'id' | 'blocksSky' | 'shape'> & { shape?: BlockShape };
+export type BlockTypeDef = Omit<BlockDef, 'id' | 'blocksSky' | 'shape' | 'hardness'> & { shape?: BlockShape; hardness?: number };
+
+/** Seconds to break a block by hand when its type does not say otherwise: stone-like. */
+export const DEFAULT_HARDNESS = 1.5;
 
 /** Block states are stored in 16-bit arrays. */
 export const MAX_BLOCK_STATES = 0xffff;
@@ -149,7 +164,9 @@ export function buildBlockRegistry(defs: readonly BlockTypeDef[]): BlockRegistry
     if (byKey.has(d.key)) throw new Error(`Duplicate block key '${d.key}'`);
     if (!Number.isInteger(d.variants) || d.variants < 1) throw new Error(`Block '${d.key}' needs at least 1 variant`);
     if (next + d.variants > MAX_BLOCK_STATES) throw new Error(`Too many block states (more than ${MAX_BLOCK_STATES})`);
-    const type: BlockDef = { ...d, id: next, shape: d.shape ?? 'cube', blocksSky: derivedBlocksSky(d) };
+    const type: BlockDef = {
+      ...d, id: next, shape: d.shape ?? 'cube', hardness: d.hardness ?? DEFAULT_HARDNESS, blocksSky: derivedBlocksSky(d),
+    };
     const index = types.length;
     types.push(type);
     byKey.set(type.key, type);
@@ -229,34 +246,34 @@ const all = (t: number) => ({ top: t, side: t, bottom: t });
 export const BLOCK_REGISTRY = buildBlockRegistry([
   def('air', 'Air', all(0), { solid: false, opaque: false, targetable: false, breakable: false, layer: 'none' }),
   def('stone', 'Stone', all(Tile.STONE)),
-  def('dirt', 'Dirt', all(Tile.DIRT)),
-  def('grass', 'Grass', { top: Tile.GRASS_TOP, side: Tile.GRASS_SIDE, bottom: Tile.DIRT }),
-  def('sand', 'Sand', all(Tile.SAND)),
+  def('dirt', 'Dirt', all(Tile.DIRT), { hardness: 0.5 }),
+  def('grass', 'Grass', { top: Tile.GRASS_TOP, side: Tile.GRASS_SIDE, bottom: Tile.DIRT }, { hardness: 0.5 }),
+  def('sand', 'Sand', all(Tile.SAND), { hardness: 0.5 }),
   def('water', 'Water', all(Tile.WATER), {
     solid: false, opaque: false, targetable: false, breakable: false, cullSame: true, layer: 'translucent',
   }),
-  def('log', 'Log', { top: Tile.LOG_TOP, side: Tile.LOG_SIDE, bottom: Tile.LOG_TOP }),
-  def('leaves', 'Leaves', all(Tile.LEAVES), { opaque: false, layer: 'cutout' }),
-  def('planks', 'Planks', all(Tile.PLANKS)),
-  def('glass', 'Glass', all(Tile.GLASS), { opaque: false, cullSame: true, layer: 'cutout' }),
+  def('log', 'Log', { top: Tile.LOG_TOP, side: Tile.LOG_SIDE, bottom: Tile.LOG_TOP }, { hardness: 2 }),
+  def('leaves', 'Leaves', all(Tile.LEAVES), { opaque: false, layer: 'cutout', hardness: 0.3 }),
+  def('planks', 'Planks', all(Tile.PLANKS), { hardness: 2 }),
+  def('glass', 'Glass', all(Tile.GLASS), { opaque: false, cullSame: true, layer: 'cutout', hardness: 0.3 }),
   def('bedrock', 'Bedrock', all(Tile.BEDROCK), { breakable: false }),
   def('cobblestone', 'Cobblestone', all(Tile.COBBLESTONE)),
   def('brick', 'Brick', all(Tile.BRICK)),
-  def('glowstone', 'Glowstone', all(Tile.GLOWSTONE), { lightEmission: 15 }),
+  def('glowstone', 'Glowstone', all(Tile.GLOWSTONE), { lightEmission: 15, hardness: 0.3 }),
   def('granite', 'Granite', all(Tile.GRANITE)),
   def('diorite', 'Diorite', all(Tile.DIORITE)),
   def('andesite', 'Andesite', all(Tile.ANDESITE)),
   def('sandstone', 'Sandstone', all(Tile.SANDSTONE)),
-  def('tall_grass', 'Tall grass', all(Tile.TALL_GRASS), { solid: false, opaque: false, layer: 'cutout', shape: 'cross' }),
-  def('poppy', 'Poppy', all(Tile.POPPY), { solid: false, opaque: false, layer: 'cutout', shape: 'cross' }),
-  def('fern', 'Fern', all(Tile.FERN), { solid: false, opaque: false, layer: 'cutout', shape: 'cross' }),
-  def('dandelion', 'Dandelion', all(Tile.DANDELION), { solid: false, opaque: false, layer: 'cutout', shape: 'cross' }),
+  def('tall_grass', 'Tall grass', all(Tile.TALL_GRASS), { solid: false, opaque: false, layer: 'cutout', shape: 'cross', hardness: 0 }),
+  def('poppy', 'Poppy', all(Tile.POPPY), { solid: false, opaque: false, layer: 'cutout', shape: 'cross', hardness: 0 }),
+  def('fern', 'Fern', all(Tile.FERN), { solid: false, opaque: false, layer: 'cutout', shape: 'cross', hardness: 0 }),
+  def('dandelion', 'Dandelion', all(Tile.DANDELION), { solid: false, opaque: false, layer: 'cutout', shape: 'cross', hardness: 0 }),
   def('limestone', 'Limestone', all(Tile.LIMESTONE)),
   def('slate', 'Slate', all(Tile.SLATE)),
   def('basalt', 'Basalt', all(Tile.BASALT)),
   def('deepslate', 'Deepslate', all(Tile.DEEPSLATE)),
-  def('brown_mushroom', 'Brown mushroom', all(Tile.BROWN_MUSHROOM), { solid: false, opaque: false, layer: 'cutout', shape: 'cross' }),
-  def('red_mushroom', 'Red mushroom', all(Tile.RED_MUSHROOM), { solid: false, opaque: false, layer: 'cutout', shape: 'cross' }),
+  def('brown_mushroom', 'Brown mushroom', all(Tile.BROWN_MUSHROOM), { solid: false, opaque: false, layer: 'cutout', shape: 'cross', hardness: 0 }),
+  def('red_mushroom', 'Red mushroom', all(Tile.RED_MUSHROOM), { solid: false, opaque: false, layer: 'cutout', shape: 'cross', hardness: 0 }),
 ]);
 
 // BlockId.X is variant 0 of the type whose key is x; keep the two lists in step.

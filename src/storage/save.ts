@@ -1,5 +1,6 @@
-import { CHUNK_VOLUME, HOTBAR_SIZE, START_TIME_OF_DAY } from '../config';
-import { DEFAULT_HOTBAR } from '../player/hotbar';
+import { CHUNK_VOLUME, HOTBAR_SIZE, INVENTORY_SIZE, MAX_ITEMS, MAX_STACK, START_TIME_OF_DAY, STARTING_STACK } from '../config';
+import type { DroppedItem } from '../items/itemEntities';
+import { DEFAULT_HOTBAR, type ItemStack } from '../player/inventory';
 import { BlockId, blockStateName, parseBlockStateName } from '../world/blocks';
 
 export const SAVE_VERSION = 3; // 3: block coordinates at 0.3 m; older saves are not loaded
@@ -13,15 +14,23 @@ export interface SavedPlayer {
   flying: boolean;
 }
 
-/** The world meta as the game uses it: the hotbar holds block states. */
+/** The world meta as the game uses it: block states, not names. */
 export interface WorldMeta {
   seed: number;
   player: SavedPlayer;
   selectedSlot: number;
-  /** HOTBAR_SIZE block states. */
-  hotbar: number[];
+  /** INVENTORY_SIZE slots: the hotbar first, then the grid. */
+  inventory: (ItemStack | null)[];
+  /** Items lying on the ground. */
+  items: DroppedItem[];
   /** 0..1, wraps. */
   timeOfDay: number;
+}
+
+/** A stack as stored: the block's name and the count. */
+export interface StoredStack {
+  name: string;
+  count: number;
 }
 
 /** The stored form of the meta: block states are saved by name, so new block types never shift a save. */
@@ -30,7 +39,8 @@ export interface MetaRecord {
   seed: number;
   player: SavedPlayer;
   selectedSlot: number;
-  hotbar: string[];
+  inventory: (StoredStack | null)[];
+  items: (StoredStack & { x: number; y: number; z: number })[];
   timeOfDay: number;
 }
 
@@ -54,7 +64,8 @@ export function metaRecord(meta: WorldMeta): MetaRecord {
     seed: meta.seed,
     player: { ...meta.player },
     selectedSlot: meta.selectedSlot,
-    hotbar: meta.hotbar.map((state) => blockStateName(state)),
+    inventory: meta.inventory.map((s) => (s ? { name: blockStateName(s.state), count: s.count } : null)),
+    items: meta.items.map((i) => ({ name: blockStateName(i.state), count: i.count, x: i.x, y: i.y, z: i.z })),
     timeOfDay: meta.timeOfDay,
   };
 }
@@ -84,10 +95,46 @@ export function repairHotbar(hotbar: unknown): number[] {
   return states;
 }
 
+/** A stored stack as a stack, or null when the name, the count or the shape is not valid. */
+function parseStack(raw: unknown): ItemStack | null {
+  if (typeof raw !== 'object' || raw === null) return null;
+  const r = raw as Partial<Record<keyof StoredStack, unknown>>;
+  const state = typeof r.name === 'string' ? parseBlockStateName(r.name) : null;
+  if (state === null || state === BlockId.AIR) return null;
+  if (!Number.isInteger(r.count) || (r.count as number) < 1 || (r.count as number) > MAX_STACK) return null;
+  return { state, count: r.count as number };
+}
+
+/**
+ * The inventory from a save. A save from before spec 24 has only a hotbar: its nine blocks get full stacks, and the
+ * grid is empty. Invalid slots are emptied, never rejected. Never throws.
+ */
+export function repairInventory(inventory: unknown, hotbar: unknown): (ItemStack | null)[] {
+  if (Array.isArray(inventory) && inventory.length === INVENTORY_SIZE) return inventory.map((s) => parseStack(s));
+  const slots: (ItemStack | null)[] = new Array(INVENTORY_SIZE).fill(null);
+  repairHotbar(hotbar).forEach((state, i) => {
+    slots[i] = { state, count: STARTING_STACK };
+  });
+  return slots;
+}
+
+/** Dropped items from a save; invalid ones are dropped, and only the newest MAX_ITEMS are kept. Never throws. */
+export function repairItems(items: unknown): DroppedItem[] {
+  if (!Array.isArray(items)) return [];
+  const out: DroppedItem[] = [];
+  for (const raw of items) {
+    const stack = parseStack(raw);
+    const d = raw as Partial<Record<'x' | 'y' | 'z', unknown>>;
+    if (!stack || !isNum(d.x) || !isNum(d.y) || !isNum(d.z)) continue;
+    out.push({ state: stack.state, count: stack.count, x: d.x, y: d.y, z: d.z });
+  }
+  return out.slice(-MAX_ITEMS);
+}
+
 /**
  * Parses a stored meta (an object, or its JSON text). Returns null when it is missing, corrupt or of another
- * version, or when the seed, player or selected slot is invalid. The hotbar and time of day are repaired, never
- * rejected: a bad value there must not throw away a world. Never throws.
+ * version, or when the seed, player or selected slot is invalid. The inventory, items and time of day are repaired,
+ * never rejected: a bad value there must not throw away a world. Never throws.
  */
 export function parseMeta(raw: unknown): WorldMeta | null {
   let value = raw;
@@ -99,7 +146,7 @@ export function parseMeta(raw: unknown): WorldMeta | null {
     }
   }
   if (typeof value !== 'object' || value === null) return null;
-  const d = value as Partial<Record<keyof MetaRecord, unknown>>;
+  const d = value as Record<string, unknown>;
   const p = d.player as Partial<Record<keyof SavedPlayer, unknown>> | undefined;
   if (d.version !== SAVE_VERSION || !isNum(d.seed) || !isNum(d.selectedSlot)) return null;
   if (typeof p !== 'object' || p === null) return null;
@@ -108,7 +155,8 @@ export function parseMeta(raw: unknown): WorldMeta | null {
     seed: d.seed,
     player: { x: p.x, y: p.y, z: p.z, yaw: p.yaw, pitch: p.pitch, flying: p.flying },
     selectedSlot: d.selectedSlot,
-    hotbar: repairHotbar(d.hotbar),
+    inventory: repairInventory(d.inventory, d.hotbar),
+    items: repairItems(d.items),
     timeOfDay: repairTimeOfDay(d.timeOfDay),
   };
 }
