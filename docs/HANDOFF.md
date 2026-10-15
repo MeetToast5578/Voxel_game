@@ -127,7 +127,7 @@ TypeScript 5.9.3, Vite 7.3.6, Vitest 4.0.18, three 0.186.0, simplex-noise 4.0.3,
   - Also: `faces.ts`, `tiles.ts`, `atlasPixels.ts` (procedural textures), `renderer.ts`, `chunkMeshes.ts`, `lightMaterial.ts`, `highlight.ts`, `clouds.ts`.
 - `src/player`:
   - `physics.ts`: AABB sweep in the order Y → X → Z.
-  - `player.ts`: walk, sprint, jump, fly, swim. Swimming uses buoyancy and quadratic drag (spec 16); `submergedFraction` gives how much of the body is under water.
+  - `player.ts`: walk, sprint, jump, fly, swim. Swimming uses buoyancy and quadratic drag (spec 16); `submergedFraction` gives how much of the body is under water. Wading slows the walk (spec 17), and `splashSpeed` is set on the frame a fast fall enters water.
   - `raycast.ts`: Amanatides–Woo.
   - Also: `interaction.ts`, `hotbar.ts`.
 - `src/ui`: HUD, menu, F3 overlay.

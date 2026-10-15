@@ -1,7 +1,7 @@
 import {
   AIR_ACCEL, EYE_HEIGHT, FEET_WATER_HEIGHT, FLY_SPEED, GRAVITY, GROUND_ACCEL, JUMP_SPEED, PLAYER_DENSITY,
   PLAYER_HALF_WIDTH, PLAYER_HEIGHT, SPRINT_SPEED, STEP_HEIGHT, STEP_SMOOTH_S, SWIM_THRUST, SWIM_UP_ACCEL,
-  SWIM_WAIST_HEIGHT, TERMINAL_VELOCITY, WALK_SPEED, WATER_DENSITY, WATER_DRAG,
+  SPLASH_MIN_SPEED, SWIM_WAIST_HEIGHT, TERMINAL_VELOCITY, WADE_SLOWDOWN, WALK_SPEED, WATER_DENSITY, WATER_DRAG,
 } from '../config';
 import { clamp, lerp } from '../core/math';
 import { moveAndCollide, type BodyShape, type SolidFn, type Vec3 } from './physics';
@@ -44,6 +44,13 @@ export class Player {
   flying = false;
   /** True when the middle of the body is in water (updated by update()). */
   inWater = false;
+  /**
+   * Downward speed (blocks/s) of the frame in which the body entered water fast enough to splash; 0 on every other
+   * frame. The game plays the splash sound on it, and fall damage will read it later.
+   */
+  splashSpeed = 0;
+  /** Submerged fraction at the start of the last update, for detecting entry into water. */
+  private submerged = 0;
   /** True when the last step bumped into a wall horizontally. */
   private againstWall = false;
   /**
@@ -59,6 +66,8 @@ export class Player {
     this.position.z = this.prevPosition.z = z;
     this.velocity.x = this.velocity.y = this.velocity.z = 0;
     this.eyeOffset = this.prevEyeOffset = 0;
+    this.submerged = 0;
+    this.splashSpeed = 0;
   }
 
   /** dx, dy: mouse movement in pixels. sensitivity: radians per pixel. */
@@ -87,6 +96,9 @@ export class Player {
     const feetInWater = isWater(bx, Math.floor(this.position.y + FEET_WATER_HEIGHT), bz);
     const swimming = this.inWater && !this.flying;
     const submerged = this.flying ? 0 : submergedFraction(bx, bz, this.position.y, isWater);
+    const fallSpeed = -this.velocity.y;
+    this.splashSpeed = this.submerged === 0 && submerged > 0 && fallSpeed >= SPLASH_MIN_SPEED ? fallSpeed : 0;
+    this.submerged = submerged;
 
     // Horizontal wish direction from yaw. Yaw 0 looks toward -Z.
     const ix = (c.right ? 1 : 0) - (c.left ? 1 : 0);
@@ -100,7 +112,8 @@ export class Player {
       wx /= len;
       wz /= len;
     }
-    const speed = this.flying ? FLY_SPEED : c.sprint ? SPRINT_SPEED : WALK_SPEED;
+    // Wading: shallow water slows the walk in proportion to how much of the body is under it (spec 17).
+    const speed = (this.flying ? FLY_SPEED : c.sprint ? SPRINT_SPEED : WALK_SPEED) * (1 - WADE_SLOWDOWN * submerged);
     const t = 1 - Math.exp(-(this.flying || this.onGround ? GROUND_ACCEL : AIR_ACCEL) * dt);
     if (swimming) {
       // Drag first, then the stroke, so that at steady speed thrust = drag × speed² exactly.

@@ -174,6 +174,7 @@ export class Game {
     this.timeOfDay = (this.timeOfDay + dt / DAY_LENGTH_S) % 1;
     this.player.update(dt, this.playing ? this.readControls() : NO_CONTROLS, this.isSolidAt, this.isWaterAt);
     this.updateFootsteps(dt);
+    if (this.player.splashSpeed > 0) this.sounds.play('splash');
     this.saveTimer += dt;
     if (this.saveTimer >= AUTOSAVE_INTERVAL_S) {
       this.saveTimer = 0;
