@@ -1,10 +1,10 @@
-import { CHUNK_VOLUME } from '../../src/config';
+import { CHUNK_VOLUME, LEGACY_CHUNKS, LEGACY_HEIGHT } from '../../src/config';
 import { localIndex } from '../../src/core/coords';
 import { BlockId } from '../../src/world/blocks';
 import { Chunk } from '../../src/world/chunk';
-import { LEGACY_CHUNKS, type TerrainGenerator } from '../../src/world/generator';
+import type { TerrainGenerator } from '../../src/world/generator';
 
-/** Chunks cy 0..7 of one column stacked into a 16 x 128 x 16 array (chunk layout), plus a bounds-checked get. */
+/** The legacy chunks cy 0..LEGACY_CHUNKS-1 of one column stacked into a 16 x LEGACY_HEIGHT x 16 array, plus a bounds-checked get. */
 export interface StackedColumn {
   cx: number;
   cz: number;
@@ -19,7 +19,7 @@ export function stackedColumn(g: TerrainGenerator, cx: number, cz: number): Stac
     g.generateChunk(c);
     blocks.set(c.blocks, cy * CHUNK_VOLUME);
   }
-  const height = LEGACY_CHUNKS * 16;
+  const height = LEGACY_HEIGHT;
   return {
     cx,
     cz,

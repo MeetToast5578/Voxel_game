@@ -11,7 +11,7 @@ A Minecraft-like voxel sandbox that runs in the browser, built with TypeScript, 
 - Automatic saving in the browser (IndexedDB), including the hotbar and time of day
 - Saves from versions before the cubic-chunk update are not loaded.
 - Terrain generation and meshing run in Web Workers
-- 1 block = 0.6 m; the player is about 3 blocks tall.
+- 1 block = 0.6 m; the player is about 3 blocks tall. Trees are 8–12 m tall.
 - No height limit: the world is made of 16×16×16 chunks, so you can dig down or build up as far as you like
 
 All textures and sounds are generated in code; there are no asset files.

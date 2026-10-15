@@ -91,6 +91,16 @@ Terrain in phase 1 is today's generator, adapted. Below y = 0 is stone, there's 
 
 **Done when:** you can dig 500 blocks down and build 500 blocks up, surface terrain is visible at full render distance from the bottom of a valley, saves survive a reload, and CI is green.
 
+### Phase 1b: Meter-based world scale (specced in `docs/specs/09-meter-scale-world.md`)
+
+Goal: the same land in meters, filled with finer blocks, so the world gets more detail. Trees are realistic.
+
+- Terrain, caves, sea level, clouds and spawn are written in meters and converted to blocks.
+- Trees come from a new pure generator (`src/world/trees.ts`): trunk, branches and a ragged crown, 8–12 m tall.
+- Tree density per square metre stays the same.
+
+**Done when:** a forest at 0.6 m blocks looks more detailed than before at the same world size, trees measure 8–12 m in the F3 overlay, and CI is green.
+
 ### Phase 2: Terrain
 
 Goal: geography that looks real from the ground and from a mountaintop.
