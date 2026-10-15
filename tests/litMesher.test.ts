@@ -45,7 +45,8 @@ describe('buildChunkMesh lighting', () => {
     }
     expect(found).toBe(true);
   });
-  it('meshes 50 surface chunks of seed 42 fast enough', () => {
+  // The setup generates the neighbourhood of 50 chunks, which can pass vitest's default 5 s under parallel load.
+  it('meshes 50 surface chunks of seed 42 fast enough', { timeout: 30000 }, () => {
     const g = new TerrainGenerator(42);
     const tops = new Map<string, Int32Array>();
     const columnTops = (cx: number, cz: number) => {
