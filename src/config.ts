@@ -111,6 +111,8 @@ export const WATER_DRAG_PER_M = 0.9; // quadratic drag in water: a = -k |v| v, i
 export const WATER_DRAG = WATER_DRAG_PER_M * BLOCK_SIZE_M;
 export const SWIM_THRUST = metersToBlocks(6); // swim stroke, m/s^2 in the wish direction
 export const SWIM_UP_ACCEL = metersToBlocks(6); // extra upward push while holding jump in water, m/s^2
+export const WADE_SLOWDOWN = 0.5; // walking speed lost per unit of submerged fraction, while not swimming (spec 17)
+export const SPLASH_MIN_SPEED = metersToBlocks(4); // downward speed (m/s) that makes a splash on entering water
 export const SWIM_WAIST_HEIGHT = metersToBlocks(0.6); // "in water" is checked this far above the feet
 export const FEET_WATER_HEIGHT = metersToBlocks(0.1); // "feet in water" is checked this far above the feet
 

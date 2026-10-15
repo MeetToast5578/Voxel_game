@@ -225,7 +225,7 @@ Goal: the world changes without the player.
    - Water meeting lava makes stone, cobblestone or obsidian.
    - Surfaces are rendered at their real height.
    - Generated rivers carry a flow direction (from the drainage simulation), used for animated flow textures and for pushing the player. Waterfalls form where rivers drop.
-5. **Liquid physics.** Shared by the player, creatures and dropped items, all in metric units. *Status: the player's buoyancy and drag are done (spec 16). The rest is open.*
+5. **Liquid physics.** Shared by the player, creatures and dropped items, all in metric units. *Status: the player's buoyancy and drag (spec 16), wading and splash on entry (spec 17) are done. Currents need fluid levels (item 4), so they wait. Fall damage waits for health (phase 7).*
    - **Per-fluid properties** in config: density, viscosity (drag) and current strength. Water is 1,000 kg/m³ with low drag. Lava is about 3,100 kg/m³, with high drag and slow movement.
    - **Buoyancy** proportional to the submerged fraction of the body (sampled per block layer of the AABB). Bodies have a density: the player floats at about chin height when still. Logs, planks and items float; stone items sink.
    - **Drag.** Quadratic drag in fluids replaces today's fixed swim gravity and speed factor. Terminal sinking speed and swim speed follow from it.
