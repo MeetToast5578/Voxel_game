@@ -25,7 +25,7 @@ export const DEFAULT_SEED = 1337;
 // A finer block then fills the same land with more detail.
 export const SEA_LEVEL_M = 0; // sea level is y = 0, as in the roadmap
 export const SEA_LEVEL = roundBlocks(SEA_LEVEL_M); // air at y <= SEA_LEVEL becomes water during generation
-export const TERRAIN_MAX_M = 2475; // highest terrain surface: 2,450 m from the fields plus the detail noise (src/world/shape.ts)
+export const TERRAIN_MAX_M = 232; // highest terrain surface: 150 m spline + 60 m mountains + 22 m detail (src/world/shape.ts)
 export const TERRAIN_MAX_BLOCKS = roundBlocks(TERRAIN_MAX_M);
 /** Chunks below this cy are solid stone (about -400 m). */
 export const TERRAIN_CHUNK_BOTTOM = Math.floor(roundBlocks(-400) / CHUNK_SIZE);

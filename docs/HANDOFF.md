@@ -89,7 +89,7 @@ The owner is continuing with **Claude Haiku 5.5** to save tokens. The next secti
 
 - **Scale.** 1 block = 0.3 m (spec 10; it was 0.6 m). The player is 1.75 m: about 5.8 blocks tall and 1.6 blocks wide.
 - **Step-up.** Physics step-up, not auto-jump. Its height is 0.6 m (2 blocks).
-- **Height.** Cubic chunks with unlimited height. Terrain lives in the band −400 m to +2,600 m (spec 13).
+- **Height.** Cubic chunks with unlimited height. Terrain lives in the band −400 m to +2,600 m (spec 13). The surface stays under 232 m: mountains add at most 60 m (spec 22). Taller peaks read as infinite walls until horizon LOD exists (phase 2 item 8).
 - **Sea level.** y = 0 m (spec 13).
 - **Terrain (phase 2).** The shape fields set the large scale (spec 12). A 3D density gives the surface its shape (spec 14). Region drainage and erosion (item 3) are still to come.
 - **Water.** The player floats at about 80% under water (`PLAYER_DENSITY` 800 kg/m³ against 1000 for water). Swim speed comes from quadratic drag and a stroke: about 2.6 m/s (spec 16). Wading slows the walk by half the submerged fraction (spec 17).

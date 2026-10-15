@@ -32,7 +32,8 @@ const CONTINENTAL_SPLINE: ReadonlyArray<readonly [number, number]> = [
   [0.6, 110],
   [1, 150],
 ];
-const MOUNTAIN_M = 2300;
+// shortcut: mountains stay low because the renderer has no horizon LOD (phase 2 item 8); a 2 km peak reads as an infinite wall, so raise this only with LOD
+const MOUNTAIN_M = 60;
 
 /** Fractal noise: `octaves` layers, each at double the frequency and half the amplitude. Result in [-1, 1]. */
 export function fbm(noise: NoiseFunction2D, x: number, z: number, octaves: number): number {

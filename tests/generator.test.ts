@@ -14,6 +14,9 @@ import { Chunk } from '../src/world/chunk';
 import { TerrainGenerator } from '../src/world/generator';
 import { landColumns, stackedColumn } from './support/stackedColumn';
 
+/** The highest rugged land found for seed 1 by a field scan, in blocks (spec 22). */
+const PEAK = { x: -10667, z: 26000 };
+
 /** Any rock of the strata or the deep stone. */
 const ROCK_IDS = new Set<number>([
   BlockId.STONE,
@@ -103,11 +106,11 @@ describe('TerrainGenerator', () => {
     expect(blocksSky(BlockId.AIR)).toBe(false);
   });
   it('overhangs on the mountains: air under solid rock', { timeout: 60000 }, () => {
-    // Seed 1 has a 2,380 m peak near (1480, -3040). Scan each sampled column down from its top solid block.
+    // The seed-1 rugged peak (spec 22). Scan each sampled column down from its top solid block.
     const g = new TerrainGenerator(1);
     let overhangs = 0;
-    for (let z = -3040; z < -3040 + 48; z += 6)
-      for (let x = 1480; x < 1480 + 48; x += 6) {
+    for (let z = PEAK.z; z < PEAK.z + 48; z += 6)
+      for (let x = PEAK.x; x < PEAK.x + 48; x += 6) {
         const top = g.getHeight(x, z);
         const cy = Math.floor(top / 16);
         const c = new Chunk(Math.floor(x / 16), cy, Math.floor(z / 16));
@@ -127,10 +130,10 @@ describe('TerrainGenerator', () => {
     expect(overhangs).toBeGreaterThan(0);
   });
   it('lays rock strata: several rock types in one mountain column', { timeout: 60000 }, () => {
-    // Seed 1, the mountain near (1480, -3040): the column's rock changes with depth.
+    // Seed 1, the rugged peak (spec 22): the column's rock changes with depth.
     const g = new TerrainGenerator(1);
-    const x = 1480;
-    const z = -3040;
+    const x = PEAK.x;
+    const z = PEAK.z;
     const top = g.getHeight(x, z);
     const rocks = new Set<number>();
     for (let cy = Math.floor((top - 100) / 16); cy <= Math.floor(top / 16); cy++) {
@@ -144,10 +147,10 @@ describe('TerrainGenerator', () => {
     expect(rocks.size).toBeGreaterThanOrEqual(3);
   });
   it('uses all seven strata rocks above the deepslate, and deepslate only below it', { timeout: 60000 }, () => {
-    // Seed 1, the mountain near (1480, -3040): the column runs from -100 m (the deepslate line) up to the surface.
+    // Seed 1, the rugged peak (spec 22): the column runs from -100 m (the deepslate line) up to the surface.
     const g = new TerrainGenerator(1);
-    const x = 1480;
-    const z = -3040;
+    const x = PEAK.x;
+    const z = PEAK.z;
     const top = g.getHeight(x, z);
     const deepslateTop = Math.ceil(metersToBlocks(DEEPSLATE_DEPTH_M)); // the first block at or above -100 m
     const strata = new Set<number>();
@@ -172,7 +175,7 @@ describe('TerrainGenerator', () => {
   });
   it('is deepslate for a whole chunk below -100 m, away from the soil', { timeout: 60000 }, () => {
     const g = new TerrainGenerator(1);
-    const c = new Chunk(Math.floor(1480 / 16), Math.floor(metersToBlocks(-200) / 16), Math.floor(-3040 / 16));
+    const c = new Chunk(Math.floor(PEAK.x / 16), Math.floor(metersToBlocks(-200) / 16), Math.floor(PEAK.z / 16));
     g.generateChunk(c);
     const rocks = new Set<number>(c.blocks.filter((id) => ROCK_IDS.has(id)));
     expect([...rocks]).toEqual([BlockId.DEEPSLATE]);
@@ -191,8 +194,8 @@ describe('TerrainGenerator', () => {
     let plains = 0;
     for (let z = -40; z < 40; z += 5) for (let x = -40; x < 40; x += 5) if (surface(x, z).id === BlockId.GRASS) plains++;
     let bare = 0;
-    for (let z = -3040; z < -3040 + 48; z += 6)
-      for (let x = 1480; x < 1480 + 48; x += 6) {
+    for (let z = PEAK.z; z < PEAK.z + 48; z += 6)
+      for (let x = PEAK.x; x < PEAK.x + 48; x += 6) {
         const s = surface(x, z);
         if (s.id === BlockId.GRASS || s.id === BlockId.SAND) continue;
         bare++;

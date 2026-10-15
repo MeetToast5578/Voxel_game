@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { TERRAIN_MAX_M } from '../src/config';
 import { ClimateSampler, heightMeters, type ClimateFields } from '../src/world/shape';
 
 const STEP_M = 300;
@@ -30,11 +31,11 @@ describe('climate and shape fields', () => {
     for (const s of deep) expect(s.h).toBeLessThan(0);
   });
 
-  it('has mountains, and every height is inside the terrain band', () => {
-    expect(Math.max(...samples.map((s) => s.h))).toBeGreaterThanOrEqual(1000);
+  it('has hills and mountains, and every height is inside the terrain band (spec 22)', () => {
+    expect(Math.max(...samples.map((s) => s.h))).toBeGreaterThanOrEqual(100);
     for (const s of samples) {
       expect(s.h).toBeGreaterThanOrEqual(-300);
-      expect(s.h).toBeLessThanOrEqual(2450);
+      expect(s.h).toBeLessThanOrEqual(TERRAIN_MAX_M);
     }
   });
 
