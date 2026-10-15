@@ -17,10 +17,7 @@ const PAINTERS: Record<number, PixelFn> = {
   [Tile.STONE]: noisy([125, 125, 125], 0.25),
   [Tile.DIRT]: noisy(DIRT, 0.3),
   [Tile.GRASS_TOP]: noisy(GRASS, 0.25),
-  [Tile.GRASS_SIDE]: (x, y, r) => {
-    const depth = 3 + ((x * 7) % 3); // jagged grass edge, 3-5 px
-    return y < depth ? shade(GRASS, 1 + (r() - 0.5) * 0.25) : shade(DIRT, 1 + (r() - 0.5) * 0.3);
-  },
+  [Tile.GRASS_SIDE]: noisy(GRASS, 0.25), // grass all the way down, not a dirt side with a green edge
   [Tile.SAND]: noisy([219, 207, 163], 0.12),
   [Tile.WATER]: noisy([48, 96, 200], 0.1),
   [Tile.LOG_SIDE]: (x, _y, r) => shade(BARK, (x % 4 === 0 ? 0.75 : 1) + (r() - 0.5) * 0.15),

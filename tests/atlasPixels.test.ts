@@ -13,6 +13,19 @@ function tileAlphas(tile: number): number[] {
   return out;
 }
 
+/** [r, g, b] of every pixel in a tile. */
+function tileRgb(tile: number): [number, number, number][] {
+  const out: [number, number, number][] = [];
+  const ox = (tile % 16) * TILE_SIZE;
+  const oy = Math.floor(tile / 16) * TILE_SIZE;
+  for (let y = 0; y < TILE_SIZE; y++)
+    for (let x = 0; x < TILE_SIZE; x++) {
+      const i = ((oy + y) * ATLAS_SIZE + ox + x) * 4;
+      out.push([pixels[i]!, pixels[i + 1]!, pixels[i + 2]!]);
+    }
+  return out;
+}
+
 describe('generateAtlasPixels', () => {
   it('has the right size and is deterministic', () => {
     expect(pixels.length).toBe(ATLAS_SIZE * ATLAS_SIZE * 4);
@@ -27,5 +40,13 @@ describe('generateAtlasPixels', () => {
       expect(tileAlphas(t).every((a) => a === 255)).toBe(true);
     expect(tileAlphas(Tile.LEAVES).some((a) => a === 0)).toBe(true);
     expect(tileAlphas(Tile.GLASS).some((a) => a === 0)).toBe(true);
+  });
+  it('the grass side is green all the way down, like the grass top', () => {
+    const isGreen = ([r, g, b]: [number, number, number]) => g >= r + 20 && g >= b + 20;
+    expect(tileRgb(Tile.GRASS_SIDE).every(isGreen)).toBe(true);
+    expect(tileRgb(Tile.GRASS_TOP).every(isGreen)).toBe(true);
+  });
+  it('the dirt tile is still brown', () => {
+    expect(tileRgb(Tile.DIRT).every(([r, g]) => r > g)).toBe(true);
   });
 });
