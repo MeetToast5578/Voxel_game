@@ -103,11 +103,14 @@ export const FOOTSTEP_MIN_SPEED = metersToBlocks(1); // no footsteps below this 
 export const STEP_HEIGHT = roundBlocks(0.6); // highest ledge the player walks up onto without jumping (0.6 m)
 export const STEP_SMOOTH_S = 0.12; // seconds the camera takes to catch up after a full 1-block step
 
-// ---- Swimming ----
-export const SWIM_GRAVITY = metersToBlocks(6);
-export const SWIM_UP_SPEED = metersToBlocks(4);
-export const SWIM_SINK_SPEED = metersToBlocks(2);
-export const SWIM_SPEED_FACTOR = 0.6;
+// ---- Swimming (spec 16: buoyancy and quadratic drag) ----
+export const WATER_DENSITY = 1000; // kg/m^3
+export const PLAYER_DENSITY = 800; // kg/m^3: the body floats with about 80% under water, chin at the surface
+export const WATER_DRAG_PER_M = 0.9; // quadratic drag in water: a = -k |v| v, in 1/m
+/** The same drag in blocks: a = -WATER_DRAG |v| v with v in blocks per second. */
+export const WATER_DRAG = WATER_DRAG_PER_M * BLOCK_SIZE_M;
+export const SWIM_THRUST = metersToBlocks(6); // swim stroke, m/s^2 in the wish direction
+export const SWIM_UP_ACCEL = metersToBlocks(6); // extra upward push while holding jump in water, m/s^2
 export const SWIM_WAIST_HEIGHT = metersToBlocks(0.6); // "in water" is checked this far above the feet
 export const FEET_WATER_HEIGHT = metersToBlocks(0.1); // "feet in water" is checked this far above the feet
 

@@ -61,10 +61,17 @@ describe('step-up', () => {
     expect(p.position.y).toBeCloseTo(10.5, 3);
   });
   it('does not step while swimming', () => {
+    // Buoyancy lifts a swimmer over the ledge by itself, so check that no frame jumps up a block (a step does that).
     const water: SolidFn = (x, y, z) => !ledge(x, y, z) && y >= 10 && y <= 30; // deeper than the body
     const p = player();
-    run(p, 60, ledge, FORWARD, water);
-    expect(p.position.x).toBeLessThanOrEqual(BLOCKED_X + 0.01);
+    let lastY = p.position.y;
+    let biggestRise = 0;
+    for (let i = 0; i < 120; i++) {
+      p.update(FIXED_DT, FORWARD, ledge, water);
+      biggestRise = Math.max(biggestRise, p.position.y - lastY);
+      lastY = p.position.y;
+    }
+    expect(biggestRise).toBeLessThan(0.5);
   });
   it('does not step while airborne', () => {
     const pos = { x: BLOCKED_X - 0.05, y: 10.2, z: 0.5 };

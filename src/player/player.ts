@@ -1,7 +1,7 @@
 import {
-  AIR_ACCEL, EYE_HEIGHT, FEET_WATER_HEIGHT, FLY_SPEED, GRAVITY, GROUND_ACCEL, JUMP_SPEED, PLAYER_HALF_WIDTH,
-  PLAYER_HEIGHT, SPRINT_SPEED, STEP_HEIGHT, STEP_SMOOTH_S, SWIM_GRAVITY, SWIM_SINK_SPEED, SWIM_SPEED_FACTOR,
-  SWIM_UP_SPEED, SWIM_WAIST_HEIGHT, TERMINAL_VELOCITY, WALK_SPEED,
+  AIR_ACCEL, EYE_HEIGHT, FEET_WATER_HEIGHT, FLY_SPEED, GRAVITY, GROUND_ACCEL, JUMP_SPEED, PLAYER_DENSITY,
+  PLAYER_HALF_WIDTH, PLAYER_HEIGHT, SPRINT_SPEED, STEP_HEIGHT, STEP_SMOOTH_S, SWIM_THRUST, SWIM_UP_ACCEL,
+  SWIM_WAIST_HEIGHT, TERMINAL_VELOCITY, WALK_SPEED, WATER_DENSITY, WATER_DRAG,
 } from '../config';
 import { clamp, lerp } from '../core/math';
 import { moveAndCollide, type BodyShape, type SolidFn, type Vec3 } from './physics';
@@ -22,6 +22,17 @@ export const NO_CONTROLS: PlayerControls = {
 
 export const PLAYER_SHAPE: BodyShape = { halfWidth: PLAYER_HALF_WIDTH, height: PLAYER_HEIGHT };
 const MAX_PITCH = Math.PI / 2 - 0.001;
+
+/**
+ * Share of a body's height (feet at feetY) under the water surface: the top of the highest water block in its column.
+ * 0 with no water, 1 when the surface is above the head.
+ */
+export function submergedFraction(bx: number, bz: number, feetY: number, isWater: SolidFn): number {
+  for (let y = Math.floor(feetY + PLAYER_HEIGHT); y >= Math.floor(feetY); y--) {
+    if (isWater(bx, y, bz)) return clamp((y + 1 - feetY) / PLAYER_HEIGHT, 0, 1);
+  }
+  return 0;
+}
 
 export class Player {
   readonly position: Vec3 = { x: 0, y: 0, z: 0 };
@@ -75,6 +86,7 @@ export class Player {
     this.inWater = isWater(bx, Math.floor(this.position.y + SWIM_WAIST_HEIGHT), bz); // water at waist height
     const feetInWater = isWater(bx, Math.floor(this.position.y + FEET_WATER_HEIGHT), bz);
     const swimming = this.inWater && !this.flying;
+    const submerged = this.flying ? 0 : submergedFraction(bx, bz, this.position.y, isWater);
 
     // Horizontal wish direction from yaw. Yaw 0 looks toward -Z.
     const ix = (c.right ? 1 : 0) - (c.left ? 1 : 0);
@@ -88,22 +100,32 @@ export class Player {
       wx /= len;
       wz /= len;
     }
-    const speed = (this.flying ? FLY_SPEED : c.sprint ? SPRINT_SPEED : WALK_SPEED) * (swimming ? SWIM_SPEED_FACTOR : 1);
-    const t = 1 - Math.exp(-(this.flying || this.onGround || swimming ? GROUND_ACCEL : AIR_ACCEL) * dt);
-    this.velocity.x += (wx * speed - this.velocity.x) * t;
-    this.velocity.z += (wz * speed - this.velocity.z) * t;
+    const speed = this.flying ? FLY_SPEED : c.sprint ? SPRINT_SPEED : WALK_SPEED;
+    const t = 1 - Math.exp(-(this.flying || this.onGround ? GROUND_ACCEL : AIR_ACCEL) * dt);
+    if (swimming) {
+      // Drag first, then the stroke, so that at steady speed thrust = drag × speed² exactly.
+      const drag = 1 - WATER_DRAG * Math.hypot(this.velocity.x, this.velocity.y, this.velocity.z) * dt;
+      this.velocity.x *= drag;
+      this.velocity.y *= drag;
+      this.velocity.z *= drag;
+      this.velocity.x += wx * SWIM_THRUST * dt;
+      this.velocity.z += wz * SWIM_THRUST * dt;
+    } else {
+      this.velocity.x += (wx * speed - this.velocity.x) * t;
+      this.velocity.z += (wz * speed - this.velocity.z) * t;
+    }
 
     if (this.flying) {
       const iy = (c.jump ? 1 : 0) - (c.descend ? 1 : 0);
       this.velocity.y += (iy * FLY_SPEED - this.velocity.y) * t;
     } else if (c.jump && feetInWater && this.againstWall) {
       this.velocity.y = JUMP_SPEED; // climb out of the water onto a ledge
-    } else if (swimming) {
-      if (c.jump) this.velocity.y += (SWIM_UP_SPEED - this.velocity.y) * t;
-      else this.velocity.y = Math.max(this.velocity.y - SWIM_GRAVITY * dt, -SWIM_SINK_SPEED);
     } else {
-      if (c.jump && this.onGround) this.velocity.y = JUMP_SPEED;
-      this.velocity.y = Math.max(this.velocity.y - GRAVITY * dt, -TERMINAL_VELOCITY);
+      if (c.jump && swimming) this.velocity.y += SWIM_UP_ACCEL * dt;
+      else if (c.jump && this.onGround) this.velocity.y = JUMP_SPEED;
+      // Buoyancy is gravity's counterweight, scaled by how much of the body is under water.
+      this.velocity.y += (GRAVITY * (WATER_DENSITY / PLAYER_DENSITY) * submerged - GRAVITY) * dt;
+      this.velocity.y = Math.max(this.velocity.y, -TERMINAL_VELOCITY);
     }
 
     const stepHeight = this.flying || this.inWater ? 0 : STEP_HEIGHT;
