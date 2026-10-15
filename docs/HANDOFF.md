@@ -193,7 +193,7 @@ TypeScript 5.9.3, Vite 7.3.6, Vitest 4.0.18, three 0.186.0, simplex-noise 4.0.3,
 
 ## Known gaps and backlog
 
-See `docs/ROADMAP.md` for phases 2–8. Known gaps after phase 2 items 1–2 and specs 13–14:
+See `docs/ROADMAP.md` for phases 2–8. Known gaps after phase 2 items 1–2, specs 13–15 and spec 20:
 - **Testing.** No real mouse-and-keyboard playtest yet.
 - **Mesh time.** 3.1–3.7 ms per surface chunk, against a 3 ms target.
 - **Cold column generation.** About 8.4 ms median (see above).
