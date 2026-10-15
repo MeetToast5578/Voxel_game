@@ -88,6 +88,30 @@ describe('TerrainGenerator', () => {
     expect(blocksSky(BlockId.GLASS)).toBe(false);
     expect(blocksSky(BlockId.AIR)).toBe(false);
   });
+  it('overhangs on the mountains: air under solid rock', { timeout: 60000 }, () => {
+    // Seed 1 has a 2,380 m peak near (1480, -3040). Scan each sampled column down from its top solid block.
+    const g = new TerrainGenerator(1);
+    let overhangs = 0;
+    for (let z = -3040; z < -3040 + 48; z += 6)
+      for (let x = 1480; x < 1480 + 48; x += 6) {
+        const top = g.getHeight(x, z);
+        const cy = Math.floor(top / 16);
+        const c = new Chunk(Math.floor(x / 16), cy, Math.floor(z / 16));
+        g.generateChunk(c);
+        const lx = ((x % 16) + 16) % 16;
+        const lz = ((z % 16) + 16) % 16;
+        let airSeen = false;
+        for (let ly = top - cy * 16; ly >= 0; ly--) {
+          const id = c.get(lx, ly, lz);
+          if (id === BlockId.AIR) airSeen = true;
+          else if (airSeen && id === BlockId.STONE) {
+            overhangs++;
+            break;
+          }
+        }
+      }
+    expect(overhangs).toBeGreaterThan(0);
+  });
   it('generates a chunk in a few milliseconds', () => {
     const g = new TerrainGenerator(99);
     g.generateChunk(new Chunk(-1, 2, -1)); // warm up

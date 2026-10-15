@@ -100,3 +100,12 @@ export function heightMeters(f: ClimateFields): number {
   const ridge = smoothstep(0, 1, f.peaks);
   return spline(CONTINENTAL_SPLINE, f.continentalness) + MOUNTAIN_M * land * rugged * ridge;
 }
+
+/** Amplitude of the 3D detail noise, in meters: small bumps on plains, jagged rock where the land is rugged. */
+const DETAIL_MIN_M = 3;
+const DETAIL_MAX_M = 22;
+export function detailAmpMeters(f: ClimateFields): number {
+  const land = smoothstep(0.1, 0.5, f.continentalness);
+  const rugged = smoothstep(0.3, -0.5, f.erosion);
+  return DETAIL_MIN_M + (DETAIL_MAX_M - DETAIL_MIN_M) * land * rugged;
+}

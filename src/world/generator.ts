@@ -13,41 +13,53 @@ import {
   SHORE_ROOF,
   SOIL_DEPTH,
   TERRAIN_CHUNK_BOTTOM,
-  TERRAIN_MAX_BLOCKS,
   TREE_CHANCE,
   TREE_REACH,
 } from '../config';
 import { columnIndex, columnKey, localIndex } from '../core/coords';
-import { clamp, floorDiv } from '../core/math';
+import { floorDiv } from '../core/math';
 import { hash2, mulberry32 } from '../core/random';
 import { BlockId, blocksSky } from './blocks';
 import { Chunk } from './chunk';
-import { ClimateSampler, heightMeters } from './shape';
+import { TerrainDensity } from './density';
+import { ClimateSampler, detailAmpMeters, heightMeters } from './shape';
 import { MAX_TREE_RISE, treeBlocks } from './trees';
 
 const CAVE_THRESHOLD = 0.012;
-/** The height cache is only a cache, so clearing it never changes a result. */
-const HEIGHT_CACHE_LIMIT = 4096;
+/** The column cache is only a cache, so clearing it never changes a result. */
+const COLUMN_CACHE_LIMIT = 2048;
+
+/** Per-column terrain, indexed by columnIndex: the top solid block and the two inputs of the density. */
+interface Column {
+  /** World y of the highest solid block (the surface, before water and trees). */
+  solidTop: Int32Array;
+  /** Surface offset from the shape fields, in meters. */
+  offsets: Float64Array;
+  /** Detail amplitude, in meters. */
+  amps: Float64Array;
+}
 
 export class TerrainGenerator {
   readonly seed: number;
   private readonly climate: ClimateSampler;
+  private readonly density: TerrainDensity;
   private readonly caveNoiseA: NoiseFunction3D;
   private readonly caveNoiseB: NoiseFunction3D;
-  /** Heights of each column (16 x 16 cells, keyed by columnKey), so trees can read their neighbours cheaply. */
-  private readonly heightCache = new Map<string, Int32Array>();
+  private readonly columnCache = new Map<string, Column>();
 
   constructor(seed: number) {
     this.seed = seed;
     this.climate = new ClimateSampler(seed);
+    this.density = new TerrainDensity(seed);
     this.caveNoiseA = createNoise3D(mulberry32(seed + 3));
     this.caveNoiseB = createNoise3D(mulberry32(seed + 4));
   }
 
-  /** Y of the highest solid block in this column: the terrain surface, from the climate and shape fields. */
+  /** Y of the highest solid block in this column, from the density. Water and trees are not counted. */
   getHeight(wx: number, wz: number): number {
-    const fields = this.climate.fields(wx * BLOCK_SIZE_M, wz * BLOCK_SIZE_M);
-    return clamp(Math.floor(metersToBlocks(heightMeters(fields))), TERRAIN_CHUNK_BOTTOM * CHUNK_SIZE, TERRAIN_MAX_BLOCKS);
+    const cx = floorDiv(wx, CHUNK_SIZE);
+    const cz = floorDiv(wz, CHUNK_SIZE);
+    return this.column(cx, cz).solidTop[columnIndex(wx - cx * CHUNK_SIZE, wz - cz * CHUNK_SIZE)]!;
   }
 
   /** Fills chunk.blocks with the generated terrain of chunk (cx, cy, cz). */
@@ -110,7 +122,7 @@ export class TerrainGenerator {
     const z0 = cz * CHUNK_SIZE;
     for (let wz = z0 - TREE_REACH; wz < z0 + CHUNK_SIZE + TREE_REACH; wz++)
       for (let wx = x0 - TREE_REACH; wx < x0 + CHUNK_SIZE + TREE_REACH; wx++)
-        maxHeight = Math.max(maxHeight, this.heightAt(wx, wz));
+        maxHeight = Math.max(maxHeight, this.getHeight(wx, wz));
     return maxHeight;
   }
 
@@ -122,27 +134,31 @@ export class TerrainGenerator {
    */
   private fillRange(cx: number, cz: number, y0: number, count: number, out: Uint16Array): void {
     const y1 = y0 + count; // exclusive
-    const heights = this.columnHeights(cx, cz);
     // Trees within reach of this column can rise from a neighbour, so the early exit looks at the whole reach.
     if (y0 > this.reachMaxHeight(cx, cz) + MAX_TREE_RISE) {
       out.fill(BlockId.AIR, 0, count * CHUNK_SIZE * CHUNK_SIZE); // above every surface, tree and sea
       return;
     }
+    const column = this.column(cx, cz);
 
     for (let lz = 0; lz < CHUNK_SIZE; lz++) {
       for (let lx = 0; lx < CHUNK_SIZE; lx++) {
-        const h = heights[columnIndex(lx, lz)]!;
+        const i = columnIndex(lx, lz);
+        const h = column.solidTop[i]!;
+        const offsetM = column.offsets[i]!;
+        const ampM = column.amps[i]!;
         const beach = h <= SEA_LEVEL + BEACH_BAND;
-        for (let y = y0; y < y1; y++) {
-          let id: number = BlockId.AIR;
-          if (y < h - SOIL_DEPTH) id = BlockId.STONE;
-          else if (y < h) id = beach ? BlockId.SAND : BlockId.DIRT;
-          else if (y === h) id = beach ? BlockId.SAND : BlockId.GRASS;
-          else if (y <= SEA_LEVEL) id = BlockId.WATER;
-          out[localIndex(lx, y - y0, lz)] = id;
-        }
         const wx = cx * CHUNK_SIZE + lx;
         const wz = cz * CHUNK_SIZE + lz;
+        for (let y = y0; y < y1; y++) {
+          let id: number;
+          if (this.density.isSolid(wx, y, wz, offsetM, ampM)) {
+            if (y === h) id = beach ? BlockId.SAND : BlockId.GRASS;
+            else if (y >= h - SOIL_DEPTH) id = beach ? BlockId.SAND : BlockId.DIRT;
+            else id = BlockId.STONE;
+          } else id = y <= SEA_LEVEL ? BlockId.WATER : BlockId.AIR;
+          out[localIndex(lx, y - y0, lz)] = id;
+        }
         const top = Math.min(this.caveTop(h), y1 - 1);
         for (let y = Math.max(2, y0); y <= top; y++) {
           if (this.isCave(wx, y, wz)) out[localIndex(lx, y - y0, lz)] = BlockId.AIR;
@@ -152,25 +168,43 @@ export class TerrainGenerator {
     this.placeTrees(cx, cz, y0, y1, out);
   }
 
-  /** Cached heights of column (cx, cz), indexed lz * 16 + lx. */
-  private columnHeights(cx: number, cz: number): Int32Array {
+  /**
+   * The column's cells: the shape fields, the density inputs and the highest solid block. Cached, because the
+   * fields cost six noises per cell and every chunk of a column reads them.
+   */
+  private column(cx: number, cz: number): Column {
     const key = columnKey(cx, cz);
-    let heights = this.heightCache.get(key);
-    if (!heights) {
-      if (this.heightCache.size >= HEIGHT_CACHE_LIMIT) this.heightCache.clear();
-      heights = new Int32Array(CHUNK_SIZE * CHUNK_SIZE);
-      for (let lz = 0; lz < CHUNK_SIZE; lz++)
-        for (let lx = 0; lx < CHUNK_SIZE; lx++)
-          heights[columnIndex(lx, lz)] = this.getHeight(cx * CHUNK_SIZE + lx, cz * CHUNK_SIZE + lz);
-      this.heightCache.set(key, heights);
-    }
-    return heights;
+    const cached = this.columnCache.get(key);
+    if (cached) return cached;
+    if (this.columnCache.size >= COLUMN_CACHE_LIMIT) this.columnCache.clear();
+    const column: Column = {
+      solidTop: new Int32Array(CHUNK_SIZE * CHUNK_SIZE),
+      offsets: new Float64Array(CHUNK_SIZE * CHUNK_SIZE),
+      amps: new Float64Array(CHUNK_SIZE * CHUNK_SIZE),
+    };
+    for (let lz = 0; lz < CHUNK_SIZE; lz++)
+      for (let lx = 0; lx < CHUNK_SIZE; lx++) {
+        const i = columnIndex(lx, lz);
+        const wx = cx * CHUNK_SIZE + lx;
+        const wz = cz * CHUNK_SIZE + lz;
+        const fields = this.climate.fields(wx * BLOCK_SIZE_M, wz * BLOCK_SIZE_M);
+        column.offsets[i] = heightMeters(fields);
+        column.amps[i] = detailAmpMeters(fields);
+        column.solidTop[i] = this.solidTop(wx, wz, column.offsets[i]!, column.amps[i]!);
+      }
+    this.columnCache.set(key, column);
+    return column;
   }
 
-  private heightAt(wx: number, wz: number): number {
-    const cx = floorDiv(wx, CHUNK_SIZE);
-    const cz = floorDiv(wz, CHUNK_SIZE);
-    return this.columnHeights(cx, cz)[columnIndex(wx - cx * CHUNK_SIZE, wz - cz * CHUNK_SIZE)]!;
+  /**
+   * Highest solid block of one cell, scanning down from above the highest possible surface. The bottom of the scan is
+   * solid by construction, so the scan always stops there at the latest.
+   */
+  private solidTop(wx: number, wz: number, offsetM: number, ampM: number): number {
+    const bottom = Math.floor(metersToBlocks(offsetM - ampM)) - 2;
+    let y = Math.floor(metersToBlocks(offsetM + ampM)) + 2;
+    while (y > bottom && !this.density.isSolid(wx, y, wz, offsetM, ampM)) y--;
+    return y;
   }
 
   /**
@@ -199,7 +233,7 @@ export class TerrainGenerator {
     for (let wz = z0 - TREE_REACH; wz < z0 + CHUNK_SIZE + TREE_REACH; wz++) {
       for (let wx = x0 - TREE_REACH; wx < x0 + CHUNK_SIZE + TREE_REACH; wx++) {
         if (hash2(this.seed, wx, wz) >= TREE_CHANCE) continue;
-        const h = this.heightAt(wx, wz);
+        const h = this.getHeight(wx, wz);
         // Trees grow on grass: not a beach, and the cave carver left the surface block alone.
         if (h <= SEA_LEVEL + BEACH_BAND) continue;
         if (h >= 2 && h <= this.caveTop(h) && this.isCave(wx, h, wz)) continue;
