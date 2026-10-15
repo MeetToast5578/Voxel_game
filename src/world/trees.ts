@@ -1,4 +1,11 @@
-import { roundBlocks, TREE_HEIGHT_MAX_M, TREE_HEIGHT_MIN_M } from '../config';
+import {
+  roundBlocks,
+  TREE_BLOB_RADIUS_M,
+  TREE_BRANCH_MAX_M,
+  TREE_BRANCH_MIN_M,
+  TREE_HEIGHT_MAX_M,
+  TREE_HEIGHT_MIN_M,
+} from '../config';
 import { hash2, mulberry32 } from '../core/random';
 import { BlockId } from './blocks';
 
@@ -17,7 +24,7 @@ export interface TreeBlock {
 const TREE_SALT = 7;
 
 /**
- * The blocks of the tree rooted at ground block (ax, ground, az): a 1-block trunk, 4–6 branches and a leaf crown,
+ * The blocks of the tree rooted at ground block (ax, ground, az): a 2 x 2 trunk, 4–6 branches and a leaf crown,
  * with a rough edge. A pure function of its arguments, so any chunk asking gets the same list. The caller keeps only
  * the blocks that fall in its own range. Leaves never replace logs, and every log touches the trunk through logs.
  */
@@ -25,7 +32,7 @@ export function treeBlocks(seed: number, ax: number, ground: number, az: number)
   const rng = mulberry32(Math.floor(hash2(seed + TREE_SALT, ax, az) * 4294967296)); // hash2 is a fraction, not a seed
   const height = roundBlocks(TREE_HEIGHT_MIN_M + (TREE_HEIGHT_MAX_M - TREE_HEIGHT_MIN_M) * rng());
   const crownBase = Math.round(height * (0.45 + 0.15 * rng())); // top of the bare trunk, above ground
-  const crownRadius = roundBlocks(3 + 0.6 * rng()); // 5–6 blocks, about 3–3.6 m
+  const crownRadius = roundBlocks(3 + 0.6 * rng()); // about 3–3.6 m
   // The crown runs from the top of the bare trunk to the top of the tree, so the trunk top is always under leaves.
   const crownRy = Math.max(2, Math.ceil((height - crownBase) / 2));
 
@@ -47,9 +54,12 @@ export function treeBlocks(seed: number, ax: number, ground: number, az: number)
   };
 
   put(0, 0, 0, BlockId.DIRT);
-  for (let dy = 1; dy <= crownBase; dy++) put(0, dy, 0, BlockId.LOG);
+  // A 2 x 2 trunk (0.6 m across), so the tree is not a thin pole at 0.3 m blocks.
+  for (let dy = 1; dy <= crownBase; dy++)
+    for (let dz = 0; dz <= 1; dz++) for (let dx = 0; dx <= 1; dx++) put(dx, dy, dz, BlockId.LOG);
 
   const branches = 4 + Math.floor(rng() * 3);
+  const blob = roundBlocks(TREE_BLOB_RADIUS_M);
   for (let i = 0; i < branches; i++) {
     const angle = rng() * Math.PI * 2;
     const cosA = Math.cos(angle);
@@ -57,7 +67,7 @@ export function treeBlocks(seed: number, ax: number, ground: number, az: number)
     const shareX = Math.abs(cosA) / (Math.abs(cosA) + Math.abs(sinA)); // chance a step moves along X
     const signX = Math.sign(cosA) || 1;
     const signZ = Math.sign(sinA) || 1;
-    const steps = 2 + Math.floor(rng() * 3); // 2–4 horizontal blocks out
+    const steps = roundBlocks(TREE_BRANCH_MIN_M + (TREE_BRANCH_MAX_M - TREE_BRANCH_MIN_M) * rng()); // 1.2–2.4 m out
     const rise = 0.2 + 0.4 * rng(); // blocks gained per horizontal block
     let x = 0;
     let z = 0;
@@ -75,7 +85,7 @@ export function treeBlocks(seed: number, ax: number, ground: number, az: number)
       else z += signZ;
       put(x, y, z, BlockId.LOG);
     }
-    crown(x, y, z, 2, 2, 2);
+    crown(x, y, z, blob, blob, blob);
   }
 
   crown(0, height - crownRy, 0, crownRadius, crownRy, crownRadius);

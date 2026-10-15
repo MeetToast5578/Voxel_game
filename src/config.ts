@@ -4,7 +4,7 @@
  */
 
 // ---- Scale ----
-export const BLOCK_SIZE_M = 0.6; // one block is 0.6 m; the player is about 3 blocks tall
+export const BLOCK_SIZE_M = 0.3; // one block is 0.3 m; the player is about 6 blocks tall
 
 /** Converts a length in meters to blocks. Speeds (m/s) and accelerations (m/s²) convert the same way. */
 export function metersToBlocks(meters: number): number {
@@ -57,6 +57,10 @@ export const TREE_HEIGHT_MIN_M = 8;
 export const TREE_HEIGHT_MAX_M = 12;
 /** The most a tree's blocks sit horizontally from its trunk. */
 export const TREE_REACH_M = 4.8;
+/** Branch length (horizontal) and the leaf cluster radius at a branch end, in meters. */
+export const TREE_BRANCH_MIN_M = 1.2;
+export const TREE_BRANCH_MAX_M = 2.4;
+export const TREE_BLOB_RADIUS_M = 1.2;
 export const TREE_REACH = roundBlocks(TREE_REACH_M);
 
 // Spawn search, in meters.
@@ -65,9 +69,11 @@ export const SPAWN_STEP_M = 8;
 
 // Surface band cap, in meters: columns whose top is further than this are not kept in the surface band.
 export const SURFACE_MAX_DISTANCE_M = 2000;
+// How far below a column top the spawn search looks for the ground, in meters.
+export const SURFACE_SCAN_M = 150;
 
 // ---- Chunk streaming ----
-export const DEFAULT_RENDER_DISTANCE = 8; // radius, in chunks (a chunk is 9.6 m wide)
+export const DEFAULT_RENDER_DISTANCE = 8; // radius, in chunks (a chunk is 4.8 m wide)
 export const MIN_RENDER_DISTANCE = 2;
 export const MAX_RENDER_DISTANCE = 16;
 export const GEN_BUDGET_MS = 4; // max time per frame spent generating terrain
@@ -95,7 +101,7 @@ export const BREAK_REPEAT_S = 0.25; // holding a mouse button repeats break/plac
 export const DEFAULT_MOUSE_SENSITIVITY = 0.0025; // radians per pixel of mouse movement
 export const FOOTSTEP_DISTANCE = metersToBlocks(1.8); // a footstep sound every this far walked on the ground
 export const FOOTSTEP_MIN_SPEED = metersToBlocks(1); // no footsteps below this horizontal speed
-export const STEP_HEIGHT = 1; // highest ledge, in blocks, the player walks up onto without jumping
+export const STEP_HEIGHT = roundBlocks(0.6); // highest ledge the player walks up onto without jumping (0.6 m)
 export const STEP_SMOOTH_S = 0.12; // seconds the camera takes to catch up after a full 1-block step
 
 // ---- Swimming ----
@@ -124,6 +130,10 @@ export const CLOUD_HEIGHT_M = 100;
 export const CLOUD_TEXEL_M = 12; // one cloud texel covers this much ground
 export const CLOUD_PLANE_M = 768; // beyond the fog anyway
 export const CLOUD_DRIFT_M_S = 1.5; // toward +X
+
+// View ends, in meters. Fog near and far follow the view distance.
+export const CAMERA_FAR_M = 600;
+export const UNDERWATER_FAR_M = 8.4;
 
 // ---- Time of day ----
 export const DAY_LENGTH_S = 600; // seconds for a full day + night

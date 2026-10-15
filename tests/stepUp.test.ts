@@ -1,17 +1,21 @@
 import { describe, expect, it } from 'vitest';
-import { EYE_HEIGHT, FIXED_DT, PLAYER_HALF_WIDTH, STEP_SMOOTH_S } from '../src/config';
+import { EYE_HEIGHT, FIXED_DT, PLAYER_HALF_WIDTH, PLAYER_HEIGHT, STEP_HEIGHT, STEP_SMOOTH_S } from '../src/config';
 import { moveAndCollide, type SolidFn } from '../src/player/physics';
 import { NO_CONTROLS, PLAYER_SHAPE, Player, type PlayerControls } from '../src/player/player';
 
-// Ground is solid for y < 10; the player's feet start at y = 10, at x = 2.5, z = 0.5 (body spans x 2.1..2.9).
-const ledge: SolidFn = (x, y) => y < 10 || (x >= 3 && y === 10); // raised floor, top at y = 11
-const wall: SolidFn = (x, y) => y < 10 || (x >= 3 && y <= 11); // 2 blocks high
+// Ground is solid for y < 10; the player's feet start at y = 10, at x = 1.5, z = 0.5. The body is
+// 2 * PLAYER_HALF_WIDTH wide and PLAYER_HEIGHT tall (about 5.8 blocks at 0.3 m per block).
+const ledge: SolidFn = (x, y) => y < 10 || (x >= 3 && y === 10); // raised floor, top at y = 11 (one block, 0.3 m)
+const wall: SolidFn = (x, y) => y < 10 || (x >= 3 && y <= 12); // 3 blocks high (0.9 m), taller than the step
 const FORWARD: PlayerControls = { ...NO_CONTROLS, forward: true };
-const BLOCKED_X = 3 - PLAYER_HALF_WIDTH; // 2.6
+const START_X = 1.5;
+const BLOCKED_X = 3 - PLAYER_HALF_WIDTH; // where the body stops against a wall at x = 3
+/** A ceiling 5 blocks above the ledge top (11): less air than the body (5.8 blocks) needs, so no step. */
+const LOW_CEILING_Y = 11 + Math.floor(PLAYER_HEIGHT);
 
 function player(y = 10): Player {
   const p = new Player();
-  p.setPosition(2.5, y, 0.5);
+  p.setPosition(START_X, y, 0.5);
   p.yaw = -Math.PI / 2; // facing +X
   return p;
 }
@@ -21,28 +25,29 @@ function run(p: Player, ticks: number, solid: SolidFn, controls = FORWARD, water
 }
 
 describe('step-up', () => {
-  it('walks up a 1-block ledge', () => {
+  it('walks up a one-block (0.3 m) ledge', () => {
     const p = player();
     run(p, 60, ledge);
     expect(p.position.y).toBeCloseTo(11, 3);
     expect(p.position.x).toBeGreaterThan(3.5);
     expect(p.onGround).toBe(true);
   });
-  it('is still blocked by a 2-block wall', () => {
+  it('is still blocked by a wall taller than the step', () => {
     const p = player();
     run(p, 60, wall);
     expect(p.position.x).toBeCloseTo(BLOCKED_X, 3);
     expect(p.position.y).toBeCloseTo(10, 3);
   });
   it('does not step when there is no headroom above the ledge', () => {
-    const solid: SolidFn = (x, y) => ledge(x, y, 0) || (x === 3 && y === 13); // only 2 blocks of air on the ledge
+    const solid: SolidFn = (x, y) => ledge(x, y, 0) || (x === 3 && y === LOW_CEILING_Y);
     const p = player();
     run(p, 60, solid);
     expect(p.position.x).toBeCloseTo(BLOCKED_X, 3);
     expect(p.position.y).toBeCloseTo(10, 3);
   });
   it('does not step with a ceiling just above the head', () => {
-    const solid: SolidFn = (x, y) => ledge(x, y, 0) || (x === 2 && y === 13); // head is at 12.917
+    const headCell = Math.ceil(10 + PLAYER_HEIGHT); // the first cell above the body's head
+    const solid: SolidFn = (x, y) => ledge(x, y, 0) || (x === 2 && y === headCell);
     const p = player();
     run(p, 60, solid);
     expect(p.position.x).toBeCloseTo(BLOCKED_X, 3);
@@ -56,21 +61,21 @@ describe('step-up', () => {
     expect(p.position.y).toBeCloseTo(10.5, 3);
   });
   it('does not step while swimming', () => {
-    const water: SolidFn = (x, y, z) => !ledge(x, y, z) && y >= 10 && y <= 13;
+    const water: SolidFn = (x, y, z) => !ledge(x, y, z) && y >= 10 && y <= 30; // deeper than the body
     const p = player();
     run(p, 60, ledge, FORWARD, water);
-    expect(p.position.x).toBeLessThanOrEqual(2.61);
+    expect(p.position.x).toBeLessThanOrEqual(BLOCKED_X + 0.01);
   });
   it('does not step while airborne', () => {
-    const pos = { x: 2.55, y: 10.2, z: 0.5 };
+    const pos = { x: BLOCKED_X - 0.05, y: 10.2, z: 0.5 };
     const vel = { x: 5, y: 3, z: 0 };
-    const r = moveAndCollide(pos, vel, FIXED_DT, PLAYER_SHAPE, ledge, 1);
+    const r = moveAndCollide(pos, vel, FIXED_DT, PLAYER_SHAPE, ledge, STEP_HEIGHT);
     expect(r.hitX).toBe(true);
     expect(r.stepped).toBe(0);
     expect(pos.x).toBeCloseTo(BLOCKED_X, 3);
   });
   it('is off by default', () => {
-    const pos = { x: 2.5, y: 10, z: 0.5 };
+    const pos = { x: BLOCKED_X - 0.05, y: 10, z: 0.5 };
     let r = moveAndCollide(pos, { x: 5, y: -1, z: 0 }, FIXED_DT, PLAYER_SHAPE, ledge);
     for (let i = 0; i < 30; i++) r = moveAndCollide(pos, { x: 5, y: -1, z: 0 }, FIXED_DT, PLAYER_SHAPE, ledge);
     expect(r.hitX).toBe(true);

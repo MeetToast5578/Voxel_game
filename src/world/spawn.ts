@@ -1,4 +1,4 @@
-import { BEACH_BAND, roundBlocks, SEA_LEVEL, SPAWN_RADIUS_M, SPAWN_STEP_M } from '../config';
+import { BEACH_BAND, roundBlocks, SEA_LEVEL, SPAWN_RADIUS_M, SPAWN_STEP_M, SURFACE_SCAN_M } from '../config';
 import { isSolid } from './blocks';
 import type { TerrainGenerator } from './generator';
 
@@ -18,7 +18,7 @@ export function findSpawnColumn(generator: TerrainGenerator): { x: number; z: nu
 }
 
 /** A spawn search never scans further than this below the column top (through water, for example). */
-const MAX_SURFACE_SCAN = 256;
+const MAX_SURFACE_SCAN = roundBlocks(SURFACE_SCAN_M);
 
 /**
  * Y coordinate just above the highest solid block of a column (where the player's feet go). The scan starts at

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { START_TIME_OF_DAY } from '../src/config';
 import { DEFAULT_HOTBAR } from '../src/player/hotbar';
-import { metaRecord, parseChunkRecord, parseMeta, readSave, type WorldMeta } from '../src/storage/save';
+import { metaRecord, parseChunkRecord, parseMeta, readSave, SAVE_VERSION, type WorldMeta } from '../src/storage/save';
 import { BlockId } from '../src/world/blocks';
 
 const sample: WorldMeta = {
@@ -20,7 +20,7 @@ describe('save meta', () => {
     expect(parseMeta(JSON.stringify(stored()))).toEqual(sample);
   });
   it('rejects other versions', () => {
-    for (const version of [1, 3, 0, undefined]) expect(parseMeta({ ...stored(), version })).toBeNull();
+    for (const version of [SAVE_VERSION - 1, SAVE_VERSION + 1, 0, undefined]) expect(parseMeta({ ...stored(), version })).toBeNull();
   });
   it('repairs a bad hotbar to DEFAULT_HOTBAR and keeps the world', () => {
     const nine = stored().hotbar;

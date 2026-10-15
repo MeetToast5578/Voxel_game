@@ -2,7 +2,7 @@ import { CHUNK_VOLUME, HOTBAR_SIZE, START_TIME_OF_DAY } from '../config';
 import { DEFAULT_HOTBAR } from '../player/hotbar';
 import { BlockId, blockStateName, parseBlockStateName } from '../world/blocks';
 
-export const SAVE_VERSION = 2;
+export const SAVE_VERSION = 3; // 3: block coordinates at 0.3 m; older saves are not loaded
 
 export interface SavedPlayer {
   x: number;
