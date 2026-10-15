@@ -1,6 +1,6 @@
 # Roadmap: Voxel World Simulator
 
-Last updated 2026-10-13. This replaces the backlog in `HANDOFF.md`.
+Last updated 2026-10-15. This replaces the backlog in `HANDOFF.md`. Phase 1, 1b and the first items of phase 2 are merged (specs 1–14).
 
 ## Vision
 
@@ -20,7 +20,7 @@ Every system is deterministic from the seed, runs off the main thread where it c
 | A | Step-up style | Physics step-up, as specced (no auto-jump) |
 | B | Save key | **Superseded.** The world format changes completely (cubic chunks, new terrain, 16-bit blocks), so old saves can't be carried over. The new save lives in IndexedDB. The old `localStorage` save is left untouched and ignored. |
 | C | Trees appearing in existing worlds | Accepted. It becomes moot for the same reason as B. |
-| D | Scale | 1 block = 0.6 m. The player is about 3 blocks tall, like Terraria. |
+| D | Scale | 1 block = 0.3 m (spec 10, which changed the original 0.6 m). The player is about 6 blocks tall. |
 | E | Vertical extent | Cubic chunks (16×16×16) with unlimited height and depth |
 | F | Terrain approach | Hybrid: infinite climate-driven noise, plus coarse simulated drainage and erosion per large region |
 | G | Plan form | This roadmap, plus Haiku-ready specs for phase 1 only. Later phases are specced when they're reached. |
@@ -32,18 +32,18 @@ All gameplay numbers are written in meters in `src/config.ts` and converted to b
 
 | Quantity | Meters | Blocks |
 |----------|--------|--------|
-| Block edge | 0.6 | 1 |
-| Player height / eye / width | 1.75 / 1.62 / 0.48 | 2.92 / 2.7 / 0.8 |
-| Chunk edge (16 blocks) | 9.6 | 16 |
-| Jump height (approx.) | 1.35 | 2.25 |
-| Auto step-up | 0.6 | 1 |
+| Block edge | 0.3 | 1 |
+| Player height / eye / width | 1.75 / 1.62 / 0.48 | 5.8 / 5.4 / 1.6 |
+| Chunk edge (16 blocks) | 4.8 | 16 |
+| Jump height (approx.) | 1.35 | 4.5 |
+| Auto step-up | 0.6 | 2 |
 | Sea level | 0 | y = 0 |
-| Deep ocean floor (typical) | −200 to −300 | −330 to −500 |
-| Lowland / hills | 0 to 150 | 0 to 250 |
-| High mountain ranges (rare peaks) | 1,500 to 2,500 | 2,500 to 4,200 |
-| Snow line (temperate, summer) | ~2,000 | ~3,300 |
+| Deep ocean floor (typical) | −200 to −300 | −670 to −1,000 |
+| Lowland / hills | 0 to 150 | 0 to 500 |
+| High mountain ranges (rare peaks) | 1,500 to 2,500 | 5,000 to 8,300 |
+| Snow line (temperate, summer) | ~2,000 | ~6,700 |
 
-"Unlimited height" means storage and coordinates have no cap. The terrain generator works inside a band (about y −4,096 to +4,096). Below the band is plain deep rock; above it is air. Players can build and dig anywhere.
+"Unlimited height" means storage and coordinates have no cap. The terrain generator works inside a band (−400 m to +2,600 m, spec 13). Below the band is plain deep rock; above it is air. Players can build and dig anywhere.
 
 ## Architecture targets
 
@@ -53,7 +53,7 @@ These are the shapes later phases build on. Phase 1 puts the first four in place
 - **Column tops.** Each column keeps the highest sky-blocking block for each of its 16×16 cells. Sky light, rain occlusion, snow cover, spawn search and the horizon LOD all read it. Phase 1 is light only.
 - **Exact local light.** Light is recomputed per mesh from the 3×3×3 chunks around it, seeded from column tops. This stays exact because light reaches at most 14 blocks.
 - **16-bit block states.** A block state is a `u16`. Each block type registers a number of variants (fluid level, snow depth, log axis, crop age). Saves store names, not raw numbers, so adding blocks never breaks a save.
-- **Generator pipeline** (phase 2). It works in four stages:
+- **Generator pipeline** (phase 2). It works in four stages. Stage 1 and the density part of stage 4 are done (specs 12–14):
   1. climate and shape fields (2D, infinite)
   2. region simulation (coarse grid: drainage, erosion, moisture), cached per region
   3. column fields (height, biome, river and lake data) upsampled to blocks
@@ -79,7 +79,7 @@ Delivery follows the existing rule:
 
 Goal: the new scale, a world with no height limit, block states, and a save that can grow.
 
-1. **World scale.** 0.6 m blocks, a 3-block-tall player, meters in config, and a swept vertical collision so fast falls can't tunnel.
+1. **World scale.** 0.6 m blocks at the time (later 0.3 m, spec 10), a 3-block-tall player at that scale, meters in config, and a swept vertical collision so fast falls can't tunnel.
 2. **Auto step-up** onto 1-block ledges (decision A, rewritten for the new scale).
 3. **16-bit block states** with variants and stable names.
 4. **Cubic chunks: data model.** Chunks, world, column tops, edits.
@@ -87,7 +87,7 @@ Goal: the new scale, a world with no height limit, block states, and a save that
 6. **Cubic chunks: streaming.** A 3D load set that follows the terrain surface, plus workers and rendering.
 7. **Save v2 in IndexedDB.** Includes the hotbar and time of day; absorbs the old spec 2.
 
-Terrain in phase 1 is today's generator, adapted. Below y = 0 is stone, there's no bedrock floor, and sea level stays at y = 40. Phase 2 replaces it.
+Phase 1 kept the old height noise, with stone below y = 0 and sea level at y = 40. Phase 2 replaced it: sea level is y = 0, and the surface comes from a 3D density (specs 13–14).
 
 **Done when:** you can dig 500 blocks down and build 500 blocks up, surface terrain is visible at full render distance from the bottom of a valley, saves survive a reload, and CI is green.
 
@@ -105,6 +105,8 @@ Goal: the same land in meters, filled with finer blocks, so the world gets more 
 ### Phase 2: Terrain
 
 Goal: geography that looks real from the ground and from a mountaintop.
+
+**Status (2026-10-15):** items 1 and 2 are done (specs 11–12). Spec 13 switched the generator to those fields, and spec 14 added the 3D density (part of item 4). Next: geology (item 5). Item 3 needs a larger model to plan it first.
 
 1. **Debug map** (`?map=1`). A top-down 2D render of the generator: height, biomes, rivers, moisture, region seams. It's the main tuning tool for this phase, so it comes first.
 2. **Climate and shape fields.** Large-scale noise for:
