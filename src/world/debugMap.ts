@@ -1,16 +1,22 @@
-import { SEA_LEVEL, TERRAIN_MAX_BLOCKS } from '../config';
+import { metersToBlocks, SEA_LEVEL, TERRAIN_MAX_BLOCKS } from '../config';
 import type { TerrainGenerator } from './generator';
 
 /**
- * RGBA pixels of a size x size top-down map of the surface, one pixel per block. Pixel (px, pz) covers the column
- * at world x = x0 + px, z = z0 + pz. Below sea level the colour darkens with depth; above it runs from green at sea
- * level to white at the highest terrain.
+ * RGBA pixels of a size x size top-down map of the surface. Pixel (px, pz) covers the column at world x = x0 + px * stride,
+ * z = z0 + pz * stride, in blocks. Below sea level the colour darkens with depth; above it runs from green at sea level to
+ * white at the highest terrain.
  */
-export function mapPixels(generator: TerrainGenerator, x0: number, z0: number, size: number): Uint8ClampedArray<ArrayBuffer> {
+export function mapPixels(
+  generator: TerrainGenerator,
+  x0: number,
+  z0: number,
+  size: number,
+  stride = 1,
+): Uint8ClampedArray<ArrayBuffer> {
   const out = new Uint8ClampedArray(size * size * 4);
   for (let pz = 0; pz < size; pz++)
     for (let px = 0; px < size; px++) {
-      const h = generator.getHeight(x0 + px, z0 + pz);
+      const h = generator.getHeight(x0 + px * stride, z0 + pz * stride);
       const [r, g, b] = h < SEA_LEVEL ? seaColour(h) : landColour(h);
       const i = (pz * size + px) * 4;
       out[i] = r;
@@ -22,7 +28,7 @@ export function mapPixels(generator: TerrainGenerator, x0: number, z0: number, s
 }
 
 function seaColour(h: number): [number, number, number] {
-  const depth = Math.min(1, (SEA_LEVEL - h) / 60); // 60 blocks deep is the darkest
+  const depth = Math.min(1, (SEA_LEVEL - h) / metersToBlocks(300)); // 300 m deep is the darkest
   return [20, 60 + Math.round(40 * (1 - depth)), 160 + Math.round(60 * (1 - depth))];
 }
 

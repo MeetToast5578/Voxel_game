@@ -14,7 +14,7 @@ import { hash2 } from '../src/core/random';
 import { BlockId } from '../src/world/blocks';
 import { TerrainGenerator } from '../src/world/generator';
 import { MAX_TREE_RISE, treeBlocks, type TreeBlock } from '../src/world/trees';
-import { stackedColumn, type StackedColumn } from './support/stackedColumn';
+import { landColumns, stackedColumn, type StackedColumn } from './support/stackedColumn';
 
 const SEED = 42;
 const ANCHORS: Array<[number, number]> = [];
@@ -122,18 +122,18 @@ describe('trees', () => {
   it('some columns have trees, not all', { timeout: 30000 }, () => {
     const g = new TerrainGenerator(SEED);
     const columns: StackedColumn[] = [];
-    for (let i = 0; i < 40; i++) columns.push(stackedColumn(g, i, 7));
+    for (const { cx, cz } of landColumns(g, 60)) columns.push(stackedColumn(g, cx, cz));
     const withTrees = columns.filter((c) => c.blocks.includes(BlockId.LOG)).length;
     expect(withTrees).toBeGreaterThan(5);
-    expect(withTrees).toBeLessThan(40);
+    expect(withTrees).toBeLessThan(60);
   });
   it('every trunk top in a column has leaves directly above it', { timeout: 30000 }, () => {
     const g = new TerrainGenerator(SEED);
     for (let i = 0; i < 20; i++) {
-      const c = stackedColumn(g, i, 7);
+      const c = stackedColumn(g, ...[landColumns(g, 20)[i]!.cx, landColumns(g, 20)[i]!.cz] as const);
       for (let lz = 0; lz < 16; lz++)
         for (let lx = 0; lx < 16; lx++) {
-          for (let y = 1; y < LEGACY_HEIGHT - 1; y++) {
+          for (let y = 1; y < c.blocks.length / 256 - 1; y++) {
             // A trunk base is a log on dirt; walk up the trunk and check the cell above its top.
             if (c.get(lx, y, lz) !== BlockId.LOG || c.get(lx, y - 1, lz) !== BlockId.DIRT) continue;
             let top = y;

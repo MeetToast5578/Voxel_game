@@ -5,7 +5,7 @@ describe('config', () => {
   it('has consistent world sizes (cubic chunks, no height limit)', () => {
     expect(C.CHUNK_VOLUME).toBe(C.CHUNK_SIZE * C.CHUNK_SIZE * C.CHUNK_SIZE);
     expect('WORLD_HEIGHT' in C).toBe(false);
-    expect(C.SEA_LEVEL).toBeGreaterThan(0);
+    expect(C.SEA_LEVEL).toBe(0); // sea level is y = 0 (spec 13)
   });
   it('has sane ranges', () => {
     expect(C.MIN_RENDER_DISTANCE).toBeLessThanOrEqual(C.DEFAULT_RENDER_DISTANCE);

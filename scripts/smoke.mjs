@@ -9,7 +9,7 @@ import { chromium } from 'playwright';
 import { preview } from 'vite';
 
 const PORT = 4173;
-const SEA_LEVEL = 133; // SEA_LEVEL in src/config.ts (40 m at 0.3 m per block), in blocks
+const SEA_LEVEL = 0; // SEA_LEVEL in src/config.ts (y = 0, sea level in the roadmap), in blocks
 const URL_PATH = process.env.SMOKE_PATH || '/?seed=1&autostart=1&nosave=1';
 
 /** @type {{ name: string, run: (page: import('playwright').Page) => Promise<void> }[]} */
@@ -157,7 +157,9 @@ const CHECKS = [
     name: 'swims in water and sees the underwater fog',
     run: async (page) => {
       const start = await page.evaluate(() => window.__game.state());
-      // Find a water column near the player (seed 1 has a lake next to spawn).
+      // The spawn area has no sea nearby: go to the nearest deep ocean for seed 1 first, then search there.
+      await page.evaluate(() => window.__game.teleport(-39.5, 20, 84.5));
+      await page.waitForFunction(() => window.__game.state().areaMeshed, null, { timeout: 60_000 });
       const spot = await page.evaluate(([px, pz, sea]) => {
         for (let r = 0; r < 48; r++)
           for (let dx = -r; dx <= r; dx++)
@@ -167,17 +169,20 @@ const CHECKS = [
               if (window.__game.getBlock(x, sea - 2, z) === 5 && window.__game.getBlock(x, sea - 4, z) === 5) return [x, z];
             }
         return null;
-      }, [start.position[0], start.position[2], SEA_LEVEL]);
+      }, [-39.5, 84.5, SEA_LEVEL]);
       if (!spot) throw new Error('no deep water found near spawn');
       await page.evaluate(([x, z, sea]) => {
         window.__game.teleport(x + 0.5, sea - 4, z + 0.5);
         window.__game.look(0, 0);
       }, [...spot, SEA_LEVEL]);
-      await page.waitForTimeout(400);
+      await page.waitForFunction(() => window.__game.state().areaMeshed, null, { timeout: 60_000 });
+      await page.waitForFunction(() => window.__game.state().inWater, null, { timeout: 20_000 }).catch(() => {});
       const s = await page.evaluate(() => window.__game.state());
       if (!s.inWater) throw new Error(`expected inWater: ${JSON.stringify(s)}`);
       await page.screenshot({ path: 'screenshots/underwater.png' });
       await page.evaluate(([x, y, z]) => window.__game.teleport(x, y, z), start.position);
+      await page.waitForFunction(() => window.__game.state().areaMeshed, null, { timeout: 60_000 });
+      await page.waitForFunction(() => window.__game.state().onGround, null, { timeout: 20_000 }).catch(() => {});
       await page.waitForTimeout(300);
     },
   },
@@ -224,7 +229,7 @@ const CHECKS = [
       await page.evaluate(([x, z]) => {
         const g = window.__game;
         // Surface (first non-air from the top) of the column 4 blocks south of the player.
-        let top = 240; // the legacy column's top, above all terrain
+        let top = 8600; // above all terrain (the band top is 8,672 blocks)
         while (top > 1 && g.getBlock(x, top, z + 4) === 0) top--;
         g.setBlock(x, top + 1, z + 4, 13); // glowstone on the ground
         g.setTimeOfDay(0.75); // midnight
@@ -252,11 +257,11 @@ const CHECKS = [
       const below = await page.evaluate(([x, z]) => window.__game.getBlock(x, -205, z), [bx, bz]);
       if (below !== 1) throw new Error(`expected stone 5 blocks below y = -200, found ${below}`);
 
-      await page.evaluate(([x, z]) => window.__game.teleport(x, 450, z), [x, z]); // above the highest terrain (387 blocks)
+      await page.evaluate(([x, z]) => window.__game.teleport(x, 8400, z), [x, z]); // above the highest terrain (2,450 m, 8,167 blocks)
       await waitMeshed();
-      const placed = await page.evaluate(([x, z]) => window.__game.setBlock(x + 2, 451, z, 9), [bx, bz]); // glass
-      const glass = await page.evaluate(([x, z]) => window.__game.getBlock(x + 2, 451, z), [bx, bz]);
-      if (!placed || glass !== 9) throw new Error(`glass at y = 451: placed ${placed}, read back ${glass}`);
+      const placed = await page.evaluate(([x, z]) => window.__game.setBlock(x + 2, 8401, z, 9), [bx, bz]); // glass
+      const glass = await page.evaluate(([x, z]) => window.__game.getBlock(x + 2, 8401, z), [bx, bz]);
+      if (!placed || glass !== 9) throw new Error(`glass at y = 8401: placed ${placed}, read back ${glass}`);
       await page.screenshot({ path: 'screenshots/high.png' });
 
       await page.evaluate(([x, y, z, flying]) => {
