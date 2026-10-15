@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { SEA_LEVEL } from '../src/config';
+import { BLOCK_SIZE_M, SEA_LEVEL } from '../src/config';
 import { compassDirection, formatDebugLines, type DebugInfo } from '../src/ui/debugText';
 
 describe('debugText', () => {
@@ -21,12 +21,12 @@ describe('debugText', () => {
     expect(lines[0]).toBe('FPS 60');
     expect(lines[1]).toBe('XYZ 12.35 / 65.00 / -3.20');
     expect(lines[2]).toBe('Block 12 65 -4   Chunk 0, 4, -1');
-    // 1 block = 0.6 m; elevation is (y - SEA_LEVEL) * 0.6, so it depends on the sea level in config
-    expect(lines[3]).toBe(`Meters 7.4 / 39.0 / -1.9   Elevation ${((65 - SEA_LEVEL) * 0.6).toFixed(1)} m`);
+    // elevation is (y - SEA_LEVEL) * BLOCK_SIZE_M, so it depends on the sea level in config
+    expect(lines[3]).toBe(`Meters ${(12.345 * BLOCK_SIZE_M).toFixed(1)} / ${(65 * BLOCK_SIZE_M).toFixed(1)} / ${(-3.2 * BLOCK_SIZE_M).toFixed(1)}   Elevation ${((65 - SEA_LEVEL) * BLOCK_SIZE_M).toFixed(1)} m`);
     const atSea = formatDebugLines({ ...info, position: [0, SEA_LEVEL, 0] });
-    expect(atSea[3]).toBe(`Meters 0.0 / ${(SEA_LEVEL * 0.6).toFixed(1)} / 0.0   Elevation 0.0 m`);
+    expect(atSea[3]).toBe(`Meters 0.0 / ${(SEA_LEVEL * BLOCK_SIZE_M).toFixed(1)} / 0.0   Elevation 0.0 m`);
     expect(formatDebugLines({ ...info, position: [0, 30, 0] })[3]).toContain(
-      `Elevation ${((30 - SEA_LEVEL) * 0.6).toFixed(1)} m`,
+      `Elevation ${((30 - SEA_LEVEL) * BLOCK_SIZE_M).toFixed(1)} m`,
     );
     expect(lines).toContain('Target Stone @ 12 64 -4');
     expect(lines).toContain('Columns 81   Jobs in flight 5');

@@ -3,7 +3,7 @@ import { INTERIM_SAVE_KEY } from './config';
 import { installDebugApi } from './debugApi';
 import { Game, type GameSave } from './game';
 import { readOptions, type GameOptions } from './options';
-import { readSave } from './storage/save';
+import { readSave, SAVE_VERSION } from './storage/save';
 import { browserStore } from './storage/store';
 import { IndexedDbWorldStore, MemoryWorldStore } from './storage/worldStore';
 
@@ -21,6 +21,8 @@ async function openSave(options: GameOptions): Promise<GameSave> {
   const store = await IndexedDbWorldStore.open();
   const stored = store ? await store.load() : null;
   if (!store || !stored?.ok) return { store: new MemoryWorldStore(), loaded: null, persistent: false, unavailable: true };
+  // A save of another version has block coordinates at another size, so its chunk records must go too.
+  if (stored.meta && (stored.meta as { version?: unknown }).version !== SAVE_VERSION) await store.clear();
   const loaded = readSave(stored.meta, stored.chunks);
   if (loaded && loaded.dropped > 0) console.warn(`save: ignored ${loaded.dropped} invalid block edits`);
   return { store, loaded, persistent: true, unavailable: false };

@@ -4,7 +4,7 @@ import { blockIntersectsBody, canBreak, placementTarget } from '../src/player/in
 import { PLAYER_SHAPE } from '../src/player/player';
 import { BlockId } from '../src/world/blocks';
 
-const shape = PLAYER_SHAPE; // half width 0.4, height ~2.917 (1.75 m)
+const shape = PLAYER_SHAPE; // half width 0.24 m, height 1.75 m
 const feet = { x: 0.5, y: 10, z: 0.5 }; // standing on block (0, 9, 0)
 
 describe('blockIntersectsBody', () => {
@@ -15,8 +15,8 @@ describe('blockIntersectsBody', () => {
   });
   it('touching is not overlapping', () => {
     expect(blockIntersectsBody(0, 9, 0, feet, shape)).toBe(false); // block under the feet
-    expect(blockIntersectsBody(0, 13, 0, feet, shape)).toBe(false); // above the head (10 + 2.917 < 13)
-    expect(blockIntersectsBody(1, 10, 0, feet, shape)).toBe(false); // body spans x 0.1..0.9
+    expect(blockIntersectsBody(0, 16, 0, feet, shape)).toBe(false); // above the head (10 + 5.83 < 16)
+    expect(blockIntersectsBody(2, 10, 0, feet, shape)).toBe(false); // body spans x -0.3..1.3
   });
 });
 

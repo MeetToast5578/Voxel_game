@@ -9,7 +9,7 @@ import { chromium } from 'playwright';
 import { preview } from 'vite';
 
 const PORT = 4173;
-const SEA_LEVEL = 67; // SEA_LEVEL in src/config.ts (40 m at 0.6 m per block), in blocks
+const SEA_LEVEL = 133; // SEA_LEVEL in src/config.ts (40 m at 0.3 m per block), in blocks
 const URL_PATH = process.env.SMOKE_PATH || '/?seed=1&autostart=1&nosave=1';
 
 /** @type {{ name: string, run: (page: import('playwright').Page) => Promise<void> }[]} */
@@ -252,11 +252,11 @@ const CHECKS = [
       const below = await page.evaluate(([x, z]) => window.__game.getBlock(x, -205, z), [bx, bz]);
       if (below !== 1) throw new Error(`expected stone 5 blocks below y = -200, found ${below}`);
 
-      await page.evaluate(([x, z]) => window.__game.teleport(x, 300, z), [x, z]);
+      await page.evaluate(([x, z]) => window.__game.teleport(x, 450, z), [x, z]); // above the highest terrain (387 blocks)
       await waitMeshed();
-      const placed = await page.evaluate(([x, z]) => window.__game.setBlock(x + 2, 301, z, 9), [bx, bz]); // glass
-      const glass = await page.evaluate(([x, z]) => window.__game.getBlock(x + 2, 301, z), [bx, bz]);
-      if (!placed || glass !== 9) throw new Error(`glass at y = 301: placed ${placed}, read back ${glass}`);
+      const placed = await page.evaluate(([x, z]) => window.__game.setBlock(x + 2, 451, z, 9), [bx, bz]); // glass
+      const glass = await page.evaluate(([x, z]) => window.__game.getBlock(x + 2, 451, z), [bx, bz]);
+      if (!placed || glass !== 9) throw new Error(`glass at y = 451: placed ${placed}, read back ${glass}`);
       await page.screenshot({ path: 'screenshots/high.png' });
 
       await page.evaluate(([x, y, z, flying]) => {

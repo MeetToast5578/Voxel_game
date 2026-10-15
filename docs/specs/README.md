@@ -13,6 +13,7 @@ Phase 1 of [the roadmap](../ROADMAP.md): the new scale, cubic chunks with no hei
 | 7 | [Cubic chunks: streaming](07-cubic-streaming.md) | large | Claude | 6 |
 | 8 | [Save v2 in IndexedDB](08-save-v2.md) | medium | Haiku | 4, 5 |
 | 9 | [Meter-based world scale and realistic trees](09-meter-scale-world.md) | large | Claude | 2, 6 |
+| 10 | [0.3 m blocks](10-fine-blocks-0-3m.md) | large | Claude | 9 |
 
 **Order.**
 - Spec 1 comes first.

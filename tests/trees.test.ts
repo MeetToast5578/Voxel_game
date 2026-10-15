@@ -6,6 +6,7 @@ import {
   TREE_CHANCE,
   TREE_DENSITY_PER_M2,
   TREE_HEIGHT_MAX_M,
+  TREE_HEIGHT_MIN_M,
   TREE_REACH,
 } from '../src/config';
 import { floorDiv } from '../src/core/math';
@@ -25,8 +26,8 @@ function tree(ax: number, az: number): TreeBlock[] {
 }
 
 describe('trees', () => {
-  it('reach 12–20 blocks up, the crown top at most 20', () => {
-    const minTall = roundBlocks(TREE_HEIGHT_MAX_M) - 8; // 12: the crown top may be one block lower
+  it('reach 8–12 m up (the crown top may be one block lower than the height)', () => {
+    const minTall = roundBlocks(TREE_HEIGHT_MIN_M) - 1;
     for (const [ax, az] of ANCHORS) {
       const rise = Math.max(...tree(ax, az).map((b) => b.y)) - 20;
       expect(rise).toBeGreaterThanOrEqual(minTall);

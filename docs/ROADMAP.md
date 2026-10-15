@@ -96,6 +96,7 @@ Terrain in phase 1 is today's generator, adapted. Below y = 0 is stone, there's 
 Goal: the same land in meters, filled with finer blocks, so the world gets more detail. Trees are realistic.
 
 - Terrain, caves, sea level, clouds and spawn are written in meters and converted to blocks.
+- Blocks are 0.3 m (spec 10), so the same land has finer detail.
 - Trees come from a new pure generator (`src/world/trees.ts`): trunk, branches and a ragged crown, 8–12 m tall.
 - Tree density per square metre stays the same.
 

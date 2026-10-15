@@ -1,5 +1,8 @@
 import * as THREE from 'three';
-import { CHUNK_SIZE, DEFAULT_FOV, SKY_COLOR, UNDERWATER_COLOR, WATER_OPACITY } from '../config';
+import {
+  CAMERA_FAR_M, CHUNK_SIZE, DEFAULT_FOV, DEFAULT_RENDER_DISTANCE, metersToBlocks, SKY_COLOR, UNDERWATER_COLOR,
+  UNDERWATER_FAR_M, WATER_OPACITY,
+} from '../config';
 import { createAtlasCanvas, createAtlasTexture } from './atlas';
 import { patchLightMaterial, type LightUniforms } from './lightMaterial';
 
@@ -16,7 +19,7 @@ export class Renderer {
   private readonly background = new THREE.Color(SKY_COLOR);
   private skyColor = SKY_COLOR;
   private underwater = false;
-  private viewBlocks = 96;
+  private viewBlocks = DEFAULT_RENDER_DISTANCE * CHUNK_SIZE;
   /** Vertical distance to the farthest visible surface (from the loaded column tops), in blocks. */
   private surfaceDistance = 0;
 
@@ -25,7 +28,7 @@ export class Renderer {
     this.webgl.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     container.appendChild(this.webgl.domElement);
 
-    this.camera = new THREE.PerspectiveCamera(DEFAULT_FOV, 1, 0.1, 1000);
+    this.camera = new THREE.PerspectiveCamera(DEFAULT_FOV, 1, 0.1, metersToBlocks(CAMERA_FAR_M));
     this.camera.rotation.order = 'YXZ'; // yaw around Y first, then pitch around X
 
     this.scene.background = this.background;
@@ -114,7 +117,7 @@ export class Renderer {
     this.fog.color.setHex(color);
     this.background.setHex(color);
     this.fog.near = this.underwater ? 0.1 : this.viewBlocks * 0.6;
-    this.fog.far = this.underwater ? 14 : this.viewBlocks * 0.95;
+    this.fog.far = this.underwater ? metersToBlocks(UNDERWATER_FAR_M) : this.viewBlocks * 0.95;
   }
 
   private readonly resize = (): void => {

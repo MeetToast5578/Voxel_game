@@ -3,10 +3,11 @@ import { metersToBlocks } from '../src/config';
 import { NO_CONTROLS, Player } from '../src/player/player';
 
 const DT = 1 / 60;
-// A pool: floor at y = 10 (solid below), water from y = 10 to y = 14 (surface at y = 15) for x < 5.
-// For x >= 5 there is a wall/ledge whose top is at y = 16 (one block above the water surface).
-const solid = (x: number, y: number) => y < 10 || (x >= 5 && y < 16);
-const water = (x: number, y: number) => x < 5 && y >= 10 && y <= 14;
+// A pool: floor at y = 10 (solid below), water from y = 10 to y = 19 (surface at y = 20) for x < 5. The pool is
+// deeper than the body (5.8 blocks), so standing in it keeps the waist under water.
+// For x >= 5 there is a wall/ledge whose top is at y = 21 (one block above the water surface).
+const solid = (x: number, y: number) => y < 10 || (x >= 5 && y < 21);
+const water = (x: number, y: number) => x < 5 && y >= 10 && y <= 19;
 
 describe('swimming', () => {
   it('sinks slowly in water', () => {
@@ -33,7 +34,7 @@ describe('swimming', () => {
     for (let i = 0; i < 60; i++) p.update(DT, NO_CONTROLS, solid, water); // let go and land
     expect(p.position.x).toBeGreaterThan(5);
     expect(p.onGround).toBe(true);
-    expect(p.position.y).toBeCloseTo(16, 2);
+    expect(p.position.y).toBeCloseTo(21, 2); // the ledge top
   });
   it('is slower in water than on land', () => {
     const p = new Player();
@@ -42,7 +43,7 @@ describe('swimming', () => {
     for (let i = 0; i < 60; i++) p.update(DT, { ...NO_CONTROLS, forward: true }, solid, water);
     expect(p.position.z - 0.5).toBeLessThan(metersToBlocks(4.3) * 0.7);
   });
-  it('checks for water at waist height (0.6 m = 1 block above the feet)', () => {
+  it('checks for water at waist height (0.6 m = 2 blocks above the feet)', () => {
     const floor = (_x: number, y: number) => y < 10;
     const deep = new Player();
     deep.setPosition(0.5, 10, 0.5);

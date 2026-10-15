@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { LEGACY_CHUNKS, LEGACY_HEIGHT, SEA_LEVEL, TERRAIN_MAX_BLOCKS } from '../src/config';
+import { LEGACY_CHUNKS, LEGACY_HEIGHT, SEA_LEVEL, SOIL_DEPTH, TERRAIN_MAX_BLOCKS } from '../src/config';
 import { columnIndex } from '../src/core/coords';
 import { BlockId, blocksSky } from '../src/world/blocks';
 import { Chunk } from '../src/world/chunk';
@@ -36,7 +36,7 @@ describe('TerrainGenerator', () => {
         expect(c.get(lx, 0, lz)).toBe(BlockId.STONE); // y = 0 is stone, not bedrock
         expect(c.get(lx, LEGACY_HEIGHT - 1, lz)).toBe(BlockId.AIR);
         const h = g.getHeight(3 * 16 + lx, -2 * 16 + lz);
-        if (c.get(lx, h - 5, lz) === BlockId.STONE) stoneBelowSurface++;
+        if (c.get(lx, h - SOIL_DEPTH - 1, lz) === BlockId.STONE) stoneBelowSurface++; // below the soil
         if (h < SEA_LEVEL) expect(c.get(lx, SEA_LEVEL, lz)).toBe(BlockId.WATER);
         expect(c.get(lx, h + 1, lz)).not.toBe(BlockId.STONE);
       }
@@ -60,8 +60,8 @@ describe('TerrainGenerator', () => {
   it('computes exact column tops (water blocks the sky, glass and air do not)', () => {
     const g = new TerrainGenerator(42);
     const seen = new Set<number>();
-    for (let cz = -12; cz < -8; cz++) // this 4 x 4 area of seed 42 has trees, open water and a beach
-      for (let cx = -9; cx < -5; cx++) {
+    for (let cz = -4; cz < 0; cz++) // this 4 x 4 area of seed 42 has trees, open water and a beach
+      for (let cx = 3; cx < 7; cx++) {
         const c = stackedColumn(g, cx, cz);
         const tops = g.columnTops(cx, cz);
         for (let lz = 0; lz < 16; lz++)
