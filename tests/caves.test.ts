@@ -6,7 +6,7 @@ import { landColumns, stackedColumn, type StackedColumn } from './support/stacke
 
 describe('caves', () => {
   const g = new TerrainGenerator(1);
-  const columns: StackedColumn[] = landColumns(g, 12, 60).map(({ cx, cz }) => stackedColumn(g, cx, cz));
+  const columns: StackedColumn[] = landColumns(g, 40, 60).map(({ cx, cz }) => stackedColumn(g, cx, cz));
 
   it('carve a small fraction of the underground', () => {
     let underground = 0;
