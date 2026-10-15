@@ -16,8 +16,17 @@ Last updated 2026-10-15.
 - climate and shape fields (spec 12)
 - terrain from those fields (spec 13)
 - Minecraft-style 3D density, so the surface is lumpy and can overhang (spec 14, PR #16)
+- rock strata (granite, diorite, andesite, sandstone) and bare rock on steep ground (spec 15, PR #18)
 
-`npm run check` (198 tests in 32 files) and `npm run smoke` (15 checks) are green on `main`. Smoke's only error in cloud sessions is the favicon 404 (see below).
+**Phase 5 item 5 (liquid physics) is partly done**, brought forward at the owner's request:
+- buoyancy and quadratic drag for the player in water (spec 16, PR #19)
+- wading slow-down and a splash on entry (spec 17, PR #20)
+
+**Phase 3 item 6 (ground cover) is partly done**, also brought forward ("make the world alive"):
+- tall grass and poppies, on a new cross-shaped plant mesh (spec 18, PR #21)
+- ferns and dandelions (spec 19, PR #22)
+
+`npm run check` (211 tests in 34 files) and `npm run smoke` (15 checks) are green on `main`. Smoke's only error in cloud sessions is the favicon 404 (see below).
 
 The owner is continuing with **Claude Haiku 5.5** to save tokens. The next section is written for that.
 
@@ -46,7 +55,8 @@ The owner is continuing with **Claude Haiku 5.5** to save tokens. The next secti
 - **Cloud smoke test favicon.** In cloud sessions `npm run smoke` passes every check, then fails on `console.error: Failed to load resource: 404`. That's the full Chromium's favicon request; CI doesn't hit it.
   - A likely fix is `<link rel="icon" href="data:,">` in `index.html`.
   - Verify: smoke passes in the cloud with `CHROMIUM_PATH=/opt/pw-browsers/chromium-1194/chrome-linux/chrome`.
-- **Geology, phase 2 item 5, more slices** (ores, deepslate, limestone, slate, basalt, gravel and clay). Spec 15 (first slice: strata and bare rock) is done. Write the next spec first.
+- **Geology, phase 2 item 5, more slices** (ores, deepslate, limestone, slate, basalt, gravel and clay). Spec 15 (first slice: strata and bare rock) is done. Write the next spec first. Gravel and clay in riverbeds wait for rivers (item 3).
+- **More ground cover, phase 3 item 6** (mushrooms, reeds, boulders, fallen logs). Spec 18 and spec 19 set the pattern: a `cross` block type, a placement band in `plantAt` (generator), and a painted tile. Write the next spec first. Flowers by biome wait for biomes (phase 3 items 1–2).
 - **Bug fixes from the playtest**, one per branch and pull request.
 - **Any spec written in `docs/specs/` style:** prose requirements, acceptance criteria and test cases.
 
@@ -58,6 +68,8 @@ The owner is continuing with **Claude Haiku 5.5** to save tokens. The next secti
 - **Mesh time.** It averages 3.1–3.7 ms per surface chunk in Node, against spec 6's 3 ms target. The remaining cost is region building and the face loop.
 - **Cold column generation.** A cold surface chunk builds its column and takes about 8.4 ms median in Node (2.4 ms before spec 14). Warm chunks take about 0.6 ms. Fixing this touches the column cache and the surface scan.
 - **Draw calls.** Cave culling and batching are phase 8.
+- **Living-world ticks (phase 5 item 1–2)** and **the entity system (phase 6)**. Random ticks, grass spreading, snow, and animals touch the simulation core and need a larger model's plan first.
+- **Currents (phase 5 item 5)** need fluid levels (phase 5 item 4). **Fall damage** needs health (phase 7).
 
 ### How to work in this repo
 
@@ -81,6 +93,8 @@ The owner is continuing with **Claude Haiku 5.5** to save tokens. The next secti
 - **Height.** Cubic chunks with unlimited height. Terrain lives in the band −400 m to +2,600 m (spec 13).
 - **Sea level.** y = 0 m (spec 13).
 - **Terrain (phase 2).** The shape fields set the large scale (spec 12). A 3D density gives the surface its shape (spec 14). Region drainage and erosion (item 3) are still to come.
+- **Water.** The player floats at about 80% under water (`PLAYER_DENSITY` 800 kg/m³ against 1000 for water). Swim speed comes from quadratic drag and a stroke: about 2.6 m/s (spec 16). Wading slows the walk by half the submerged fraction (spec 17).
+- **Plants.** Tall grass, ferns, poppies and dandelions grow on grass surfaces only, one per cell above the surface, by one hash per column (spec 18, spec 19). Plants are walk-through and do not block the sun.
 - **Scope.** Everything on the roadmap: ecology, fluids (including liquid physics), creatures and survival. Multiplayer is parked.
 - **Saves.** IndexedDB, block states stored by name. The save version is 3 (spec 10). A save of another version is not loaded, and its chunk records are cleared on load. `voxel-game-save-v1` (the 128-high world) is never read, written or deleted.
 
@@ -93,7 +107,7 @@ TypeScript 5.9.3, Vite 7.3.6, Vitest 4.0.18, three 0.186.0, simplex-noise 4.0.3,
 ## Commands
 
 - `npm run dev`: opens http://localhost:5173; click Play.
-- `npm run check`: typecheck, 198 unit tests in 32 files, then build.
+- `npm run check`: typecheck, 211 unit tests in 34 files, then build.
 - `npm run smoke`:
   - Builds, then opens `/?seed=1&autostart=1&nosave=1` in headless Chromium (SwiftShader WebGL).
   - Runs 15 checks through `window.__game` and writes `screenshots/*.png`.
@@ -109,7 +123,7 @@ TypeScript 5.9.3, Vite 7.3.6, Vitest 4.0.18, three 0.186.0, simplex-noise 4.0.3,
   - coords
   - fixed-timestep loop (1/60 s steps, frames clamped to 0.25 s)
 - `src/world`:
-  - `blocks.ts`: `BlockId`/`Tile` are objects, not enums. Ids run AIR 0, STONE 1, DIRT 2, GRASS 3, SAND 4, WATER 5, LOG 6, LEAVES 7, PLANKS 8, GLASS 9, BEDROCK 10, COBBLESTONE 11, BRICK 12, GLOWSTONE 13, GRANITE 14, DIORITE 15, ANDESITE 16, SANDSTONE 17.
+  - `blocks.ts`: `BlockId`/`Tile` are objects, not enums. Ids run AIR 0, STONE 1, DIRT 2, GRASS 3, SAND 4, WATER 5, LOG 6, LEAVES 7, PLANKS 8, GLASS 9, BEDROCK 10, COBBLESTONE 11, BRICK 12, GLOWSTONE 13, GRANITE 14, DIORITE 15, ANDESITE 16, SANDSTONE 17, TALL_GRASS 18, POPPY 19, FERN 20, DANDELION 21. Each type has a `shape`: `'cube'` (default) or `'cross'` for plants.
   - `chunk.ts`: 16×16×16 `Uint16Array` of block states, indexed `(ly*16+lz)*16+lx`, addressed by `(cx, cy, cz)`. No height limit.
   - `world.ts`: the chunk map, the `edits` map (what gets saved), and per-column **tops** (world y of the highest sky-blocking block per cell), kept exact on every edit.
   - `shape.ts`: the six climate fields and `heightMeters` (a spline of continentalness, plus mountains), and `detailAmpMeters` (the density's amplitude).
@@ -119,11 +133,13 @@ TypeScript 5.9.3, Vite 7.3.6, Vitest 4.0.18, three 0.186.0, simplex-noise 4.0.3,
     - sea level 0: air at or below it becomes water
     - stone below the band, air above it
     - caves carved below the surface, trees (`trees.ts`) from anchors within reach
+    - rock: below the soil, a block's rock comes from its strata layer, bent by a 2D warp noise (spec 15). Columns with a detail amplitude of at least 12 m are bare rock.
+    - plants: `plantAt` picks one plant per grass column from one hash, in bands (spec 18, spec 19). Trees skip bare columns.
     - per-column data (surface, offsets, amplitudes) cached, `COLUMN_CACHE_LIMIT` columns
   - `debugMap.ts`: the colouring for `?map=1`.
   - Also: `chunkManager.ts`, `light.ts`, `spawn.ts`, `time.ts`.
 - `src/render`:
-  - `mesher.ts`: pure. Does face culling, per-vertex AO and lighting, and takes 27 neighbour chunks plus 9 column-top arrays. Cube blocks give faces; `shape: 'cross'` blocks (plants, spec 18) give two diagonal quads, drawn from both sides.
+  - `mesher.ts`: pure. Does face culling, per-vertex AO and lighting, and takes 27 neighbour chunks plus 9 column-top arrays. Cube blocks give faces; `shape: 'cross'` blocks (plants) give two diagonal quads, drawn from both sides and not culled against neighbours.
   - Also: `faces.ts`, `tiles.ts`, `atlasPixels.ts` (procedural textures), `renderer.ts`, `chunkMeshes.ts`, `lightMaterial.ts`, `highlight.ts`, `clouds.ts`.
 - `src/player`:
   - `physics.ts`: AABB sweep in the order Y → X → Z.
@@ -173,6 +189,8 @@ TypeScript 5.9.3, Vite 7.3.6, Vitest 4.0.18, three 0.186.0, simplex-noise 4.0.3,
 - Create the worker as `new Worker(new URL('./chunkWorker.ts', import.meta.url), { type: 'module' })`.
 - `getHeight` is the highest **solid** block, not the top of the water. For the sky-blocking top (water counts), use `columnTops`.
 - The surface is not one height per column any more (spec 14), so do not assume the blocks under `getHeight` are all solid.
+- A plant is not solid and does not block the sky, so `solid`, `opaque` and `blocksSky` must all be checked for it, not one of them.
+- Changing a plant or rock chance in `config.ts` changes every generated world, not only new ones.
 
 ## Known gaps and backlog
 
