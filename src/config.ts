@@ -3,12 +3,6 @@
  * Do not hard-code these values anywhere else; import them.
  */
 
-// ---- World ----
-export const CHUNK_SIZE = 16; // blocks along each axis; chunks are cubes and the world has no height limit
-export const CHUNK_VOLUME = CHUNK_SIZE * CHUNK_SIZE * CHUNK_SIZE;
-export const SEA_LEVEL = 40; // air at y <= SEA_LEVEL becomes water during generation
-export const DEFAULT_SEED = 1337;
-
 // ---- Scale ----
 export const BLOCK_SIZE_M = 0.6; // one block is 0.6 m; the player is about 3 blocks tall
 
@@ -16,6 +10,61 @@ export const BLOCK_SIZE_M = 0.6; // one block is 0.6 m; the player is about 3 bl
 export function metersToBlocks(meters: number): number {
   return meters / BLOCK_SIZE_M;
 }
+
+/** A length in meters as a whole number of blocks. */
+export function roundBlocks(meters: number): number {
+  return Math.round(metersToBlocks(meters));
+}
+
+// ---- World ----
+export const CHUNK_SIZE = 16; // blocks along each axis; chunks are cubes and the world has no height limit
+export const CHUNK_VOLUME = CHUNK_SIZE * CHUNK_SIZE * CHUNK_SIZE;
+export const DEFAULT_SEED = 1337;
+
+// World sizes are written in meters, the same numbers as before the 0.6 m block, and converted to whole blocks.
+// A finer block then fills the same land with more detail.
+export const SEA_LEVEL_M = 40;
+export const SEA_LEVEL = roundBlocks(SEA_LEVEL_M); // air at y <= SEA_LEVEL becomes water during generation
+export const TERRAIN_MAX_M = 116; // highest terrain surface, in meters
+export const TERRAIN_MAX_BLOCKS = roundBlocks(TERRAIN_MAX_M);
+/** Height of the phase 1 "legacy column" in whole chunks, so chunk slices line up. Phase 2 replaces it. */
+export const LEGACY_HEIGHT = Math.ceil(roundBlocks(144) / CHUNK_SIZE) * CHUNK_SIZE; // 240 blocks = 15 chunks
+export const LEGACY_CHUNKS = LEGACY_HEIGHT / CHUNK_SIZE;
+
+// Terrain shape, in meters. Noise is sampled at world positions converted to meters.
+export const BASE_WAVELENGTH_M = 256;
+export const HILL_WAVELENGTH_M = 64;
+export const MOUNTAIN_WAVELENGTH_M = 512;
+export const BASE_AMP_M = 14;
+export const HILL_AMP_M = 6;
+export const MOUNTAIN_AMP_M = 70; // scales the square of the mountain noise
+export const CAVE_SCALE_H_M = 40; // horizontal size of cave noise features
+export const CAVE_SCALE_V_M = 24; // vertical size of cave noise features
+export const SOIL_DEPTH_M = 1.8; // dirt under the grass
+export const BEACH_BAND_M = 1; // land this close above sea level is beach
+export const SHORE_CAVE_BAND_M = 3; // no caves are carved this close above sea level
+export const SHORE_ROOF_M = 5; // the surface stays solid this far below a beach or shore
+export const BEACH_BAND = roundBlocks(BEACH_BAND_M);
+export const SHORE_CAVE_BAND = roundBlocks(SHORE_CAVE_BAND_M);
+export const SHORE_ROOF = roundBlocks(SHORE_ROOF_M);
+export const SOIL_DEPTH = roundBlocks(SOIL_DEPTH_M);
+
+// Trees, in meters. Density is per square metre, so it doesn't change with the block size.
+export const TREE_DENSITY_PER_M2 = 0.012;
+/** Chance a 1-block column holds a tree anchor. */
+export const TREE_CHANCE = TREE_DENSITY_PER_M2 * BLOCK_SIZE_M * BLOCK_SIZE_M;
+export const TREE_HEIGHT_MIN_M = 8;
+export const TREE_HEIGHT_MAX_M = 12;
+/** The most a tree's blocks sit horizontally from its trunk. */
+export const TREE_REACH_M = 4.8;
+export const TREE_REACH = roundBlocks(TREE_REACH_M);
+
+// Spawn search, in meters.
+export const SPAWN_RADIUS_M = 512;
+export const SPAWN_STEP_M = 8;
+
+// Surface band cap, in meters: columns whose top is further than this are not kept in the surface band.
+export const SURFACE_MAX_DISTANCE_M = 2000;
 
 // ---- Chunk streaming ----
 export const DEFAULT_RENDER_DISTANCE = 8; // radius, in chunks (a chunk is 9.6 m wide)
@@ -69,6 +118,12 @@ export const SKY_COLOR = 0x87ceeb;
 export const NIGHT_SKY_COLOR = 0x0b1026;
 export const UNDERWATER_COLOR = 0x1f4f99;
 export const WATER_OPACITY = 0.7;
+
+// Clouds, in meters.
+export const CLOUD_HEIGHT_M = 100;
+export const CLOUD_TEXEL_M = 12; // one cloud texel covers this much ground
+export const CLOUD_PLANE_M = 768; // beyond the fog anyway
+export const CLOUD_DRIFT_M_S = 1.5; // toward +X
 
 // ---- Time of day ----
 export const DAY_LENGTH_S = 600; // seconds for a full day + night

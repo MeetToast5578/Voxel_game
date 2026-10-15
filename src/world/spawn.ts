@@ -1,14 +1,16 @@
-import { SEA_LEVEL } from '../config';
+import { BEACH_BAND, roundBlocks, SEA_LEVEL, SPAWN_RADIUS_M, SPAWN_STEP_M } from '../config';
 import { isSolid } from './blocks';
 import type { TerrainGenerator } from './generator';
 
 /** Finds a dry-land column near the origin, searching outward in square rings. Returns block-center coordinates. */
 export function findSpawnColumn(generator: TerrainGenerator): { x: number; z: number } {
-  for (let r = 0; r <= 512; r += 8) {
-    for (let dz = -r; dz <= r; dz += 8) {
-      for (let dx = -r; dx <= r; dx += 8) {
+  // The step divides every ring radius (radii are multiples of it), so the ring border is always visited.
+  const step = roundBlocks(SPAWN_STEP_M);
+  for (let r = 0; r <= roundBlocks(SPAWN_RADIUS_M); r += step) {
+    for (let dz = -r; dz <= r; dz += step) {
+      for (let dx = -r; dx <= r; dx += step) {
         if (Math.max(Math.abs(dx), Math.abs(dz)) !== r) continue; // only the ring's border
-        if (generator.getHeight(dx, dz) > SEA_LEVEL + 1) return { x: dx + 0.5, z: dz + 0.5 };
+        if (generator.getHeight(dx, dz) > SEA_LEVEL + BEACH_BAND) return { x: dx + 0.5, z: dz + 0.5 };
       }
     }
   }

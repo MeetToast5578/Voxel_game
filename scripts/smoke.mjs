@@ -9,6 +9,7 @@ import { chromium } from 'playwright';
 import { preview } from 'vite';
 
 const PORT = 4173;
+const SEA_LEVEL = 67; // SEA_LEVEL in src/config.ts (40 m at 0.6 m per block), in blocks
 const URL_PATH = process.env.SMOKE_PATH || '/?seed=1&autostart=1&nosave=1';
 
 /** @type {{ name: string, run: (page: import('playwright').Page) => Promise<void> }[]} */
@@ -157,21 +158,21 @@ const CHECKS = [
     run: async (page) => {
       const start = await page.evaluate(() => window.__game.state());
       // Find a water column near the player (seed 1 has a lake next to spawn).
-      const spot = await page.evaluate(([px, pz]) => {
+      const spot = await page.evaluate(([px, pz, sea]) => {
         for (let r = 0; r < 48; r++)
           for (let dx = -r; dx <= r; dx++)
             for (let dz = -r; dz <= r; dz++) {
               const x = Math.floor(px) + dx;
               const z = Math.floor(pz) + dz;
-              if (window.__game.getBlock(x, 38, z) === 5 && window.__game.getBlock(x, 36, z) === 5) return [x, z];
+              if (window.__game.getBlock(x, sea - 2, z) === 5 && window.__game.getBlock(x, sea - 4, z) === 5) return [x, z];
             }
         return null;
-      }, [start.position[0], start.position[2]]);
+      }, [start.position[0], start.position[2], SEA_LEVEL]);
       if (!spot) throw new Error('no deep water found near spawn');
-      await page.evaluate(([x, z]) => {
-        window.__game.teleport(x + 0.5, 36, z + 0.5);
+      await page.evaluate(([x, z, sea]) => {
+        window.__game.teleport(x + 0.5, sea - 4, z + 0.5);
         window.__game.look(0, 0);
-      }, spot);
+      }, [...spot, SEA_LEVEL]);
       await page.waitForTimeout(400);
       const s = await page.evaluate(() => window.__game.state());
       if (!s.inWater) throw new Error(`expected inWater: ${JSON.stringify(s)}`);
@@ -223,7 +224,7 @@ const CHECKS = [
       await page.evaluate(([x, z]) => {
         const g = window.__game;
         // Surface (first non-air from the top) of the column 4 blocks south of the player.
-        let top = 120;
+        let top = 240; // the legacy column's top, above all terrain
         while (top > 1 && g.getBlock(x, top, z + 4) === 0) top--;
         g.setBlock(x, top + 1, z + 4, 13); // glowstone on the ground
         g.setTimeOfDay(0.75); // midnight

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { SEA_LEVEL } from '../src/config';
+import { SEA_LEVEL, SHORE_CAVE_BAND, SHORE_ROOF } from '../src/config';
 import { localIndex } from '../src/core/coords';
 import { BlockId } from '../src/world/blocks';
 import { TerrainGenerator } from '../src/world/generator';
@@ -17,7 +17,7 @@ describe('caves', () => {
       for (let lz = 0; lz < 16; lz++)
         for (let lx = 0; lx < 16; lx++) {
           const h = g.getHeight(c.cx * 16 + lx, c.cz * 16 + lz);
-          for (let y = 1; y < h - 5; y++) {
+          for (let y = 1; y < h - SHORE_ROOF; y++) {
             underground++;
             if (c.blocks[localIndex(lx, y, lz)] === BlockId.AIR) air++;
           }
@@ -40,8 +40,8 @@ describe('caves', () => {
       for (let lz = 0; lz < 16; lz++)
         for (let lx = 0; lx < 16; lx++) {
           const h = g.getHeight(c.cx * 16 + lx, c.cz * 16 + lz);
-          if (h > SEA_LEVEL + 3) continue;
-          for (let y = Math.max(1, h - 4); y <= h; y++) expect(c.get(lx, y, lz)).not.toBe(BlockId.AIR);
+          if (h > SEA_LEVEL + SHORE_CAVE_BAND) continue;
+          for (let y = Math.max(1, h - SHORE_ROOF + 1); y <= h; y++) expect(c.get(lx, y, lz)).not.toBe(BlockId.AIR);
         }
   });
 });

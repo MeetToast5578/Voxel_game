@@ -1,4 +1,4 @@
-import { CHUNK_SIZE, MAX_JOBS_IN_FLIGHT, SURFACE_BAND, VERTICAL_RENDER_DISTANCE } from '../config';
+import { CHUNK_SIZE, MAX_JOBS_IN_FLIGHT, roundBlocks, SURFACE_BAND, SURFACE_MAX_DISTANCE_M, VERTICAL_RENDER_DISTANCE } from '../config';
 import { chunkKey, columnKey, worldToChunk } from '../core/coords';
 import { buildChunkMesh, type ChunkMeshData } from '../render/mesher';
 import { Chunk } from './chunk';
@@ -62,7 +62,7 @@ const MAX_BAND_CHUNKS = 16;
 /** With jobs, at most this many chunks waiting for a mesh are checked for readiness per dispatch. */
 const MESH_SCAN_LIMIT = 512;
 /** The vertical spread of column tops used for the camera far plane is capped at this many blocks. */
-const MAX_SURFACE_DISTANCE = 2000;
+const MAX_SURFACE_DISTANCE = roundBlocks(SURFACE_MAX_DISTANCE_M);
 
 interface ColumnInfo {
   /** Lowest and highest chunk y of the surface band. */
