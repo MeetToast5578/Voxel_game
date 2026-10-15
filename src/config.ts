@@ -23,21 +23,17 @@ export const DEFAULT_SEED = 1337;
 
 // World sizes are written in meters, the same numbers as before the 0.6 m block, and converted to whole blocks.
 // A finer block then fills the same land with more detail.
-export const SEA_LEVEL_M = 40;
+export const SEA_LEVEL_M = 0; // sea level is y = 0, as in the roadmap
 export const SEA_LEVEL = roundBlocks(SEA_LEVEL_M); // air at y <= SEA_LEVEL becomes water during generation
-export const TERRAIN_MAX_M = 116; // highest terrain surface, in meters
+export const TERRAIN_MAX_M = 2450; // highest terrain surface (src/world/shape.ts)
 export const TERRAIN_MAX_BLOCKS = roundBlocks(TERRAIN_MAX_M);
-/** Height of the phase 1 "legacy column" in whole chunks, so chunk slices line up. Phase 2 replaces it. */
-export const LEGACY_HEIGHT = Math.ceil(roundBlocks(144) / CHUNK_SIZE) * CHUNK_SIZE; // 240 blocks = 15 chunks
+/** Chunks below this cy are solid stone (about -400 m). */
+export const TERRAIN_CHUNK_BOTTOM = Math.floor(roundBlocks(-400) / CHUNK_SIZE);
+/** Top of the terrain band, in whole chunks (about 2,600 m). Chunks from here up are air. The name is from phase 1. */
+export const LEGACY_HEIGHT = Math.ceil(roundBlocks(2600) / CHUNK_SIZE) * CHUNK_SIZE;
 export const LEGACY_CHUNKS = LEGACY_HEIGHT / CHUNK_SIZE;
 
-// Terrain shape, in meters. Noise is sampled at world positions converted to meters.
-export const BASE_WAVELENGTH_M = 256;
-export const HILL_WAVELENGTH_M = 64;
-export const MOUNTAIN_WAVELENGTH_M = 512;
-export const BASE_AMP_M = 14;
-export const HILL_AMP_M = 6;
-export const MOUNTAIN_AMP_M = 70; // scales the square of the mountain noise
+// Terrain shape comes from src/world/shape.ts, in meters. Caves and surface layers:
 export const CAVE_SCALE_H_M = 40; // horizontal size of cave noise features
 export const CAVE_SCALE_V_M = 24; // vertical size of cave noise features
 export const SOIL_DEPTH_M = 1.8; // dirt under the grass

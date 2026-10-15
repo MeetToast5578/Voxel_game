@@ -30,19 +30,20 @@ async function openSave(options: GameOptions): Promise<GameSave> {
   return { store, loaded, persistent: true, unavailable: false };
 }
 
-/** ?map=1: a top-down picture of the terrain, one pixel per block, around the origin. Tuning only. */
+/** ?map=1: a top-down picture of the terrain around the origin, 512 pixels of 31 m each. Tuning only. */
 function showMap(root: HTMLElement, seed: number | null): void {
   const size = 512;
+  const stride = 104; // blocks per pixel: about 31 m, so the map spans about 16 km and shows whole continents
   const canvas = document.createElement('canvas');
   canvas.width = size;
   canvas.height = size;
   canvas.style.cssText = 'width:min(100vmin,512px);image-rendering:pixelated;display:block';
   const ctx = canvas.getContext('2d');
   if (!ctx) throw new Error('2D canvas not supported');
-  const pixels = mapPixels(new TerrainGenerator(seed ?? DEFAULT_SEED), -size / 2, -size / 2, size);
+  const pixels = mapPixels(new TerrainGenerator(seed ?? DEFAULT_SEED), (-size / 2) * stride, (-size / 2) * stride, size, stride);
   ctx.putImageData(new ImageData(pixels, size, size), 0, 0);
   const label = document.createElement('p');
-  label.textContent = `Debug map · seed ${seed ?? DEFAULT_SEED} · 1 pixel = 1 block · blue = sea`;
+  label.textContent = `Debug map · seed ${seed ?? DEFAULT_SEED} · 1 pixel = 31 m · blue = sea`;
   label.style.cssText = 'color:#fff;font:14px system-ui;margin:8px';
   root.append(canvas, label);
 }
