@@ -18,6 +18,7 @@ Last updated 2026-10-15.
 - Minecraft-style 3D density, so the surface is lumpy and can overhang (spec 14, PR #16)
 - rock strata (granite, diorite, andesite, sandstone) and bare rock on steep ground (spec 15, PR #18)
 - seven strata rocks (adds limestone, slate, basalt) and deepslate below −100 m (spec 20)
+- mountains capped at 60 m, so the highest surface is about 232 m (spec 22). Before this, a 2,380 m peak looked like an infinite wall, because there is no horizon LOD yet.
 
 **Phase 5 item 5 (liquid physics) is partly done**, brought forward at the owner's request:
 - buoyancy and quadratic drag for the player in water (spec 16, PR #19)
@@ -26,8 +27,13 @@ Last updated 2026-10-15.
 **Phase 3 item 6 (ground cover) is partly done**, also brought forward ("make the world alive"):
 - tall grass and poppies, on a new cross-shaped plant mesh (spec 18, PR #21)
 - ferns and dandelions (spec 19, PR #22)
+- brown and red mushrooms, rare, on grass (spec 21)
 
-`npm run check` (214 tests in 34 files) and `npm run smoke` (15 checks) are green on `main`. Cloud smoke passes with no console error now that the favicon link is in (see below).
+**Other fixes:**
+- favicon link in `index.html` (PR #24), so cloud smoke has no console error
+- README and HANDOFF block counts and gap notes brought up to date
+
+Everything since PR #24 was pushed straight to `main` at the owner's request. `npm run check` (214 tests in 34 files) and `npm run smoke` (15 checks) are green on `main`.
 
 The owner is continuing with **Claude Haiku 5.5** to save tokens. The next section is written for that.
 
@@ -49,20 +55,21 @@ The owner is continuing with **Claude Haiku 5.5** to save tokens. The next secti
   - Dig a shaft 30 m (100 blocks) down: chunks keep appearing below and the sky shows above.
   - From a valley, hills are visible to the full render distance.
   - Pick a new block into the hotbar, dig 9 m (30 blocks) down, wait 10 s and reload: the hotbar, the hole and roughly the same time of day come back.
+- **Terrain look after spec 22.** Peaks are now at most about 232 m, and no part of the map should read as an infinite wall. Check this from a valley and from a ridge. Edits made on the old 2 km mountain in an existing save may now float or look hollow, because unedited ground regenerates with the new terrain.
+- **Playtest of the new rock and ground cover.** The limestone, slate, basalt, deepslate and mushroom textures were checked only as atlas code and in headless smoke, not by eye.
 
 ### Good Haiku-sized tasks (only when the owner asks)
 
 - **Refresh these docs** if they drift from the code again.
-- **Cloud smoke test favicon.** Done: `<link rel="icon" href="data:,">` is in `index.html`, and smoke passes in the cloud with no console error (`CHROMIUM_PATH=/opt/pw-browsers/chromium-1194/chrome-linux/chrome`).
 - **Geology, phase 2 item 5, more slices** (ores, gravel and clay). Specs 15 (strata and bare rock) and 20 (limestone, slate, basalt, deepslate) are done. Write the next spec first. Gravel and clay in riverbeds wait for rivers (item 3).
-- **More ground cover, phase 3 item 6** (reeds, boulders, fallen logs; mushrooms are done in spec 21). Specs 18, 19 and 21 set the pattern: a `cross` block type, a placement band in `plantAt` (generator), and a painted tile. Write the next spec first. Flowers by biome wait for biomes (phase 3 items 1–2).
+- **More ground cover, phase 3 item 6** (reeds, boulders, fallen logs). Specs 18, 19 and 21 set the pattern: a `cross` block type, a placement band in `plantAt` (generator), and a painted tile. Append new bands after the existing ones so no plant moves. Write the next spec first. Flowers by biome wait for biomes (phase 3 items 1–2).
 - **Bug fixes from the playtest**, one per branch and pull request.
 - **Any spec written in `docs/specs/` style:** prose requirements, acceptance criteria and test cases.
 
 ### Not Haiku-sized (raise with the owner first)
 
 - **Phase 2 region simulation (item 3):** rivers, erosion, lakes and moisture. Needs a plan and specs first, and the roadmap marks region simulation as work for a larger model. Haiku should not design it.
-- **Phase 2 horizon LOD (item 8)** and the caves beyond spaghetti (item 6).
+- **Phase 2 horizon LOD (item 8)** and the caves beyond spaghetti (item 6). Horizon LOD also gates taller mountains: raise `MOUNTAIN_M` in `shape.ts` only after it exists.
 - **The mesher, lighting, worker pipeline, chunk streaming and renderer core.** Changes there are easy to get subtly wrong; light must stay exact across chunk borders.
 - **Mesh time.** It averages 3.1–3.7 ms per surface chunk in Node, against spec 6's 3 ms target. The remaining cost is region building and the face loop.
 - **Cold column generation.** A cold surface chunk builds its column and takes about 8.4 ms median in Node (2.4 ms before spec 14). Warm chunks take about 0.6 ms. Fixing this touches the column cache and the surface scan.
@@ -83,6 +90,7 @@ The owner is continuing with **Claude Haiku 5.5** to save tokens. The next secti
   - `testWorld.ts`: 27 neighbour arrays plus exact column tops for light and mesher tests
   - `fakeGenerator.ts`: given tops, for ChunkManager tests
 - **No git identity is configured in cloud sessions.** Commit with `git -c user.name="Yunus Alizade" -c user.email=62231698+MeetToast5578@users.noreply.github.com`.
+- **Pushing.** The owner asked for direct pushes to `main` from now on, with no PR and no merge question. The session's designated branch, `claude/nice-albattani-8jtgz1`, must also match the pushed commit, or the stop hook reports unpushed commits. Push both with a fast-forward (`git push origin HEAD:main` and `git push origin HEAD:claude/nice-albattani-8jtgz1`), never a force push.
 - **The owner's machine is Windows with a slow CPU.** Prefer CI or a cloud session for `npm run check` and `npm run smoke`.
 
 ## Decisions so far (updated 2026-10-15)
@@ -94,6 +102,7 @@ The owner is continuing with **Claude Haiku 5.5** to save tokens. The next secti
 - **Terrain (phase 2).** The shape fields set the large scale (spec 12). A 3D density gives the surface its shape (spec 14). Region drainage and erosion (item 3) are still to come.
 - **Water.** The player floats at about 80% under water (`PLAYER_DENSITY` 800 kg/m³ against 1000 for water). Swim speed comes from quadratic drag and a stroke: about 2.6 m/s (spec 16). Wading slows the walk by half the submerged fraction (spec 17).
 - **Plants.** Tall grass, ferns, poppies and dandelions grow on grass surfaces only, one per cell above the surface, by one hash per column (spec 18, spec 19). Plants are walk-through and do not block the sun.
+- **Plants (continued).** Mushrooms (brown, red) join the same grass-only bands, appended after the fern band (spec 21). Mushrooms grow in daylight on grass for now (shortcut).
 - **Scope.** Everything on the roadmap: ecology, fluids (including liquid physics), creatures and survival. Multiplayer is parked.
 - **Saves.** IndexedDB, block states stored by name. The save version is 3 (spec 10). A save of another version is not loaded, and its chunk records are cleared on load. `voxel-game-save-v1` (the 128-high world) is never read, written or deleted.
 
@@ -125,7 +134,7 @@ TypeScript 5.9.3, Vite 7.3.6, Vitest 4.0.18, three 0.186.0, simplex-noise 4.0.3,
   - `blocks.ts`: `BlockId`/`Tile` are objects, not enums. Ids run AIR 0, STONE 1, DIRT 2, GRASS 3, SAND 4, WATER 5, LOG 6, LEAVES 7, PLANKS 8, GLASS 9, BEDROCK 10, COBBLESTONE 11, BRICK 12, GLOWSTONE 13, GRANITE 14, DIORITE 15, ANDESITE 16, SANDSTONE 17, TALL_GRASS 18, POPPY 19, FERN 20, DANDELION 21, LIMESTONE 22, SLATE 23, BASALT 24, DEEPSLATE 25, BROWN_MUSHROOM 26, RED_MUSHROOM 27. Each type has a `shape`: `'cube'` (default) or `'cross'` for plants.
   - `chunk.ts`: 16×16×16 `Uint16Array` of block states, indexed `(ly*16+lz)*16+lx`, addressed by `(cx, cy, cz)`. No height limit.
   - `world.ts`: the chunk map, the `edits` map (what gets saved), and per-column **tops** (world y of the highest sky-blocking block per cell), kept exact on every edit.
-  - `shape.ts`: the six climate fields and `heightMeters` (a spline of continentalness, plus mountains), and `detailAmpMeters` (the density's amplitude).
+  - `shape.ts`: the six climate fields and `heightMeters` (a spline of continentalness, plus mountains up to `MOUNTAIN_M` = 60 m, spec 22), and `detailAmpMeters` (the density's amplitude).
   - `density.ts`: `TerrainDensity`. A block is solid where `offset − y + amp × noise > 0`, with two octaves of 3D simplex noise.
   - `generator.ts`:
     - the surface is the highest solid block of each column (`getHeight`), found by scanning the density down from above the offset
@@ -190,6 +199,8 @@ TypeScript 5.9.3, Vite 7.3.6, Vitest 4.0.18, three 0.186.0, simplex-noise 4.0.3,
 - The surface is not one height per column any more (spec 14), so do not assume the blocks under `getHeight` are all solid.
 - A plant is not solid and does not block the sky, so `solid`, `opaque` and `blocksSky` must all be checked for it, not one of them.
 - Changing a plant or rock chance in `config.ts` changes every generated world, not only new ones.
+- `getHeight(x, z)` takes **block** coordinates, and `heightMeters` takes **meters**. A scan that mixes them looks at the wrong place (this caused a wrong 2.4 km reading during spec 22). Multiply blocks by `BLOCK_SIZE_M` to get meters.
+- Tests that need a mountain use `PEAK` in `tests/generator.test.ts`, a rugged point found by a field scan. If the shape changes, find a new point and update `PEAK` rather than loosening the assertion.
 
 ## Known gaps and backlog
 
@@ -198,6 +209,7 @@ See `docs/ROADMAP.md` for phases 2–8. Known gaps after phase 2 items 1–2, sp
 - **Mesh time.** 3.1–3.7 ms per surface chunk, against a 3 ms target.
 - **Cold column generation.** About 8.4 ms median (see above).
 - **Plains.** Some stepped ground remains on gentle slopes (spec 14 out-of-scope note).
+- **Mountains.** Capped at 60 m above the spline (spec 22). This is a stopgap until horizon LOD exists, so the terrain is less varied than the roadmap's mountain ranges.
 - **Terrain.** Geology beyond specs 15 and 20 (item 5), region simulation with rivers and erosion (item 3), caves beyond spaghetti (item 6), coasts (item 7) and horizon LOD (item 8) are still to come.
 - **Draw calls.** A loaded world has ~1,800 meshed chunks, ~300 drawn after frustum culling. Cave culling and batching are phase 8.
 - **Edits.** An edit remeshes up to 8 chunks on the main thread at once, about 3 ms each.
