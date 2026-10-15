@@ -65,6 +65,21 @@ const PAINTERS: Record<number, PixelFn> = {
     const grain = (x + y) % 7 === 0; // diagonal grain
     return shade([80, 80, 86], (grain ? 0.75 : 1) + (r() - 0.5) * 0.2);
   },
+  [Tile.BROWN_MUSHROOM]: (x, y, r) => {
+    // A brown dome cap over a pale stem; the rest is transparent.
+    if (y <= 7 && Math.hypot(x - 7.5, (y - 7) * 1.6) <= 4.5) return shade([128, 90, 55], 1 + (r() - 0.5) * 0.15);
+    if ((x === 7 || x === 8) && y >= 7 && y <= 13) return shade([225, 215, 185], 1 + (r() - 0.5) * 0.1);
+    return [0, 0, 0, 0];
+  },
+  [Tile.RED_MUSHROOM]: (x, y, r) => {
+    // A red cap with white spots over a pale stem; the rest is transparent.
+    if (y <= 7 && Math.hypot(x - 7.5, (y - 7) * 1.6) <= 4.5) {
+      const spot = (x === 5 || x === 10) && (y === 4 || y === 5);
+      return spot ? shade([245, 245, 240], 1) : shade([200, 35, 35], 1 + (r() - 0.5) * 0.15);
+    }
+    if ((x === 7 || x === 8) && y >= 7 && y <= 13) return shade([225, 215, 185], 1 + (r() - 0.5) * 0.1);
+    return [0, 0, 0, 0];
+  },
   [Tile.TALL_GRASS]: (x, y, r) => {
     // Blades rising from the bottom, staggered; the rest is transparent.
     const blade = y > 3 && (x % 4 === 1 || (x % 4 === 2 && y > 9) || (x % 4 === 3 && y > 6));

@@ -16,8 +16,10 @@ import {
   SHORE_ROOF,
   SOIL_DEPTH,
   DANDELION_CHANCE,
+  BROWN_MUSHROOM_CHANCE,
   DEEPSLATE_DEPTH_M,
   FERN_CHANCE,
+  RED_MUSHROOM_CHANCE,
   POPPY_CHANCE,
   TALL_GRASS_CHANCE,
   TERRAIN_CHUNK_BOTTOM,
@@ -242,7 +244,11 @@ export class TerrainGenerator {
     edge += TALL_GRASS_CHANCE;
     if (r < edge) return BlockId.TALL_GRASS;
     edge += FERN_CHANCE;
-    return r < edge ? BlockId.FERN : BlockId.AIR;
+    if (r < edge) return BlockId.FERN;
+    edge += BROWN_MUSHROOM_CHANCE;
+    if (r < edge) return BlockId.BROWN_MUSHROOM;
+    edge += RED_MUSHROOM_CHANCE;
+    return r < edge ? BlockId.RED_MUSHROOM : BlockId.AIR;
   }
 
   /**

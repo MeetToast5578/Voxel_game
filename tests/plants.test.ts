@@ -7,11 +7,13 @@ import { TerrainGenerator } from '../src/world/generator';
 import { landColumns, stackedColumn } from './support/stackedColumn';
 import { uniformTops } from './support/testWorld';
 
-const PLANTS: number[] = [BlockId.TALL_GRASS, BlockId.POPPY, BlockId.FERN, BlockId.DANDELION];
+const PLANTS: number[] = [
+  BlockId.TALL_GRASS, BlockId.POPPY, BlockId.FERN, BlockId.DANDELION, BlockId.BROWN_MUSHROOM, BlockId.RED_MUSHROOM,
+];
 
 describe('ground cover (spec 18)', () => {
   it('registers the plants as cross-shaped blocks, and round-trips their names', () => {
-    const names = ['tall_grass', 'poppy', 'fern', 'dandelion'];
+    const names = ['tall_grass', 'poppy', 'fern', 'dandelion', 'brown_mushroom', 'red_mushroom'];
     PLANTS.forEach((id, i) => {
       expect(getBlockDef(id).shape).toBe('cross');
       expect(blockStateName(id)).toBe(names[i]);
@@ -48,6 +50,17 @@ describe('ground cover (spec 18)', () => {
     expect(plants).toBeGreaterThan(0);
     expect(bareGrass).toBeGreaterThan(0); // not every grass cell grows a plant
     expect(seen.has(BlockId.FERN)).toBe(true);
+  });
+
+  it('grows at least one mushroom among the sampled plants (spec 21)', () => {
+    const g = new TerrainGenerator(1);
+    const seen = new Set<number>();
+    for (const { cx, cz } of landColumns(g, 40, 60)) {
+      const c = stackedColumn(g, cx, cz);
+      for (let lz = 0; lz < 16; lz++)
+        for (let lx = 0; lx < 16; lx++) seen.add(c.get(lx, g.getHeight(cx * 16 + lx, cz * 16 + lz) + 1, lz));
+    }
+    expect(seen.has(BlockId.BROWN_MUSHROOM) || seen.has(BlockId.RED_MUSHROOM)).toBe(true);
   });
 
   it('meshes one plant as two quads seen from both sides, with no cube faces', () => {
