@@ -17,6 +17,8 @@ export const BlockId = {
   DIORITE: 15,
   ANDESITE: 16,
   SANDSTONE: 17,
+  TALL_GRASS: 18,
+  POPPY: 19,
 } as const;
 
 export const Tile = {
@@ -39,9 +41,12 @@ export const Tile = {
   DIORITE: 16,
   ANDESITE: 17,
   SANDSTONE: 18,
+  TALL_GRASS: 19,
+  POPPY: 20,
 } as const;
 
 export type RenderLayer = 'none' | 'opaque' | 'cutout' | 'translucent';
+export type BlockShape = 'cube' | 'cross';
 
 /**
  * A block type. Each type owns `variants` consecutive block states, starting at `id`.
@@ -63,6 +68,8 @@ export interface BlockDef {
   /** Block light this block emits, 0..15. */
   lightEmission: number;
   layer: RenderLayer;
+  /** 'cross' blocks are two crossed quads (plants), not cubes. Spec 18. */
+  shape: BlockShape;
   tiles: { top: number; side: number; bottom: number };
   /**
    * Derived: true if direct sunlight stops at this block. Everything except air and glass blocks the sky
@@ -72,7 +79,7 @@ export interface BlockDef {
 }
 
 /** What a registry is built from: a type without its assigned first state or derived flags. */
-export type BlockTypeDef = Omit<BlockDef, 'id' | 'blocksSky'>;
+export type BlockTypeDef = Omit<BlockDef, 'id' | 'blocksSky' | 'shape'> & { shape?: BlockShape };
 
 /** Block states are stored in 16-bit arrays. */
 export const MAX_BLOCK_STATES = 0xffff;
@@ -105,9 +112,9 @@ export interface BlockRegistry {
   readonly emissionTable: Uint8Array;
 }
 
-/** Air lets sunlight through because it is empty; glass because it is clear and not culled against itself. */
+/** Air lets sunlight through because it is empty; glass because it is clear and not culled against itself; plants because they are thin. */
 function derivedBlocksSky(d: BlockTypeDef): boolean {
-  const clear = d.layer === 'none' || (d.layer === 'cutout' && d.cullSame);
+  const clear = d.layer === 'none' || d.shape === 'cross' || (d.layer === 'cutout' && d.cullSame);
   return !clear;
 }
 
@@ -126,7 +133,7 @@ export function buildBlockRegistry(defs: readonly BlockTypeDef[]): BlockRegistry
     if (byKey.has(d.key)) throw new Error(`Duplicate block key '${d.key}'`);
     if (!Number.isInteger(d.variants) || d.variants < 1) throw new Error(`Block '${d.key}' needs at least 1 variant`);
     if (next + d.variants > MAX_BLOCK_STATES) throw new Error(`Too many block states (more than ${MAX_BLOCK_STATES})`);
-    const type: BlockDef = { ...d, id: next, blocksSky: derivedBlocksSky(d) };
+    const type: BlockDef = { ...d, id: next, shape: d.shape ?? 'cube', blocksSky: derivedBlocksSky(d) };
     const index = types.length;
     types.push(type);
     byKey.set(type.key, type);
@@ -224,6 +231,8 @@ export const BLOCK_REGISTRY = buildBlockRegistry([
   def('diorite', 'Diorite', all(Tile.DIORITE)),
   def('andesite', 'Andesite', all(Tile.ANDESITE)),
   def('sandstone', 'Sandstone', all(Tile.SANDSTONE)),
+  def('tall_grass', 'Tall grass', all(Tile.TALL_GRASS), { solid: false, opaque: false, layer: 'cutout', shape: 'cross' }),
+  def('poppy', 'Poppy', all(Tile.POPPY), { solid: false, opaque: false, layer: 'cutout', shape: 'cross' }),
 ]);
 
 // BlockId.X is variant 0 of the type whose key is x; keep the two lists in step.

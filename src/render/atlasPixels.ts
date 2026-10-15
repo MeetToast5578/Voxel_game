@@ -52,6 +52,17 @@ const PAINTERS: Record<number, PixelFn> = {
     const band = Math.floor(y / 4) % 2 === 0; // horizontal bands, 4 px each
     return shade(band ? [205, 186, 130] : [190, 168, 112], 1 + (r() - 0.5) * 0.12);
   },
+  [Tile.TALL_GRASS]: (x, y, r) => {
+    // Blades rising from the bottom, staggered; the rest is transparent.
+    const blade = y > 3 && (x % 4 === 1 || (x % 4 === 2 && y > 9) || (x % 4 === 3 && y > 6));
+    return blade ? shade(GRASS, 0.9 + (r() - 0.5) * 0.25) : [0, 0, 0, 0];
+  },
+  [Tile.POPPY]: (x, y, r) => {
+    // A red head on a green stem; the rest is transparent.
+    if (Math.hypot(x - 7.5, y - 6) <= 3) return shade([200, 30, 30], (x === 7 || x === 8) && y === 6 ? 0.4 : 1 + (r() - 0.5) * 0.2);
+    if ((x === 7 || x === 8) && y >= 9) return shade([60, 130, 40], 1 + (r() - 0.5) * 0.2);
+    return [0, 0, 0, 0];
+  },
   [Tile.BRICK]: (x, y, r) => {
     const mortar = y % 4 === 3 || (x + (Math.floor(y / 4) % 2) * 4) % 8 === 0;
     return mortar ? shade([200, 200, 190], 1) : shade([150, 60, 50], 1 + (r() - 0.5) * 0.2);

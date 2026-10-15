@@ -15,6 +15,8 @@ import {
   SHORE_CAVE_BAND,
   SHORE_ROOF,
   SOIL_DEPTH,
+  POPPY_CHANCE,
+  TALL_GRASS_CHANCE,
   TERRAIN_CHUNK_BOTTOM,
   TREE_CHANCE,
   TREE_REACH,
@@ -162,13 +164,16 @@ export class TerrainGenerator {
         const warp = column.warp[i]!;
         const wx = cx * CHUNK_SIZE + lx;
         const wz = cz * CHUNK_SIZE + lz;
+        const inSlice = h + 1 >= y0 && h + 1 < y1; // the plant cell is in this range
+        const plant = soil && !beach && inSlice ? this.plantAt(wx, wz, h) : BlockId.AIR;
         for (let y = y0; y < y1; y++) {
           let id: number;
           if (this.density.isSolid(wx, y, wz, offsetM, ampM)) {
             if (soil && y === h) id = beach ? BlockId.SAND : BlockId.GRASS;
             else if (soil && y >= h - SOIL_DEPTH) id = beach ? BlockId.SAND : BlockId.DIRT;
             else id = this.rockAt(y, warp);
-          } else id = y <= SEA_LEVEL ? BlockId.WATER : BlockId.AIR;
+          } else if (y === h + 1 && plant !== BlockId.AIR) id = plant;
+          else id = y <= SEA_LEVEL ? BlockId.WATER : BlockId.AIR;
           out[localIndex(lx, y - y0, lz)] = id;
         }
         const top = Math.min(this.caveTop(h), y1 - 1);
@@ -219,6 +224,14 @@ export class TerrainGenerator {
     let y = Math.floor(metersToBlocks(offsetM + ampM)) + 2;
     while (y > bottom && !this.density.isSolid(wx, y, wz, offsetM, ampM)) y--;
     return y;
+  }
+
+  /** The plant growing on the surface of column (wx, wz) at height h, or air. Caves that open the surface keep it bare. */
+  private plantAt(wx: number, wz: number, h: number): number {
+    if (this.isCave(wx, h, wz)) return BlockId.AIR;
+    const r = hash2(this.seed + 11, wx, wz);
+    if (r < POPPY_CHANCE) return BlockId.POPPY;
+    return r < POPPY_CHANCE + TALL_GRASS_CHANCE ? BlockId.TALL_GRASS : BlockId.AIR;
   }
 
   /** The rock of a solid block at height y: the strata layer it sits in, bent by the warp noise. */
