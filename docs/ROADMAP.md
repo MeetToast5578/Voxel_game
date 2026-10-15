@@ -106,7 +106,7 @@ Goal: the same land in meters, filled with finer blocks, so the world gets more 
 
 Goal: geography that looks real from the ground and from a mountaintop.
 
-**Status (2026-10-15):** items 1 and 2 are done (specs 11–12). Spec 13 switched the generator to those fields, and spec 14 added the 3D density (part of item 4). Next: geology (item 5). Item 3 needs a larger model to plan it first.
+**Status (2026-10-15):** items 1 and 2 are done (specs 11–12). Spec 13 switched the generator to those fields, and spec 14 added the 3D density (part of item 4). Geology slice 1 (spec 15: strata and bare rock) is done. Next: the rest of item 5. Item 3 needs a larger model to plan it first.
 
 1. **Debug map** (`?map=1`). A top-down 2D render of the generator: height, biomes, rivers, moisture, region seams. It's the main tuning tool for this phase, so it comes first.
 2. **Climate and shape fields.** Large-scale noise for:

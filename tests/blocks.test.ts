@@ -38,7 +38,7 @@ describe('blocks', () => {
 describe('block states', () => {
   const OLD_IDS: Record<string, number> = {
     AIR: 0, STONE: 1, DIRT: 2, GRASS: 3, SAND: 4, WATER: 5, LOG: 6, LEAVES: 7, PLANKS: 8, GLASS: 9, BEDROCK: 10,
-    COBBLESTONE: 11, BRICK: 12, GLOWSTONE: 13,
+    COBBLESTONE: 11, BRICK: 12, GLOWSTONE: 13, GRANITE: 14, DIORITE: 15, ANDESITE: 16, SANDSTONE: 17,
   };
 
   it('keeps every BlockId number, named after its key', () => {
@@ -49,7 +49,7 @@ describe('block states', () => {
       expect(getBlockDef(state).key).toBe(name.toLowerCase());
       expect(blockVariant(state)).toBe(0);
     }
-    expect(BLOCK_STATE_COUNT).toBe(14);
+    expect(BLOCK_STATE_COUNT).toBe(18);
   });
   it('round-trips every state through its name', () => {
     for (let state = 0; state < BLOCK_STATE_COUNT; state++) {

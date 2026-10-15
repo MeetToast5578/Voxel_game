@@ -46,7 +46,7 @@ The owner is continuing with **Claude Haiku 5.5** to save tokens. The next secti
 - **Cloud smoke test favicon.** In cloud sessions `npm run smoke` passes every check, then fails on `console.error: Failed to load resource: 404`. That's the full Chromium's favicon request; CI doesn't hit it.
   - A likely fix is `<link rel="icon" href="data:,">` in `index.html`.
   - Verify: smoke passes in the cloud with `CHROMIUM_PATH=/opt/pw-browsers/chromium-1194/chrome-linux/chrome`.
-- **Geology, phase 2 item 5** (strata by noise, soil depth by slope). Write `docs/specs/15-geology.md` first, then build it. This is the next roadmap item for Haiku.
+- **Geology, phase 2 item 5, more slices** (ores, deepslate, limestone, slate, basalt, gravel and clay). Spec 15 (first slice: strata and bare rock) is done. Write the next spec first.
 - **Bug fixes from the playtest**, one per branch and pull request.
 - **Any spec written in `docs/specs/` style:** prose requirements, acceptance criteria and test cases.
 
@@ -109,7 +109,7 @@ TypeScript 5.9.3, Vite 7.3.6, Vitest 4.0.18, three 0.186.0, simplex-noise 4.0.3,
   - coords
   - fixed-timestep loop (1/60 s steps, frames clamped to 0.25 s)
 - `src/world`:
-  - `blocks.ts`: `BlockId`/`Tile` are objects, not enums. Ids run AIR 0, STONE 1, DIRT 2, GRASS 3, SAND 4, WATER 5, LOG 6, LEAVES 7, PLANKS 8, GLASS 9, BEDROCK 10, COBBLESTONE 11, BRICK 12, GLOWSTONE 13.
+  - `blocks.ts`: `BlockId`/`Tile` are objects, not enums. Ids run AIR 0, STONE 1, DIRT 2, GRASS 3, SAND 4, WATER 5, LOG 6, LEAVES 7, PLANKS 8, GLASS 9, BEDROCK 10, COBBLESTONE 11, BRICK 12, GLOWSTONE 13, GRANITE 14, DIORITE 15, ANDESITE 16, SANDSTONE 17.
   - `chunk.ts`: 16×16×16 `Uint16Array` of block states, indexed `(ly*16+lz)*16+lx`, addressed by `(cx, cy, cz)`. No height limit.
   - `world.ts`: the chunk map, the `edits` map (what gets saved), and per-column **tops** (world y of the highest sky-blocking block per cell), kept exact on every edit.
   - `shape.ts`: the six climate fields and `heightMeters` (a spline of continentalness, plus mountains), and `detailAmpMeters` (the density's amplitude).
@@ -181,6 +181,6 @@ See `docs/ROADMAP.md` for phases 2–8. Known gaps after phase 2 items 1–2 and
 - **Mesh time.** 3.1–3.7 ms per surface chunk, against a 3 ms target.
 - **Cold column generation.** About 8.4 ms median (see above).
 - **Plains.** Some stepped ground remains on gentle slopes (spec 14 out-of-scope note).
-- **Terrain.** Geology (item 5), region simulation with rivers and erosion (item 3), caves beyond spaghetti (item 6), coasts (item 7) and horizon LOD (item 8) are still to come.
+- **Terrain.** Geology beyond spec 15 (item 5), region simulation with rivers and erosion (item 3), caves beyond spaghetti (item 6), coasts (item 7) and horizon LOD (item 8) are still to come.
 - **Draw calls.** A loaded world has ~1,800 meshed chunks, ~300 drawn after frustum culling. Cave culling and batching are phase 8.
 - **Edits.** An edit remeshes up to 8 chunks on the main thread at once, about 3 ms each.
