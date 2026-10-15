@@ -1,11 +1,13 @@
 import './style.css';
-import { INTERIM_SAVE_KEY } from './config';
+import { DEFAULT_SEED, INTERIM_SAVE_KEY } from './config';
 import { installDebugApi } from './debugApi';
 import { Game, type GameSave } from './game';
 import { readOptions, type GameOptions } from './options';
 import { readSave, SAVE_VERSION } from './storage/save';
 import { browserStore } from './storage/store';
 import { IndexedDbWorldStore, MemoryWorldStore } from './storage/worldStore';
+import { TerrainGenerator } from './world/generator';
+import { mapPixels } from './world/debugMap';
 
 const container = document.getElementById('app');
 if (!container) throw new Error('#app element missing from index.html');
@@ -28,12 +30,30 @@ async function openSave(options: GameOptions): Promise<GameSave> {
   return { store, loaded, persistent: true, unavailable: false };
 }
 
+/** ?map=1: a top-down picture of the terrain, one pixel per block, around the origin. Tuning only. */
+function showMap(root: HTMLElement, seed: number | null): void {
+  const size = 512;
+  const canvas = document.createElement('canvas');
+  canvas.width = size;
+  canvas.height = size;
+  canvas.style.cssText = 'width:min(100vmin,512px);image-rendering:pixelated;display:block';
+  const ctx = canvas.getContext('2d');
+  if (!ctx) throw new Error('2D canvas not supported');
+  const pixels = mapPixels(new TerrainGenerator(seed ?? DEFAULT_SEED), -size / 2, -size / 2, size);
+  ctx.putImageData(new ImageData(pixels, size, size), 0, 0);
+  const label = document.createElement('p');
+  label.textContent = `Debug map · seed ${seed ?? DEFAULT_SEED} · 1 pixel = 1 block · blue = sea`;
+  label.style.cssText = 'color:#fff;font:14px system-ui;margin:8px';
+  root.append(canvas, label);
+}
+
 async function main(root: HTMLElement): Promise<void> {
+  const options = readOptions(window.location.search);
+  if (options.map) return showMap(root, options.seed);
   const loading = document.createElement('div');
   loading.className = 'loading';
   loading.textContent = 'Loading world…';
   root.append(loading);
-  const options = readOptions(window.location.search);
   const save = await openSave(options);
   loading.remove();
   const game = new Game(root, options, save);
