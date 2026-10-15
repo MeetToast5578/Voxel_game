@@ -14,7 +14,7 @@ describe('debugText', () => {
   it('formats the overlay lines', () => {
     const info: DebugInfo = {
       fps: 60, seed: 1, position: [12.345, 65, -3.2], yaw: 0, pitch: -0.1, onGround: true, flying: false,
-      target: [12, 64, -4], targetName: 'Stone', selectedBlock: 'Dirt',
+      target: [12, 64, -4], targetName: 'Stone', selectedBlock: 'Dirt', held: 3,
       loaded: 197, meshed: 113, pendingGen: 0, pendingMesh: 2, columns: 81, jobsInFlight: 5, renderDistance: 6,
     };
     const lines = formatDebugLines(info);
@@ -30,6 +30,7 @@ describe('debugText', () => {
     );
     expect(lines).toContain('Target Stone @ 12 64 -4');
     expect(lines).toContain('Columns 81   Jobs in flight 5');
+    expect(lines).toContain('Selected Dirt   Held items 3');
     expect(formatDebugLines({ ...info, target: null, targetName: null })).toContain('Target none');
   });
 });

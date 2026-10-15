@@ -266,6 +266,8 @@ Goal: animals that live believably, and danger at night.
 
 Goal: a reason to engage with every system above.
 
+**Status (2026-10-15):** item 3 is partly done and item 4 is partly done, by spec 23. Broken blocks drop as items that fall, land and can be picked up, and the F3 overlay counts pickups. Items are not saved, have no stacks and no inventory screen; those are still open.
+
 1. **Game modes.** Survival, and creative (today's sandbox with flight and instant breaking).
 2. **Vitals.**
    - Health, regeneration, death and respawn.

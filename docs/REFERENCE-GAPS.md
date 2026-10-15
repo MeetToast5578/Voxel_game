@@ -97,10 +97,10 @@ Game status comes from `docs/ROADMAP.md` and `docs/HANDOFF.md`. Reference status
 ### 4. Dropped items and inventory (phase 7 items 3–4)
 
 - **Reference:** `ItemHandler.processItemPhysics` makes broken blocks fall and spin. Nothing picks them up, and there is no inventory.
-- **Ours:** breaking a block leaves nothing behind. The hotbar holds block ids (`src/player/hotbar.ts`).
-- **Roadmap:** mining drops, stacks, and an inventory grid. Survival mode (phase 7 item 1) is listed first.
-- **Our note:** dropped items need an entity system, so they depend on phase 6 item 1 as well.
-- **Haiku-sized?** No, not yet. Survival mode and the entity system come first.
+- **Ours (updated):** broken blocks now drop as items that fall, land, and can be picked up, and the F3 overlay counts pickups. Spec 23 ports the design and is credited in `src/items/droppedItems.ts`. Items are not saved, and there are no stacks or inventory screen yet. The hotbar still holds block ids (`src/player/hotbar.ts`).
+- **Roadmap:** stacks, an inventory grid and saving the items remain. Survival mode (phase 7 item 1) is listed first.
+- **Our note:** items are a plain list in `Game`, not the entity system, so the entity system (phase 6 item 1) is still needed for mobs.
+- **Haiku-sized?** No, not yet. Survival mode and the inventory design come first.
 
 ## Corrections to the earlier version of this doc
 

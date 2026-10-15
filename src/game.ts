@@ -12,9 +12,12 @@ import { canBreak, placementTarget } from './player/interaction';
 import type { Vec3 } from './player/physics';
 import { NO_CONTROLS, PLAYER_SHAPE, Player, type PlayerControls } from './player/player';
 import { raycastVoxels, type RaycastHit } from './player/raycast';
+import { addDroppedItem, canPickUp, spawnDroppedItem, stepDroppedItem, type DroppedItem } from './items/droppedItems';
+import { HeldItems } from './items/heldItems';
 import { ChunkMeshes } from './render/chunkMeshes';
 import { Clouds } from './render/clouds';
 import { BlockHighlight } from './render/highlight';
+import { ItemMeshes } from './render/itemMesh';
 import { Renderer } from './render/renderer';
 import type { LoadedSave, SavedPlayer, WorldMeta } from './storage/save';
 import { WorldSaver } from './storage/saver';
@@ -55,6 +58,10 @@ export class Game {
   readonly hotbar = new Hotbar();
   readonly input: Input;
   readonly sounds = new Sounds();
+  /** Broken blocks lying on the ground, and what the player has picked up (spec 23). Not saved yet. */
+  readonly items: DroppedItem[] = [];
+  readonly held = new HeldItems();
+  private readonly itemMeshes: ItemMeshes;
   /** The block under the crosshair (updated every frame), or null. */
   target: RaycastHit | null = null;
   /** True once the area around spawn is meshed and the player has been placed. */
@@ -113,6 +120,7 @@ export class Game {
     this.saver = new WorldSaver(this.worldStore, this.world, () => this.worldMeta());
     this.renderer = new Renderer(container);
     this.meshes = new ChunkMeshes(this.renderer.scene, this.renderer.solidMaterial, this.renderer.waterMaterial);
+    this.itemMeshes = new ItemMeshes(this.renderer.scene, this.renderer.solidMaterial);
     this.usingWorkers = options.workers && typeof Worker !== 'undefined';
     const workerCount = Math.max(1, Math.min(4, (navigator.hardwareConcurrency || 2) - 1));
     const jobs = this.usingWorkers ? new WorkerPool(seed, workerCount) : null;
@@ -174,6 +182,7 @@ export class Game {
     this.timeOfDay = (this.timeOfDay + dt / DAY_LENGTH_S) % 1;
     this.player.update(dt, this.playing ? this.readControls() : NO_CONTROLS, this.isSolidAt, this.isWaterAt);
     this.updateFootsteps(dt);
+    this.updateItems(dt);
     if (this.player.splashSpeed > 0) this.sounds.play('splash');
     this.saveTimer += dt;
     if (this.saveTimer >= AUTOSAVE_INTERVAL_S) {
@@ -225,6 +234,7 @@ export class Game {
     this.updateTarget(eye);
     if (this.playing && this.ready) this.handleBlockActions(frameDt);
     if (frameDt > 0) this.fps += (1 / frameDt - this.fps) * 0.05;
+    this.itemMeshes.sync(this.items);
     this.renderer.render();
     this.hud.update(this.hotbar.slots, this.hotbar.selected, frameDt);
     this.debugOverlay.update(frameDt, () => formatDebugLines(this.debugState()));
@@ -303,12 +313,16 @@ export class Game {
     return true;
   }
 
-  /** Breaks the targeted block. Returns true if a block was removed. */
+  /** Breaks the targeted block; it drops as an item (spec 23). Returns true if a block was removed. */
   breakTarget(): boolean {
     const t = this.target;
     if (!t || !canBreak(this.world.getBlock(t.x, t.y, t.z))) return false;
+    const id = this.world.getBlock(t.x, t.y, t.z);
     const ok = this.setBlock(t.x, t.y, t.z, BlockId.AIR);
-    if (ok) this.sounds.play('break');
+    if (ok) {
+      this.sounds.play('break');
+      addDroppedItem(this.items, spawnDroppedItem(id, t.x, t.y, t.z, Math.random));
+    }
     return ok;
   }
 
@@ -340,6 +354,20 @@ export class Game {
     if (this.stepDistance >= FOOTSTEP_DISTANCE) {
       this.stepDistance = 0;
       this.sounds.play('step');
+    }
+  }
+
+  /** Moves the dropped items and picks up the ones the player reaches. Items that get stuck in rock are removed. */
+  private updateItems(dt: number): void {
+    const feet = this.player.position;
+    for (let i = this.items.length - 1; i >= 0; i--) {
+      const item = this.items[i]!;
+      if (!stepDroppedItem(item, dt, this.isSolidAt)) {
+        this.items.splice(i, 1);
+      } else if (canPickUp(item, feet)) {
+        this.held.add(item.blockId);
+        this.items.splice(i, 1);
+      }
     }
   }
 
@@ -407,6 +435,7 @@ export class Game {
       selectedSlot: this.hotbar.selected,
       selectedBlock: getBlockDef(this.hotbar.selectedBlock).name,
       hotbar: [...this.hotbar.slots],
+      held: this.held.total,
       renderDistance: this.chunks.renderDistance,
       workers: this.usingWorkers,
       drawCalls: this.renderer.webgl.info.render.calls,

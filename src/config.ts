@@ -123,6 +123,17 @@ export const SPLASH_MIN_SPEED = metersToBlocks(4); // downward speed (m/s) that 
 export const SWIM_WAIST_HEIGHT = metersToBlocks(0.6); // "in water" is checked this far above the feet
 export const FEET_WATER_HEIGHT = metersToBlocks(0.1); // "feet in water" is checked this far above the feet
 
+// ---- Dropped items (spec 23) ----
+export const ITEM_SIZE_M = 0.15; // a dropped item is a cube this wide: half a block
+export const ITEM_HEIGHT = metersToBlocks(ITEM_SIZE_M); // blocks
+export const ITEM_HALF_WIDTH = ITEM_HEIGHT / 2; // the cube is as wide as it is tall, in blocks
+export const ITEM_TERMINAL_M_S = 20; // falling items stop accelerating at this speed
+export const ITEM_SPREAD_M_S = 0.5; // a dropped item starts with up to this much sideways speed, each way
+export const ITEM_SPIN_DEG_S = 90; // how fast a dropped item turns on the spot
+export const ITEM_PICKUP_RADIUS_M = 1.0; // the player picks up an item this close to its centre
+export const ITEM_PICKUP_DELAY_S = 0.5; // a new item can't be picked up for this long, so it doesn't snap back
+export const DROPPED_ITEM_MAX = 64; // the oldest item is removed when there are more than this
+
 // ---- Game loop ----
 export const FIXED_DT = 1 / 60; // physics step, seconds
 export const MAX_FRAME_DT = 0.25; // longer frames are clamped (tab was hidden, debugger, ...)

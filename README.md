@@ -67,6 +67,11 @@ CI (GitHub Actions) runs `npm run check` and `npm run smoke` on every pull reque
 | `src/world` | blocks, chunks, terrain generator, chunk streaming, lighting, day/night |
 | `src/render` | mesher (face culling + ambient occlusion), textures, three.js renderer, clouds |
 | `src/player` | physics, player controller, raycast, interaction rules, hotbar |
+| `src/items` | dropped items and what the player has picked up (spec 23) |
 | `src/ui`, `src/input`, `src/audio`, `src/storage` | HUD, menu, debug overlay, input, sounds, saves and settings |
 | `src/workers` | Web Worker pool for generation and meshing |
 | `tests` | Vitest unit tests for all logic modules |
+
+## License
+
+GNU GPL version 3 or later (see `LICENSE`). Some code is ported from [nrz/Voxels](https://github.com/nrz/Voxels), also GPL v3, and is credited in the files that use it.
