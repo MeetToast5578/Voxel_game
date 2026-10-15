@@ -10,14 +10,16 @@ something else. Do not guess a fix before knowing the symptom.
 
 What was observed on 2026-10-15 (seed 1, spawn at about (−26.5, 8, −26.5)):
 
-- **Terraced look on gentle slopes.** Screenshots show flat horizontal bands of grass and dirt. The surface heights are
-  smooth (8 → 6 blocks over 20 blocks, so one step every three blocks). The bands are whole-block steps. It may not be
-  a bug, but it reads as one.
+- **The terrain is rough, not a gentle slope.** Heights are noise with steep, spiky faces everywhere. Along a line 300 m
+  apart the height goes 33 m → 391 m → 668 m → 33 m (`+x` from spawn). Across a 6 km square, 15% of neighbouring
+  blocks differ by 0.9 m or more, and the largest single step is 16 m (at (1588, −2548)). Heights reach −190 m and
+  +2,404 m. This is a real problem, and it is the main suspect: the mountain term in `shape.ts` is not smooth. Nothing
+  in the code makes the terrain an infinite slope. The height is clamped to the band.
+- **The spawn area looks like terraces.** The flat grass and dirt bands in the screenshots are one-block steps on a
+  slope of about one block per three. That is a side effect of whole-block heights, not the main problem.
 - **Slow generation.** `generateChunk` takes about 8 ms, against 2.5 ms before spec 13 (six climate fields per column,
   where there were two noises). On first load the game had about 2,600 chunks pending at 15 fps. The main-thread budget
   is 4 ms per frame, so this is only hidden by Web Workers.
-- **Mountains.** The tallest column within about 450 m of spawn is 770 m, at (−990, −1500). Nobody has looked at it
-  in the game yet.
 - Nothing is reported as broken by the tests or the smoke test. The problem is in how the terrain looks and feels,
   which the tests do not cover.
 
@@ -58,13 +60,15 @@ the band, about 2,600 m; the name is from phase 1); `DEFAULT_RENDER_DISTANCE` 8 
 
 ## Suspects, in order of likelihood
 
-1. **Stepped heights.** Heights are whole blocks, so a slope of one block per three becomes regular steps. Options: keep
-   it and say so, or smooth it (for example sub-block surface or a dithered top layer). The owner decides.
+1. **Rough mountains.** `heightMeters` adds `2300 m × land × rugged × ridge`. The ridged `peaks` field (700 m) is
+   multiplied in at full amplitude, with no smoothing, so it gives spikes and cliffs. Check the wavelengths, the
+   amplitude, and whether `rugged` and `ridge` should be smoothed. Measure with the steepness probe above (15% of
+   neighbouring blocks differ by 0.9 m or more) before and after any change.
 2. **Generation cost.** Sample the fields on a coarse grid per column and interpolate, or skip the three unused fields
    until biomes need them. Check `generateChunk` with the timing test in `tests/generator.test.ts` (threshold 30 ms, so
    it will not catch a slowdown; measure in a probe).
-3. **Mountain shape.** Erosion and peaks decide how steep and how often mountains appear. Check the slope of the
-   2300 m term near the peak above.
+3. **Stepped heights on slopes.** Whole-block heights make one-block steps on gentle slopes. This is minor. Smoothing
+   the surface (sub-block heights or a dithered top layer) is a design choice for the owner.
 4. **Trees on steep ground.** `placeTrees` checks only the anchor column's height and cave state.
 5. **Caves.** Only y ≥ 2 is carved, and the rate is about 1% of the underground. Check that caves are not cut open to
    the sky under mountains.
