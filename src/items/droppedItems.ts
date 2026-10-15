@@ -2,8 +2,7 @@
  * Dropped items (spec 23): a broken block becomes a small cube that falls, lands, turns on the spot and can be
  * picked up. Pure: no three.js, no DOM, so it is tested in Node.
  *
- * Design ported from nrz/Voxels (ItemHandler.java and ItemLocation.java, Otso Nuortimo, GNU GPL v3): the item starts
- * with a little sideways speed, falls, and stops at the first solid block. Collision is ours and reuses moveAndCollide.
+ * The item starts with a little sideways speed, falls, and stops at the first solid block. Collision reuses moveAndCollide.
  */
 import {
   GRAVITY, ITEM_HALF_WIDTH, ITEM_HEIGHT, ITEM_PICKUP_DELAY_S, ITEM_PICKUP_RADIUS_M, ITEM_SPIN_DEG_S, ITEM_SPREAD_M_S,

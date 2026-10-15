@@ -4,8 +4,8 @@ Last updated 2026-10-15. A docs-only comparison. No code or specs are changed by
 
 ## Source and rules
 
-- **Reference:** `nrz/Voxels` (https://github.com/nrz/Voxels), a Java sandbox by Otso Nuortimo, 2016–2017. Its source files carry the GNU GPL header.
-- **Our repo has no `LICENSE` file.** Copying or closely translating the reference's code would bring GPL obligations into this repo. So this doc takes only **ideas**, to be re-specified in our own words and built in TypeScript. No code is copied.
+- **Reference:** `nrz/Voxels` (https://github.com/nrz/Voxels), a Java sandbox, 2016–2017.
+- **No reference code is copied.** This doc takes only **ideas**, to be re-specified in our own words and built in TypeScript.
 - The reference is a LWJGL (Java OpenGL) game. Only its designs carry over.
 - **Method:** a read-only survey of the reference's source, with the key citations spot-checked by grep. Nothing was run. Where the reference has code that is never called, it is marked dormant.
 
@@ -97,7 +97,7 @@ Game status comes from `docs/ROADMAP.md` and `docs/HANDOFF.md`. Reference status
 ### 4. Dropped items and inventory (phase 7 items 3–4)
 
 - **Reference:** `ItemHandler.processItemPhysics` makes broken blocks fall and spin. Nothing picks them up, and there is no inventory.
-- **Ours (updated):** broken blocks now drop as items that fall, land, and can be picked up, and the F3 overlay counts pickups. Spec 23 ports the design and is credited in `src/items/droppedItems.ts`. Items are not saved, and there are no stacks or inventory screen yet. The hotbar still holds block ids (`src/player/hotbar.ts`).
+- **Ours (updated):** broken blocks now drop as items that fall, land, and can be picked up, and the F3 overlay counts pickups. Spec 23 builds the design in TypeScript (`src/items/droppedItems.ts`). Items are not saved, and there are no stacks or inventory screen yet. The hotbar still holds block ids (`src/player/hotbar.ts`).
 - **Roadmap:** stacks, an inventory grid and saving the items remain. Survival mode (phase 7 item 1) is listed first.
 - **Our note:** items are a plain list in `Game`, not the entity system, so the entity system (phase 6 item 1) is still needed for mobs.
 - **Haiku-sized?** No, not yet. Survival mode and the inventory design come first.
@@ -110,6 +110,5 @@ Game status comes from `docs/ROADMAP.md` and `docs/HANDOFF.md`. Reference status
 
 ## Open questions for the owner
 
-1. **Licence.** Is the owner happy for this repo to take ideas only, with no reference code? If the owner wants code, the repo needs a licence decision first.
-2. **Order.** Of the four gaps, which should be specced first? Water levels is the roadmap's next step in phase 5. Greedy meshing is the cheapest to measure first, with a benchmark in `npm run smoke`.
-3. **Mesher.** Should greedy meshing be measured before anyone decides to build it? See the caveat above.
+1. **Order.** Of the four gaps, which should be specced first? Water levels is the roadmap's next step in phase 5. Greedy meshing is the cheapest to measure first, with a benchmark in `npm run smoke`.
+2. **Mesher.** Should greedy meshing be measured before anyone decides to build it? See the caveat above.

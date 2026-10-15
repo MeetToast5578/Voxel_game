@@ -1,7 +1,6 @@
 # Spec 23: Dropped items and pickup
 
-**Built by:** Claude. Roadmap phase 7 items 3–4 (mining drops, and the start of items). Design ported from nrz/Voxels
-(`ItemHandler.java` and `ItemLocation.java`, Otso Nuortimo, GNU GPL v3); the code here is written in TypeScript.
+**Built by:** Claude. Roadmap phase 7 items 3–4 (mining drops, and the start of items).
 
 ## Problem
 
