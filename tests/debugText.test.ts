@@ -15,7 +15,7 @@ describe('debugText', () => {
     const info: DebugInfo = {
       fps: 60, seed: 1, position: [12.345, 65, -3.2], yaw: 0, pitch: -0.1, onGround: true, flying: false,
       target: [12, 64, -4], targetName: 'Stone', selectedBlock: 'Dirt',
-      loaded: 197, meshed: 113, pendingGen: 0, pendingMesh: 2, columns: 81, jobsInFlight: 5, renderDistance: 6,
+      loaded: 197, meshed: 113, pendingGen: 0, pendingMesh: 2, columns: 81, jobsInFlight: 5, tickRan: 0, tickPending: 0, renderDistance: 6,
     };
     const lines = formatDebugLines(info);
     expect(lines[0]).toBe('FPS 60');

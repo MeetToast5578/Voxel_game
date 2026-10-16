@@ -2,6 +2,7 @@ import { CHUNK_SIZE, CHUNK_VOLUME } from '../config';
 import { chunkKey, columnIndex, columnKey, localIndex, worldToChunk, worldToLocal } from '../core/coords';
 import { BlockId, blocksSky } from './blocks';
 import { Chunk } from './chunk';
+import { type TickHandoff } from './tick';
 
 /** Generates the blocks of a chunk synchronously (without player edits). */
 export type ChunkFallback = (cx: number, cy: number, cz: number) => Uint16Array;
@@ -40,6 +41,8 @@ export class World {
   private readonly tops = new Map<string, Int32Array>();
   /** columnKey -> number of loaded chunks in that column. */
   private readonly loadedPerColumn = new Map<string, number>();
+  /** Global tick counter, incremented once per tickStep. */
+  private tickCounter = 0;
 
   constructor(
     seed: number,
@@ -293,5 +296,56 @@ export class World {
       for (; ly >= 0; ly--) if (blocksSky(blocks[localIndex(lx, ly, lz)]!)) return cy * CHUNK_SIZE + ly;
     }
     return NO_TOP;
+  }
+
+  /** Schedule a tick at world coordinates (wx, wy, wz) due at `dueTick`. Returns any handoff to a neighbour chunk. */
+  scheduleTick(wx: number, wy: number, wz: number, dueTick: number, reason: string): TickHandoff | null {
+    const cx = worldToChunk(wx);
+    const cy = worldToChunk(wy);
+    const cz = worldToChunk(wz);
+    const chunk = this.getChunk(cx, cy, cz);
+    if (!chunk) return null;
+    return chunk.ticks.schedule({ x: wx, y: wy, z: wz, dueTick, reason }, cx, cy, cz);
+  }
+
+  /**
+   * Run one tick step over all loaded chunks. Each chunk's queue runs up to `budgetMs`; ticks past the
+   * budget wait for the next step. Handoff ticks (cells at a chunk border) are re-scheduled in the
+   * neighbour's queue. Returns { ran, pending } stats.
+   */
+  tickStep(budgetMs: number): { ran: number; pending: number } {
+    this.tickCounter++;
+    let ran = 0;
+    let pending = 0;
+
+    for (const chunk of this.chunks()) {
+      const { handedOff, ran: r } = chunk.ticks.run(this.tickCounter, budgetMs, () => 'handled');
+      ran += r;
+      pending += chunk.ticks.size;
+      // Re-schedule border handoffs in the neighbour chunk's queue.
+      for (const t of handedOff) {
+        const tcx = worldToChunk(t.x);
+        const tcy = worldToChunk(t.y);
+        const tcz = worldToChunk(t.z);
+        const target = this.getChunk(tcx, tcy, tcz);
+        if (target) {
+          target.ticks.schedule(t, tcx, tcy, tcz);
+          pending += 1;
+        }
+        // If the neighbour isn't loaded, the handoff is dropped.
+      }
+    }
+
+    return { ran, pending };
+  }
+
+  /** Current global tick number. */
+  get currentTick(): number { return this.tickCounter; }
+
+  /** Total number of pending ticks across all loaded chunks. */
+  get pendingTickCount(): number {
+    let n = 0;
+    for (const chunk of this.chunks()) n += chunk.ticks.size;
+    return n;
   }
 }

@@ -18,6 +18,8 @@ export interface DebugInfo {
   pendingMesh: number;
   columns: number;
   jobsInFlight: number;
+  tickRan: number;
+  tickPending: number;
   renderDistance: number;
 }
 
@@ -51,6 +53,7 @@ export function formatDebugLines(info: DebugInfo): string[] {
     `On ground ${yes(info.onGround)}   Flying ${yes(info.flying)}`,
     `Chunks loaded ${info.loaded}  meshed ${info.meshed}  pending ${info.pendingGen}/${info.pendingMesh}`,
     `Columns ${info.columns}   Jobs in flight ${info.jobsInFlight}`,
+    `Ticks ran ${info.tickRan}  pending ${info.tickPending}`,
     `Render distance ${info.renderDistance}   Seed ${info.seed}`,
   ];
 }

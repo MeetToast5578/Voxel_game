@@ -1,0 +1,93 @@
+import { CHUNK_SIZE } from '../config';
+import { floorDiv } from '../core/math';
+
+/** A scheduled tick: a world cell to update at or after `dueTick`, for a given `reason`. */
+export interface Tick {
+  x: number; // world x
+  y: number; // world y
+  z: number; // world z
+  dueTick: number; // tick number when this becomes due
+  reason: string; // why it was scheduled (e.g. 'falling-sand', 'fluid-flow')
+}
+
+export type TickResult = 'handled' | 'handoff' | 'skip';
+
+/** Handoff target: a tick that belongs in a neighbouring chunk's queue. */
+export interface TickHandoff {
+  cx: number;
+  cy: number;
+  cz: number;
+  tick: Tick;
+}
+
+function compareTicks(a: Tick, b: Tick): number {
+  if (a.dueTick !== b.dueTick) return a.dueTick - b.dueTick;
+  if (a.x !== b.x) return a.x - b.x;
+  if (a.y !== b.y) return a.y - b.y;
+  return a.z - b.z;
+}
+
+/** A per-chunk queue of scheduled ticks. Runs in fixed order: due tick, then cell position. */
+export class TickQueue {
+  private ticks: Tick[] = [];
+
+  /** Schedule a tick in this chunk. Returns a handoff when the cell lies outside this chunk. */
+  schedule(tick: Tick, cx: number, cy: number, cz: number): TickHandoff | null {
+    const x0 = cx * CHUNK_SIZE;
+    const y0 = cy * CHUNK_SIZE;
+    const z0 = cz * CHUNK_SIZE;
+    if (
+      tick.x < x0 || tick.x >= x0 + CHUNK_SIZE ||
+      tick.y < y0 || tick.y >= y0 + CHUNK_SIZE ||
+      tick.z < z0 || tick.z >= z0 + CHUNK_SIZE
+    ) {
+      return {
+        cx: floorDiv(tick.x, CHUNK_SIZE),
+        cy: floorDiv(tick.y, CHUNK_SIZE),
+        cz: floorDiv(tick.z, CHUNK_SIZE),
+        tick,
+      };
+    }
+    this.ticks.push(tick);
+    this.ticks.sort(compareTicks);
+    return null;
+  }
+
+  /**
+   * Run all due ticks up to the time budget. `handle` is called for each due tick
+   * and returns 'handled', 'handoff', or 'skip'. Handoff ticks are returned so the
+   * caller can re-schedule them in the neighbouring chunk's queue.
+   */
+  run(
+    nowTick: number,
+    budgetMs: number,
+    handle: (tick: Tick) => TickResult,
+  ): { handedOff: Tick[]; ran: number } {
+    const start = performance.now();
+    const handedOff: Tick[] = [];
+    let ran = 0;
+    const remaining: Tick[] = [];
+
+    for (const tick of this.ticks) {
+      if (tick.dueTick > nowTick) {
+        remaining.push(tick);
+        continue;
+      }
+      if (performance.now() - start >= budgetMs) {
+        remaining.push(tick);
+        continue;
+      }
+      const result = handle(tick);
+      ran++;
+      if (result === 'handoff') {
+        handedOff.push(tick);
+      }
+    }
+
+    this.ticks = remaining;
+    return { handedOff, ran };
+  }
+
+  get size(): number { return this.ticks.length; }
+  get isEmpty(): boolean { return this.ticks.length === 0; }
+}

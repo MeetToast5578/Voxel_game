@@ -1,4 +1,4 @@
-import { CHUNK_SIZE, MAX_JOBS_IN_FLIGHT, roundBlocks, SURFACE_BAND, SURFACE_MAX_DISTANCE_M, VERTICAL_RENDER_DISTANCE } from '../config';
+import { CHUNK_SIZE, MAX_JOBS_IN_FLIGHT, roundBlocks, SURFACE_BAND, SURFACE_MAX_DISTANCE_M, TICK_BUDGET_MS, VERTICAL_RENDER_DISTANCE } from '../config';
 import { chunkKey, columnKey, worldToChunk } from '../core/coords';
 import { buildChunkMesh, type ChunkMeshData } from '../render/mesher';
 import { Chunk } from './chunk';
@@ -33,6 +33,9 @@ export interface ChunkStats {
   /** Columns whose tops are installed. */
   columns: number;
   jobsInFlight: number;
+  /** Ticks run in the last step and pending ticks across all loaded chunks. */
+  tickRan: number;
+  tickPending: number;
 }
 
 interface ColumnPos {
@@ -99,6 +102,8 @@ export class ChunkManager {
   private eye = { x: 0, y: 0, z: 0 };
   /** Set when column tops change: the surface bands, and so the sets, must be recomputed. */
   private setsStale = false;
+  /** Result of the last tickStep, for the F3 overlay. */
+  private lastTickStats = { ran: 0, pending: 0 };
   /**
    * Everything in loadList before loadCursor is loaded, and everything in meshList before meshCursor is meshed
    * and clean, so each frame starts scanning there. Reset whenever the lists change or a chunk becomes dirty.
@@ -139,6 +144,9 @@ export class ChunkManager {
     } else if (this.setsStale) {
       this.recomputeSets();
     }
+
+    // Run chunk ticks (falling blocks, fluid flow, ...) within the per-frame budget.
+    this.lastTickStats = this.world.tickStep(TICK_BUDGET_MS);
 
     if (this.jobs) {
       this.dispatchJobs(this.jobs);
@@ -296,6 +304,8 @@ export class ChunkManager {
       pendingMesh,
       columns: this.world.columnCount,
       jobsInFlight: this.jobsInFlight(),
+      tickRan: this.lastTickStats.ran,
+      tickPending: this.lastTickStats.pending,
     };
   }
 

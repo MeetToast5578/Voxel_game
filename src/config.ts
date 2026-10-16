@@ -47,6 +47,33 @@ export const FERN_CHANCE = 0.1; // chance a grass surface grows a fern, checked 
 export const BROWN_MUSHROOM_CHANCE = 0.005; // chance a grass surface grows a brown mushroom, checked after the fern (spec 21)
 export const RED_MUSHROOM_CHANCE = 0.005; // chance a grass surface grows a red mushroom, checked last (spec 21)
 export const BARE_ROCK_AMP_M = 12; // columns with at least this much detail amplitude have no soil: bare rock
+
+// ---- Ores (spec 26: ores by depth and rock type) ----
+/** One ore type's generation: the depth band it appears in, and how its veins are placed. */
+export interface OreGenDef {
+  /** Registry key, e.g. 'coal_ore'. Matches a block type in `src/world/blocks.ts`. */
+  readonly key: string;
+  /** Top of the depth band, in meters below sea level (negative). The shallowest it spawns. */
+  readonly topM: number;
+  /** Bottom of the depth band, in meters below sea level (negative). The deepest it spawns. */
+  readonly bottomM: number;
+  /** Chance each column gets a cluster of this ore. */
+  readonly chancePerColumn: number;
+  /** Attempted blocks per cluster. Some attempts miss (air, surface, wrong rock). */
+  readonly clusterTries: number;
+}
+
+/** Ores from shallow to deep. The bands do not overlap the surface; below -100 m the host rock is deepslate. */
+export const ORE_GEN: readonly OreGenDef[] = Object.freeze([
+  { key: 'coal_ore', topM: -4, bottomM: -40, chancePerColumn: 0.6, clusterTries: 10 },
+  { key: 'iron_ore', topM: -32, bottomM: -96, chancePerColumn: 0.5, clusterTries: 8 },
+  { key: 'gold_ore', topM: -64, bottomM: -160, chancePerColumn: 0.4, clusterTries: 6 },
+  { key: 'redstone_ore', topM: -96, bottomM: -224, chancePerColumn: 0.35, clusterTries: 6 },
+  { key: 'lapis_ore', topM: -128, bottomM: -320, chancePerColumn: 0.3, clusterTries: 8 },
+  { key: 'diamond_ore', topM: -160, bottomM: -480, chancePerColumn: 0.25, clusterTries: 5 },
+  { key: 'emerald_ore', topM: -160, bottomM: -480, chancePerColumn: 0.15, clusterTries: 4 },
+] as const);
+
 export const BEACH_BAND_M = 1; // land this close above sea level is beach
 export const SHORE_CAVE_BAND_M = 3; // no caves are carved this close above sea level
 export const SHORE_ROOF_M = 5; // the surface stays solid this far below a beach or shore
@@ -191,3 +218,6 @@ export const SAVE_DB_NAME = 'voxel-game'; // IndexedDB database holding the worl
 export const INTERIM_SAVE_KEY = 'voxel-game-save-v2';
 export const SETTINGS_KEY = 'voxel-game-settings-v1';
 export const AUTOSAVE_INTERVAL_S = 10;
+
+// ---- Tick system (spec 25, slice 1) ----
+export const TICK_BUDGET_MS = 2; // max time per frame spent running chunk ticks
