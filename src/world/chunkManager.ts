@@ -3,7 +3,7 @@ import { chunkKey, columnKey, worldToChunk } from '../core/coords';
 import { buildChunkMesh, type ChunkMeshData } from '../render/mesher';
 import { Chunk } from './chunk';
 import { neighborIndex } from './light';
-import type { World } from './world';
+import type { BatchEffect, World } from './world';
 
 /** Receives finished meshes. Implemented by render/chunkMeshes.ts (and by fakes in tests). */
 export interface MeshSink {
@@ -209,6 +209,43 @@ export class ChunkManager {
       }
       this.refreshColumn(ccx, ccz);
     }
+  }
+
+  /**
+   * Batch version of onBlockChanged, for a volume edit. Nothing is remeshed here: each affected chunk is marked dirty
+   * once (same rules as onBlockChanged), and update() rebuilds them under the mesh budget, so a large edit never stalls
+   * one frame.
+   */
+  onBlocksChanged(effect: BatchEffect): void {
+    const done = new Set<string>();
+    const mark = (key: string): void => {
+      if (done.has(key)) return;
+      done.add(key);
+      this.bumpVersion(key);
+      if (this.meshed.has(key)) this.dirty.add(key);
+    };
+    for (const c of effect.chunks)
+      for (let dy = -1; dy <= 1; dy++)
+        for (let dz = -1; dz <= 1; dz++)
+          for (let dx = -1; dx <= 1; dx++) mark(chunkKey(c.cx + dx, c.cy + dy, c.cz + dz));
+
+    if (effect.tops.length > 0) {
+      const spans = new Map<string, { lo: number; hi: number }>();
+      for (const s of effect.tops) {
+        spans.set(columnKey(s.cx, s.cz), s);
+        this.refreshColumn(s.cx, s.cz);
+      }
+      for (const p of this.meshed.values()) {
+        let affected = false;
+        for (let dz = -1; dz <= 1 && !affected; dz++)
+          for (let dx = -1; dx <= 1 && !affected; dx++) {
+            const s = spans.get(columnKey(p.cx + dx, p.cz + dz));
+            if (s && p.cy * CHUNK_SIZE + CHUNK_SIZE - 1 >= s.lo - (CHUNK_SIZE - 1) && p.cy * CHUNK_SIZE <= s.hi + 1) affected = true;
+          }
+        if (affected) mark(p.key);
+      }
+    }
+    this.meshCursor = 0;
   }
 
   /** True when every chunk of the (2 radius + 1)³ cube around the chunk containing (x, y, z) has a mesh. */

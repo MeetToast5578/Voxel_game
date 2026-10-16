@@ -13,6 +13,20 @@ const TOP_SCAN_CHUNKS = 64;
 
 const emptyFallback: ChunkFallback = () => new Uint16Array(CHUNK_VOLUME);
 
+/** One block to write in a batch edit. */
+export interface CellWrite {
+  x: number;
+  y: number;
+  z: number;
+  id: number;
+}
+
+/** What a batch edit changed: each touched chunk once, and each column whose top moved (lo and hi are its old and new tops). */
+export interface BatchEffect {
+  chunks: { cx: number; cy: number; cz: number }[];
+  tops: { cx: number; cz: number; lo: number; hi: number }[];
+}
+
 export class World {
   readonly seed: number;
   private readonly chunkMap = new Map<string, Chunk>();
@@ -188,6 +202,50 @@ export class World {
       tops[cell] = this.scanDown(cx, cz, lx, lz, wy - 1);
     }
     return true;
+  }
+
+  /**
+   * Changes many blocks at once. Records only the cells whose value changes. All or nothing: returns null and changes
+   * nothing when any cell's chunk is not loaded or its column has no tops. Otherwise returns what changed.
+   */
+  setBlocks(writes: readonly CellWrite[]): BatchEffect | null {
+    for (const w of writes) {
+      if (!this.isLoadedAt(w.x, w.y, w.z) || !this.getColumnTops(worldToChunk(w.x), worldToChunk(w.z))) return null;
+    }
+    const chunks = new Map<string, { cx: number; cy: number; cz: number }>();
+    const spans = new Map<string, { cx: number; cz: number; lo: number; hi: number }>();
+    for (const w of writes) {
+      const cx = worldToChunk(w.x);
+      const cy = worldToChunk(w.y);
+      const cz = worldToChunk(w.z);
+      const chunk = this.getChunk(cx, cy, cz)!;
+      const lx = worldToLocal(w.x);
+      const lz = worldToLocal(w.z);
+      const index = localIndex(lx, worldToLocal(w.y), lz);
+      if (chunk.blocks[index] === w.id) continue;
+      chunk.blocks[index] = w.id;
+      const key = chunkKey(cx, cy, cz);
+      this.recordEdit(key, index, w.id);
+      chunks.set(key, { cx, cy, cz });
+
+      const tops = this.getColumnTops(cx, cz)!;
+      const cell = columnIndex(lx, lz);
+      const oldTop = tops[cell]!;
+      if (blocksSky(w.id)) {
+        if (w.y > oldTop) tops[cell] = w.y;
+      } else if (w.y === oldTop) {
+        tops[cell] = this.scanDown(cx, cz, lx, lz, w.y - 1);
+      }
+      const newTop = tops[cell]!;
+      if (newTop !== oldTop) {
+        const colKey = columnKey(cx, cz);
+        const span = spans.get(colKey) ?? { cx, cz, lo: Infinity, hi: -Infinity };
+        span.lo = Math.min(span.lo, oldTop, newTop);
+        span.hi = Math.max(span.hi, oldTop, newTop);
+        spans.set(colKey, span);
+      }
+    }
+    return { chunks: [...chunks.values()], tops: [...spans.values()] };
   }
 
   /** Re-applies stored player edits to a freshly generated chunk. */

@@ -83,6 +83,29 @@ export class Inventory {
     return true;
   }
 
+  /** How many items of a block state the whole inventory holds. */
+  count(state: number): number {
+    return this.slots.reduce((n, s) => (s?.state === state ? n + s.count : n), 0);
+  }
+
+  /**
+   * Takes count items of a block state from any slots, hotbar first. Returns false, changing nothing, when the
+   * inventory holds fewer than count.
+   */
+  consume(state: number, count: number): boolean {
+    if (count < 0 || this.count(state) < count) return false;
+    let left = count;
+    for (let i = 0; i < INVENTORY_SIZE && left > 0; i++) {
+      const s = this.slots[i];
+      if (!s || s.state !== state) continue;
+      const taken = Math.min(left, s.count);
+      s.count -= taken;
+      left -= taken;
+      if (s.count === 0) this.slots[i] = null;
+    }
+    return true;
+  }
+
   /**
    * A click on a slot while `cursor` is held (or null). Returns the new cursor. An empty cursor takes the stack; a
    * cursor puts down into an empty slot, merges into the same block (up to MAX_STACK, the rest stays held), or swaps

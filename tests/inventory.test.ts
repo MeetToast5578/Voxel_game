@@ -118,3 +118,30 @@ describe('Inventory', () => {
     });
   });
 });
+
+describe('Inventory bulk count and consume', () => {
+  it('counts a block state across all slots', () => {
+    const inv = new Inventory(empty());
+    inv.setSlot(0, BlockId.STONE, 10);
+    inv.setSlot(20, BlockId.STONE, 5);
+    inv.setSlot(21, BlockId.BRICK, 3);
+    expect(inv.count(BlockId.STONE)).toBe(15);
+    expect(inv.count(BlockId.BRICK)).toBe(3);
+    expect(inv.count(BlockId.GLASS)).toBe(0);
+  });
+  it('consumes from hotbar first and empties the stacks it drains', () => {
+    const inv = new Inventory(empty());
+    inv.setSlot(0, BlockId.STONE, 4);
+    inv.setSlot(20, BlockId.STONE, 5);
+    expect(inv.consume(BlockId.STONE, 6)).toBe(true);
+    expect(inv.slots[0]).toBeNull();
+    expect(inv.slots[20]).toEqual({ state: BlockId.STONE, count: 3 });
+  });
+  it('refuses a consume that the inventory cannot cover, changing nothing', () => {
+    const inv = new Inventory(empty());
+    inv.setSlot(0, BlockId.STONE, 4);
+    expect(inv.consume(BlockId.STONE, 5)).toBe(false);
+    expect(inv.slots[0]).toEqual({ state: BlockId.STONE, count: 4 });
+    expect(inv.consume(BlockId.STONE, -1)).toBe(false);
+  });
+});
