@@ -25,6 +25,8 @@ export interface WorldMeta {
   items: DroppedItem[];
   /** 0..1, wraps. */
   timeOfDay: number;
+  /** 0..1, wraps. 0 = spring equinox. */
+  timeOfYear: number;
 }
 
 /** A stack as stored: the block's name and the count. */
@@ -42,6 +44,7 @@ export interface MetaRecord {
   inventory: (StoredStack | null)[];
   items: (StoredStack & { x: number; y: number; z: number })[];
   timeOfDay: number;
+  timeOfYear: number;
 }
 
 /** One chunk's player edits: chunk key "cx,cy,cz" and [localIndex 0..4095, state name] pairs. */
@@ -67,6 +70,7 @@ export function metaRecord(meta: WorldMeta): MetaRecord {
     inventory: meta.inventory.map((s) => (s ? { name: blockStateName(s.state), count: s.count } : null)),
     items: meta.items.map((i) => ({ name: blockStateName(i.state), count: i.count, x: i.x, y: i.y, z: i.z })),
     timeOfDay: meta.timeOfDay,
+    timeOfYear: meta.timeOfYear,
   };
 }
 
@@ -158,6 +162,7 @@ export function parseMeta(raw: unknown): WorldMeta | null {
     inventory: repairInventory(d.inventory, d.hotbar),
     items: repairItems(d.items),
     timeOfDay: repairTimeOfDay(d.timeOfDay),
+    timeOfYear: repairTimeOfDay(d.timeOfYear ?? 0),
   };
 }
 

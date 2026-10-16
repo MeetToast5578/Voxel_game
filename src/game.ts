@@ -1,7 +1,7 @@
 import {
-  AUTOSAVE_INTERVAL_S, BREAK_REPEAT_S, DAY_LENGTH_S, DEFAULT_MOUSE_SENSITIVITY, EYE_HEIGHT, FIXED_DT, FOOTSTEP_DISTANCE,
-  FOOTSTEP_MIN_SPEED, GEN_BUDGET_MS, HOTBAR_SIZE, MAX_FRAME_DT, MESH_BUDGET_MS, REACH, SEA_LEVEL, SETTINGS_KEY,
-  SPAWN_READY_RADIUS, START_TIME_OF_DAY, ITEM_SIZE, PLAYER_HEIGHT, WALK_SPEED,
+  AUTOSAVE_INTERVAL_S, BREAK_REPEAT_S, DAY_LENGTH_S, DAYS_PER_SEASON, DEFAULT_MOUSE_SENSITIVITY, EYE_HEIGHT, FIXED_DT,
+  FOOTSTEP_DISTANCE, FOOTSTEP_MIN_SPEED, GEN_BUDGET_MS, HOTBAR_SIZE, MAX_FRAME_DT, MESH_BUDGET_MS, REACH, SEA_LEVEL,
+  SETTINGS_KEY, SPAWN_READY_RADIUS, START_TIME_OF_DAY, WORLD_LATITUDE_DEG, ITEM_SIZE, PLAYER_HEIGHT, WALK_SPEED,
 } from './config';
 import { Sounds } from './audio/sounds';
 import { FixedStepLoop } from './core/loop';
@@ -41,6 +41,7 @@ import { findSpawnColumn, surfaceY } from './world/spawn';
 import { daylightAt, skyColorAt } from './world/time';
 import { WorkerPool } from './workers/workerPool';
 import { World } from './world/world';
+import { Calendar } from './world/calendar';
 
 /** The world save the game starts with (opened and read by main.ts before the game is created). */
 export interface GameSave {
@@ -85,6 +86,8 @@ export class Game {
   fps = 0;
   /** 0 sunrise, 0.25 noon, 0.5 sunset, 0.75 midnight; wraps at 1. */
   timeOfDay = START_TIME_OF_DAY;
+  /** Calendar: tracks season and day of year. */
+  readonly calendar: Calendar;
   private readonly loop: FixedStepLoop;
   private readonly spawn: { x: number; z: number };
   /** Feet height at the spawn column, once its column top and the chunks below it are loaded. */
@@ -133,12 +136,14 @@ export class Game {
       this.generator.generateChunk(chunk);
       return chunk.blocks;
     });
+    this.calendar = new Calendar(DAYS_PER_SEASON, WORLD_LATITUDE_DEG);
     if (save.loaded && loaded) {
       this.world.loadEdits(save.loaded.edits);
       this.inventory = new Inventory(loaded.inventory);
       this.inventory.select(loaded.selectedSlot);
       this.items.restore(loaded.items);
       this.timeOfDay = loaded.timeOfDay;
+      this.calendar.timeOfYear = loaded.timeOfYear ?? 0;
     }
     this.savedPlayer = loaded?.player ?? null;
     this.saver = new WorldSaver(this.worldStore, this.world, () => this.worldMeta());
@@ -247,6 +252,7 @@ export class Game {
       inventory: this.inventory.slots.map((s) => (s ? { ...s } : null)),
       items: this.items.snapshot(),
       timeOfDay: this.timeOfDay,
+      timeOfYear: this.calendar.timeOfYear,
     };
   }
 
@@ -670,6 +676,9 @@ export class Game {
       flying: p.flying,
       inWater: p.inWater,
       timeOfDay: Math.round(this.timeOfDay * 1000) / 1000,
+      season: this.calendar.season,
+      dayOfSeason: this.calendar.day,
+      dayLengthMin: Math.round(this.calendar.dayLengthMin),
       target: this.target ? [this.target.x, this.target.y, this.target.z] : null,
       targetName: this.target ? getBlockDef(this.world.getBlock(this.target.x, this.target.y, this.target.z)).name : null,
       selectedSlot: this.inventory.selected,

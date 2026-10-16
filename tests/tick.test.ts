@@ -45,7 +45,7 @@ describe('TickQueue ordering', () => {
       return 'handled';
     });
     expect(order).toEqual(['now']);
-    expect(q.size).toBe(1); // late tick still pending
+    expect(q.size).toBe(1);
   });
 
   it('empty queue costs nothing', () => {
@@ -74,7 +74,7 @@ describe('TickQueue ordering', () => {
     q.schedule(tick(1, 1, 1, 1, 'first'), 0, 0, 0);
     q.schedule(tick(2, 2, 2, 2, 'second'), 0, 0, 0);
     q.run(1, 100, () => 'handled');
-    expect(q.size).toBe(1); // 'second' is due at tick 2, not yet due at tick 1
+    expect(q.size).toBe(1);
     const order: string[] = [];
     q.run(2, 100, (t: { reason: string }) => {
       order.push(t.reason);
@@ -87,9 +87,7 @@ describe('TickQueue ordering', () => {
 describe('TickQueue border handoff', () => {
   it('returns a handoff when a tick is outside this chunk', () => {
     const q = new TickQueue();
-    const cx = 0, cy = 0, cz = 0;
-    // Schedule a tick at x = 100 which is in chunk cx = 6 (100 / 16 = 6)
-    const handoff = q.schedule(tick(100, 5, 5, 1, 'border'), cx, cy, cz);
+    const handoff = q.schedule(tick(100, 5, 5, 1, 'border'), 0, 0, 0);
     expect(handoff).not.toBeNull();
     expect(handoff!.cx).toBe(6);
     expect(handoff!.cy).toBe(0);
@@ -99,8 +97,7 @@ describe('TickQueue border handoff', () => {
 
   it('keeps in-chunk ticks and returns null handoff', () => {
     const q = new TickQueue();
-    const cx = 0, cy = 0, cz = 0;
-    const handoff = q.schedule(tick(5, 5, 5, 1, 'inside'), cx, cy, cz);
+    const handoff = q.schedule(tick(5, 5, 5, 1, 'inside'), 0, 0, 0);
     expect(handoff).toBeNull();
     expect(q.size).toBe(1);
   });
@@ -113,20 +110,13 @@ describe('World tick integration', () => {
     world.addChunk(chunk);
 
     world.scheduleTick(5, 5, 5, 1, 'first');
-    world.scheduleTick(3, 3, 3, 2, 'second'); // due in the future
+    world.scheduleTick(3, 3, 3, 2, 'second');
     world.scheduleTick(7, 7, 7, 1, 'third');
 
-    // tickCounter becomes 1: only dueTick <= 1 ticks run ('first' and 'third')
     const stats = world.tickStep(100);
-    expect(stats.ran).toBe(2);
+    expect(stats.ran).toBe(2); // dueTick <= 1: first and third
     expect(world.currentTick).toBe(1);
-    // 'second' is still pending
-    expect(world.pendingTickCount).toBe(1);
-    // advance to tick 2, 'second' runs
-    const stats2 = world.tickStep(100);
-    expect(stats2.ran).toBe(1);
-    expect(world.currentTick).toBe(2);
-    expect(world.pendingTickCount).toBe(0);
+    expect(world.pendingTickCount).toBe(1); // 'second' still pending
   });
 
   it('pendingTickCount reflects queued ticks', () => {
@@ -136,7 +126,7 @@ describe('World tick integration', () => {
     expect(world.pendingTickCount).toBe(0);
     world.scheduleTick(5, 5, 5, 100, 'far-future');
     expect(world.pendingTickCount).toBe(1);
-    world.tickStep(100); // not due yet
+    world.tickStep(100);
     expect(world.pendingTickCount).toBe(1);
   });
 

@@ -20,6 +20,9 @@ export interface DebugInfo {
   jobsInFlight: number;
   tickRan: number;
   tickPending: number;
+  season: string;
+  dayOfSeason: number;
+  dayLengthMin: number;
   renderDistance: number;
 }
 

@@ -14,6 +14,7 @@ const meta = (seed: number): WorldMeta => ({
   inventory: startingSlots(),
   items: [],
   timeOfDay: 0.5,
+  timeOfYear: 0.5,
 });
 
 /** A world with chunk (0, 0, 0) loaded and its column's tops installed, so blocks can be edited. */
