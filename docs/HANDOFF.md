@@ -19,6 +19,7 @@ Last updated 2026-10-15.
 - rock strata (granite, diorite, andesite, sandstone) and bare rock on steep ground (spec 15, PR #18)
 - seven strata rocks (adds limestone, slate, basalt) and deepslate below −100 m (spec 20)
 - mountains capped at 60 m, so the highest surface is about 232 m (spec 22). Before this, a 2,380 m peak looked like an infinite wall, because there is no horizon LOD yet.
+- ore veins by depth and rock type: coal, iron, gold, redstone, lapis, diamond and emerald, below −100 m in deepslate (spec 26)
 
 **Phase 5 item 5 (liquid physics) is partly done**, brought forward at the owner's request:
 - buoyancy and quadratic drag for the player in water (spec 16, PR #19)
@@ -61,7 +62,7 @@ The owner is continuing with **Claude Haiku 5.5** to save tokens. The next secti
 ### Good Haiku-sized tasks (only when the owner asks)
 
 - **Refresh these docs** if they drift from the code again.
-- **Geology, phase 2 item 5, more slices** (ores, gravel and clay). Specs 15 (strata and bare rock) and 20 (limestone, slate, basalt, deepslate) are done. Write the next spec first. Gravel and clay in riverbeds wait for rivers (item 3).
+- **Geology, phase 2 item 5, more slices**: ores by depth and rock type are done (spec 26). Gravel and clay in riverbeds wait for rivers (item 3).
 - **More ground cover, phase 3 item 6** (reeds, boulders, fallen logs). Specs 18, 19 and 21 set the pattern: a `cross` block type, a placement band in `plantAt` (generator), and a painted tile. Append new bands after the existing ones so no plant moves. Write the next spec first. Flowers by biome wait for biomes (phase 3 items 1–2).
 - **Bug fixes from the playtest**, one per branch and pull request.
 - **Any spec written in `docs/specs/` style:** prose requirements, acceptance criteria and test cases.
@@ -115,7 +116,7 @@ TypeScript 5.9.3, Vite 7.3.6, Vitest 4.0.18, three 0.186.0, simplex-noise 4.0.3,
 ## Commands
 
 - `npm run dev`: opens http://localhost:5173; click Play.
-- `npm run check`: typecheck, 214 unit tests in 34 files, then build.
+- `npm run check`: typecheck, 283 unit tests in 40 files, then build.
 - `npm run smoke`:
   - Builds, then opens `/?seed=1&autostart=1&nosave=1` in headless Chromium (SwiftShader WebGL).
   - Runs 15 checks through `window.__game` and writes `screenshots/*.png`.

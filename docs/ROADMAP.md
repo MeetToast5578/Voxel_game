@@ -106,7 +106,7 @@ Goal: the same land in meters, filled with finer blocks, so the world gets more 
 
 Goal: geography that looks real from the ground and from a mountaintop.
 
-**Status (2026-10-15):** items 1 and 2 are done (specs 11–12). Spec 13 switched the generator to those fields, and spec 14 added the 3D density (part of item 4). Geology slice 1 (spec 15: strata and bare rock) and slice 2 (spec 20: limestone, slate, basalt, deepslate) are done. Next: ores, gravel and clay in the rest of item 5. Item 3 needs a larger model to plan it first.
+**Status (2026-10-15):** items 1 and 2 are done (specs 11–12). Spec 13 switched the generator to those fields, and spec 14 added the 3D density (part of item 4). Geology slice 1 (spec 15: strata and bare rock), slice 2 (spec 20: limestone, slate, basalt, deepslate) and slice 3 ores (spec 26) are done. Next: gravel and clay in riverbeds (wait for rivers, item 3). Item 3 needs a larger model to plan it first.
 
 1. **Debug map** (`?map=1`). A top-down 2D render of the generator: height, biomes, rivers, moisture, region seams. It's the main tuning tool for this phase, so it comes first.
 2. **Climate and shape fields.** Large-scale noise for:
@@ -133,8 +133,8 @@ Goal: geography that looks real from the ground and from a mountaintop.
 5. **Geology.**
    - Strata that follow large-scale noise: granite, diorite, andesite, limestone, sandstone, slate, basalt, plus a deep "deepslate" layer.
    - Soil depth set by slope (bare rock on steep slopes).
-   - Gravel and clay in riverbeds.
-   - Ores by depth and rock type.
+   - Ores by depth and rock type — done (spec 26).
+   - Gravel and clay in riverbeds — wait for rivers (item 3).
 6. **Caves.**
    - "Cheese" caverns, spaghetti and noodle tunnels, ravines.
    - Aquifers: local water tables, so caves below sea level aren't all flooded.
