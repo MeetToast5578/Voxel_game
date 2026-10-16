@@ -9,11 +9,13 @@ import { Input } from './input/input';
 import type { GameOptions } from './options';
 import { ItemEntities } from './items/itemEntities';
 import { BlockBreaking } from './player/breaking';
+import { BuildTool, cornerFor, frameFor } from './player/buildTool';
 import { Inventory, type ItemStack } from './player/inventory';
-import { canBreak, placementTarget } from './player/interaction';
+import { blockIntersectsBody, canBreak, placementTarget } from './player/interaction';
 import type { Vec3 } from './player/physics';
 import { NO_CONTROLS, PLAYER_SHAPE, Player, type PlayerControls } from './player/player';
 import { raycastVoxels, type RaycastHit } from './player/raycast';
+import { type Box, type Cell, boundsOf } from './player/volumes';
 import { ChunkMeshes } from './render/chunkMeshes';
 import { Clouds } from './render/clouds';
 import { HeldBlock } from './render/heldBlock';
@@ -33,6 +35,7 @@ import { Menu } from './ui/menu';
 import { BlockId, getBlockDef, isSolid } from './world/blocks';
 import { Chunk } from './world/chunk';
 import { ChunkManager } from './world/chunkManager';
+import { type EditCell, EditQueue } from './world/editQueue';
 import { TerrainGenerator } from './world/generator';
 import { findSpawnColumn, surfaceY } from './world/spawn';
 import { daylightAt, skyColorAt } from './world/time';
@@ -48,6 +51,11 @@ export interface GameSave {
   persistent: boolean;
   /** True when the browser could not open IndexedDB; the menu says saving is unavailable. */
   unavailable: boolean;
+}
+
+/** Blocks in a box of blocks (inclusive bounds). */
+function volumeOf(box: Box): number {
+  return (box.max.x - box.min.x + 1) * (box.max.y - box.min.y + 1) * (box.max.z - box.min.z + 1);
 }
 
 export class Game {
@@ -83,6 +91,13 @@ export class Game {
   private spawnFeetY: number | null = null;
   private readonly highlight: BlockHighlight;
   private actionCooldown = 0;
+  /** The volumetric build tools (see src/player/buildTool.ts). */
+  readonly tool = new BuildTool();
+  private readonly edits: EditQueue;
+  /** What the tools would change now: the key it was computed for, its box and its size. */
+  private previewKey = '';
+  private previewBox: Box | null = null;
+  private previewCount = 0;
   private readonly store: KeyValueStore;
   private settings: Settings;
   private mouseSensitivity = DEFAULT_MOUSE_SENSITIVITY;
@@ -133,6 +148,7 @@ export class Game {
     const workerCount = Math.max(1, Math.min(4, (navigator.hardwareConcurrency || 2) - 1));
     const jobs = this.usingWorkers ? new WorkerPool(seed, workerCount) : null;
     this.chunks = new ChunkManager(this.world, this.generator, this.meshes, this.settings.renderDistance, jobs);
+    this.edits = new EditQueue(this.world, this.chunks, (id) => canBreak(id));
     this.applySettings(this.settings);
     this.spawn = this.savedPlayer ? { x: this.savedPlayer.x, z: this.savedPlayer.z } : findSpawnColumn(this.generator);
 
@@ -192,6 +208,7 @@ export class Game {
     this.timeOfDay = (this.timeOfDay + dt / DAY_LENGTH_S) % 1;
     this.player.update(dt, this.playing ? this.readControls() : NO_CONTROLS, this.isSolidAt, this.isWaterAt);
     this.items.step(dt, this.isSolidAt);
+    this.edits.step();
     this.collectItems();
     this.updateFootsteps(dt);
     if (this.player.splashSpeed > 0) this.sounds.play('splash');
@@ -234,6 +251,7 @@ export class Game {
       this.player.addLook(dx, dy, this.mouseSensitivity);
       if (this.input.consumePressed('KeyF')) this.player.toggleFlying();
       this.handleHotbarInput();
+      this.handleToolKeys();
     }
     if (this.input.consumePressed('F3') || this.input.consumePressed('Backquote')) this.debugOverlay.toggle();
 
@@ -248,8 +266,9 @@ export class Game {
     this.renderer.setSkyColor(skyColorAt(this.timeOfDay));
     this.clouds.update(eye.x, eye.z, frameDt, daylightAt(this.timeOfDay));
     this.renderer.setUnderwater(this.isWaterAt(Math.floor(eye.x), Math.floor(eye.y), Math.floor(eye.z)));
-    this.updateTarget(eye);
-    if (this.playing && this.ready && !this.inventoryScreen.isOpen) this.handleBlockActions(frameDt);
+    const look = this.player.lookDirection();
+    this.updateTarget(eye, look);
+    if (this.playing && this.ready && !this.inventoryScreen.isOpen) this.handleBlockActions(frameDt, eye, look);
     this.itemMeshes.sync(this.items.items, this.clockS);
     this.breakOverlay.update(this.breaking.target, this.breaking.stage);
     const walking = this.player.onGround ? Math.min(1, Math.hypot(this.player.velocity.x, this.player.velocity.z) / WALK_SPEED) : 0;
@@ -386,12 +405,11 @@ export class Game {
     }
   }
 
-  private updateTarget(eye: Vec3): void {
-    const d = this.player.lookDirection();
+  private updateTarget(eye: Vec3, look: Vec3): void {
     this.target = this.ready
-      ? raycastVoxels(eye.x, eye.y, eye.z, d.x, d.y, d.z, REACH, (x, y, z) => getBlockDef(this.world.getBlock(x, y, z)).targetable)
+      ? raycastVoxels(eye.x, eye.y, eye.z, look.x, look.y, look.z, REACH, (x, y, z) => getBlockDef(this.world.getBlock(x, y, z)).targetable)
       : null;
-    this.highlight.update(this.target);
+    this.updatePreview(eye, look);
   }
 
   private handleHotbarInput(): void {
@@ -406,9 +424,23 @@ export class Game {
    * Left button: hold to break the targeted block (spec 24). Right button places; holding repeats every BREAK_REPEAT_S
    * seconds. Middle click picks the targeted block.
    */
-  private handleBlockActions(frameDt: number): void {
+  private handleBlockActions(frameDt: number, eye: Vec3, look: Vec3): void {
     this.actionCooldown = Math.max(0, this.actionCooldown - frameDt);
     if (this.input.consumeClick(1)) this.pickTarget();
+    if (this.tool.mode !== 'single') {
+      // Volume tools: right click adds (add mode), left click removes (remove mode). Holding does nothing. Flatten
+      // works on either button.
+      const addClick = this.input.consumeClick(2);
+      const removeClick = this.input.consumeClick(0);
+      if (this.tool.kind === 'flatten') {
+        if (addClick || removeClick) this.flattenAt();
+      } else if (this.tool.mode === 'add' && addClick) {
+        this.volumeClick(true, eye, look);
+      } else if (this.tool.mode === 'remove' && removeClick) {
+        this.volumeClick(false, eye, look);
+      }
+      return;
+    }
     const breakClicked = this.input.consumeClick(0);
     const t = this.target;
     const broken = this.breaking.update(
@@ -433,6 +465,125 @@ export class Game {
     if (!t) return null;
     const id = this.world.getBlock(t.x, t.y, t.z);
     return canBreak(id) ? getBlockDef(id).hardness : null;
+  }
+
+  /** Tool keys: R mode, Q shape, [ ] size, , . thickness, G solid or shell, C square or disc, X cancels a wall or floor. */
+  private handleToolKeys(): void {
+    const t = this.tool;
+    if (this.input.consumePressed('KeyR')) t.cycleMode();
+    if (this.input.consumePressed('KeyQ')) t.cycleKind();
+    if (this.input.consumePressed('BracketLeft')) t.adjustSize(-1);
+    if (this.input.consumePressed('BracketRight')) t.adjustSize(1);
+    if (this.input.consumePressed('Comma')) t.adjustThickness(-1);
+    if (this.input.consumePressed('Period')) t.adjustThickness(1);
+    if (this.input.consumePressed('KeyG')) t.toggleHollow();
+    if (this.input.consumePressed('KeyC')) t.toggleDisc();
+    if (this.input.consumePressed('KeyX')) t.cancelFrame();
+    if (this.input.consumePressed('KeyZ') && (this.input.isDown('ControlLeft') || this.input.isDown('ControlRight'))) this.undoEdit();
+  }
+
+  /** Ctrl+Z: undoes the last volume action (cells changed since then are left alone). */
+  undoEdit(): boolean {
+    return this.edits.undo();
+  }
+
+  /** True while a volume action is still being applied over several frames. */
+  get editsBusy(): boolean {
+    return this.edits.busy;
+  }
+
+  /** One volume click at the aimed block, as the mouse does it (the debug API). */
+  toolClick(add: boolean): void {
+    this.volumeClick(add, this.player.eyePosition(1), this.player.lookDirection());
+  }
+
+  /**
+   * One volume click. Box, sphere and plane change the volume at the aimed face. A wall or floor takes two clicks: the
+   * first sets its first corner, the second sets the far corner (where the look ray meets its plane) and changes the
+   * blocks between them.
+   */
+  private volumeClick(add: boolean, eye: Vec3, look: Vec3): void {
+    const tool = this.tool;
+    if (add && this.inventory.selectedBlock === BlockId.AIR) return;
+    if (tool.twoClick) {
+      if (!tool.frame) {
+        if (this.target) tool.frame = frameFor(tool.kind, this.target, look, add);
+        return;
+      }
+      const corner = cornerFor(tool.frame, eye, look);
+      if (corner && this.startEdit(this.editCells(tool.cellsBetween(corner), add))) tool.frame = null;
+      return;
+    }
+    if (this.target) this.startEdit(this.editCells(tool.cellsAt(this.target, add), add));
+  }
+
+  /** Flatten at the aimed block: the footprint is filled and cleared to the height of the aimed block. */
+  private flattenAt(): void {
+    const t = this.target;
+    if (!t) return;
+    this.startEdit(this.tool.cellsFlatten(t, (x, z) => this.world.topAt(x, z), this.inventory.selectedBlock));
+  }
+
+  /** Cells for an add (filled with the selected block) or a remove (cleared). */
+  private editCells(cells: Cell[], add: boolean): EditCell[] {
+    const id = add ? this.inventory.selectedBlock : BlockId.AIR;
+    return cells.map((c) => ({ x: c.x, y: c.y, z: c.z, id, clear: !add }));
+  }
+
+  /** Queues a volume action. Fills keep only the cells outside the player's body, so a volume never traps the player. */
+  private startEdit(cells: EditCell[]): boolean {
+    const wanted = cells.filter((c) => c.clear || !blockIntersectsBody(c.x, c.y, c.z, this.player.position, PLAYER_SHAPE));
+    const started = this.edits.start(wanted);
+    if (started) {
+      this.held.swing();
+      this.sounds.play(wanted.some((c) => !c.clear) ? 'place' : 'break');
+    }
+    return started;
+  }
+
+  /**
+   * Shows what the volume tools would change: the outline of the volume at the aimed face, or of the wall or floor being
+   * drawn, with its block count on the HUD. Single-block mode shows the aimed block, as before.
+   */
+  private updatePreview(eye: Vec3, look: Vec3): void {
+    const tool = this.tool;
+    const t = this.target;
+    if (tool.mode === 'single') {
+      this.highlight.update(t);
+      this.hud.setToolLabel('');
+      return;
+    }
+    if (tool.twoClick) {
+      const corner = tool.frame ? cornerFor(tool.frame, eye, look) : null;
+      const box = corner ? tool.boxBetween(corner) : null;
+      if (box) {
+        this.highlight.showBox(box);
+        this.hud.setToolLabel(`${tool.describe()} · ${volumeOf(box)} blocks`);
+      } else {
+        this.highlight.update(t);
+        this.hud.setToolLabel(`${tool.describe()}${tool.frame ? '' : ' · click to start'}`);
+      }
+      return;
+    }
+    if (!t) {
+      this.highlight.update(null);
+      this.hud.setToolLabel(tool.describe());
+      return;
+    }
+    const key = `${tool.describe()}|${t.x},${t.y},${t.z},${t.nx},${t.ny},${t.nz}`;
+    if (key !== this.previewKey) {
+      this.previewKey = key;
+      if (tool.kind === 'flatten') {
+        this.previewBox = boundsOf(tool.footprint(t));
+        this.previewCount = tool.cellsFlatten(t, (x, z) => this.world.topAt(x, z), this.inventory.selectedBlock).length;
+      } else {
+        const cells = tool.cellsAt(t, tool.mode === 'add');
+        this.previewBox = boundsOf(cells);
+        this.previewCount = cells.length;
+      }
+    }
+    this.highlight.showBox(this.previewBox);
+    this.hud.setToolLabel(`${tool.describe()} · ${this.previewCount} blocks`);
   }
 
   /** E opens the inventory and frees the pointer; closing it gives the pointer back (spec 24). */

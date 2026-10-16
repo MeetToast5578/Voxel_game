@@ -1,30 +1,55 @@
 import * as THREE from 'three';
 import { crackGeometry } from './blockGeometry';
 
-/** Thin dark outline around the block the player is looking at. */
+/** Thin dark outline around the block the player is looking at, or around a volume the build tools would change. */
 export class BlockHighlight {
   private readonly lines: THREE.LineSegments;
+  private readonly area: THREE.LineSegments;
+  private areaKey = '';
 
   constructor(scene: THREE.Scene) {
     const box = new THREE.BoxGeometry(1.002, 1.002, 1.002); // slightly larger than a block to avoid z-fighting
     const edges = new THREE.EdgesGeometry(box);
     box.dispose();
-    this.lines = new THREE.LineSegments(
-      edges,
-      new THREE.LineBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.6 }),
-    );
+    const material = new THREE.LineBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.6 });
+    this.lines = new THREE.LineSegments(edges, material);
     this.lines.visible = false;
-    scene.add(this.lines);
+    this.area = new THREE.LineSegments(new THREE.BufferGeometry(), material);
+    this.area.visible = false;
+    scene.add(this.lines, this.area);
   }
 
   /** Shows the outline around block (x, y, z), or hides it when target is null. */
   update(target: { x: number; y: number; z: number } | null): void {
+    this.area.visible = false;
     if (!target) {
       this.lines.visible = false;
       return;
     }
     this.lines.visible = true;
     this.lines.position.set(target.x + 0.5, target.y + 0.5, target.z + 0.5);
+  }
+
+  /** Shows the outline around a box of blocks (inclusive bounds), or hides it when box is null. */
+  showBox(box: { min: { x: number; y: number; z: number }; max: { x: number; y: number; z: number } } | null): void {
+    this.lines.visible = false;
+    if (!box) {
+      this.area.visible = false;
+      return;
+    }
+    const sx = box.max.x - box.min.x + 1;
+    const sy = box.max.y - box.min.y + 1;
+    const sz = box.max.z - box.min.z + 1;
+    const key = `${sx},${sy},${sz}`;
+    if (key !== this.areaKey) {
+      // The outline is 0.002 larger than the box, like the single-block outline, to avoid z-fighting.
+      const geometry = new THREE.EdgesGeometry(new THREE.BoxGeometry(sx + 0.002, sy + 0.002, sz + 0.002));
+      this.area.geometry.dispose();
+      this.area.geometry = geometry;
+      this.areaKey = key;
+    }
+    this.area.visible = true;
+    this.area.position.set(box.min.x + sx / 2, box.min.y + sy / 2, box.min.z + sz / 2);
   }
 }
 

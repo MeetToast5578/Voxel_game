@@ -41,6 +41,23 @@ Requires Node.js 20+.
 | F3 or ` | Debug overlay |
 | Esc | Pause menu, or close the inventory |
 
+### Volume tools
+
+Press **R** to cycle the mode: single block (the default), add volume, or remove volume. In add or remove mode, right click adds and left click removes, and holding does nothing. **Q** cycles the tool.
+
+| Input | Action |
+|-------|--------|
+| R | Mode: single block, add volume, remove volume |
+| Q | Tool: box, sphere, plane, wall, floor, flatten |
+| [ and ] | Size, 1 to 32 blocks (about 9.6 m) |
+| , and . | Thickness (box and sphere: 0 is solid; wall and floor: width) |
+| G | Box and sphere: solid, or a one-block shell |
+| C | Plane and flatten: square or disc |
+| X | Cancel a wall or floor you started |
+| Ctrl+Z | Undo the last volume action (the last 20 in this session) |
+
+A wall or floor takes two clicks: the first sets its corner, the second sets the far corner. A floor on a ceiling grows downward. Flatten works on either button: it fills the footprint up to the height of the aimed block and clears the blocks above it.
+
 The pause menu has a **New world** button that deletes the save and generates a new random world.
 
 ## URL parameters

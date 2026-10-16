@@ -27,6 +27,8 @@ export class Hud {
   private readonly icons: HTMLCanvasElement[] = [];
   private readonly counts: HTMLSpanElement[] = [];
   private readonly nameLabel: HTMLDivElement;
+  private readonly toolLabel: HTMLDivElement;
+  private toolText = '';
   private readonly shownStates: number[] = [];
   private readonly shownCounts: number[] = [];
   private shownSelected = -1;
@@ -36,6 +38,7 @@ export class Hud {
     this.root = el('div', 'hud');
     const crosshair = el('div', 'crosshair');
     this.nameLabel = el('div', 'block-name');
+    this.toolLabel = el('div', 'tool-label');
     const bar = el('div', 'hotbar');
     for (let i = 0; i < HOTBAR_SIZE; i++) {
       const slot = el('div', 'slot');
@@ -51,8 +54,16 @@ export class Hud {
       this.shownStates.push(-1);
       this.shownCounts.push(-1);
     }
-    this.root.append(crosshair, this.nameLabel, bar);
+    this.root.append(crosshair, this.nameLabel, this.toolLabel, bar);
     parent.append(this.root);
+  }
+
+  /** The volume tool's line (empty hides it). Only touches the DOM when the text changes. */
+  setToolLabel(text: string): void {
+    if (text === this.toolText) return;
+    this.toolText = text;
+    this.toolLabel.textContent = text;
+    this.toolLabel.style.display = text ? '' : 'none';
   }
 
   /** Call once per frame. Only touches the DOM when something changed. */

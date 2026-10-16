@@ -1,4 +1,5 @@
 import type { Game } from './game';
+import type { ToolKind, ToolMode } from './player/buildTool';
 
 /** Exposed as window.__game so automated tests (scripts/smoke.mjs) can inspect and drive the game. */
 export interface DebugApi {
@@ -20,6 +21,14 @@ export interface DebugApi {
   /** Resolves once the write has completed (true) or failed or was skipped (false). */
   save(): Promise<boolean>;
   setTimeOfDay(t: number): void;
+  /** The volume tools: sets any of their fields (mode, kind, size, thickness, disc) for the smoke test. */
+  setTool(fields: { mode?: ToolMode; kind?: ToolKind; size?: number; thickness?: number; disc?: boolean }): void;
+  /** One add or remove click at the aimed block with the volume tools. The change lands over the next frames. */
+  toolClick(add: boolean): void;
+  /** Undoes the last volume action. False when there is none or one is still being applied. */
+  undoEdit(): boolean;
+  /** True while a volume action is still being applied. */
+  readonly editsBusy: boolean;
 }
 
 declare global {
@@ -53,6 +62,14 @@ export function installDebugApi(game: Game): void {
     save: () => game.saveNow(),
     setTimeOfDay: (t) => {
       game.timeOfDay = ((t % 1) + 1) % 1;
+    },
+    setTool: (fields) => {
+      Object.assign(game.tool, fields);
+    },
+    toolClick: (add) => game.toolClick(add),
+    undoEdit: () => game.undoEdit(),
+    get editsBusy() {
+      return game.editsBusy;
     },
   };
 }

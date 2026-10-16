@@ -177,6 +177,13 @@ export const HAND_Z = -1;
 export const HAND_SWING_S = 0.25; // one swing of the hand when a block is broken or placed
 export const HAND_BOB = 0.025; // how far the block in hand bobs while the player walks, in blocks
 
+// ---- Volumetric tools (boxes, spheres, planes, walls, floors, flatten, undo) ----
+export const VOLUME_MAX_SIZE = 32; // blocks per side that one action can change (about 9.6 m)
+export const VOLUME_MAX_THICKNESS = 16; // blocks; 0 means solid for boxes and spheres
+export const VOLUME_DEFAULT_SIZE = 3;
+export const EDIT_CELLS_PER_STEP = 4096; // cells written per fixed step, so a large volume spans a few frames
+export const UNDO_LIMIT = 20; // actions kept for Ctrl+Z, in memory only
+
 // ---- Storage ----
 export const SAVE_DB_NAME = 'voxel-game'; // IndexedDB database holding the world save
 // localStorage keys of old saves. v1 (128-high columns) is never read, written or deleted; the interim v2 key

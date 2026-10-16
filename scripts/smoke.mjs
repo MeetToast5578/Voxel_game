@@ -313,6 +313,53 @@ const CHECKS = [
     },
   },
   {
+    name: 'volume tools add a box, and undo removes it',
+    run: async (page) => {
+      const waitMeshed = () => page.waitForFunction(() => window.__game.state().areaMeshed, null, { timeout: 60_000 });
+      const start = await page.evaluate(() => window.__game.state());
+      const [x, z] = [Math.floor(start.position[0]), Math.floor(start.position[2])];
+      const floorY = 8390; // above the highest terrain, so the test blocks are the only ones here
+      await page.evaluate(([x, z, y]) => {
+        window.__game.setFlying(true);
+        window.__game.teleport(x + 0.5, y + 10, z + 0.5);
+      }, [x, z, floorY]);
+      await waitMeshed();
+      await page.evaluate(([x, z, y]) => {
+        for (let i = -3; i <= 3; i++) for (let j = -3; j <= 3; j++) window.__game.setBlock(x + i, y, z + j, 1); // stone floor
+        window.__game.selectSlot(8); // brick
+        window.__game.setTool({ mode: 'add', kind: 'box', size: 3, thickness: 0 });
+        window.__game.look(0, -Math.PI / 2 + 0.01); // straight down at the floor
+      }, [x, z, floorY]);
+      await page.waitForFunction(() => window.__game.state().target !== null, null, { timeout: 10_000 });
+      await page.evaluate(() => window.__game.toolClick(true));
+      await page.waitForFunction(() => !window.__game.editsBusy, null, { timeout: 10_000 });
+      const countBrick = () =>
+        page.evaluate(([x, z, y]) => {
+          let n = 0;
+          for (let dy = 1; dy <= 3; dy++) for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++)
+            if (window.__game.getBlock(x + i, y + dy, z + j) === 12) n++;
+          return n;
+        }, [x, z, floorY]);
+      const placed = await countBrick();
+      if (placed !== 27) throw new Error(`a 3x3x3 box should place 27 bricks, placed ${placed}`);
+
+      if (!(await page.evaluate(() => window.__game.undoEdit()))) throw new Error('undoEdit returned false');
+      await page.waitForFunction(() => !window.__game.editsBusy, null, { timeout: 10_000 });
+      const left = await countBrick();
+      if (left !== 0) throw new Error(`undo should leave no bricks, found ${left}`);
+
+      await page.evaluate(([x, z, y]) => {
+        for (let i = -3; i <= 3; i++) for (let j = -3; j <= 3; j++) window.__game.setBlock(x + i, y, z + j, 0);
+        window.__game.setTool({ mode: 'single' });
+      }, [x, z, floorY]);
+      await page.evaluate(([p, flying]) => {
+        window.__game.teleport(p[0], p[1], p[2]);
+        window.__game.setFlying(flying);
+      }, [start.position, start.flying]);
+      await waitMeshed();
+    },
+  },
+  {
     name: 'chunks are built by Web Workers',
     run: async (page) => {
       const s = await page.evaluate(() => window.__game.state());
