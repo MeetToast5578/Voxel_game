@@ -1,5 +1,4 @@
 import { describe, expect, it } from 'vitest';
-import { Hotbar } from '../src/player/hotbar';
 import { blockIntersectsBody, canBreak, placementTarget } from '../src/player/interaction';
 import { PLAYER_SHAPE } from '../src/player/player';
 import { BlockId } from '../src/world/blocks';
@@ -45,26 +44,5 @@ describe('placementTarget', () => {
     expect(canBreak(BlockId.STONE)).toBe(true);
     expect(canBreak(BlockId.BEDROCK)).toBe(false);
     expect(canBreak(BlockId.WATER)).toBe(false);
-  });
-});
-
-describe('Hotbar', () => {
-  it('selects, scrolls with wrap-around, and picks', () => {
-    const h = new Hotbar();
-    expect(h.selected).toBe(0);
-    expect(h.selectedBlock).toBe(BlockId.STONE);
-    h.select(4);
-    expect(h.selected).toBe(4);
-    h.select(9); // out of range: ignored
-    expect(h.selected).toBe(4);
-    h.scroll(5);
-    expect(h.selected).toBe(0);
-    h.scroll(-1);
-    expect(h.selected).toBe(8);
-    h.pick(BlockId.DIRT); // already in slot 1: select it
-    expect(h.selected).toBe(1);
-    h.pick(BlockId.SAND); // not in the hotbar: replaces the selected slot
-    expect(h.slots[1]).toBe(BlockId.SAND);
-    expect(h.selectedBlock).toBe(BlockId.SAND);
   });
 });

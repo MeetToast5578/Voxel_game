@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_HOTBAR } from '../src/player/hotbar';
+import { startingSlots } from '../src/player/inventory';
 import { chunkRecord, metaRecord, readSave, type WorldMeta } from '../src/storage/save';
 import { WorldSaver } from '../src/storage/saver';
 import { MemoryWorldStore, type WorldStore } from '../src/storage/worldStore';
@@ -11,7 +11,8 @@ const meta = (seed: number): WorldMeta => ({
   seed,
   selectedSlot: 0,
   player: { x: 0, y: 0, z: 0, yaw: 0, pitch: 0, flying: false },
-  hotbar: [...DEFAULT_HOTBAR],
+  inventory: startingSlots(),
+  items: [],
   timeOfDay: 0.5,
 });
 

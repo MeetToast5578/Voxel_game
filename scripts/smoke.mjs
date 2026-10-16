@@ -44,9 +44,8 @@ const CHECKS = [
     name: 'break the block under the player',
     run: async (page) => {
       await page.evaluate(() => window.__game.look(0, -Math.PI / 2 + 0.01)); // straight down
-      await page.waitForTimeout(300);
+      await page.waitForFunction(() => window.__game.state().target !== null, null, { timeout: 10_000 });
       const s = await page.evaluate(() => window.__game.state());
-      if (!s.target) throw new Error(`no target below the player: ${JSON.stringify(s)}`);
       if (!(await page.evaluate(() => window.__game.breakTarget()))) throw new Error('breakTarget returned false');
       const id = await page.evaluate(([x, y, z]) => window.__game.getBlock(x, y, z), s.target);
       if (id !== 0) throw new Error(`block at ${s.target} should be air (0) but is ${id}`);
@@ -62,8 +61,11 @@ const CHECKS = [
       const s = await page.evaluate(() => window.__game.state());
       if (s.selectedBlock !== 'Brick') throw new Error(`expected Brick selected, got ${s.selectedBlock}`);
       if (!s.target) throw new Error(`nothing targeted: ${JSON.stringify(s)}`);
+      const before = s.inventory[8]?.[1];
       if (!(await page.evaluate(() => window.__game.placeTarget()))) throw new Error('placeTarget returned false');
       await page.waitForTimeout(300);
+      const after = (await page.evaluate(() => window.__game.state())).inventory[8]?.[1];
+      if (after !== before - 1) throw new Error(`placing should use one brick: ${before} -> ${after}`);
       await page.screenshot({ path: 'screenshots/interaction.png' });
     },
   },
@@ -210,6 +212,44 @@ const CHECKS = [
       const after = await page.evaluate(() => window.__game.state());
       if (after.selectedBlock !== s.targetName)
         throw new Error(`expected ${s.targetName} selected, got ${after.selectedBlock}`);
+    },
+  },
+  {
+    name: 'E opens the inventory and Escape closes it',
+    run: async (page) => {
+      await page.bringToFront(); // earlier checks opened other pages, which may have taken the keyboard
+      await page.keyboard.press('KeyE');
+      await page.waitForFunction(() => window.__game.state().inventoryOpen, null, { timeout: 10_000 });
+      await page.screenshot({ path: 'screenshots/inventory.png' });
+      await page.keyboard.press('Escape');
+      await page.waitForFunction(() => !window.__game.state().inventoryOpen, null, { timeout: 10_000 });
+    },
+  },
+  {
+    name: 'holding the left button breaks a block over time, and the item is picked up',
+    run: async (page) => {
+      const PLANTS = ['Tall grass', 'Poppy', 'Fern', 'Dandelion', 'Brown mushroom', 'Red mushroom']; // break at once
+      await page.evaluate(() => window.__game.look(0, -Math.PI / 2 + 0.01));
+      await page.waitForFunction(() => window.__game.state().target !== null, null, { timeout: 10_000 });
+      const s = await page.evaluate(() => window.__game.state());
+      const id = await page.evaluate(([x, y, z]) => window.__game.getBlock(x, y, z), s.target);
+      const countOf = () =>
+        page.evaluate((state) => window.__game.state().inventory.reduce((n, slot) => n + (slot && slot[0] === state ? slot[1] : 0), 0), id);
+      const before = await countOf();
+      await page.evaluate(() => window.__game.holdButton(0, true));
+      let sawStage = false;
+      for (let i = 0; i < 20 && !sawStage; i++) {
+        await page.waitForTimeout(50);
+        sawStage = (await page.evaluate(() => window.__game.state().breakStage)) >= 0;
+      }
+      if (sawStage) await page.screenshot({ path: 'screenshots/breaking.png' });
+      await page.waitForFunction(([x, y, z]) => window.__game.getBlock(x, y, z) === 0, s.target, { timeout: 8000 });
+      await page.evaluate(() => window.__game.holdButton(0, false));
+      await page.screenshot({ path: 'screenshots/drop.png' }); // the dropped item, before anyone picks it up
+      if (!sawStage && !PLANTS.includes(s.targetName)) throw new Error(`no crack stage shown while breaking ${s.targetName}`);
+      await page.waitForTimeout(1500); // the item drops into the hole; the player falls in and picks it up
+      const after = await countOf();
+      if (after !== before + 1) throw new Error(`expected one more ${s.targetName} in the inventory: ${before} -> ${after}`);
     },
   },
   {

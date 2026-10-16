@@ -5,10 +5,11 @@ A Minecraft-like voxel sandbox that runs in the browser, built with TypeScript, 
 - Endless procedural terrain: hills, mountains, beaches, lakes, trees and caves, with layers of granite, diorite, andesite, sandstone, limestone, slate and basalt underground, deepslate below 100 m, bare rock on steep ground, grass blocks that are green on every side, and tall grass, ferns, poppies, dandelions and mushrooms on the grass
 - Walk, sprint, jump, fly and swim, with block collisions
 - Ledges up to 0.6 m are stepped up automatically, no jump needed
-- Break and place 25 block types, 9-slot hotbar, pick-block
+- Break and place 25 block types. Breaking takes time and shows cracks; the block drops as an item that you pick up by walking over it
+- 36-slot inventory (E) with a 9-slot hotbar and stacks of 64; the selected block is shown in your hand
 - Day/night cycle, sky and block lighting (glowstone), clouds, simple sound effects
 - Start/pause menu with render distance, field of view and mouse sensitivity
-- Automatic saving in the browser (IndexedDB), including the hotbar and time of day
+- Automatic saving in the browser (IndexedDB), including the inventory, items on the ground and time of day
 - Saves from older versions, including the 0.6 m blocks, are not loaded.
 - Terrain generation and meshing run in Web Workers
 - 1 block = 0.3 m; the player is about 6 blocks tall. Trees are 8–12 m tall. A chunk is 4.8 m wide.
@@ -32,12 +33,13 @@ Requires Node.js 20+.
 | Space | Jump / fly up / swim up |
 | Left Shift | Sprint / fly down |
 | F | Toggle flying |
-| Left click | Break block (hold to repeat) |
-| Right click | Place block (hold to repeat) |
+| Hold left click | Break block (it takes time; the cracks show progress) |
+| Right click | Place block (uses one from the stack; hold to repeat) |
 | Middle click | Pick the targeted block into the hotbar |
 | 1–9, mouse wheel | Select hotbar slot |
+| E | Open or close the inventory (click a slot to pick up or put down a stack) |
 | F3 or ` | Debug overlay |
-| Esc | Pause menu |
+| Esc | Pause menu, or close the inventory |
 
 The pause menu has a **New world** button that deletes the save and generates a new random world.
 
@@ -66,7 +68,8 @@ CI (GitHub Actions) runs `npm run check` and `npm run smoke` on every pull reque
 | `src/core` | math, seeded random numbers, coordinates, fixed-timestep loop |
 | `src/world` | blocks, chunks, terrain generator, chunk streaming, lighting, day/night |
 | `src/render` | mesher (face culling + ambient occlusion), textures, three.js renderer, clouds |
-| `src/player` | physics, player controller, raycast, interaction rules, hotbar |
+| `src/player` | physics, player controller, raycast, interaction rules, inventory, breaking |
+| `src/items` | dropped items: falling, pick-up, lifetime |
 | `src/ui`, `src/input`, `src/audio`, `src/storage` | HUD, menu, debug overlay, input, sounds, saves and settings |
 | `src/workers` | Web Worker pool for generation and meshing |
 | `tests` | Vitest unit tests for all logic modules |

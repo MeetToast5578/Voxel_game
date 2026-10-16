@@ -1,20 +1,24 @@
 import {
   AUTOSAVE_INTERVAL_S, BREAK_REPEAT_S, DAY_LENGTH_S, DEFAULT_MOUSE_SENSITIVITY, EYE_HEIGHT, FIXED_DT, FOOTSTEP_DISTANCE,
   FOOTSTEP_MIN_SPEED, GEN_BUDGET_MS, HOTBAR_SIZE, MAX_FRAME_DT, MESH_BUDGET_MS, REACH, SEA_LEVEL, SETTINGS_KEY,
-  SPAWN_READY_RADIUS, START_TIME_OF_DAY,
+  SPAWN_READY_RADIUS, START_TIME_OF_DAY, ITEM_SIZE, PLAYER_HEIGHT, WALK_SPEED,
 } from './config';
 import { Sounds } from './audio/sounds';
 import { FixedStepLoop } from './core/loop';
 import { Input } from './input/input';
 import type { GameOptions } from './options';
-import { Hotbar } from './player/hotbar';
+import { ItemEntities } from './items/itemEntities';
+import { BlockBreaking } from './player/breaking';
+import { Inventory, type ItemStack } from './player/inventory';
 import { canBreak, placementTarget } from './player/interaction';
 import type { Vec3 } from './player/physics';
 import { NO_CONTROLS, PLAYER_SHAPE, Player, type PlayerControls } from './player/player';
 import { raycastVoxels, type RaycastHit } from './player/raycast';
 import { ChunkMeshes } from './render/chunkMeshes';
 import { Clouds } from './render/clouds';
-import { BlockHighlight } from './render/highlight';
+import { HeldBlock } from './render/heldBlock';
+import { BlockHighlight, BreakOverlay } from './render/highlight';
+import { ItemMeshes } from './render/itemMeshes';
 import { Renderer } from './render/renderer';
 import type { LoadedSave, SavedPlayer, WorldMeta } from './storage/save';
 import { WorldSaver } from './storage/saver';
@@ -24,6 +28,7 @@ import type { WorldStore } from './storage/worldStore';
 import { DebugOverlay } from './ui/debugOverlay';
 import { formatDebugLines } from './ui/debugText';
 import { Hud } from './ui/hud';
+import { InventoryScreen } from './ui/inventoryScreen';
 import { Menu } from './ui/menu';
 import { BlockId, getBlockDef, isSolid } from './world/blocks';
 import { Chunk } from './world/chunk';
@@ -52,7 +57,15 @@ export class Game {
   readonly meshes: ChunkMeshes;
   readonly chunks: ChunkManager;
   readonly player = new Player();
-  readonly hotbar = new Hotbar();
+  inventory = new Inventory();
+  readonly items = new ItemEntities();
+  private readonly breaking = new BlockBreaking();
+  private readonly held: HeldBlock;
+  private readonly itemMeshes: ItemMeshes;
+  private readonly breakOverlay: BreakOverlay;
+  private readonly inventoryScreen: InventoryScreen;
+  /** Seconds since the game started; drives the spin and bob of dropped items. */
+  private clockS = 0;
   readonly input: Input;
   readonly sounds = new Sounds();
   /** The block under the crosshair (updated every frame), or null. */
@@ -105,14 +118,17 @@ export class Game {
     });
     if (save.loaded && loaded) {
       this.world.loadEdits(save.loaded.edits);
-      for (let i = 0; i < HOTBAR_SIZE; i++) this.hotbar.setSlot(i, loaded.hotbar[i]!);
-      this.hotbar.select(loaded.selectedSlot);
+      this.inventory = new Inventory(loaded.inventory);
+      this.inventory.select(loaded.selectedSlot);
+      this.items.restore(loaded.items);
       this.timeOfDay = loaded.timeOfDay;
     }
     this.savedPlayer = loaded?.player ?? null;
     this.saver = new WorldSaver(this.worldStore, this.world, () => this.worldMeta());
     this.renderer = new Renderer(container);
     this.meshes = new ChunkMeshes(this.renderer.scene, this.renderer.solidMaterial, this.renderer.waterMaterial);
+    this.held = new HeldBlock(this.renderer.camera, this.renderer.itemMaterial);
+    this.itemMeshes = new ItemMeshes(this.renderer.scene, this.renderer.itemMaterial);
     this.usingWorkers = options.workers && typeof Worker !== 'undefined';
     const workerCount = Math.max(1, Math.min(4, (navigator.hardwareConcurrency || 2) - 1));
     const jobs = this.usingWorkers ? new WorkerPool(seed, workerCount) : null;
@@ -121,10 +137,12 @@ export class Game {
     this.spawn = this.savedPlayer ? { x: this.savedPlayer.x, z: this.savedPlayer.z } : findSpawnColumn(this.generator);
 
     this.highlight = new BlockHighlight(this.renderer.scene);
+    this.breakOverlay = new BreakOverlay(this.renderer.scene, this.renderer.crackMaterial);
     this.clouds = new Clouds(this.renderer.scene, seed);
     this.input = new Input(this.renderer.canvas);
     this.hud = new Hud(container, this.renderer.atlasCanvas);
     this.debugOverlay = new DebugOverlay(container);
+    this.inventoryScreen = new InventoryScreen(container, this.renderer.atlasCanvas, this.inventory);
     this.menu = new Menu(container, this.settings, save.unavailable ? 'Saving is unavailable in this browser.' : null, {
       onPlay: () => {
         this.sounds.unlock();
@@ -144,7 +162,7 @@ export class Game {
     this.input.onPointerLockChanged((locked) => {
       this.playing = locked || options.autostart;
       if (locked) this.menu.hide();
-      else if (!options.autostart) this.menu.show('paused');
+      else if (!options.autostart && !this.inventoryScreen.isOpen) this.menu.show('paused');
     });
     document.addEventListener('visibilitychange', () => {
       if (document.hidden) void this.saveNow();
@@ -173,6 +191,8 @@ export class Game {
     if (!this.ready) return;
     this.timeOfDay = (this.timeOfDay + dt / DAY_LENGTH_S) % 1;
     this.player.update(dt, this.playing ? this.readControls() : NO_CONTROLS, this.isSolidAt, this.isWaterAt);
+    this.items.step(dt, this.isSolidAt);
+    this.collectItems();
     this.updateFootsteps(dt);
     if (this.player.splashSpeed > 0) this.sounds.play('splash');
     this.saveTimer += dt;
@@ -196,14 +216,20 @@ export class Game {
     return {
       seed: this.world.seed,
       player: { x: p.position.x, y: p.position.y, z: p.position.z, yaw: p.yaw, pitch: p.pitch, flying: p.flying },
-      selectedSlot: this.hotbar.selected,
-      hotbar: [...this.hotbar.slots],
+      selectedSlot: this.inventory.selected,
+      inventory: this.inventory.slots.map((s) => (s ? { ...s } : null)),
+      items: this.items.snapshot(),
       timeOfDay: this.timeOfDay,
     };
   }
 
   private renderFrame(alpha: number, frameDt: number): void {
-    if (this.playing) {
+    this.clockS += frameDt;
+    const eKey = this.input.consumePressed('KeyE');
+    const escKey = this.input.consumePressed('Escape');
+    if (eKey && (this.playing || this.inventoryScreen.isOpen)) this.toggleInventory();
+    else if (escKey && this.inventoryScreen.isOpen) this.closeInventory();
+    if (this.playing && !this.inventoryScreen.isOpen) {
       const { dx, dy } = this.input.consumeMouseDelta();
       this.player.addLook(dx, dy, this.mouseSensitivity);
       if (this.input.consumePressed('KeyF')) this.player.toggleFlying();
@@ -223,10 +249,15 @@ export class Game {
     this.clouds.update(eye.x, eye.z, frameDt, daylightAt(this.timeOfDay));
     this.renderer.setUnderwater(this.isWaterAt(Math.floor(eye.x), Math.floor(eye.y), Math.floor(eye.z)));
     this.updateTarget(eye);
-    if (this.playing && this.ready) this.handleBlockActions(frameDt);
+    if (this.playing && this.ready && !this.inventoryScreen.isOpen) this.handleBlockActions(frameDt);
+    this.itemMeshes.sync(this.items.items, this.clockS);
+    this.breakOverlay.update(this.breaking.target, this.breaking.stage);
+    const walking = this.player.onGround ? Math.min(1, Math.hypot(this.player.velocity.x, this.player.velocity.z) / WALK_SPEED) : 0;
+    this.held.setState(this.inventory.selectedBlock);
+    this.held.update(frameDt, walking, this.breaking.target !== null);
     if (frameDt > 0) this.fps += (1 / frameDt - this.fps) * 0.05;
     this.renderer.render();
-    this.hud.update(this.hotbar.slots, this.hotbar.selected, frameDt);
+    this.hud.update(this.inventory.slots, this.inventory.selected, frameDt);
     this.debugOverlay.update(frameDt, () => formatDebugLines(this.debugState()));
   }
 
@@ -303,31 +334,43 @@ export class Game {
     return true;
   }
 
-  /** Breaks the targeted block. Returns true if a block was removed. */
+  /** Breaks the targeted block at once, dropping it (the debug API; holding the button is timed). */
   breakTarget(): boolean {
     const t = this.target;
-    if (!t || !canBreak(this.world.getBlock(t.x, t.y, t.z))) return false;
-    const ok = this.setBlock(t.x, t.y, t.z, BlockId.AIR);
-    if (ok) this.sounds.play('break');
+    return t !== null && this.breakCell(t.x, t.y, t.z);
+  }
+
+  /** Removes a block and drops it as an item. Returns false when the block cannot be broken. */
+  private breakCell(x: number, y: number, z: number): boolean {
+    const id = this.world.getBlock(x, y, z);
+    if (!canBreak(id)) return false;
+    const ok = this.setBlock(x, y, z, BlockId.AIR);
+    if (ok) {
+      this.items.spawn(id, 1, x + 0.5, y + (1 - ITEM_SIZE) / 2, z + 0.5, Math.random);
+      this.sounds.play('break');
+    }
     return ok;
   }
 
-  /** Middle click: put the targeted block type into the hotbar. */
+  /** Middle click: pick the targeted block type (see Inventory.pick). */
   pickTarget(): boolean {
     const t = this.target;
     if (!t) return false;
-    this.hotbar.pick(this.world.getBlock(t.x, t.y, t.z));
+    this.inventory.pick(this.world.getBlock(t.x, t.y, t.z));
     return true;
   }
 
-  /** Places the selected hotbar block against the targeted face. Returns true if a block was placed. */
+  /** Places the selected block against the targeted face, using one from its stack. Returns true if it was placed. */
   placeTarget(): boolean {
     const t = this.target;
-    if (!t) return false;
-    const block = this.hotbar.selectedBlock;
+    if (!t || this.inventory.selectedBlock === BlockId.AIR) return false;
+    const block = this.inventory.selectedBlock;
     const p = placementTarget(t, (x, y, z) => this.world.getBlock(x, y, z), block, this.player.position, PLAYER_SHAPE);
     const ok = p !== null && this.setBlock(p.x, p.y, p.z, block);
-    if (ok) this.sounds.play('place');
+    if (ok) {
+      this.inventory.consumeSelected();
+      this.sounds.play('place');
+    }
     return ok;
   }
 
@@ -353,25 +396,77 @@ export class Game {
 
   private handleHotbarInput(): void {
     for (let i = 0; i < HOTBAR_SIZE; i++) {
-      if (this.input.consumePressed(`Digit${i + 1}`)) this.hotbar.select(i);
+      if (this.input.consumePressed(`Digit${i + 1}`)) this.inventory.select(i);
     }
     const wheel = this.input.consumeWheel();
-    if (wheel !== 0) this.hotbar.scroll(wheel);
+    if (wheel !== 0) this.inventory.scroll(wheel);
   }
 
-  /** Left button breaks, right button places; holding a button repeats every BREAK_REPEAT_S seconds. */
+  /**
+   * Left button: hold to break the targeted block (spec 24). Right button places; holding repeats every BREAK_REPEAT_S
+   * seconds. Middle click picks the targeted block.
+   */
   private handleBlockActions(frameDt: number): void {
     this.actionCooldown = Math.max(0, this.actionCooldown - frameDt);
     if (this.input.consumeClick(1)) this.pickTarget();
     const breakClicked = this.input.consumeClick(0);
+    const t = this.target;
+    const broken = this.breaking.update(
+      frameDt,
+      this.input.isMouseDown(0),
+      t ? { x: t.x, y: t.y, z: t.z } : null,
+      this.breakHardness(),
+    );
+    if (broken) this.breakCell(broken.x, broken.y, broken.z);
+    if (breakClicked || broken) this.held.swing();
     const placeClicked = this.input.consumeClick(2);
-    if (breakClicked || (this.input.isMouseDown(0) && this.actionCooldown === 0)) {
-      this.breakTarget();
-      this.actionCooldown = BREAK_REPEAT_S;
-    } else if (placeClicked || (this.input.isMouseDown(2) && this.actionCooldown === 0)) {
+    if (placeClicked || (this.input.isMouseDown(2) && this.actionCooldown === 0)) {
       this.placeTarget();
       this.actionCooldown = BREAK_REPEAT_S;
+      this.held.swing();
     }
+  }
+
+  /** Seconds to break the targeted block by hand, or null when it cannot be broken. */
+  private breakHardness(): number | null {
+    const t = this.target;
+    if (!t) return null;
+    const id = this.world.getBlock(t.x, t.y, t.z);
+    return canBreak(id) ? getBlockDef(id).hardness : null;
+  }
+
+  /** E opens the inventory and frees the pointer; closing it gives the pointer back (spec 24). */
+  private toggleInventory(): void {
+    if (this.inventoryScreen.isOpen) {
+      this.closeInventory();
+      return;
+    }
+    this.inventoryScreen.show();
+    this.input.releasePointerLock();
+  }
+
+  private closeInventory(): void {
+    const leftover = this.inventoryScreen.hide();
+    if (leftover) this.dropStack(leftover);
+    this.input.requestPointerLock();
+  }
+
+  /** Drops a stack in front of the player, for a stack that did not fit back into the inventory. */
+  private dropStack(stack: ItemStack): void {
+    const p = this.player.position;
+    this.items.spawn(stack.state, stack.count, p.x, p.y + 1, p.z, Math.random);
+  }
+
+  /** Walking over dropped items picks them up while they fit in the inventory. */
+  private collectItems(): void {
+    const p = this.player.position;
+    let changed = false;
+    this.items.collect(p.x, p.y, p.z, PLAYER_HEIGHT, (state, count) => {
+      const left = this.inventory.add(state, count);
+      if (left < count) changed = true;
+      return left;
+    });
+    if (changed && this.inventoryScreen.isOpen) this.inventoryScreen.refresh();
   }
 
   private readControls(): PlayerControls {
@@ -404,12 +499,18 @@ export class Game {
       timeOfDay: Math.round(this.timeOfDay * 1000) / 1000,
       target: this.target ? [this.target.x, this.target.y, this.target.z] : null,
       targetName: this.target ? getBlockDef(this.world.getBlock(this.target.x, this.target.y, this.target.z)).name : null,
-      selectedSlot: this.hotbar.selected,
-      selectedBlock: getBlockDef(this.hotbar.selectedBlock).name,
-      hotbar: [...this.hotbar.slots],
+      selectedSlot: this.inventory.selected,
+      selectedBlock: getBlockDef(this.inventory.selectedBlock).name,
+      hotbar: this.inventory.slots.slice(0, HOTBAR_SIZE).map((s) => s?.state ?? 0),
+      hotbarCounts: this.inventory.slots.slice(0, HOTBAR_SIZE).map((s) => s?.count ?? 0),
+      /** [block state, count] per slot, or null: hotbar first. */
+      inventory: this.inventory.slots.map((s) => (s ? [s.state, s.count] : null)),
+      inventoryOpen: this.inventoryScreen.isOpen,
+      items: this.items.items.length,
+      breakStage: this.breaking.stage,
       renderDistance: this.chunks.renderDistance,
       workers: this.usingWorkers,
-      drawCalls: this.renderer.webgl.info.render.calls,
+      drawCalls: this.renderer.drawCalls,
       /** True when the 3x3x3 chunks around the player's feet are meshed. */
       areaMeshed: this.chunks.isAreaMeshed(p.position.x, p.position.y, p.position.z, SPAWN_READY_RADIUS),
       ...this.chunks.stats,
