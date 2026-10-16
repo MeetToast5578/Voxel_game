@@ -91,6 +91,8 @@ export class Game {
   private spawnFeetY: number | null = null;
   private readonly highlight: BlockHighlight;
   private actionCooldown = 0;
+  /** True while the inventory is open from the pause menu (closing it goes back to the menu). */
+  private inventoryFromMenu = false;
   /** The volumetric build tools (see src/player/buildTool.ts). */
   readonly tool = new BuildTool();
   private readonly edits: EditQueue;
@@ -158,7 +160,7 @@ export class Game {
     this.input = new Input(this.renderer.canvas);
     this.hud = new Hud(container, this.renderer.atlasCanvas);
     this.debugOverlay = new DebugOverlay(container);
-    this.inventoryScreen = new InventoryScreen(container, this.renderer.atlasCanvas, this.inventory);
+    this.inventoryScreen = new InventoryScreen(container, this.renderer.atlasCanvas, this.inventory, () => this.closeInventory());
     this.menu = new Menu(container, this.settings, save.unavailable ? 'Saving is unavailable in this browser.' : null, {
       onPlay: () => {
         this.sounds.unlock();
@@ -166,6 +168,7 @@ export class Game {
       },
       onSettingsChange: (s) => this.changeSettings(s),
       onNewWorld: () => this.newWorld(),
+      onInventory: () => this.openInventory(),
     });
 
     this.playing = options.autostart;
@@ -177,9 +180,16 @@ export class Game {
     });
     this.input.onPointerLockChanged((locked) => {
       this.playing = locked || options.autostart;
-      if (locked) this.menu.hide();
-      else if (!options.autostart && !this.inventoryScreen.isOpen) this.menu.show('paused');
+      if (locked) {
+        this.menu.hide();
+        this.menu.setLockNote(null);
+      } else if (!options.autostart && !this.inventoryScreen.isOpen) {
+        this.menu.show('paused');
+      }
     });
+    this.input.onPointerLockFailed(() =>
+      this.menu.setLockNote('Your browser did not capture the mouse. Click Play, or click the game, to try again.'),
+    );
     document.addEventListener('visibilitychange', () => {
       if (document.hidden) void this.saveNow();
     });
@@ -244,7 +254,9 @@ export class Game {
     this.clockS += frameDt;
     const eKey = this.input.consumePressed('KeyE');
     const escKey = this.input.consumePressed('Escape');
-    if (eKey && (this.playing || this.inventoryScreen.isOpen)) this.toggleInventory();
+    if (eKey && (this.playing || this.inventoryScreen.isOpen || (this.menu.visible && this.menu.currentMode === 'paused'))) {
+      this.toggleInventory();
+    }
     else if (escKey && this.inventoryScreen.isOpen) this.closeInventory();
     if (this.playing && !this.inventoryScreen.isOpen) {
       const { dx, dy } = this.input.consumeMouseDelta();
@@ -276,7 +288,7 @@ export class Game {
     this.held.update(frameDt, walking, this.breaking.target !== null);
     if (frameDt > 0) this.fps += (1 / frameDt - this.fps) * 0.05;
     this.renderer.render();
-    this.hud.update(this.inventory.slots, this.inventory.selected, frameDt);
+    this.hud.update(this.inventory.slots, this.inventory.selected, frameDt, this.playing);
     this.debugOverlay.update(frameDt, () => formatDebugLines(this.debugState()));
   }
 
@@ -586,20 +598,30 @@ export class Game {
     this.hud.setToolLabel(`${tool.describe()} · ${this.previewCount} blocks`);
   }
 
-  /** E opens the inventory and frees the pointer; closing it gives the pointer back (spec 24). */
+  /** E: opens the inventory from play or from the pause menu, or closes it (spec 24). */
   private toggleInventory(): void {
-    if (this.inventoryScreen.isOpen) {
-      this.closeInventory();
-      return;
-    }
+    if (this.inventoryScreen.isOpen) this.closeInventory();
+    else this.openInventory();
+  }
+
+  /** Frees the pointer and shows the inventory. From the pause menu, the menu is put away and closing returns to it. */
+  private openInventory(): void {
+    this.inventoryFromMenu = !this.playing;
+    this.menu.hide();
     this.inventoryScreen.show();
     this.input.releasePointerLock();
   }
 
+  /** Closes the inventory. Back to the pause menu when it was opened from there, otherwise back to play. */
   private closeInventory(): void {
     const leftover = this.inventoryScreen.hide();
     if (leftover) this.dropStack(leftover);
-    this.input.requestPointerLock();
+    if (this.inventoryFromMenu) {
+      this.inventoryFromMenu = false;
+      this.menu.show('paused');
+    } else {
+      this.input.requestPointerLock();
+    }
   }
 
   /** Drops a stack in front of the player, for a stack that did not fit back into the inventory. */

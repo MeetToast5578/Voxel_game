@@ -70,6 +70,15 @@ const CHECKS = [
     },
   },
   {
+    name: 'HUD shows the key hints and block icons in the hotbar',
+    run: async (page) => {
+      const hints = await page.locator('.key-hints').innerText();
+      if (!hints.includes('Inventory')) throw new Error(`key hints: ${hints}`);
+      const icons = await page.locator('.hotbar .slot .icon').count();
+      if (icons < 1) throw new Error(`no block icons in the hotbar: ${icons}`);
+    },
+  },
+  {
     name: 'HUD shows 9 hotbar slots and the debug overlay toggles with F3',
     run: async (page) => {
       const slots = await page.locator('.hotbar .slot').count();
@@ -93,6 +102,10 @@ const CHECKS = [
       if (!(await menuPage.locator('.menu-overlay').isVisible())) throw new Error('menu not visible');
       const title = await menuPage.locator('.menu-title').innerText();
       if (title !== 'Voxel Game') throw new Error(`menu title: ${title}`);
+      const inventoryButtons = await menuPage.locator('.menu-button', { hasText: 'Inventory' }).count();
+      if (inventoryButtons !== 0) throw new Error('the start menu should not have an inventory button');
+      const sections = await menuPage.locator('.controls-title').allInnerTexts();
+      if (!sections.includes('Volume tools')) throw new Error(`controls sections: ${sections}`);
       await menuPage.screenshot({ path: 'screenshots/menu.png' });
       await menuPage.close();
     },
@@ -341,7 +354,10 @@ const CHECKS = [
           return n;
         }, [x, z, floorY]);
       const placed = await countBrick();
-      if (placed !== 27) throw new Error(`a 3x3x3 box should place 27 bricks, placed ${placed}`);
+      if (placed !== 27) {
+        const st = await page.evaluate(() => window.__game.state());
+        throw new Error(`a 3x3x3 box should place 27 bricks, placed ${placed} (selected ${st.selectedBlock}, position ${st.position}, target ${JSON.stringify(st.target)}, flying ${st.flying}, playing ${st.playing})`);
+      }
 
       if (!(await page.evaluate(() => window.__game.undoEdit()))) throw new Error('undoEdit returned false');
       await page.waitForFunction(() => !window.__game.editsBusy, null, { timeout: 10_000 });
@@ -357,6 +373,27 @@ const CHECKS = [
         window.__game.setFlying(flying);
       }, [start.position, start.flying]);
       await waitMeshed();
+    },
+  },
+  {
+    name: 'the pause menu opens the inventory from its button, and Escape goes back to the pause menu',
+    run: async (page) => {
+      const pausePage = await page.context().browser().newPage({ viewport: { width: 1280, height: 720 } });
+      await pausePage.goto(new URL('/?seed=1&nosave=1', page.url()).href);
+      await pausePage.waitForFunction(() => window.__game?.ready === true, null, { timeout: 60_000 });
+      await pausePage.click('.menu-button.primary'); // Play: captures the mouse
+      await pausePage.waitForFunction(() => window.__game.state().playing, null, { timeout: 10_000 });
+      await pausePage.evaluate(() => document.exitPointerLock());
+      await pausePage.waitForFunction(() => !window.__game.state().playing, null, { timeout: 10_000 });
+      const title = await pausePage.locator('.menu-title').innerText();
+      if (title !== 'Paused') throw new Error(`expected the pause menu, got "${title}"`);
+      await pausePage.locator('.menu-button', { hasText: 'Inventory' }).click();
+      await pausePage.waitForFunction(() => window.__game.state().inventoryOpen, null, { timeout: 10_000 });
+      if (await pausePage.locator('.menu-overlay').isVisible()) throw new Error('the pause menu should be hidden with the inventory open');
+      await pausePage.keyboard.press('Escape');
+      await pausePage.waitForFunction(() => !window.__game.state().inventoryOpen, null, { timeout: 10_000 });
+      if (!(await pausePage.locator('.menu-overlay').isVisible())) throw new Error('Escape should return to the pause menu');
+      await pausePage.close();
     },
   },
   {
