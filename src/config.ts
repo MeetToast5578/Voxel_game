@@ -178,6 +178,10 @@ export const DAY_LENGTH_S = 600; // seconds for a full day + night
 export const START_TIME_OF_DAY = 0.3; // 0 sunrise, 0.25 noon, 0.5 sunset, 0.75 midnight
 export const MIN_DAYLIGHT = 0.15;
 
+// ---- Calendar and seasons (spec 29) ----
+export const DAYS_PER_SEASON = 7; // days per season; a year is 4 * this
+export const WORLD_LATITUDE_DEG = 45; // world latitude, drives day length variation
+
 // ---- UI ----
 export const HOTBAR_SIZE = 9;
 

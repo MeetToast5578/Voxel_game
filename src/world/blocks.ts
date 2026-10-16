@@ -27,6 +27,13 @@ export const BlockId = {
   DEEPSLATE: 25,
   BROWN_MUSHROOM: 26,
   RED_MUSHROOM: 27,
+  COAL_ORE: 28,
+  IRON_ORE: 29,
+  GOLD_ORE: 30,
+  REDSTONE_ORE: 31,
+  DIAMOND_ORE: 32,
+  EMERALD_ORE: 33,
+  LAPIS_ORE: 34,
 } as const;
 
 export const Tile = {
@@ -69,6 +76,13 @@ export const Tile = {
   CRACK_7: 36,
   CRACK_8: 37,
   CRACK_9: 38,
+  COAL_ORE: 39,
+  IRON_ORE: 40,
+  GOLD_ORE: 41,
+  REDSTONE_ORE: 42,
+  DIAMOND_ORE: 43,
+  EMERALD_ORE: 44,
+  LAPIS_ORE: 45,
 } as const;
 
 export type RenderLayer = 'none' | 'opaque' | 'cutout' | 'translucent';
@@ -274,6 +288,13 @@ export const BLOCK_REGISTRY = buildBlockRegistry([
   def('deepslate', 'Deepslate', all(Tile.DEEPSLATE)),
   def('brown_mushroom', 'Brown mushroom', all(Tile.BROWN_MUSHROOM), { solid: false, opaque: false, layer: 'cutout', shape: 'cross', hardness: 0 }),
   def('red_mushroom', 'Red mushroom', all(Tile.RED_MUSHROOM), { solid: false, opaque: false, layer: 'cutout', shape: 'cross', hardness: 0 }),
+  def('coal_ore', 'Coal ore', all(Tile.COAL_ORE), { hardness: 2 }),
+  def('iron_ore', 'Iron ore', all(Tile.IRON_ORE), { hardness: 3 }),
+  def('gold_ore', 'Gold ore', all(Tile.GOLD_ORE), { hardness: 3 }),
+  def('redstone_ore', 'Redstone ore', all(Tile.REDSTONE_ORE), { hardness: 3 }),
+  def('diamond_ore', 'Diamond ore', all(Tile.DIAMOND_ORE), { hardness: 4 }),
+  def('emerald_ore', 'Emerald ore', all(Tile.EMERALD_ORE), { hardness: 4 }),
+  def('lapis_ore', 'Lapis ore', all(Tile.LAPIS_ORE), { hardness: 3 }),
 ]);
 
 // BlockId.X is variant 0 of the type whose key is x; keep the two lists in step.

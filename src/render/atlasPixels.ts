@@ -6,6 +6,14 @@ type RGB = readonly [number, number, number];
 /** Returns [r, g, b, a] (0-255) for pixel (x, y) of a tile; y = 0 is the TOP row of the tile. */
 type PixelFn = (x: number, y: number, rand: () => number) => readonly [number, number, number, number];
 
+/** Stone with flecks of the ore colour. */
+function orePainter(colour: RGB): PixelFn {
+  return (_x, _y, r) => {
+    const base = shade([125, 125, 125], 1 + (r() - 0.5) * 0.25);
+    return r() < 0.12 ? shade(colour, 1) : base;
+  };
+}
+
 const shade = (c: RGB, f: number, a = 255) => [c[0] * f, c[1] * f, c[2] * f, a] as const;
 const noisy = (c: RGB, amount: number): PixelFn => (_x, _y, r) => shade(c, 1 + (r() - 0.5) * amount);
 
@@ -125,6 +133,14 @@ const PAINTERS: Record<number, PixelFn> = {
     const mortar = y % 4 === 3 || (x + (Math.floor(y / 4) % 2) * 4) % 8 === 0;
     return mortar ? shade([200, 200, 190], 1) : shade([150, 60, 50], 1 + (r() - 0.5) * 0.2);
   },
+  /** Stone with flecks of the ore colour. */
+  [Tile.COAL_ORE]: orePainter([30, 30, 30]),
+  [Tile.IRON_ORE]: orePainter([190, 170, 140]),
+  [Tile.GOLD_ORE]: orePainter([230, 210, 70]),
+  [Tile.REDSTONE_ORE]: orePainter([210, 50, 50]),
+  [Tile.DIAMOND_ORE]: orePainter([110, 180, 230]),
+  [Tile.EMERALD_ORE]: orePainter([70, 190, 130]),
+  [Tile.LAPIS_ORE]: orePainter([50, 90, 180]),
 };
 
 /** RGBA pixels for the whole atlas, row-major, row 0 = top of the image. */

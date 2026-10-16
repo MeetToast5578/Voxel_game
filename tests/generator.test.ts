@@ -3,13 +3,14 @@ import {
   DEEPSLATE_DEPTH_M,
   LEGACY_CHUNKS,
   metersToBlocks,
+  ORE_GEN,
   SEA_LEVEL,
   SOIL_DEPTH,
   TERRAIN_CHUNK_BOTTOM,
   TERRAIN_MAX_BLOCKS,
 } from '../src/config';
 import { columnIndex } from '../src/core/coords';
-import { BlockId, blocksSky } from '../src/world/blocks';
+import { BlockId, blocksSky, parseBlockStateName } from '../src/world/blocks';
 import { Chunk } from '../src/world/chunk';
 import { TerrainGenerator } from '../src/world/generator';
 import { landColumns, stackedColumn } from './support/stackedColumn';
@@ -203,6 +204,62 @@ describe('TerrainGenerator', () => {
       }
     expect(plains).toBeGreaterThan(0);
     expect(bare).toBeGreaterThan(0);
+  });
+  describe('Ores (spec 26)', () => {
+    /** Each ore's block id and its depth band in whole blocks, built from the config. */
+    function oreBands(): Map<number, [number, number]> {
+      const bands = new Map<number, [number, number]>();
+      for (const d of ORE_GEN) {
+        const id = parseBlockStateName(d.key);
+        expect(id).not.toBeNull();
+        bands.set(id!, [Math.ceil(metersToBlocks(d.bottomM)), Math.floor(metersToBlocks(d.topM))]);
+      }
+      return bands;
+    }
+
+    it('places ores only inside their depth band, below the surface, and deterministically', {
+      timeout: 60000,
+    }, () => {
+      const g = new TerrainGenerator(1);
+      const cz = Math.floor(PEAK.z / 16);
+      const bands = oreBands();
+      // All ore bands lie below sea level, so scan the deep chunks of a few columns around the peak.
+      let ores = 0;
+      for (let cx = Math.floor(PEAK.x / 16) - 1; cx <= Math.floor(PEAK.x / 16) + 1; cx++)
+        for (let cy = TERRAIN_CHUNK_BOTTOM; cy <= -1; cy++) {
+          const c = new Chunk(cx, cy, cz);
+          g.generateChunk(c);
+          for (let ly = 0; ly < 16; ly++) {
+            const y = cy * 16 + ly;
+            for (let lx = 0; lx < 16; lx++)
+              for (let lz = 0; lz < 16; lz++) {
+                const id = c.get(lx, ly, lz);
+                const band = bands.get(id);
+                if (!band) continue;
+                ores++;
+                const [minY, maxY] = band;
+                expect(y).toBeGreaterThanOrEqual(minY);
+                expect(y).toBeLessThanOrEqual(maxY);
+                // Ores never replace the surface block.
+                expect(y).toBeLessThan(g.getHeight(cx * 16 + lx, cz * 16 + lz));
+              }
+          }
+        }
+      expect(ores).toBeGreaterThan(0);
+    });
+    it('is deterministic across generators: the same seed gives the same veins', { timeout: 60000 }, () => {
+      const cx = Math.floor(PEAK.x / 16);
+      const cz = Math.floor(PEAK.z / 16);
+      expect(stackedColumn(new TerrainGenerator(1), cx, cz).blocks)
+        .toEqual(stackedColumn(new TerrainGenerator(1), cx, cz).blocks);
+    });
+    it('never puts ore below the terrain band', { timeout: 60000 }, () => {
+      const g = new TerrainGenerator(1);
+      const c = new Chunk(Math.floor(PEAK.x / 16), TERRAIN_CHUNK_BOTTOM - 1, Math.floor(PEAK.z / 16));
+      g.generateChunk(c);
+      const bands = oreBands();
+      expect(c.blocks.some((id) => bands.has(id))).toBe(false);
+    });
   });
   it('generates a chunk in a few milliseconds', () => {
     const g = new TerrainGenerator(99);

@@ -11,6 +11,7 @@ import {
   LEGACY_CHUNKS,
   LEGACY_HEIGHT,
   metersToBlocks,
+  ORE_GEN,
   SEA_LEVEL,
   SHORE_CAVE_BAND,
   SHORE_ROOF,
@@ -29,7 +30,7 @@ import {
 import { columnIndex, columnKey, localIndex } from '../core/coords';
 import { floorDiv } from '../core/math';
 import { hash2, mulberry32 } from '../core/random';
-import { BlockId, blocksSky } from './blocks';
+import { BlockId, blocksSky, parseBlockStateName } from './blocks';
 import { Chunk } from './chunk';
 import { TerrainDensity } from './density';
 import { ClimateSampler, detailAmpMeters, heightMeters } from './shape';
@@ -42,6 +43,29 @@ const COLUMN_CACHE_LIMIT = 2048;
 const ROCKS = [
   BlockId.GRANITE, BlockId.DIORITE, BlockId.ANDESITE, BlockId.SANDSTONE, BlockId.LIMESTONE, BlockId.SLATE, BlockId.BASALT,
 ] as const;
+
+/** Ore generation: the block id, its depth band in blocks, and the placement odds, built from `src/config.ts`. */
+const ORE_DEFS: readonly {
+  readonly id: number;
+  /** Inclusive, blocks. */
+  readonly minY: number;
+  /** Inclusive, blocks. */
+  readonly maxY: number;
+  readonly chancePerColumn: number;
+  readonly clusterTries: number;
+}[] = ORE_GEN.map((d) => {
+  const id = parseBlockStateName(d.key);
+  if (id === null) throw new Error(`Ore '${d.key}' is not a registered block`);
+  const minY = Math.ceil(metersToBlocks(d.bottomM));
+  const maxY = Math.floor(metersToBlocks(d.topM));
+  return { id, minY, maxY, chancePerColumn: d.chancePerColumn, clusterTries: d.clusterTries };
+});
+
+/** The rock ores can replace: stone, the strata rocks and deepslate — never soil, plants or air. */
+const ORE_HOSTS = new Set<number>([BlockId.STONE, ...ROCKS, BlockId.DEEPSLATE]);
+
+/** One roll per column and ore type decides whether this column gets a cluster. */
+const ORE_SEED_OFFSET = 1000;
 
 /** Per-column terrain, indexed by columnIndex: the top solid block and the two inputs of the density. */
 interface Column {
@@ -189,6 +213,7 @@ export class TerrainGenerator {
         }
       }
     }
+    this.placeOres(column, cx, cz, y0, y1, out);
     this.placeTrees(cx, cz, y0, y1, out);
   }
 
@@ -285,6 +310,31 @@ export class TerrainGenerator {
     const cx = floorDiv(wx, CHUNK_SIZE);
     const cz = floorDiv(wz, CHUNK_SIZE);
     return this.column(cx, cz).amps[columnIndex(wx - cx * CHUNK_SIZE, wz - cz * CHUNK_SIZE)]!;
+  }
+
+  /**
+   * Ore veins for one column. The clusters are a pure function of (seed, cx, cz), not of cy, so every chunk of the
+   * column writes the same blocks and a chunk equals the matching slice of the legacy column. A cluster replaces
+   * stone-like rock below the surface, never the surface block, soil, plants or air.
+   */
+  private placeOres(column: Column, cx: number, cz: number, y0: number, y1: number, out: Uint16Array): void {
+    for (let oi = 0; oi < ORE_DEFS.length; oi++) {
+      const ore = ORE_DEFS[oi]!;
+      // One roll per column and ore type: the column either has this ore or not.
+      if (hash2(this.seed + ORE_SEED_OFFSET + oi, cx, cz) >= ore.chancePerColumn) continue;
+      const rng = mulberry32((this.seed + ORE_SEED_OFFSET + 1000 + oi) * 1000003 + cx * 7919 + cz * 17);
+      for (let t = 0; t < ore.clusterTries; t++) {
+        const lx = Math.floor(rng() * CHUNK_SIZE);
+        const lz = Math.floor(rng() * CHUNK_SIZE);
+        const i = columnIndex(lx, lz);
+        const h = column.solidTop[i]!;
+        // Below the surface and inside this ore's depth band.
+        const y = ore.minY + Math.floor(rng() * (ore.maxY - ore.minY + 1));
+        if (y < y0 || y >= y1 || y >= h) continue;
+        const bi = localIndex(lx, y - y0, lz);
+        if (ORE_HOSTS.has(out[bi]!)) out[bi] = ore.id;
+      }
+    }
   }
 
   /** Trees whose anchor is in this column or within reach of it. Each tree is computed whole, then clipped. */
