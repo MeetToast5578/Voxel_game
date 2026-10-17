@@ -1,120 +1,130 @@
 import { createNoise2D, type NoiseFunction2D } from 'simplex-noise';
 import { mulberry32 } from '../core/random';
-import { DAY_LENGTH_S } from '../config';
+import {
+  WEATHER_PRESSURE_WAVELENGTH_M,
+  WEATHER_WIND_SPEED_M_S,
+  WEATHER_HUMIDITY_WAVELENGTH_M,
+  WEATHER_STORM_PRESSURE,
+  WEATHER_STORM_HUMIDITY,
+  WEATHER_STORM_TEMP_C,
+  WEATHER_PRECIP_THRESHOLD,
+  WEATHER_TEMP_SNOW_C,
+  WEATHER_TEMP_RAIN_C,
+} from '../config';
 
-export type PrecipitationType = 'none' | 'rain' | 'snow' | 'sleet';
+export type PrecipType = 'none' | 'rain' | 'snow' | 'sleet';
 
 export interface WeatherSample {
-  temperature: number;   // °C at this position
-  humidity: number;      // 0..1
-  pressure: number;      // hPa, roughly 950..1050
-  precipitation: PrecipitationType;
-  cloudCover: number;    // 0..1
-  windSpeed: number;     // m/s
-  windDirection: number; // radians
+  /** Precipitation type: 'none', 'rain', 'snow', 'sleet'. */
+  precipitation: PrecipType;
+  /** Cloud cover, 0..1. */
+  cloudCover: number;
+  /** True when storm conditions are met. */
   isStorm: boolean;
+  /** Pressure field value, -1..1. Lower = stormier. */
+  pressure: number;
+  /** Wind speed in m/s. */
+  windSpeed: number;
 }
 
-/** Pressure systems drift across the world: noise sampled at positions offset by wind × time. */
-const PRESSURE_SYSTEM_SCALE = 4000; // meters
-const PRESSURE_WIND_SPEED_M_S = 3; // how fast pressure systems drift
+const PRESSURE_OCTAVES = 4;
+const HUMIDITY_OCTAVES = 3;
+const LAPSE_RATE_C_PER_M = 0.0065; // 6.5 °C per km
 
-/** Temperature variation from pressure systems. */
-const PRESSURE_TEMP_VARIATION_C = 5;
-
-/** Precipitation thresholds. */
-const RAIN_THRESHOLD = 0.6; // cloud cover above this = precipitation
-const SNOW_TEMP_C = 0; // below this temp, precipitation is snow
-const SLEET_TEMP_C = 2; // between snow and rain temps = sleet
-
-/** Storm formation: high moisture + high temperature. */
-const STORM_MOISTURE_THRESHOLD = 0.7;
-const STORM_TEMP_THRESHOLD_C = 15;
-
-/** Wind: prevailing direction + pressure gradient. */
-const PREVAILING_WIND_DIR = 0; // radians, 0 = toward +X
-const PREVAILING_WIND_SPEED_M_S = 2;
-
-/** Map a noise value from [-1, 1] to [min, max]. */
-function noiseRange(n: number, min: number, max: number): number {
-  return min + (n + 1) / 2 * (max - min);
+/** Fractal Brownian Motion: sum of noise layers at doubling frequency, halving amplitude. Result in [-1, 1]. */
+function fbm(noise: NoiseFunction2D, x: number, z: number, octaves: number): number {
+  let sum = 0;
+  let amp = 1;
+  let freq = 1;
+  let norm = 0;
+  for (let i = 0; i < octaves; i++) {
+    sum += noise(x * freq, z * freq) * amp;
+    norm += amp;
+    amp *= 0.5;
+    freq *= 2;
+  }
+  return sum / norm;
 }
 
 /**
- * Deterministic weather model. All outputs are pure functions of (seed, position, timeOfDay, season).
- * Nothing is saved — weather is regenerated on load from seed + time.
+ * Deterministic weather model. Given seed, position, time of day, time of year,
+ * and altitude, returns pressure, cloud cover, precipitation type, and storm
+ * state. Output is a pure function of inputs: same inputs always give same output.
+ * No state is kept, so nothing needs to be saved or reloaded.
+ *
+ * Temperature is derived from season and altitude (6.5 °C/km lapse rate).
+ * Humidity is derived from a noise field. These feed precipitation type and
+ * cloud cover.
  */
 export class WeatherModel {
   private readonly pressureNoise: NoiseFunction2D;
-  private readonly tempNoise: NoiseFunction2D;
   private readonly humidityNoise: NoiseFunction2D;
-  private readonly windNoise: NoiseFunction2D;
 
-  constructor(readonly seed: number) {
+  constructor(seed: number) {
     this.pressureNoise = createNoise2D(mulberry32(seed + 500));
-    this.tempNoise = createNoise2D(mulberry32(seed + 501));
-    this.humidityNoise = createNoise2D(mulberry32(seed + 502));
-    this.windNoise = createNoise2D(mulberry32(seed + 503));
+    this.humidityNoise = createNoise2D(mulberry32(seed + 600));
   }
 
-  /**
-   * Sample the weather at world position (wx, wz) at the given time.
-   * `heightM` is the altitude above sea level (for orographic lift and temperature lapse).
-   */
-  sample(wx: number, wz: number, timeOfDay: number, season: number, heightM: number): WeatherSample {
-    // Drift pressure systems: sample noise at positions offset by wind × time.
-    const driftX = PRESSURE_WIND_SPEED_M_S * timeOfDay * DAY_LENGTH_S / 1000; // km drifted
-    const driftZ = 0; // prevailing wind toward +X for simplicity
-    const px = (wx + driftX * 1000) / PRESSURE_SYSTEM_SCALE;
-    const pz = (wz + driftZ * 1000) / PRESSURE_SYSTEM_SCALE;
+  /** Sample the weather at a world position. Pure; no state changes. */
+  sample(
+    x: number,
+    z: number,
+    _timeOfDay: number,
+    timeOfYear: number,
+    altitudeM: number,
+  ): WeatherSample {
+    // Weather fronts drift eastward with wind over the course of the year.
+    const driftM = WEATHER_WIND_SPEED_M_S * timeOfYear * 365 * 24 * 3600;
+    const px = (x + driftM) / WEATHER_PRESSURE_WAVELENGTH_M;
+    const pz = z / WEATHER_PRESSURE_WAVELENGTH_M;
 
-    const pressure = noiseRange(this.pressureNoise(px, pz), 950, 1050);
-    const tempNoise = this.tempNoise(px, pz);
-    const humidity = noiseRange(this.humidityNoise(px, pz), 0, 1);
-    const windNoise = this.windNoise(px, pz);
+    // Large-scale pressure field: low pressure = stormy, high pressure = clear.
+    const pressure = fbm(this.pressureNoise, px, pz, PRESSURE_OCTAVES);
 
-    // Temperature: base from noise, modified by season, altitude lapse, and pressure system.
-    const baseTemp = noiseRange(tempNoise, -10, 30);
-    const seasonalTemp = 10 * Math.cos(2 * Math.PI * (season - 0.25)); // warmest at season 0.25 (summer)
-    const altitudeLapse = -6.5 * (heightM / 1000); // 6.5 °C per km
-    const pressureTemp = PRESSURE_TEMP_VARIATION_C * tempNoise;
-    const temperature = baseTemp + seasonalTemp + altitudeLapse + pressureTemp;
+    // Humidity field adds local variation.
+    const humidityField = fbm(
+      this.humidityNoise,
+      x / WEATHER_HUMIDITY_WAVELENGTH_M,
+      z / WEATHER_HUMIDITY_WAVELENGTH_M,
+      HUMIDITY_OCTAVES,
+    );
+    const humidity = Math.max(0, Math.min(1, 0.5 + humidityField * 0.3));
 
-    // Humidity: from noise, modified by orographic lift (higher = wetter on windward side).
-    const orographicLift = Math.max(0, windNoise) * 0.2; // windward side gets wetter
-    const humidityWithLift = Math.min(1, humidity + orographicLift);
+    // Temperature from season (sinusoidal, warmest at summer solstice = 0.25)
+    // and altitude lapse rate.
+    const seasonalTempC = 10 * Math.sin(2 * Math.PI * (timeOfYear - 0.25));
+    const temperatureC = seasonalTempC - altitudeM * LAPSE_RATE_C_PER_M;
 
-    // Cloud cover: from pressure system (low pressure = more clouds).
-    const cloudCover = Math.max(0, Math.min(1, (1000 - pressure) / 100));
+    // Cloud cover increases with low pressure, humidity, and seasonal moisture.
+    const seasonalMoisture = Math.max(0, Math.sin(2 * Math.PI * timeOfYear));
+    const cloudCover = Math.max(0, Math.min(1, -pressure * 0.5 + humidity * 0.4 + seasonalMoisture * 0.2));
 
-    // Wind: prevailing direction + pressure gradient noise.
-    const windDirection = PREVAILING_WIND_DIR + windNoise * 0.5;
-    const windSpeed = PREVAILING_WIND_SPEED_M_S + Math.abs(windNoise) * 3;
+    // Precipitation needs cloud cover plus lifting: low pressure (rising air)
+    // or orographic lift (wind pushing moist air up terrain).
+    const pressureUplift = Math.max(0, -pressure);
+    const orographicLift = Math.max(0, altitudeM / 3000);
+    const precipitation = Math.max(0, Math.min(1, cloudCover * (pressureUplift * 0.6 + orographicLift * 0.3) + humidity * 0.2));
 
-    // Precipitation type: rain/snow/sleet by temperature.
-    let precipitation: PrecipitationType = 'none';
-    if (cloudCover > RAIN_THRESHOLD) {
-      if (temperature <= SNOW_TEMP_C) {
-        precipitation = 'snow';
-      } else if (temperature <= SLEET_TEMP_C) {
-        precipitation = 'sleet';
-      } else {
-        precipitation = 'rain';
-      }
+    // Precipitation type chosen by air temperature.
+    let precipType: PrecipType = 'none';
+    if (precipitation > WEATHER_PRECIP_THRESHOLD) {
+      if (temperatureC <= WEATHER_TEMP_SNOW_C) precipType = 'snow';
+      else if (temperatureC >= WEATHER_TEMP_RAIN_C) precipType = 'rain';
+      else precipType = 'sleet';
     }
 
-    // Storms: high moisture + high temperature.
-    const isStorm = humidityWithLift > STORM_MOISTURE_THRESHOLD && temperature > STORM_TEMP_THRESHOLD_C && cloudCover > 0.8;
+    // Storms form with deep low pressure, high moisture, and warm temperatures.
+    const isStorm = pressure < WEATHER_STORM_PRESSURE && humidity > WEATHER_STORM_HUMIDITY && temperatureC > WEATHER_STORM_TEMP_C;
+
+    // Wind speed increases as pressure drops (pressure gradient drives wind).
+    const windSpeed = 3 + Math.max(0, -pressure) * 8;
 
     return {
-      temperature,
-      humidity: humidityWithLift,
-      pressure,
-      precipitation,
+      precipitation: precipType,
       cloudCover,
-      windSpeed,
-      windDirection,
       isStorm,
+      pressure,
+      windSpeed,
     };
   }
 }

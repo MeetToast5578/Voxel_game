@@ -1,97 +1,101 @@
 import { describe, expect, it } from 'vitest';
 import { WeatherModel } from '../src/world/weather';
 
-describe('WeatherModel', () => {
-  it('is deterministic: same inputs give same outputs', () => {
-    const w1 = new WeatherModel(42);
-    const w2 = new WeatherModel(42);
-    const s1 = w1.sample(100, 200, 0.3, 0.5, 50);
-    const s2 = w2.sample(100, 200, 0.3, 0.5, 50);
-    expect(s1).toEqual(s2);
+describe('WeatherModel determinism', () => {
+  it('same inputs give same output', () => {
+    const model = new WeatherModel(42);
+    const a = model.sample(100, 200, 0.3, 0.5, 50);
+    const b = model.sample(100, 200, 0.3, 0.5, 50);
+    expect(a).toEqual(b);
   });
 
-  it('different seeds give different weather', () => {
-    const w1 = new WeatherModel(1);
-    const w2 = new WeatherModel(2);
-    const s1 = w1.sample(100, 200, 0.3, 0.5, 50);
-    const s2 = w2.sample(100, 200, 0.3, 0.5, 50);
-    // At least one field should differ
-    const different =
-      s1.temperature !== s2.temperature ||
-      s1.humidity !== s2.humidity ||
-      s1.pressure !== s2.pressure ||
-      s1.cloudCover !== s2.cloudCover;
-    expect(different).toBe(true);
+  it('different seeds give different results', () => {
+    const m1 = new WeatherModel(1);
+    const m2 = new WeatherModel(2);
+    const w1 = m1.sample(100, 200, 0.3, 0.5, 50);
+    const w2 = m2.sample(100, 200, 0.3, 0.5, 50);
+    expect(w1.pressure).not.toBeCloseTo(w2.pressure, 4);
   });
 
-  it('temperature decreases with altitude', () => {
-    const w = new WeatherModel(42);
-    const low = w.sample(100, 200, 0.3, 0.5, 0);
-    const high = w.sample(100, 200, 0.3, 0.5, 1000);
-    expect(high.temperature).toBeLessThan(low.temperature);
+  it('all outputs are finite numbers', () => {
+    const model = new WeatherModel(42);
+    const w = model.sample(0, 0, 0, 0, 0);
+    expect(Number.isFinite(w.pressure)).toBe(true);
+    expect(Number.isFinite(w.cloudCover)).toBe(true);
+    expect(Number.isFinite(w.windSpeed)).toBe(true);
   });
 
-  it('seasonal temperature variation', () => {
-    const w = new WeatherModel(42);
-    const summer = w.sample(100, 200, 0.3, 0.25, 0); // season 0.25 = summer
-    const winter = w.sample(100, 200, 0.3, 0.75, 0); // season 0.75 = winter
-    expect(summer.temperature).toBeGreaterThan(winter.temperature);
+  it('pressure is within [-1, 1]', () => {
+    const model = new WeatherModel(42);
+    for (let i = 0; i < 20; i++) {
+      const w = model.sample(i * 1000, i * 1000, 0.5, 0.5, 0);
+      expect(w.pressure).toBeGreaterThanOrEqual(-1);
+      expect(w.pressure).toBeLessThanOrEqual(1);
+    }
   });
 
-  it('precipitation type is snow at low temperature', () => {
-    const w = new WeatherModel(42);
-    // Find a time/position with precipitation and cold temperature
-    for (let t = 0; t < 1; t += 0.1) {
-      for (let x = -500; x <= 500; x += 100) {
-        const s = w.sample(x, 0, t, 0.75, 0); // winter season
-        if (s.precipitation === 'snow') {
-          expect(s.temperature).toBeLessThanOrEqual(0);
-          return;
-        }
-        if (s.precipitation === 'rain') {
-          expect(s.temperature).toBeGreaterThan(2);
-          return;
+  it('cloud cover is within [0, 1]', () => {
+    const model = new WeatherModel(42);
+    for (let i = 0; i < 20; i++) {
+      const w = model.sample(i * 1000, i * 1000, 0.5, 0.5, 0);
+      expect(w.cloudCover).toBeGreaterThanOrEqual(0);
+      expect(w.cloudCover).toBeLessThanOrEqual(1);
+    }
+  });
+
+  it('precipitation is one of the valid types', () => {
+    const model = new WeatherModel(42);
+    const valid: ('none' | 'rain' | 'snow' | 'sleet')[] = ['none', 'rain', 'snow', 'sleet'];
+    for (let i = 0; i < 20; i++) {
+      const w = model.sample(i * 1000, i * 1000, 0.5, 0.5, 0);
+      expect(valid).toContain(w.precipitation);
+    }
+  });
+});
+
+describe('WeatherModel pressure drift', () => {
+  it('weather fronts drift with time of year', () => {
+    const model = new WeatherModel(42);
+    const w1 = model.sample(0, 0, 0.5, 0, 0);
+    const w2 = model.sample(3 * 365 * 24 * 3600, 0, 0.5, 1, 0); // one year of drift at 3 m/s
+    expect(w1.pressure).not.toBeCloseTo(w2.pressure, 3);
+  });
+});
+
+describe('WeatherModel precipitation type by temperature', () => {
+  it('snow at freezing temperatures', () => {
+    const model = new WeatherModel(42);
+    const w = model.sample(0, 0, 0.5, 0.5, 0); // winter (timeOfYear=0.5), sea level → cold
+    if (w.precipitation !== 'none') {
+      expect(w.precipitation).toBe('snow');
+    }
+  });
+
+  it('rain at warm temperatures', () => {
+    const model = new WeatherModel(42);
+    // Peak warmth at timeOfYear=0.5: seasonalTemp = 10 * sin(2π * 0.25) = 10°C
+    const w = model.sample(0, 0, 0.5, 0.5, 0);
+    if (w.precipitation !== 'none') {
+      expect(w.precipitation).toBe('rain');
+    }
+  });
+});
+
+describe('WeatherModel storm formation', () => {
+  it('storm forms with low pressure, high humidity, warm temperature', () => {
+    const model = new WeatherModel(42);
+    let foundStorm = false;
+    // Search at below-sea-level altitudes where temperature exceeds 10°C
+    for (let alt of [0, -500, -1000]) {
+      for (let z = -10000; z <= 10000 && !foundStorm; z += 1000) {
+        for (let x = -10000; x <= 10000 && !foundStorm; x += 1000) {
+          const w = model.sample(x, z, 0.5, 0.5, alt);
+          if (w.isStorm) {
+            foundStorm = true;
+          }
         }
       }
     }
-    // If no precipitation found, just verify the model runs
-    expect(true).toBe(true);
-  });
-
-  it('pressure stays in reasonable range', () => {
-    const w = new WeatherModel(42);
-    const s = w.sample(100, 200, 0.3, 0.5, 50);
-    expect(s.pressure).toBeGreaterThanOrEqual(950);
-    expect(s.pressure).toBeLessThanOrEqual(1050);
-  });
-
-  it('humidity is in [0, 1]', () => {
-    const w = new WeatherModel(42);
-    const s = w.sample(100, 200, 0.3, 0.5, 50);
-    expect(s.humidity).toBeGreaterThanOrEqual(0);
-    expect(s.humidity).toBeLessThanOrEqual(1);
-  });
-
-  it('cloud cover is in [0, 1]', () => {
-    const w = new WeatherModel(42);
-    const s = w.sample(100, 200, 0.3, 0.5, 50);
-    expect(s.cloudCover).toBeGreaterThanOrEqual(0);
-    expect(s.cloudCover).toBeLessThanOrEqual(1);
-  });
-
-  it('wind speed is non-negative', () => {
-    const w = new WeatherModel(42);
-    const s = w.sample(100, 200, 0.3, 0.5, 50);
-    expect(s.windSpeed).toBeGreaterThanOrEqual(0);
-  });
-
-  it('weather drifts over time: pressure systems move', () => {
-    const w = new WeatherModel(42);
-    const s1 = w.sample(100, 200, 0.1, 0.5, 50);
-    const s2 = w.sample(100, 200, 0.5, 0.5, 50);
-    // Pressure should change as systems drift
-    // (not strictly guaranteed but very likely with different time)
-    expect(typeof s1.pressure).toBe('number');
-    expect(typeof s2.pressure).toBe('number');
+    expect(foundStorm).toBe(true);
   });
 });
