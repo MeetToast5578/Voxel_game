@@ -86,6 +86,8 @@ export const SOIL_DEPTH = roundBlocks(SOIL_DEPTH_M);
 export const TREE_DENSITY_PER_M2 = 0.012;
 /** Chance a 1-block column holds a tree anchor. */
 export const TREE_CHANCE = TREE_DENSITY_PER_M2 * BLOCK_SIZE_M * BLOCK_SIZE_M;
+/** The documented height band for tree species (owner decision 1, 2026-10-17). TREE_SPECIES is written in blocks;
+ * tests/config.test.ts enforces that every species except the bush fits inside this band. */
 export const TREE_HEIGHT_MIN_M = 8;
 export const TREE_HEIGHT_MAX_M = 12;
 /** The most a tree's blocks sit horizontally from its trunk. */
