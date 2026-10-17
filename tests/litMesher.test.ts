@@ -87,7 +87,7 @@ describe('buildChunkMesh lighting', () => {
       ms = Math.min(ms, (performance.now() - t0) / jobs.length);
     }
     console.log(`buildChunkMesh, 50 surface chunks of seed 42: ${ms.toFixed(2)} ms average`);
-    // The budget guard for spec 28 (task T-A3). The spec target is 3 ms and is NOT met yet (T-J1 is open: measured
+    // Interim regression guard for spec 28 (task T-A3 remains partial). The 3 ms target is NOT met (T-J1: measured
     // 4.1 ms alone, ~5.2 ms here). 15 ms is ~3x the slowest documented measurement: it catches a real regression
     // (the tree-size bug of spec 39 was ~100x) without flaking on a slow laptop under parallel load. Tighten this
     // toward 3 ms when T-J1 lands.

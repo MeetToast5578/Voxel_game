@@ -23,16 +23,16 @@ describe('config', () => {
   });
   it('every tree species except the bush fits the documented 8-12 m band (task T-B1 leftover)', () => {
     // TREE_SPECIES is written in blocks (owner decision 1); these constants give the band they must fit, so they are
-    // no longer orphans. Bushes stay small on purpose. Floor/ceil absorbs the float division (12 / 0.3 != 40 exactly).
-    const min = Math.floor(C.metersToBlocks(C.TREE_HEIGHT_MIN_M));
-    const max = Math.ceil(C.metersToBlocks(C.TREE_HEIGHT_MAX_M));
+    // no longer orphans. Bushes stay small on purpose. Compare metres directly to avoid rounding the band outward.
+    const min = C.TREE_HEIGHT_MIN_M;
+    const max = C.TREE_HEIGHT_MAX_M;
     for (const s of C.TREE_SPECIES) {
       if (s.key === 'bush') {
-        expect(s.heightMaxBlocks, 'the bush stays below the tree band').toBeLessThan(min);
+        expect(s.heightMaxBlocks * C.BLOCK_SIZE_M, 'the bush stays below the tree band').toBeLessThan(min);
         continue;
       }
-      expect(s.heightMinBlocks, `${s.key} min`).toBeGreaterThanOrEqual(min);
-      expect(s.heightMaxBlocks, `${s.key} max`).toBeLessThanOrEqual(max);
+      expect(s.heightMinBlocks * C.BLOCK_SIZE_M, `${s.key} min`).toBeGreaterThanOrEqual(min);
+      expect(s.heightMaxBlocks * C.BLOCK_SIZE_M, `${s.key} max`).toBeLessThanOrEqual(max);
     }
   });
   it('keeps physics steps smaller than the player (no tunneling)', () => {

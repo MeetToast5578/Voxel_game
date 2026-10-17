@@ -250,10 +250,12 @@ const CHECKS = [
     run: async (page) => {
       await page.bringToFront(); // earlier checks opened other pages, which may have taken the keyboard
       await page.keyboard.press('KeyE');
-      await page.waitForFunction(() => window.__game.state().inventoryOpen, null, { timeout: 10_000 });
+      await page.waitForFunction(() => window.__game.state().inventoryOpen, null, { timeout: 10_000 })
+        .catch(async () => { throw new Error(`E did not open inventory: ${JSON.stringify(await page.evaluate(() => window.__game.state()))}`); });
       await page.screenshot({ path: 'screenshots/inventory.png' });
       await page.keyboard.press('Escape');
-      await page.waitForFunction(() => !window.__game.state().inventoryOpen, null, { timeout: 10_000 });
+      await page.waitForFunction(() => !window.__game.state().inventoryOpen, null, { timeout: 10_000 })
+        .catch(async () => { throw new Error(`Escape did not close inventory: ${JSON.stringify(await page.evaluate(() => window.__game.state()))}`); });
     },
   },
   {

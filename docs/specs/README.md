@@ -59,7 +59,7 @@ Status is checked against the code on 2026-10-17. "Open" means the spec's goal i
 | [34-weather-model.md](34-weather-model.md) | Weather model and rendering | Partial | Particles and lightning are in, and the F3 overlay shows the season, weather, biome, temperature and rain. Wet darkening and morning fog are still missing. |
 | [35-biome-integration.md](35-biome-integration.md) | Biome integration into the generator | Partial | Surface, soil and trees follow the biome. Border blending is wired: surface blocks dither within 3 blocks of a border. Open: tints do not blend per vertex, and biomes are still picked per 16x16 chunk column |
 | [36-ecology-grass-spreading.md](36-ecology-grass-spreading.md) | Grass spreading | Done | |
-| [37-tree-species.md](37-tree-species.md) | Tree species | Partial | Sizes decided 2026-10-17: oak is 27-40 blocks (8.1-12.0 m), every species sits inside 8-12 m. Pine (snowy taiga) and dead snag (tundra) are wired to biomes, and every species is reachable (task T-E12). Open: 8 of the 16 roadmap species do not exist |
+| [37-tree-species.md](37-tree-species.md) | Tree species | Partial | Sizes decided 2026-10-17: oak is 27-40 blocks (8.1-12.0 m), every species sits inside 8-12 m. Pine (snowy taiga) and dead snag (tundra) are wired to biomes, and every species is reachable (task T-E12). Five additional species are mixed into their host biomes. Open: willow, mangrove and saguaro; visual silhouette review |
 | [38-random-ticks.md](38-random-ticks.md) | Random ticks | Done | |
 | [39-biome-integration-fix.md](39-biome-integration-fix.md) | Biome integration fix | Done | Review of spec 35 |
 | [40-leaf-decay.md](40-leaf-decay.md) | Leaf decay | Done | |

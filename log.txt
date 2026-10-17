@@ -176,3 +176,39 @@ Verification: npm run check GREEN after all changes - typecheck + 467 tests /
 
 Next: push, open a PR so CI runs the annotated smoke; read the annotations via
 gh api; fix whatever it names. Then T-E11 (the 8 missing tree species).
+
+SESSION 2 FOLLOW-UP (same task batch)
+------------------------------------
+CI on PR #30/a0456dc: check passed; smoke annotation successfully reported:
+  smoke failure during "E opens the inventory and Escape closes it": Timeout 10000ms.
+This is the confirmed failing check, NOT proof of a pick-block/terrain root cause.
+Earlier timing/root-cause language above was speculative.
+
+Local smoke recovered without changing project dependencies: @sparticuz/chromium
+installed under /home/user/browser-tools via the allowed npm registry; its bundled
+Chromium 153 and libraries extracted under /tmp. CI uses an older pinned browser.
+Full local smoke reproduced the inventory failure after all preceding checks passed.
+The inventory check ALONE passed, including a separate run that opened/closed another
+browser context first. A second full run and a save/reload+inventory-only run timed
+out during page readiness (60 s), so performance/load variability is also present.
+Smoke diagnostics now distinguish E-open from Escape-close and print game state.
+T-A2a remains PARTIAL; neither full smoke nor CI is claimed green.
+
+T-E11 PARTIAL: added maple, fir, larch, baobab and palm parameters (13 species total),
+with deterministic 30% secondary-species mixing in deciduous forest, taiga, snowy
+taiga, savanna and rainforest. Added pure mixing tests, updated the reachability
+invariant, and tested new species' deterministic, distinct geometry and connected
+logs. Existing bounds/height tests exercise all species. Remaining: willow,
+mangrove, saguaro, species-specific silhouette work and owner visual confirmation.
+No claim that the entire 16-species task is complete.
+
+Review corrections:
+- T-A3 remains partial: a 15 ms regression guard is NOT the requested 3 ms guard.
+- Tree height-band test compared rounded block limits, which allowed 7.8 m at its
+  minimum. It now compares actual metres directly against 8 and 12.
+- HANDOFF/spec index/tasks updated to reflect 470 tests and partial statuses.
+
+Verification of latest code: npm run check exited 0; 470 tests / 55 files pass,
+typecheck and production build pass. git diff --check passes. Local full smoke
+remains RED as above; targeted inventory check passes. Owner-only T-C tasks were
+not performed or marked complete. Temporary repro files removed.

@@ -40,6 +40,8 @@ Status key: **done** = in code and tested; **partial** = some of the item is in 
   - not started: tools, crafting, food, beds, healing
 - **Phase 8 (performance):** not started as a phase. Mesh time is 4.1 ms per surface chunk when run alone (target 3 ms; spec 28 is open).
 
+**Latest task-batch verification (2026-10-17):** `npm run check` passes locally: typecheck, **470 tests in 55 files**, build. PR #30's earlier batch passed CI `check` (467 tests); CI `smoke` failed in the inventory E/Escape check. Local Chromium 153 reproduced it in the full sequence; the inventory check alone passed. Do not treat smoke as green. T-E11 is partial: maple, fir, larch, baobab and palm are added (13 species total); willow, mangrove and saguaro plus visual review remain. See `docs/tasks.md` for current statuses.
+
 **Verification on 2026-10-17 (after the physics and tool pass):** `npm run check` passes: typecheck, **464 tests in 55 files**, and the build. The CI `check` job is green on `ubuntu-latest`. The CI `smoke` job, however, **fails** — see the "Known gaps" list. `npm run smoke` passes its checks in headless Chromium at about 8 fps (SwiftShader, so this number is not the owner's). The smoke test has an intermittent failure at the pick-block check: the player is standing above a cell that reads as air, and it is not yet explained. It also failed in the original code in one run.
 
 ## Waiting on the owner (not code)
@@ -87,7 +89,7 @@ TypeScript 5.9.3, Vite 7.3.6, Vitest 4.0.18, three 0.186.0, simplex-noise 4.0.3,
 ## Commands
 
 - `npm run dev`: opens http://localhost:5173; click Play.
-- `npm run check`: typecheck, the unit tests (464 in 55 files), then the build.
+- `npm run check`: typecheck, the unit tests (470 in 55 files; latest task-batch verification), then the build.
 - `npm run smoke`:
   - Builds, then opens `/?seed=1&autostart=1&nosave=1` in headless Chromium (SwiftShader WebGL).
   - Runs 24 checks through `window.__game` and writes `screenshots/*.png`.
