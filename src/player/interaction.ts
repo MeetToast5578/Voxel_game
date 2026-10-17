@@ -1,4 +1,4 @@
-import { BlockId, getBlockDef, isSolid } from '../world/blocks';
+import { BlockId, getBlockDef, isSolid, isWaterState } from '../world/blocks';
 import type { BodyShape, Vec3 } from './physics';
 import type { RaycastHit } from './raycast';
 
@@ -30,7 +30,7 @@ export function placementTarget(
   const y = hit.y + hit.ny;
   const z = hit.z + hit.nz;
   const existing = getBlock(x, y, z);
-  if (existing !== BlockId.AIR && existing !== BlockId.WATER) return null;
+  if (existing !== BlockId.AIR && !isWaterState(existing)) return null;
   if (isSolid(blockToPlace) && blockIntersectsBody(x, y, z, playerPos, shape)) return null;
   return { x, y, z };
 }

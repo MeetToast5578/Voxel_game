@@ -37,9 +37,11 @@ import { formatDebugLines } from './ui/debugText';
 import { Hud } from './ui/hud';
 import { InventoryScreen } from './ui/inventoryScreen';
 import { Menu } from './ui/menu';
-import { BlockId, getBlockDef, isSolid } from './world/blocks';
+import { BlockId, getBlockDef, isSolid, isWaterState } from './world/blocks';
 import { scheduleLeafDecay } from './world/ecology';
 import { scheduleFallChecks } from './world/falling';
+import { scheduleFlowChecks } from './world/flow';
+import { collapsible, scheduleSupportChecks } from './world/collapse';
 import { Chunk } from './world/chunk';
 import { ChunkManager } from './world/chunkManager';
 import { type EditCell, EditQueue } from './world/editQueue';
@@ -252,7 +254,7 @@ export class Game {
   readonly isSolidAt = (x: number, y: number, z: number): boolean =>
     !this.world.isLoadedAt(x, y, z) || isSolid(this.world.getBlock(x, y, z));
 
-  readonly isWaterAt = (x: number, y: number, z: number): boolean => this.world.getBlock(x, y, z) === BlockId.WATER;
+  readonly isWaterAt = (x: number, y: number, z: number): boolean => isWaterState(this.world.getBlock(x, y, z));
 
   private fixedUpdate(dt: number): void {
     if (!this.ready) return;
@@ -260,6 +262,7 @@ export class Game {
     this.player.update(dt, this.playing ? this.readControls() : NO_CONTROLS, this.isSolidAt, this.isWaterAt);
     this.items.step(dt, this.isSolidAt);
     this.edits.step();
+    this.spawnBrokenBlocks();
     this.collectItems();
     this.updateFootsteps(dt);
     if (this.player.splashSpeed > 0) this.sounds.play('splash');
@@ -501,6 +504,10 @@ export class Game {
     if (prev === BlockId.LOG && id !== BlockId.LOG) scheduleLeafDecay(this.world, x, y, z);
     // Sand or gravel above a removed block falls; a falling block placed in the air falls too.
     if (prev !== id) scheduleFallChecks(this.world, x, y, z);
+    // A block that was holding others up is gone: its neighbours check their support (spec 25, slice 5).
+    if (collapsible(prev) && !collapsible(id)) scheduleSupportChecks(this.world, x, y, z);
+    // Water next to a changed cell may now flow into it, or drain.
+    if (prev !== id) scheduleFlowChecks(this.world, x, y, z);
     return true;
   }
 
@@ -520,6 +527,13 @@ export class Game {
       this.sounds.play('break');
     }
     return ok;
+  }
+
+  /** Blocks the physics broke (a collapse) drop as items, as a player's break does. */
+  private spawnBrokenBlocks(): void {
+    for (const d of this.world.takeDrops()) {
+      this.items.spawn(d.id, 1, d.x + 0.5, d.y + (1 - ITEM_SIZE) / 2, d.z + 0.5, Math.random);
+    }
   }
 
   /** Middle click: pick the targeted block type (see Inventory.pick). */

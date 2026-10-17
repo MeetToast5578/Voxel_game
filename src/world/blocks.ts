@@ -35,6 +35,7 @@ export const BlockId = {
   EMERALD_ORE: 33,
   LAPIS_ORE: 34,
   GRAVEL: 35,
+  FLOWING_WATER: 36,
 } as const;
 
 export const Tile = {
@@ -277,6 +278,10 @@ function def(
 
 const all = (t: number) => ({ top: t, side: t, bottom: t });
 
+/** Flowing water has 8 levels, and each level comes in a falling and a non-falling variant. Variant v: level v % 8 + 1. */
+export const WATER_LEVELS = 8;
+export const FLOWING_WATER_VARIANTS = 2 * WATER_LEVELS;
+
 /** The game's block registry. Registration order fixes the state numbers: append new types at the end. */
 export const BLOCK_REGISTRY = buildBlockRegistry([
   def('air', 'Air', all(0), { solid: false, opaque: false, targetable: false, breakable: false, layer: 'none' }),
@@ -288,7 +293,7 @@ export const BLOCK_REGISTRY = buildBlockRegistry([
     solid: false, opaque: false, targetable: false, breakable: false, cullSame: true, layer: 'translucent',
   }),
   def('log', 'Log', { top: Tile.LOG_TOP, side: Tile.LOG_SIDE, bottom: Tile.LOG_TOP }, { hardness: 2 }),
-  def('leaves', 'Leaves', all(Tile.LEAVES), { opaque: false, layer: 'cutout', hardness: 0.3 }),
+  def('leaves', 'Leaves', all(Tile.LEAVES), { opaque: false, layer: 'cutout', hardness: 0.3, supports: false }),
   def('planks', 'Planks', all(Tile.PLANKS), { hardness: 2 }),
   def('glass', 'Glass', all(Tile.GLASS), { opaque: false, cullSame: true, layer: 'cutout', hardness: 0.3 }),
   def('bedrock', 'Bedrock', all(Tile.BEDROCK), { breakable: false }),
@@ -317,6 +322,11 @@ export const BLOCK_REGISTRY = buildBlockRegistry([
   def('emerald_ore', 'Emerald ore', all(Tile.EMERALD_ORE), { hardness: 4 }),
   def('lapis_ore', 'Lapis ore', all(Tile.LAPIS_ORE), { hardness: 3 }),
   def('gravel', 'Gravel', all(Tile.GRAVEL), { hardness: 0.6, falls: true }),
+  // Water that flows (spec 25, slice 4): 8 levels, each with a falling flag. The source block is 'water'.
+  def('flowing_water', 'Flowing water', all(Tile.WATER), {
+    variants: FLOWING_WATER_VARIANTS, solid: false, opaque: false, targetable: false, breakable: false, cullSame: true,
+    layer: 'translucent', flows: true,
+  }),
 ]);
 
 // BlockId.X is variant 0 of the type whose key is x; keep the two lists in step.
@@ -343,3 +353,37 @@ export const blocksSky = BLOCK_REGISTRY.blocksSky;
 export const OPAQUE_TABLE = BLOCK_REGISTRY.opaqueTable;
 /** Light emitted by each state (all 65,536 states). For hot loops; do not modify. */
 export const EMISSION_TABLE = BLOCK_REGISTRY.emissionTable;
+
+/** The source block: full, never thins, and never falls. */
+export const SOURCE_WATER_LEVEL = WATER_LEVELS;
+
+/** True for the source block and for every flowing water state. */
+export function isWaterState(state: number): boolean {
+  return state === BlockId.WATER || isFlowingWaterState(state);
+}
+
+/** True for each flowing water state (not the source block). */
+export function isFlowingWaterState(state: number): boolean {
+  return state >= BlockId.FLOWING_WATER && state < BlockId.FLOWING_WATER + FLOWING_WATER_VARIANTS;
+}
+
+/** The level of a water state, 1 (thinnest) to 8 (full). The source block is level 8. */
+export function waterLevel(state: number): number {
+  return isFlowingWaterState(state) ? ((state - BlockId.FLOWING_WATER) % WATER_LEVELS) + 1 : SOURCE_WATER_LEVEL;
+}
+
+/** True for a flowing water state that falls (it came down from above, and is not spreading sideways). */
+export function isFallingWater(state: number): boolean {
+  return isFlowingWaterState(state) && state - BlockId.FLOWING_WATER >= WATER_LEVELS;
+}
+
+/** How high a block's top face stands, in blocks: flowing water stands at its level, everything else a full block. */
+export function blockTopHeight(state: number): number {
+  return isFlowingWaterState(state) ? waterLevel(state) / WATER_LEVELS : 1;
+}
+
+/** The flowing water state for a level (1..8), falling or not. */
+export function flowingWaterState(level: number, falling: boolean): number {
+  return BlockId.FLOWING_WATER + (level - 1) + (falling ? WATER_LEVELS : 0);
+}
+

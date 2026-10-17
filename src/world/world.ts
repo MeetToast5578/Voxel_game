@@ -30,11 +30,20 @@ export interface BatchEffect {
   tops: { cx: number; cz: number; lo: number; hi: number }[];
 }
 
+/** A block broken by the physics, at its cell. */
+export interface DroppedBlock {
+  id: number;
+  x: number;
+  y: number;
+  z: number;
+}
+
 export class World {
   readonly seed: number;
   private readonly chunkMap = new Map<string, Chunk>();
   /** Player edits: chunkKey -> (localIndex -> block state). Survives chunk unloading. */
   private readonly editMap = new Map<string, Map<number, number>>();
+  private readonly droppedBlocks: DroppedBlock[] = [];
   /** Chunk keys whose edits changed since the last takeDirtyEdits (what the next save must write). */
   private readonly dirtyEdits = new Set<string>();
   /** columnKey -> chunk keys in that column that have edits. */
@@ -339,6 +348,16 @@ export class World {
     }
 
     return { ran, pending };
+  }
+
+  /** Queues a block the physics broke (a collapse), for the game to spawn as an item. */
+  queueDrop(id: number, x: number, y: number, z: number): void {
+    this.droppedBlocks.push({ id, x, y, z });
+  }
+
+  /** Returns and clears the blocks the physics broke since the last call. */
+  takeDrops(): DroppedBlock[] {
+    return this.droppedBlocks.splice(0);
   }
 
   /** Current global tick number. */

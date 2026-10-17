@@ -241,6 +241,10 @@ export const AUTOSAVE_INTERVAL_S = 10;
 // ---- Tick system (spec 25, slice 1) ----
 export const TICK_BUDGET_MS = 2; // max time per frame spent running chunk ticks
 
+// ---- Structural collapse (spec 25, slice 5) ----
+export const SUPPORT_RADIUS_BLOCKS = 4; // a support check looks this far from the removed block; a group reaching the edge is held up
+export const SUPPORT_NODE_LIMIT = 512; // a group larger than this is treated as supported, so a check stays bounded
+
 // ---- Entity system (spec 31) ----
 export const ENTITY_FRICTION = 8; // per second: how fast an entity slows down on the ground
 

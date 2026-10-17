@@ -1,7 +1,9 @@
 import { EDIT_CELLS_PER_STEP, UNDO_LIMIT } from '../config';
 import { worldToChunk } from '../core/coords';
-import { BlockId } from './blocks';
+import { BlockId, isWaterState } from './blocks';
 import { scheduleFallChecks } from './falling';
+import { collapsible, scheduleSupportChecks } from './collapse';
+import { scheduleFlowChecks } from './flow';
 import type { ChunkManager } from './chunkManager';
 import type { CellWrite, World } from './world';
 
@@ -101,7 +103,15 @@ export class EditQueue {
       this.chunks.onBlocksChanged(effect);
       for (const v of changed) job.applied.push(v);
       // Sand or gravel that a volume edit left unsupported falls, as it does after a single-block edit.
-      for (let i = 0; i < changed.length; i += 5) scheduleFallChecks(this.world, changed[i]!, changed[i + 1]!, changed[i + 2]!);
+      for (let i = 0; i < changed.length; i += 5) {
+        const x = changed[i]!;
+        const y = changed[i + 1]!;
+        const z = changed[i + 2]!;
+        scheduleFallChecks(this.world, x, y, z);
+        scheduleFlowChecks(this.world, x, y, z);
+        // A removed block may have been holding up its neighbours (spec 25, slice 5).
+        if (changed[i + 4] === BlockId.AIR && collapsible(changed[i + 3]!)) scheduleSupportChecks(this.world, x, y, z);
+      }
     }
     if (job.next >= job.cells.length) this.finish(job);
   }
@@ -109,7 +119,7 @@ export class EditQueue {
   private accepts(kind: Job['kind'], current: number, c: JobCell): boolean {
     if (kind === 'undo') return current === c.expect;
     if (c.clear) return current !== BlockId.AIR && this.breakable(current);
-    return current === BlockId.AIR || current === BlockId.WATER;
+    return current === BlockId.AIR || isWaterState(current);
   }
 
   private finish(job: Job): void {

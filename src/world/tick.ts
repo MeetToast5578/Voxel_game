@@ -30,6 +30,8 @@ function compareTicks(a: Tick, b: Tick): number {
 /** A per-chunk queue of scheduled ticks. Runs in fixed order: due tick, then cell position. */
 export class TickQueue {
   private ticks: Tick[] = [];
+  /** True when ticks were added since the queue was last sorted. Sorting once per run keeps inserts cheap. */
+  private dirty = false;
 
   /** Schedule a tick in this chunk. Returns a handoff when the cell lies outside this chunk. */
   schedule(tick: Tick, cx: number, cy: number, cz: number): TickHandoff | null {
@@ -49,7 +51,7 @@ export class TickQueue {
       };
     }
     this.ticks.push(tick);
-    this.ticks.sort(compareTicks);
+    this.dirty = true;
     return null;
   }
 
@@ -67,6 +69,10 @@ export class TickQueue {
     const start = performance.now();
     const handedOff: Tick[] = [];
     let ran = 0;
+    if (this.dirty) {
+      this.ticks.sort(compareTicks);
+      this.dirty = false;
+    }
     const kept: Tick[] = [];
     // Work in rounds. A handler may schedule into this queue while it runs; those ticks wait in this.ticks, which is
     // emptied before each round, so the round being iterated is never re-sorted under the loop. A tick scheduled
@@ -74,6 +80,7 @@ export class TickQueue {
     let round = this.ticks;
     this.ticks = [];
     while (round.length > 0) {
+      round.sort(compareTicks);
       for (const tick of round) {
         if (tick.dueTick > nowTick || performance.now() - start >= budgetMs) {
           kept.push(tick);
@@ -90,6 +97,7 @@ export class TickQueue {
     }
 
     this.ticks = kept.concat(this.ticks).sort(compareTicks);
+    this.dirty = false;
     return { handedOff, ran };
   }
 

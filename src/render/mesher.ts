@@ -1,6 +1,6 @@
 import { CHUNK_SIZE } from '../config';
 import { localIndex } from '../core/coords';
-import { BlockId, EMISSION_TABLE, OPAQUE_TABLE, getBlockDef, isOpaque } from '../world/blocks';
+import { BlockId, EMISSION_TABLE, OPAQUE_TABLE, blockTopHeight, getBlockDef, isOpaque } from '../world/blocks';
 import { LIGHT_CURVE, buildRegion, computeBlockLight, computeSkyLight, neighborIndex, regionIndex } from '../world/light';
 import { FACES, FACE_UVS } from './faces';
 import { tileUV } from './tiles';
@@ -205,6 +205,7 @@ export function buildChunkMesh(neighbors: readonly Uint16Array[], tops: readonly
           const r = regionIndex(lx + CHUNK_SIZE + face.dir[0], y + CHUNK_SIZE + face.dir[1], lz + CHUNK_SIZE + face.dir[2]);
           const sky = skyLight[r]!;
           const blk = Math.max(blockLight[r]!, EMISSION_TABLE[id]!); // glowing blocks are always fully lit
+          const top = blockTopHeight(id);
           const skyB = LIGHT_CURVE[sky]!;
           const blkB = LIGHT_CURVE[blk]!;
 
@@ -212,7 +213,8 @@ export function buildChunkMesh(neighbors: readonly Uint16Array[], tops: readonly
           const base = out.vertexCount;
           for (let k = 0; k < 4; k++) {
             const corner = face.corners[k]!;
-            out.positions.push(lx + corner[0], y + corner[1], lz + corner[2]);
+            // Flowing water stands lower than a full block: its top corners sit at its level (spec 25, slice 4).
+            out.positions.push(lx + corner[0], y + (corner[1] === 1 ? top : corner[1]), lz + corner[2]);
             const fu = FACE_UVS[k]!;
             out.uvs.push(fu[0] === 0 ? uv.u0 : uv.u1, fu[1] === 0 ? uv.v0 : uv.v1);
             const brightness = face.shade * AO_LEVELS[ao[k]! as 0 | 1 | 2 | 3];
