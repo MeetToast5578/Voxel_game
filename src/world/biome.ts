@@ -117,6 +117,11 @@ export function biomeAt(
 }
 
 export const BIOME_KEYS: BiomeKey[] = BIOMES.map((b) => b.key);
+
+/** The display name of a biome key, for the F3 overlay. */
+export function biomeName(key: string): string {
+  return BIOMES.find((b) => b.key === key)?.name ?? key;
+}
 export const BIOME_COUNT = BIOMES.length;
 
 /** The surface block for a biome. Beach columns always use SAND regardless of biome. */
@@ -133,13 +138,11 @@ export function soilBlock(biomeKey: BiomeKey): number {
 }
 
 /**
- * Blend two surface blocks based on a hash. Used for biome blending at borders:
- * when two adjacent columns have different biomes, the surface block dithers
- * between them based on a hash of the position.
+ * Picks `b` for a fraction `weightB` of the cells, and `a` for the rest, by a hash of the cell. The same cell always
+ * gets the same block. Used for biome borders: the weight falls off with the distance from the border.
  */
-export function blendSurfaceBlocks(a: number, b: number, wx: number, wz: number): number {
-  const r = hash2(1000, wx, wz);
-  return r < 0.5 ? a : b;
+export function blendSurfaceBlocks(a: number, b: number, wx: number, wz: number, weightB: number): number {
+  return hash2(1000, wx, wz) < weightB ? b : a;
 }
 
 /** The tree species that grows in a biome, or null if no trees grow there. */

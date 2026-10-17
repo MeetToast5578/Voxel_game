@@ -22,6 +22,10 @@ export interface DebugInfo {
   tickPending: number;
   randomTickRan: number;
   randomTickMs: number;
+  biome: string;
+  temperatureC: number;
+  precipitationMm: number;
+  weather: string;
   season: string;
   dayOfSeason: number;
   dayLengthMin: number;
@@ -54,6 +58,8 @@ export function formatDebugLines(info: DebugInfo): string[] {
     `Meters ${meters(x)} / ${meters(y)} / ${meters(z)}   Elevation ${meters(y - SEA_LEVEL)} m`,
     `Facing ${compassDirection(info.yaw)} (yaw ${info.yaw.toFixed(2)}, pitch ${info.pitch.toFixed(2)})`,
     `Target ${info.target ? `${info.targetName} @ ${info.target.join(' ')}` : 'none'}`,
+    `Biome ${info.biome}   Temperature ${info.temperatureC} °C   Rain ${info.precipitationMm} mm a year`,
+    `Season ${info.season}, day ${info.dayOfSeason}   Weather ${info.weather}`,
     `Selected ${info.selectedBlock}`,
     `On ground ${yes(info.onGround)}   Flying ${yes(info.flying)}`,
     `Chunks loaded ${info.loaded}  meshed ${info.meshed}  pending ${info.pendingGen}/${info.pendingMesh}`,

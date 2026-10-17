@@ -46,7 +46,7 @@ describe('trees', () => {
       );
       expect(outside).toEqual([]);
     }
-  });
+  }, 30_000); // every species at every anchor: taller trees take longer to build
   it('every log is connected to the trunk through logs', () => {
     for (const [ax, az] of ANCHORS) {
       const blocks = tree(ax, az);

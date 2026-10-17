@@ -56,12 +56,14 @@ Status key: **done** = in code and tested; **partial** = some of the item is in 
 - **Terrain after spec 22 and region simulation (spec 41).** Peaks are at most about 232 m. Check rivers, lakes and seams from a valley and from a ridge. Edits made in an existing save may float, because unedited ground regenerates.
 - **Look of the new rock and plants.** The limestone, slate, basalt, deepslate and mushroom textures were checked only as atlas code and in headless smoke, not by eye.
 
-## Open decisions (raise with the owner before changing)
+## Decided (owner approved, 2026-10-17)
 
-1. **Tree size.** The species table in `src/config.ts` is in blocks, and `treeBlocks` uses it as is. Oak is 16–24 blocks (4.8–7.2 m), spruce 20–32 blocks, and jungle giant 24–40 blocks. The README, spec 9, spec 10 and the phase 1b "done when" all say trees are 8–12 m, and the roadmap says a mature oak is 30–35 blocks. **Recommendation:** scale every species so its height matches the docs. This changes the trees in every world, so it needs the owner's yes.
-2. **Spec numbers.** Specs 31, 32 and 34 each have two files, and the commit messages reuse those numbers. Specs 27, 29 and 30 have no file, although commits cite 29 (calendar) and 30 (feature system). **Recommendation:** renumber the later duplicates (entity system, weather model, survival) to 42–44, and write short specs for 29 and 30.
-3. **Biome blending (spec 35).** Not wired. It needs a neighbour lookup in the generator, so it is a design choice as well as a fix.
-4. **F3 overlay.** Spec 34 and the roadmap ask for biome, temperature, humidity, season and weather. The overlay shows none of them.
+1. **Tree size.** Every species now sits inside the documented 8–12 m (27–40 blocks). Oak 27–40, spruce 30–40, birch 27–35, pine 30–40, jungle giant 36–40, acacia 27–32, dead snag 27–33. Bushes stay small. This changes the trees in every world.
+2. **Spec numbers.** The duplicates are renumbered: entity system is 42, weather model is 43, survival is 44. Specs 29 (calendar) and 30 (feature system) are written to match the code.
+3. **Biome borders.** Surface blocks dither into the neighbouring biome over `BIOME_BLEND_BLOCKS` (3) blocks from the border, with a weight that falls off with distance. Beaches and soil stay as they are.
+4. **F3 overlay.** Shows the biome, temperature, rain, season, day and weather at the player.
+
+Known limit: biomes are picked per 16×16 chunk column, so biome borders fall on 4.8 m grid lines. Blending softens them, but the terrain work should fix the grid itself.
 
 ## Decisions so far
 
@@ -191,7 +193,7 @@ See `docs/ROADMAP.md` for the phase list, and the "Open decisions" above for cho
 - **Cold column generation.** About 8.4 ms median in Node (last measured before region simulation; not re-measured).
 - **Spawn search.** `tests/spawn.test.ts` takes about 6 s for 30 seeds (about 200 ms per seed), so it needs its explicit timeout.
 - **Region simulation.** About 162 ms per region on seed 1337 (spec 41). Not re-measured.
-- **Biomes.** Blending across borders is not wired (see Open decisions 3). Flowers by biome, reeds and boulders are open.
+- **Biomes.** Biomes are chunk-column-sized (4.8 m), so borders are on a grid. Flowers by biome, reeds and boulders are open.
 - **Sky and weather.** No moon phases; stars do not rotate; no wet darkening; no morning valley fog; no seasonal foliage.
 - **Living world.** Snow, crops, saplings, fluid levels, currents and catch-up are open. Sandbox physics slices 2–6 are open.
 - **Entities.** Not used by the game yet. No creatures.

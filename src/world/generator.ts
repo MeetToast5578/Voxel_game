@@ -5,6 +5,7 @@ import {
   BLOCK_SIZE_M,
   CAVE_SCALE_H_M,
   CAVE_SCALE_V_M,
+  BIOME_BLEND_BLOCKS,
   CHUNK_SIZE,
   GEOLOGY_LAYER_M,
   GEOLOGY_WARP_M,
@@ -37,13 +38,38 @@ import { TerrainDensity } from './density';
 import { ClimateSampler, detailAmpMeters } from './shape';
 import { blockPrecipitation, blockTemperature } from './climate';
 import { FeatureRegistry, type FeatureBlock } from './feature';
-import { biomeAt, soilBlock, surfaceBlock, treeSpecies } from './biome';
+import { biomeAt, biomeName, blendSurfaceBlocks, soilBlock, surfaceBlock, treeSpecies } from './biome';
 import { climateHeightSource, RegionSampler, REGION_CELLS, type ColumnSample, type RegionData } from './region';
 import { MAX_TREE_RISE, treeBlocks } from './trees';
 
 const CAVE_THRESHOLD = 0.012;
 /** The column cache is only a cache, so clearing it never changes a result. */
 const COLUMN_CACHE_LIMIT = 2048;
+
+/** A neighbouring chunk column (one step in x or z) and its biome. */
+interface BiomeNeighbour {
+  dx: number;
+  dz: number;
+  key: string;
+}
+
+/**
+ * The surface block of a column, dithered toward the nearest neighbouring biome within BIOME_BLEND_BLOCKS of its border.
+ * The weight is highest at the border and falls to nothing at BIOME_BLEND_BLOCKS in. Each cell's choice depends only on
+ * its own biome, its distance to the border, and a hash of the cell, so chunks agree across their borders.
+ */
+function ditheredSurface(own: string, neighbours: readonly BiomeNeighbour[], lx: number, lz: number, wx: number, wz: number): number {
+  const ownBlock = surfaceBlock(own, false);
+  let nearest: { dist: number; key: string } | null = null;
+  for (const n of neighbours) {
+    if (n.key === own) continue;
+    const dist = n.dx < 0 ? lx : n.dx > 0 ? CHUNK_SIZE - 1 - lx : n.dz < 0 ? lz : CHUNK_SIZE - 1 - lz;
+    if (dist < BIOME_BLEND_BLOCKS && (!nearest || dist < nearest.dist)) nearest = { dist, key: n.key };
+  }
+  if (!nearest) return ownBlock;
+  const weight = (BIOME_BLEND_BLOCKS - nearest.dist) / (2 * BIOME_BLEND_BLOCKS);
+  return blendSurfaceBlocks(ownBlock, surfaceBlock(nearest.key, false), wx, wz, weight);
+}
 /** Rock types of the strata, in layer order (the layer index wraps around this list). */
 const ROCKS = [
   BlockId.GRANITE, BlockId.DIORITE, BlockId.ANDESITE, BlockId.SANDSTONE, BlockId.LIMESTONE, BlockId.SLATE, BlockId.BASALT,
@@ -98,6 +124,8 @@ export class TerrainGenerator {
   private readonly caveNoiseA: NoiseFunction3D;
   private readonly caveNoiseB: NoiseFunction3D;
   private readonly columnCache = new Map<string, Column>();
+  /** The biome of each chunk column, from its centre. Cheaper than a whole column, so neighbours can be asked. */
+  private readonly chunkBiomes = new Map<string, string>();
   /** Feature registry: trees and later biomes register here. */
   private readonly featureRegistry = new FeatureRegistry();
   /** Callback when a grass block is placed during generation. Used to schedule grass-spread ticks. */
@@ -127,6 +155,18 @@ export class TerrainGenerator {
     const cx = floorDiv(wx, CHUNK_SIZE);
     const cz = floorDiv(wz, CHUNK_SIZE);
     return this.column(cx, cz).solidTop[columnIndex(wx - cx * CHUNK_SIZE, wz - cz * CHUNK_SIZE)]!;
+  }
+
+  /** Climate at a block, for the F3 overlay: temperature (°C), precipitation (mm a year) and the biome's name. */
+  climateAt(wx: number, wy: number, wz: number): { temperatureC: number; precipitationMm: number; biome: string } {
+    const fields = this.climate.fields(wx * BLOCK_SIZE_M, wz * BLOCK_SIZE_M);
+    const sample = this.regions.sample(wx, wz);
+    const amp = detailAmpMeters(fields) * (sample.isRiver ? 0.2 : sample.isLake ? 0.35 : 1);
+    return {
+      temperatureC: blockTemperature(fields, wy * BLOCK_SIZE_M),
+      precipitationMm: blockPrecipitation(fields, amp, sample.moisture),
+      biome: biomeName(this.biomeKeyAt(wx, wz)),
+    };
   }
 
   /** The biome key of the column that contains (wx, wz). */
@@ -212,6 +252,12 @@ export class TerrainGenerator {
       return;
     }
     const column = this.column(cx, cz);
+    const neighbours: BiomeNeighbour[] = [
+      { dx: -1, dz: 0, key: this.chunkBiome(cx - 1, cz) },
+      { dx: 1, dz: 0, key: this.chunkBiome(cx + 1, cz) },
+      { dx: 0, dz: -1, key: this.chunkBiome(cx, cz - 1) },
+      { dx: 0, dz: 1, key: this.chunkBiome(cx, cz + 1) },
+    ];
 
     for (let lz = 0; lz < CHUNK_SIZE; lz++) {
       for (let lx = 0; lx < CHUNK_SIZE; lx++) {
@@ -226,7 +272,7 @@ export class TerrainGenerator {
         const wx = cx * CHUNK_SIZE + lx;
         const wz = cz * CHUNK_SIZE + lz;
         const inSlice = h + 1 >= y0 && h + 1 < y1; // the plant cell is in this range
-        const surface = soil ? (beach ? BlockId.SAND : surfaceBlock(column.biomeKey, beach)) : BlockId.AIR;
+        const surface = soil ? (beach ? BlockId.SAND : ditheredSurface(column.biomeKey, neighbours, lx, lz, wx, wz)) : BlockId.AIR;
         // Plants only grow on grass, so beaches, deserts and bare rock stay bare.
         const plant = surface === BlockId.GRASS && inSlice ? this.plantAt(wx, wz, h) : BlockId.AIR;
         // Water level: the sea, or a lake or river surface from the region simulation. A riverbed
@@ -297,25 +343,39 @@ export class TerrainGenerator {
         column.waterLevels[i] = sample.waterLevelM;
         column.solidTop[i] = this.solidTop(wx, wz, column.offsets[i]!, column.amps[i]!);
       }
-    // Compute biome at column center, from real temperature and precipitation (not the raw [-1,1]
-    // fields). Precipitation comes from the region's advected moisture, so deserts sit in the rain
-    // shadow behind a range instead of wherever the humidity noise happens to be low.
-    const cxM = (cx * CHUNK_SIZE + 8) * BLOCK_SIZE_M;
-    const czM = (cz * CHUNK_SIZE + 8) * BLOCK_SIZE_M;
-    const centerFields = this.climate.fields(cxM, czM);
-    const centerHeight = column.offsets[columnIndex(8, 8)]!;
-    const centerAmp = column.amps[columnIndex(8, 8)]!;
-    const centerMoisture = this.regions.sample(cx * CHUNK_SIZE + 8, cz * CHUNK_SIZE + 8).moisture;
-    column.biomeKey = biomeAt(
-      blockTemperature(centerFields, centerHeight),
-      blockPrecipitation(centerFields, centerAmp, centerMoisture),
-      centerHeight,
-      centerAmp,
-      false,
-      centerFields.weirdness,
-    ).key;
+    column.biomeKey = this.chunkBiome(cx, cz);
     this.columnCache.set(key, column);
     return column;
+  }
+
+  /**
+   * The biome of chunk column (cx, cz), from real temperature and precipitation (not the raw [-1,1] fields). Precipitation
+   * comes from the region's advected moisture, so deserts sit in the rain shadow behind a range instead of wherever the
+   * humidity noise happens to be low. Only the centre is sampled, so a neighbour's biome is cheap to ask for.
+   */
+  private chunkBiome(cx: number, cz: number): string {
+    const key = columnKey(cx, cz);
+    const cached = this.chunkBiomes.get(key);
+    if (cached !== undefined) return cached;
+    if (this.chunkBiomes.size >= COLUMN_CACHE_LIMIT) this.chunkBiomes.clear();
+    const cxM = (cx * CHUNK_SIZE + 8) * BLOCK_SIZE_M;
+    const czM = (cz * CHUNK_SIZE + 8) * BLOCK_SIZE_M;
+    const fields = this.climate.fields(cxM, czM);
+    const sample = this.regions.sample(cx * CHUNK_SIZE + 8, cz * CHUNK_SIZE + 8);
+    const height = sample.offsetM;
+    // Rivers and lakes damp the detail noise, as in the column data (see column()).
+    const amp = detailAmpMeters(fields) * (sample.isRiver ? 0.2 : sample.isLake ? 0.35 : 1);
+    const moisture = sample.moisture;
+    const biome = biomeAt(
+      blockTemperature(fields, height),
+      blockPrecipitation(fields, amp, moisture),
+      height,
+      amp,
+      false,
+      fields.weirdness,
+    ).key;
+    this.chunkBiomes.set(key, biome);
+    return biome;
   }
 
   /** The region simulation's view of one column: rivers, lakes and moisture. */

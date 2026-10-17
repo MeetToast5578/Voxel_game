@@ -217,8 +217,12 @@ const CHECKS = [
   {
     name: 'pick block puts the targeted block into the hotbar',
     run: async (page) => {
-      // After the reload and the swim, the ground under the player may still be loading: wait for it, or the look-down finds air.
+      // The break check leaves a one-block hole under the player. The player is 1.6 blocks wide, so it rests on the edge
+      // of the hole, and looking down finds nothing. Stand a few blocks away on solid ground instead.
+      const p = await page.evaluate(() => window.__game.state().position);
+      await page.evaluate(([x, y, z]) => window.__game.teleport(x + 4, y + 2, z), p);
       await page.waitForFunction(() => window.__game.state().areaMeshed, null, { timeout: 60_000 });
+      await page.waitForTimeout(500);
       await page.evaluate(() => window.__game.look(0, -Math.PI / 2 + 0.01)); // straight down
       await page.waitForTimeout(300);
       const s = await page.evaluate(() => window.__game.state());

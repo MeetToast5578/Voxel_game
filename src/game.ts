@@ -862,6 +862,21 @@ export class Game {
     };
   }
 
+  /** Biome, temperature, rain and weather at the player, for the F3 overlay. */
+  private climateDebug() {
+    const p = this.player;
+    const c = this.world.isLoadedAt(Math.floor(p.position.x), Math.floor(p.position.y), Math.floor(p.position.z))
+      ? this.generator.climateAt(Math.floor(p.position.x), Math.floor(p.position.y), Math.floor(p.position.z))
+      : null;
+    const w = this.weather.sample(p.position.x, p.position.z, this.timeOfDay, this.calendar.timeOfYear, p.position.y * BLOCK_SIZE_M);
+    return {
+      biome: c?.biome ?? 'unknown',
+      temperatureC: c ? Math.round(c.temperatureC * 10) / 10 : 0,
+      precipitationMm: c ? Math.round(c.precipitationMm) : 0,
+      weather: `${w.precipitation}${w.isStorm ? ', storm' : ''}`,
+    };
+  }
+
   debugState() {
     const p = this.player;
     const round = (v: number) => Math.round(v * 100) / 100;
@@ -879,6 +894,7 @@ export class Game {
       timeOfDay: Math.round(this.timeOfDay * 1000) / 1000,
       season: this.calendar.season,
       dayOfSeason: this.calendar.day,
+      ...this.climateDebug(),
       dayLengthMin: Math.round(this.calendar.dayLengthMin),
       gameMode: this.gameMode,
       health: this.health,

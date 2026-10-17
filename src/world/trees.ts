@@ -42,9 +42,10 @@ export function treeBlocks(seed: number, ax: number, ground: number, az: number,
   const crownRy = Math.max(1, Math.min(Math.ceil((height - crownBase) / 2), Math.floor(height / 2)));
 
   // Keys are relative to the ground block. A log overwrites a leaf in the same cell; a leaf never overwrites one.
-  const cells = new Map<string, TreeBlock>();
+  // Cells are keyed by a number, not a string: this runs for every block of every tree, and a string key is slow.
+  const cells = new Map<number, TreeBlock>();
   const put = (dx: number, dy: number, dz: number, id: number) => {
-    const key = `${dx},${dy},${dz}`;
+    const key = ((dy + 128) * 256 + (dz + 128)) * 256 + (dx + 128);
     if (id === BlockId.LEAVES && cells.has(key)) return;
     cells.set(key, { x: ax + dx, y: ground + dy, z: az + dz, id });
   };

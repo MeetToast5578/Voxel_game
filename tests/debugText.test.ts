@@ -15,10 +15,12 @@ describe('debugText', () => {
     const info: DebugInfo = {
       fps: 60, seed: 1, position: [12.345, 65, -3.2], yaw: 0, pitch: -0.1, onGround: true, flying: false,
       target: [12, 64, -4], targetName: 'Stone', selectedBlock: 'Dirt',
-      loaded: 197, meshed: 113, pendingGen: 0, pendingMesh: 2, columns: 81, jobsInFlight: 5, tickRan: 0, tickPending: 0, randomTickRan: 0, randomTickMs: 0, season: 'spring', dayOfSeason: 1, dayLengthMin: 720, renderDistance: 6,
+      loaded: 197, meshed: 113, pendingGen: 0, pendingMesh: 2, columns: 81, jobsInFlight: 5, tickRan: 0, tickPending: 0, randomTickRan: 0, randomTickMs: 0, biome: 'Plains', temperatureC: 12.3, precipitationMm: 640, weather: 'rain', season: 'spring', dayOfSeason: 1, dayLengthMin: 720, renderDistance: 6,
     };
     const lines = formatDebugLines(info);
     expect(lines[0]).toBe('FPS 60');
+    expect(lines).toContain('Biome Plains   Temperature 12.3 °C   Rain 640 mm a year');
+    expect(lines).toContain('Season spring, day 1   Weather rain');
     expect(lines[1]).toBe('XYZ 12.35 / 65.00 / -3.20');
     expect(lines[2]).toBe('Block 12 65 -4   Chunk 0, 4, -1');
     // elevation is (y - SEA_LEVEL) * BLOCK_SIZE_M, so it depends on the sea level in config

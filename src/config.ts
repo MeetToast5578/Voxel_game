@@ -270,6 +270,9 @@ export const RANDOM_TICK_BUDGET_MS = 1; // max time per frame spent on the rando
 export const GRASS_SPREAD_CHANCE = 0.02; // chance per tick that grass spreads to adjacent lit dirt
 export const GRASS_SPREAD_LIGHT_MIN = 8; // minimum sky light level for grass to spread
 
+// ---- Biome borders (spec 35) ----
+export const BIOME_BLEND_BLOCKS = 3; // surface blocks dither into the next biome over this many blocks from its border
+
 // ---- Tree species (spec 37) ----
 export type TreeSpecies = 'oak' | 'spruce' | 'birch' | 'pine' | 'jungle_giant' | 'acacia' | 'dead_snag' | 'bush';
 
@@ -291,8 +294,8 @@ export const TREE_SPECIES: TreeSpeciesDef[] = [
     key: 'oak',
     name: 'Oak',
     trunkWidth: 2,
-    heightMinBlocks: 16,
-    heightMaxBlocks: 24,
+    heightMinBlocks: 27,
+    heightMaxBlocks: 40,
     branchMinBlocks: 2,
     branchMaxBlocks: 4,
     blobRadiusBlocks: 4,
@@ -303,8 +306,8 @@ export const TREE_SPECIES: TreeSpeciesDef[] = [
     key: 'spruce',
     name: 'Spruce',
     trunkWidth: 1,
-    heightMinBlocks: 20,
-    heightMaxBlocks: 32,
+    heightMinBlocks: 30,
+    heightMaxBlocks: 40,
     branchMinBlocks: 1,
     branchMaxBlocks: 3,
     blobRadiusBlocks: 3,
@@ -315,8 +318,8 @@ export const TREE_SPECIES: TreeSpeciesDef[] = [
     key: 'birch',
     name: 'Birch',
     trunkWidth: 1,
-    heightMinBlocks: 14,
-    heightMaxBlocks: 20,
+    heightMinBlocks: 27,
+    heightMaxBlocks: 35,
     branchMinBlocks: 2,
     branchMaxBlocks: 3,
     blobRadiusBlocks: 3,
@@ -327,8 +330,8 @@ export const TREE_SPECIES: TreeSpeciesDef[] = [
     key: 'pine',
     name: 'Pine',
     trunkWidth: 1,
-    heightMinBlocks: 18,
-    heightMaxBlocks: 28,
+    heightMinBlocks: 30,
+    heightMaxBlocks: 40,
     branchMinBlocks: 1,
     branchMaxBlocks: 2,
     blobRadiusBlocks: 2,
@@ -339,7 +342,7 @@ export const TREE_SPECIES: TreeSpeciesDef[] = [
     key: 'jungle_giant',
     name: 'Jungle Giant',
     trunkWidth: 2,
-    heightMinBlocks: 24,
+    heightMinBlocks: 36,
     heightMaxBlocks: 40,
     branchMinBlocks: 3,
     branchMaxBlocks: 6,
@@ -351,8 +354,8 @@ export const TREE_SPECIES: TreeSpeciesDef[] = [
     key: 'acacia',
     name: 'Acacia',
     trunkWidth: 1,
-    heightMinBlocks: 12,
-    heightMaxBlocks: 18,
+    heightMinBlocks: 27,
+    heightMaxBlocks: 32,
     branchMinBlocks: 2,
     branchMaxBlocks: 4,
     blobRadiusBlocks: 4,
@@ -363,8 +366,8 @@ export const TREE_SPECIES: TreeSpeciesDef[] = [
     key: 'dead_snag',
     name: 'Dead Snag',
     trunkWidth: 1,
-    heightMinBlocks: 8,
-    heightMaxBlocks: 16,
+    heightMinBlocks: 27,
+    heightMaxBlocks: 33,
     branchMinBlocks: 0,
     branchMaxBlocks: 2,
     blobRadiusBlocks: 0,

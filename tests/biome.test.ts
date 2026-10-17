@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { biomeAt, BIOME_COUNT, BIOME_KEYS } from '../src/world/biome';
+import { biomeAt, BIOME_COUNT, BIOME_KEYS, blendSurfaceBlocks } from '../src/world/biome';
 
 function expectBiome(
   temperatureC: number,
@@ -101,5 +101,19 @@ describe('BIOME_COUNT and BIOME_KEYS', () => {
       expect(typeof key).toBe('string');
       expect(key.length).toBeGreaterThan(0);
     }
+  });
+});
+
+describe('biome border blending (spec 35)', () => {
+  it('picks the second block for the weight given, by a hash of the cell', () => {
+    const a = 1;
+    const b = 2;
+    let picked = 0;
+    for (let x = 0; x < 100; x++) for (let z = 0; z < 100; z++) if (blendSurfaceBlocks(a, b, x, z, 0.25) === b) picked++;
+    expect(picked / 10000).toBeGreaterThan(0.2);
+    expect(picked / 10000).toBeLessThan(0.3);
+    expect(blendSurfaceBlocks(a, b, 3, 4, 0)).toBe(a);
+    expect(blendSurfaceBlocks(a, b, 3, 4, 1)).toBe(b);
+    expect(blendSurfaceBlocks(a, b, 3, 4, 0.25)).toBe(blendSurfaceBlocks(a, b, 3, 4, 0.25)); // deterministic
   });
 });
