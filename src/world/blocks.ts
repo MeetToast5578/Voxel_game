@@ -127,19 +127,24 @@ export interface BlockDef {
   flows: boolean;
   /** Physics rule (spec 25): the block holds up the block above it. Defaults to solid. */
   supports: boolean;
+  /** Mass per cubic metre, in kg, for a loose body of this block (spec 25, slice 6). */
+  density: number;
 }
 
 /** What a registry is built from: a type without its assigned first state or derived flags. */
-export type BlockTypeDef = Omit<BlockDef, 'id' | 'blocksSky' | 'shape' | 'hardness' | 'falls' | 'flows' | 'supports'> & {
+export type BlockTypeDef = Omit<BlockDef, 'id' | 'blocksSky' | 'shape' | 'hardness' | 'falls' | 'flows' | 'supports' | 'density'> & {
   shape?: BlockShape;
   hardness?: number;
   falls?: boolean;
   flows?: boolean;
   supports?: boolean;
+  density?: number;
 };
 
 /** Seconds to break a block by hand when its type does not say otherwise: stone-like. */
 export const DEFAULT_HARDNESS = 1.5;
+/** Mass per cubic metre, in kg, when a block type does not say otherwise. */
+export const DEFAULT_DENSITY = 2000;
 
 /** Block states are stored in 16-bit arrays. */
 export const MAX_BLOCK_STATES = 0xffff;
@@ -202,6 +207,7 @@ export function buildBlockRegistry(defs: readonly BlockTypeDef[]): BlockRegistry
       falls: d.falls ?? false,
       flows: d.flows ?? false,
       supports: d.supports ?? d.solid,
+      density: d.density ?? DEFAULT_DENSITY,
     };
     const index = types.length;
     types.push(type);
@@ -285,16 +291,16 @@ export const FLOWING_WATER_VARIANTS = 2 * WATER_LEVELS;
 /** The game's block registry. Registration order fixes the state numbers: append new types at the end. */
 export const BLOCK_REGISTRY = buildBlockRegistry([
   def('air', 'Air', all(0), { solid: false, opaque: false, targetable: false, breakable: false, layer: 'none' }),
-  def('stone', 'Stone', all(Tile.STONE)),
-  def('dirt', 'Dirt', all(Tile.DIRT), { hardness: 0.5 }),
-  def('grass', 'Grass', { top: Tile.GRASS_TOP, side: Tile.GRASS_SIDE, bottom: Tile.DIRT }, { hardness: 0.5 }),
-  def('sand', 'Sand', all(Tile.SAND), { hardness: 0.5, falls: true }),
+  def('stone', 'Stone', all(Tile.STONE), { density: 2600 }),
+  def('dirt', 'Dirt', all(Tile.DIRT), { hardness: 0.5, density: 1300 }),
+  def('grass', 'Grass', { top: Tile.GRASS_TOP, side: Tile.GRASS_SIDE, bottom: Tile.DIRT }, { hardness: 0.5, density: 1300 }),
+  def('sand', 'Sand', all(Tile.SAND), { hardness: 0.5, falls: true, density: 1600 }),
   def('water', 'Water', all(Tile.WATER), {
     solid: false, opaque: false, targetable: false, breakable: false, cullSame: true, layer: 'translucent',
   }),
-  def('log', 'Log', { top: Tile.LOG_TOP, side: Tile.LOG_SIDE, bottom: Tile.LOG_TOP }, { hardness: 2 }),
-  def('leaves', 'Leaves', all(Tile.LEAVES), { opaque: false, layer: 'cutout', hardness: 0.3, supports: false }),
-  def('planks', 'Planks', all(Tile.PLANKS), { hardness: 2 }),
+  def('log', 'Log', { top: Tile.LOG_TOP, side: Tile.LOG_SIDE, bottom: Tile.LOG_TOP }, { hardness: 2, density: 600 }),
+  def('leaves', 'Leaves', all(Tile.LEAVES), { opaque: false, layer: 'cutout', hardness: 0.3, supports: false, density: 300 }),
+  def('planks', 'Planks', all(Tile.PLANKS), { hardness: 2, density: 600 }),
   def('glass', 'Glass', all(Tile.GLASS), { opaque: false, cullSame: true, layer: 'cutout', hardness: 0.3 }),
   def('bedrock', 'Bedrock', all(Tile.BEDROCK), { breakable: false }),
   def('cobblestone', 'Cobblestone', all(Tile.COBBLESTONE)),
@@ -321,7 +327,7 @@ export const BLOCK_REGISTRY = buildBlockRegistry([
   def('diamond_ore', 'Diamond ore', all(Tile.DIAMOND_ORE), { hardness: 4 }),
   def('emerald_ore', 'Emerald ore', all(Tile.EMERALD_ORE), { hardness: 4 }),
   def('lapis_ore', 'Lapis ore', all(Tile.LAPIS_ORE), { hardness: 3 }),
-  def('gravel', 'Gravel', all(Tile.GRAVEL), { hardness: 0.6, falls: true }),
+  def('gravel', 'Gravel', all(Tile.GRAVEL), { hardness: 0.6, falls: true, density: 1900 }),
   // Water that flows (spec 25, slice 4): 8 levels, each with a falling flag. The source block is 'water'.
   def('flowing_water', 'Flowing water', all(Tile.WATER), {
     variants: FLOWING_WATER_VARIANTS, solid: false, opaque: false, targetable: false, breakable: false, cullSame: true,

@@ -100,6 +100,20 @@ describe('structural collapse (spec 25, slice 5)', () => {
     expect(world.getBlock(3, 5, 4)).toBe(BlockId.TALL_GRASS);
   });
 
+  it('a collapse of two or more blocks queues them as tumbling bodies, and a single block as an item', () => {
+    const world = stacked();
+    build(world, [
+      [5, 10, 4, BlockId.STONE],
+      [5, 10, 5, BlockId.STONE],
+    ]);
+    expect(handleSupport(world, { x: 5, y: 10, z: 4, dueTick: 0, reason: SUPPORT_REASON })).toBe('handled');
+    expect(world.takeDrops().map((d) => d.body)).toEqual([true, true]);
+    build(world, [[12, 10, 12, BlockId.STONE]]);
+    remove(world, 11, 10, 12);
+    settle(world);
+    expect(world.takeDrops().map((d) => d.body)).toEqual([false]);
+  });
+
   it('a closed group in the air drops every block when a neighbour is removed', () => {
     const world = stacked();
     build(world, [

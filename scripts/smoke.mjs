@@ -400,6 +400,43 @@ const CHECKS = [
     },
   },
   {
+    name: 'physics: sand falls, water flows, and a broken stack tumbles',
+    run: async (page) => {
+      const waitMeshed = () => page.waitForFunction(() => window.__game.state().areaMeshed, null, { timeout: 60_000 });
+      const start = await page.evaluate(() => window.__game.state());
+      const [x, z] = [Math.floor(start.position[0]), Math.floor(start.position[2])];
+      const y = 8390; // the clean area the volume check uses
+      await page.evaluate(([x, z, y]) => {
+        window.__game.setFlying(true);
+        window.__game.teleport(x + 0.5, y + 10, z + 0.5);
+      }, [x, z, y]);
+      await waitMeshed();
+      // A stone floor, with sand above one cell, water at another, and a stack of two stone blocks on a third.
+      await page.evaluate(([x, z, y]) => {
+        for (let i = -4; i <= 4; i++) for (let j = -4; j <= 4; j++) window.__game.setBlock(x + i, y, z + j, 1);
+        window.__game.setBlock(x + 1, y + 5, z + 1, 4); // sand, in the air
+        window.__game.setBlock(x - 2, y + 1, z - 2, 5); // a water source on the floor
+        window.__game.setBlock(x + 2, y + 1, z - 2, 1); // stack: bottom block
+        window.__game.setBlock(x + 2, y + 2, z - 2, 1);
+        window.__game.setBlock(x + 2, y + 3, z - 2, 1);
+      }, [x, z, y]);
+      await page.waitForFunction(([x, z, y]) => window.__game.getBlock(x + 1, y + 1, z + 1) === 4, [x, z, y], { timeout: 20_000 });
+      const water = await page.evaluate(([x, z, y]) => window.__game.getBlock(x - 1, y + 1, z - 2), [x, z, y]);
+      if (water < 36 || water >= 52) throw new Error(`water beside the source should flow (a flowing water state, 36 to 51), found ${water}`);
+      // Break the bottom of the stack: the two blocks above lose their support and tumble.
+      await page.evaluate(([x, z, y]) => window.__game.setBlock(x + 2, y + 1, z - 2, 0), [x, z, y]);
+      await page.waitForFunction(() => window.__game.state().looseBodies > 0, null, { timeout: 5_000 });
+      await page.waitForFunction(() => window.__game.state().looseBodies === 0, null, { timeout: 30_000 });
+      await page.evaluate(([x, z, y, p]) => {
+        for (let i = -4; i <= 4; i++) for (let j = -4; j <= 4; j++) for (let k = 0; k <= 12; k++) window.__game.setBlock(x + i, y + k, z + j, 0);
+        window.__game.setTool({ mode: 'single' });
+        window.__game.setFlying(false);
+        window.__game.teleport(p[0], p[1], p[2]);
+      }, [x, z, y, start.position]);
+      await waitMeshed();
+    },
+  },
+  {
     name: 'the build tool panel shows every setting, in single-block mode as well',
     run: async (page) => {
       const panel = () => page.evaluate(() => document.querySelector('.tool-panel')?.textContent ?? '');
@@ -488,7 +525,9 @@ try {
   await page.screenshot({ path: 'screenshots/smoke.png' });
   console.log('saved screenshots/smoke.png');
 
-  for (const check of CHECKS) {
+  // SMOKE_ONLY=text runs only the checks whose name contains the text (for debugging one check).
+  const only = process.env.SMOKE_ONLY;
+  for (const check of CHECKS.filter((c) => !only || c.name.includes(only))) {
     await check.run(page);
     console.log(`check passed: ${check.name}`);
   }

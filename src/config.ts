@@ -245,6 +245,16 @@ export const TICK_BUDGET_MS = 2; // max time per frame spent running chunk ticks
 export const SUPPORT_RADIUS_BLOCKS = 4; // a support check looks this far from the removed block; a group reaching the edge is held up
 export const SUPPORT_NODE_LIMIT = 512; // a group larger than this is treated as supported, so a check stays bounded
 
+// ---- Loose rigid bodies (spec 25, slice 6) ----
+export const LOOSE_BODY_MIN_GROUP = 2; // a collapse of at least this many blocks makes tumbling bodies instead of items
+export const LOOSE_BODY_CAP = 48; // at most this many bodies at once; a block beyond that drops as an item
+export const LOOSE_BODY_MAX_S = 20; // a body still moving after this long settles where it is
+export const LOOSE_BODY_REST_S = 0.25; // a body this slow on the ground for this long settles
+export const LOOSE_BODY_REST_SPEED_M_S = 0.015; // slower than this on the ground counts as at rest
+export const LOOSE_BODY_WATER_DRAG = 3; // per second: how quickly a submerged body loses speed
+export const LOOSE_BODY_FRICTION = 1.5; // per second: a body on the ground slides a while (dropped items stop at once, ITEM_FRICTION)
+export const LOOSE_BODY_SPIN_RATE = 4; // radians per second: how fast a tumbling body spins after it breaks free
+
 // ---- Entity system (spec 31) ----
 export const ENTITY_FRICTION = 8; // per second: how fast an entity slows down on the ground
 

@@ -36,6 +36,8 @@ export interface DroppedBlock {
   x: number;
   y: number;
   z: number;
+  /** True when the block was part of a big enough collapse to tumble as a loose body (spec 25, slice 6). */
+  body: boolean;
 }
 
 export class World {
@@ -351,8 +353,8 @@ export class World {
   }
 
   /** Queues a block the physics broke (a collapse), for the game to spawn as an item. */
-  queueDrop(id: number, x: number, y: number, z: number): void {
-    this.droppedBlocks.push({ id, x, y, z });
+  queueDrop(id: number, x: number, y: number, z: number, body = false): void {
+    this.droppedBlocks.push({ id, x, y, z, body });
   }
 
   /** Returns and clears the blocks the physics broke since the last call. */

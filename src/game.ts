@@ -10,6 +10,7 @@ import { FixedStepLoop } from './core/loop';
 import { Input } from './input/input';
 import type { GameOptions } from './options';
 import { ItemEntities } from './items/itemEntities';
+import { LooseBodies } from './items/looseBodies';
 import { BlockBreaking } from './player/breaking';
 import { BuildTool, cornerFor, frameFor } from './player/buildTool';
 import { Inventory, type ItemStack } from './player/inventory';
@@ -23,6 +24,7 @@ import { Clouds } from './render/clouds';
 import { HeldBlock } from './render/heldBlock';
 import { BlockHighlight, BreakOverlay } from './render/highlight';
 import { ItemMeshes } from './render/itemMeshes';
+import { BodyMeshes } from './render/bodyMeshes';
 import { Renderer } from './render/renderer';
 import { Sky } from './render/sky';
 import { WeatherRenderer } from './render/weather';
@@ -41,6 +43,7 @@ import { BlockId, getBlockDef, isSolid, isWaterState } from './world/blocks';
 import { scheduleLeafDecay } from './world/ecology';
 import { scheduleFallChecks } from './world/falling';
 import { scheduleFlowChecks } from './world/flow';
+import type { LooseBody } from './items/looseBodies';
 import { collapsible, scheduleSupportChecks } from './world/collapse';
 import { Chunk } from './world/chunk';
 import { ChunkManager } from './world/chunkManager';
@@ -77,9 +80,12 @@ export class Game {
   readonly player = new Player();
   inventory = new Inventory();
   readonly items = new ItemEntities();
+  /** Blocks that broke free of a big collapse and tumble until they settle (spec 25, slice 6). */
+  readonly bodies = new LooseBodies();
   private readonly breaking = new BlockBreaking();
   private readonly held: HeldBlock;
   private readonly itemMeshes: ItemMeshes;
+  private readonly bodyMeshes: BodyMeshes;
   private readonly breakOverlay: BreakOverlay;
   private readonly inventoryScreen: InventoryScreen;
   /** Seconds since the game started; drives the spin and bob of dropped items. */
@@ -184,6 +190,7 @@ export class Game {
     this.meshes = new ChunkMeshes(this.renderer.scene, this.renderer.solidMaterial, this.renderer.waterMaterial);
     this.held = new HeldBlock(this.renderer.camera, this.renderer.itemMaterial);
     this.itemMeshes = new ItemMeshes(this.renderer.scene, this.renderer.itemMaterial);
+    this.bodyMeshes = new BodyMeshes(this.renderer.scene, this.renderer.itemMaterial);
     this.usingWorkers = options.workers && typeof Worker !== 'undefined';
     const workerCount = Math.max(1, Math.min(4, (navigator.hardwareConcurrency || 2) - 1));
     const jobs = this.usingWorkers ? new WorkerPool(seed, workerCount) : null;
@@ -261,6 +268,9 @@ export class Game {
     this.timeOfDay = (this.timeOfDay + dt / DAY_LENGTH_S) % 1;
     this.player.update(dt, this.playing ? this.readControls() : NO_CONTROLS, this.isSolidAt, this.isWaterAt);
     this.items.step(dt, this.isSolidAt);
+    for (const body of this.bodies.step(dt, this.isSolidAt, this.isWaterAt, (state) => getBlockDef(state).density)) {
+      this.settleBody(body);
+    }
     this.edits.step();
     this.spawnBrokenBlocks();
     this.collectItems();
@@ -362,7 +372,11 @@ export class Game {
       player: { x: p.position.x, y: p.position.y, z: p.position.z, yaw: p.yaw, pitch: p.pitch, flying: p.flying },
       selectedSlot: this.inventory.selected,
       inventory: this.inventory.slots.map((s) => (s ? { ...s } : null)),
-      items: this.items.snapshot(),
+      // Bodies are not saved: each one still tumbling is saved as a dropped item where it is, and the live body goes on.
+      items: [
+        ...this.items.snapshot(),
+        ...this.bodies.bodies.map((b) => ({ state: b.state, count: 1, x: b.x, y: b.y, z: b.z })),
+      ],
       timeOfDay: this.timeOfDay,
       timeOfYear: this.calendar.timeOfYear,
       gameMode: this.gameMode,
@@ -419,6 +433,7 @@ export class Game {
     this.updateTarget(eye, look);
     if (this.playing && this.ready && !this.inventoryScreen.isOpen) this.handleBlockActions(frameDt, eye, look);
     this.itemMeshes.sync(this.items.items, this.clockS);
+    this.bodyMeshes.sync(this.bodies.bodies);
     this.breakOverlay.update(this.breaking.target, this.breaking.stage);
     const walking = this.player.onGround ? Math.min(1, Math.hypot(this.player.velocity.x, this.player.velocity.z) / WALK_SPEED) : 0;
     this.held.setState(this.inventory.selectedBlock);
@@ -529,12 +544,31 @@ export class Game {
     return ok;
   }
 
-  /** Blocks the physics broke (a collapse) drop as items, as a player's break does. */
+  /**
+   * Blocks the physics broke: a big collapse makes them tumbling bodies, and anything else drops as an item, as a
+   * player's break does. Past the body cap, a block drops as an item.
+   */
   private spawnBrokenBlocks(): void {
     for (const d of this.world.takeDrops()) {
-      this.items.spawn(d.id, 1, d.x + 0.5, d.y + (1 - ITEM_SIZE) / 2, d.z + 0.5, Math.random);
+      if (d.body && this.bodies.canAdd) this.bodies.spawn(d.id, d.x + 0.5, d.y, d.z + 0.5, Math.random);
+      else this.items.spawn(d.id, 1, d.x + 0.5, d.y + (1 - ITEM_SIZE) / 2, d.z + 0.5, Math.random);
     }
   }
+
+  /**
+   * A body that came to rest becomes its block in the cell it fills, when that cell is open and the player is not in it.
+   * Otherwise it drops as an item where it lies.
+   */
+  private settleBody(body: LooseBody): void {
+    const x = Math.floor(body.x);
+    const y = Math.floor(body.y + 0.5);
+    const z = Math.floor(body.z);
+    const cell = this.world.getBlock(x, y, z);
+    const open = (cell === BlockId.AIR || isWaterState(cell)) && !blockIntersectsBody(x, y, z, this.player.position, PLAYER_SHAPE);
+    if (open && this.setBlock(x, y, z, body.state)) return;
+    this.items.spawn(body.state, 1, body.x, body.y, body.z, Math.random);
+  }
+
 
   /** Middle click: pick the targeted block type (see Inventory.pick). */
   pickTarget(): boolean {
@@ -852,6 +886,7 @@ export class Game {
       inventory: this.inventory.slots.map((s) => (s ? [s.state, s.count] : null)),
       inventoryOpen: this.inventoryScreen.isOpen,
       items: this.items.items.length,
+      looseBodies: this.bodies.bodies.length,
       breakStage: this.breaking.stage,
       renderDistance: this.chunks.renderDistance,
       workers: this.usingWorkers,

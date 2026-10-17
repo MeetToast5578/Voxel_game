@@ -1,4 +1,4 @@
-import { SUPPORT_NODE_LIMIT, SUPPORT_RADIUS_BLOCKS } from '../config';
+import { LOOSE_BODY_MIN_GROUP, SUPPORT_NODE_LIMIT, SUPPORT_RADIUS_BLOCKS } from '../config';
 import { BlockId, getBlockDef } from './blocks';
 import { scheduleFallChecks } from './falling';
 import type { Tick, TickResult } from './tick';
@@ -94,7 +94,7 @@ export function handleSupport(world: World, tick: Tick): TickResult {
       continue;
     }
     if (world.setBlock(c.x, c.y, c.z, BlockId.AIR)) {
-      world.queueDrop(id, c.x, c.y, c.z);
+      world.queueDrop(id, c.x, c.y, c.z, group.length >= LOOSE_BODY_MIN_GROUP);
       scheduleSupportChecks(world, c.x, c.y, c.z);
     }
   }
