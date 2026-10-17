@@ -59,7 +59,7 @@ Status is checked against the code on 2026-10-17. "Open" means the spec's goal i
 | [34-weather-model.md](34-weather-model.md) | Weather model and rendering | Partial | Particles and lightning are in, and the F3 overlay shows the season, weather, biome, temperature and rain. Wet darkening and morning fog are still missing. |
 | [35-biome-integration.md](35-biome-integration.md) | Biome integration into the generator | Partial | Surface, soil and trees follow the biome. Border blending is wired: surface blocks dither within 3 blocks of a border. Open: tints do not blend per vertex, and biomes are still picked per 16x16 chunk column |
 | [36-ecology-grass-spreading.md](36-ecology-grass-spreading.md) | Grass spreading | Done | |
-| [37-tree-species.md](37-tree-species.md) | Tree species | Partial | Sizes decided 2026-10-17: oak is 27-40 blocks (8.1-12.0 m), every species sits inside 8-12 m. Open: 8 of the 16 roadmap species do not exist, and pine and dead snag are in the table but named by no biome |
+| [37-tree-species.md](37-tree-species.md) | Tree species | Partial | Sizes decided 2026-10-17: oak is 27-40 blocks (8.1-12.0 m), every species sits inside 8-12 m. Pine (snowy taiga) and dead snag (tundra) are wired to biomes, and every species is reachable (task T-E12). Open: 8 of the 16 roadmap species do not exist |
 | [38-random-ticks.md](38-random-ticks.md) | Random ticks | Done | |
 | [39-biome-integration-fix.md](39-biome-integration-fix.md) | Biome integration fix | Done | Review of spec 35 |
 | [40-leaf-decay.md](40-leaf-decay.md) | Leaf decay | Done | |
@@ -68,7 +68,7 @@ Status is checked against the code on 2026-10-17. "Open" means the spec's goal i
 ### Known problems in the spec files
 
 - **Spec 27** never existed in the repo. Specs 29 and 30 were added afterwards, to document the code.
-- **Test-case sections.** Specs 28 and 31–41 have goals and acceptance criteria but no separate test-case list. Their test files are named in each spec's "Files" line.
+- **Test-case sections.** Specs 10, 28 and 31–44 have goals and acceptance criteria but no separate numbered test-case list (task T-L7 corrected the old "28 and 31–41" line: specs 25, 29 and 30 do have test-case lists, and 42–44 do not). Where one exists, a `Tests:` or `Files:` line in the spec names the test files.
 
 ## Rules for every spec
 

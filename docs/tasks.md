@@ -36,11 +36,16 @@ Also landed, not previously tracked: `abd4435` puts block updates on a fixed 20 
   - Convention to follow: `tests/generator.test.ts:88` uses `{ timeout: 60000 }`; `tests/trees.test.ts:49` and `tests/spawn.test.ts:14` use the positional `}, 30_000)` form. **Both forms work** in Vitest 4.0.18 — verified with a throwaway probe, since the published `.d.ts` only advertises `(name, options?, fn?)`.
   - Done when: `npm run check` is green on the owner's machine, twice in a row.
 
-- [ ] **T-A2 — Confirm whether CI is actually green.** `HANDOFF.md:43` asserts `npm run check` passes. Nothing here proves it, and the assertion was never machine-checked. If CI is red too, T-A1 is urgent rather than cosmetic.
+- [x] **T-A2 — Confirm whether CI is actually green.** Closed 2026-10-17: **CI is not green.** The `check` job passes on CI (33 s at `aca8978`), so T-A1 was a local-only problem. The `smoke` job **fails on every run since `0a98002`** (region simulation); the last green smoke was `6a7aead` (14:21), and a docs-only commit (`5019faa`) also failed, so the breakage is in `0a98002`. Failing smoke steps run 2m16s–3m21s vs 1m49s green, so the script dies late in the checks, with one or two 60 s waits timing out. Raw CI logs and the screenshots artifact are not retrievable from the cloud session (the log and blob hosts are blocked), so the exact failing check could not be read from past runs — see T-A2a.
+- [~] **T-A2a — Fix the failing smoke job.** (Raised in `log.txt` during T-A2; tracked here.) No local repro is possible in the cloud session: Chromium cannot be downloaded (the Playwright CDN is blocked), so CI is the only runner. Done so far, pending the CI verdict on the PR:
+  - `scripts/smoke.mjs` now tracks the running check, reports `smoke failure during "<check>"`, and on GitHub Actions prints every collected error as an `::error title=smoke::` annotation, readable from the check-runs API and the run page even when the log zip is not retrievable. The next red run names its failure.
+  - The pick-block check waited a fixed 500 ms after teleporting `+4` blocks; the spawn area is a slope since region simulation, the landing is inside the rising ground, and the wait was fps-dependent. It now waits for `onGround || inWater` (20 s). This matches the documented intermittent failure ("standing above a cell that reads as air" = still falling when sampled).
+  - `ROCKS` in the "deep and high chunks" check grew from spec 15's five rocks to include the spec 20 strata (limestone 22, slate 23, basalt 24) and the spec 26 ores that can host at that depth (28–34). The old list could fail on a legal column.
+  - A Node repro of the deterministic smoke assertions for seed 1 (spawn search, the pick-block column, the hardcoded swim spot, the deep rock) passes on current `main`, so the CI failure is timing/load-related or a page/console error; the annotations will name it.
 
-- [ ] **T-A3 — Give spec 28 a real budget guard.** `tests/litMesher.test.ts:49` (`meshes 50 surface chunks of seed 42 fast enough`) is a 30 s timeout with **no millisecond assertion**. The 3 ms target in `docs/specs/28-mesh-performance.md` is checked by nothing. It is the only performance budget in the codebase with no automated guard.
+- [x] **T-A3 — Give spec 28 a real budget guard.** Closed 2026-10-17. Premise corrected: a millisecond assertion did exist (`expect(ms).toBeLessThan(50)`, since `cdff912`) — but 50 ms is 16× the target, so the point stood. Tightened to **15 ms**, about 3× the slowest documented measurement (4.1 ms alone, 5.20 ms best-of-2 in the cloud container): it catches a real regression (the spec 39 tree bug was ~100×) without flaking on a slow laptop under parallel load. A comment in the test records that the 3 ms target is still not met and that the guard tightens toward it when T-J1 lands.
 
-- [ ] **T-A4 — Make the timeouts consistent.** 21 annotations use three magnitudes (30 s, 60 s, 120 s) with no stated rule. A comment or shared helper would stop the next slow test from being missed.
+- [x] **T-A4 — Make the timeouts consistent.** Closed 2026-10-17. The rule is documented in a `vite.config.ts` comment: 30 s default; 60 s for mountain-column, strata and ore scans; 120 s for the region-simulation tests. The older positional `}, 30_000)` annotations (spawn, trees) are redundant with the default but harmless and were left alone. No test timing changed.
 
 **Evidence for T-A1** — the failure count is load-dependent, the signature of a timeout rather than a logic bug:
 
@@ -59,7 +64,7 @@ Also landed, not previously tracked: `abd4435` puts block updates on a fixed 20 
 ## B. Owner decisions — all four closed
 
 - [x] **T-B1 — Tree size.** Closed in `656c247`. Every species now sits inside 8–12 m (`src/config.ts:297`, `HANDOFF.md:61`).
-  - **Leftover:** `TREE_HEIGHT_MIN_M` / `TREE_HEIGHT_MAX_M` (`src/config.ts:89-90`) still hold 8 and 12 and are **still referenced nowhere**. The new table is hard-coded in blocks, so the orphaned metric constants remain dead. Delete them or make the table derive from them.
+  - **Leftover — closed 2026-10-17:** `TREE_HEIGHT_MIN_M` / `TREE_HEIGHT_MAX_M` (`src/config.ts:89-90`) were referenced nowhere; the species table is hard-coded in blocks. Kept as the band's source of truth: `tests/config.test.ts` now enforces that every species except the bush (small on purpose, owner decision 1) fits inside 8–12 m converted to blocks. The constants are no longer orphans, and the documented band cannot drift silently.
 
 - [x] **T-B2 — Spec numbering.** Closed in `fb17054`. 42 entity system, 43 weather model, 44 survival; specs 29 and 30 written.
 
@@ -115,8 +120,9 @@ Newly found while auditing:
 
 - [ ] **T-E10 — Biome resolution is per chunk column.** `HANDOFF.md:66` records the limit: biomes are picked per 16×16 chunk column, so borders land on 4.8 m grid lines and dithering only softens them. The doc says "the terrain work should fix the grid itself" — that work is not itemised anywhere.
 - [ ] **T-E11 — 8 of the 16 roadmap tree species do not exist.** `ROADMAP.md:179` names oak, birch, maple, spruce, pine, fir, larch, acacia, baobab, jungle giant, palm, willow, mangrove, saguaro, dead snag and bushes. `TREE_SPECIES` has 8. **Missing: maple, fir, larch, baobab, palm, willow, mangrove, saguaro.** The phase 3 "done when" is "every species looks different", which cannot hold at half the list.
-- [ ] **T-E12 — Two species are unreachable.** `pine` and `dead_snag` exist in `TREE_SPECIES` but no biome names either, so neither can ever generate. Either wire them to biomes or drop them.
-- [ ] **T-E13 — Type `treeSpecies` as `TreeSpecies | null`.** `src/world/biome.ts:23` declares `treeSpecies: string | null`, looser than the `TreeSpecies` union it feeds. No biome names a missing species today, so there is no live bug — but a future biome entry naming `maple` (see T-E11) would fail silently rather than at compile time.
+- [x] **T-E12 — Two species are unreachable.** Closed 2026-10-17. `pine` wired to snowy taiga, `dead_snag` to tundra. The audit found the deeper bug: `treeSpeciesAt` grows a species only where the biome's surface block is GRASS, so **`spruce` was unreachable too** (taiga and snowy taiga had DIRT surfaces), and tundra's DIRT would have blocked the dead snag as well. Taiga, snowy taiga and tundra now have GRASS surfaces (soil unchanged). A new invariant test in `tests/biome.test.ts` asserts every species in the table is named by at least one grass-surface biome, so this bug class cannot return silently — including for T-E11's new species. Worldgen change: taiga and tundra columns now grow plants and trees; edits in existing saves may float.
+- [ ] **T-E14 — Shrubland and steppe name `bush` on DIRT surfaces**, so no bush grows there (the bush itself stays reachable through the meadow, so the T-E12 invariant test passes). Either give both biomes GRASS surfaces or drop the naming. Found while closing T-E12.
+- [x] **T-E13 — Type `treeSpecies` as `TreeSpecies | null`.** Closed 2026-10-17. `BiomeDef.treeSpecies` is typed as the union and the `as` cast in `treeSpecies()` is gone; a biome naming a nonexistent species now fails typecheck.
 
 ---
 
@@ -172,7 +178,7 @@ All six sandbox-physics slices (spec 25) are built and tested. One known shortcu
 
 ## I. Phase 7 — Survival
 
-- [ ] **T-I1 — UI to pick the game mode.** `gameMode` exists, is saved and loaded (`src/game.ts:107`, `:184`), defaults to creative, and **nothing in the UI ever sets it** — `src/ui/menu.tsx` has no reference. The mode is unreachable by a player.
+- [x] **T-I1 — UI to pick the game mode.** Landed in `38c07f8` (committed after this list was drafted, checkbox missed): a Creative/Survival picker (radio group) in the start and pause menu; switching to survival tops health and hunger back up; the mode persists through the save meta. Reviewed 2026-10-17, one follow-up fixed: `debugApi.setGameMode` assigned `game.gameMode` directly, bypassing the menu sync and the vitals top-up; it now delegates to `Game.setGameMode`.
 - [ ] **T-I2 — Make hunger change.** Set, saved, loaded and shown (`src/game.ts:111`, `:186`, `:392`), but no rule anywhere writes it. No food, no starvation.
 - [ ] **T-I3 — Health regeneration.** Item 2.
 - [ ] **T-I4 — Body temperature.** Item 2. From biome, altitude, weather, season, wetness, shelter, fire and clothing; hypothermia and heatstroke. `ROADMAP.md:290` calls this where the whole simulation pays off.
@@ -229,17 +235,18 @@ From `ROADMAP.md` "Later":
 
 ## L. Documentation hygiene
 
-- [ ] **T-L1 — Stale commit hash.** `HANDOFF.md:3` claims verification against `0322d20`. HEAD is `adf5aba`, eleven commits ahead. The header was not updated by `adf5aba` even though that commit fixed other lines in the same file.
-- [ ] **T-L2 — Contradictory test counts.** `HANDOFF.md:90` says "419 in 51 files"; the verification line says 464. The old number survives in Commands.
-- [ ] **T-L3 — Self-contradiction on physics.** `HANDOFF.md:198` says "Sandbox physics slices 2-6 are open", while `HANDOFF.md:26` says "all six slices are in code and tested". The line-26 list is correct — each slice is described with its implementation.
-- [ ] **T-L4 — Unqualified pass claim.** `HANDOFF.md:43` states `npm run check` passes. It does not on this machine. Qualify it as "passes on CI hardware; times out locally on a 1.6 GHz laptop".
-- [ ] **T-L7 — Missing test-case sections, restated accurately.** `docs/specs/README.md:71` claims "specs 28 and 31-41". A direct scan finds **19** files with no test-case section: 10, 25, 28, 29, 30, 31–44. The bullet omits 10, 25, 29, 30 and 42–44, and the two specs written this week (29, 30) have none.
-- [ ] **T-L8 — Mark `volumetric-tools.md` done.** The plan reads as future work but all three parts are implemented.
-- [ ] **T-L9 — Three stale rows in `docs/specs/README.md`**, left behind by `656c247`:
+- [x] **T-L1 — Stale commit hash.** Closed in `38c07f8` (work recorded in `log.txt`; the checkbox was missed there): `HANDOFF.md:3` now verifies against `adf5aba`.
+- [x] **T-L2 — Contradictory test counts.** Closed in `38c07f8`: the Commands section says 464 in 55 files. (This session's changes raise it to 467; the line is updated with the next handoff edit.)
+- [x] **T-L3 — Self-contradiction on physics.** Closed in `38c07f8`: the "Known gaps" line now lists the actually-open items (snow, saplings, crops, catch-up, lava) instead of contradicting the phase list.
+- [x] **T-L4 — Unqualified pass claim.** Closed in `38c07f8`: `HANDOFF.md:43` is qualified — CI `check` green, CI `smoke` red, see T-A2/T-A2a.
+- [x] **T-L7 — Missing test-case sections, restated accurately.** Closed 2026-10-17, with this task's own count corrected: a direct scan finds **16** files with no test-case section — 10, 28 and 31–44. Specs 25, 29 and 30 *do* have test-case lists (25's is per slice), so the "19 including 25, 29, 30" figure was wrong. The `docs/specs/README.md` bullet now states the 16-file list.
+- [x] **T-L8 — Mark `volumetric-tools.md` done.** Closed 2026-10-17: a status header on the plan names what landed; the file stays as the design record.
+- [x] **T-L11 — Specs 34 and 43 are both titled "Weather model".** Raised in `log.txt`, tracked here. Closed 2026-10-17: cross-reference notes at the top of both files split the record — 43 is the reference for the pure `WeatherModel`, 34 owns the rendering half and wins nothing about the model.
+- [x] **T-L9 — Three stale rows in `docs/specs/README.md`**, left behind by `656c247`. Closed in `38c07f8`:
   - `35-biome-integration.md` still says "Partial — Border blending is not wired". It is wired.
   - `37-tree-species.md` still says "Done, sizes open — trees are 4.8-7.2 m (oak)". Oak is now 8.1–12.0 m.
   - `34-weather-model.md` still says "the F3 weather lines are missing". They exist.
-- [ ] **T-L10 — Dangling cross-reference in `HANDOFF.md:190`.** It points the reader at the "Open decisions" section "above", which `adf5aba` renamed to "Decided (owner approved, 2026-10-17)" at line 59.
+- [x] **T-L10 — Dangling cross-reference in `HANDOFF.md:190`.** Closed in `38c07f8`: it now points at "Decided (owner approved, 2026-10-17)".
 - [x] **T-L5 — Duplicate spec numbers.** Closed in `fb17054`.
 - [x] **T-L6 — Missing spec files.** Closed in `fb17054`.
 

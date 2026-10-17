@@ -80,3 +80,99 @@ NEW TASK RAISED: T-L11 - specs 34 and 43 are BOTH titled "Weather model"
 (34 = "Weather model and rendering", 43 = "Weather model (Phase 4, item 3)",
 renumbered from 32). Different files, overlapping scope, confusing titles.
 
+
+================================================================================
+SESSION 2 - 2026-10-17 (cloud agent, Arena sandbox)
+Base: main @ aca8978, branch arena/22bcf3fa-voxel-game (fast-forwarded to it)
+Arrival check: npm run check GREEN here - 464 tests / 55 files, typecheck, build.
+================================================================================
+
+T-A2  [CLOSED - recorded in tasks.md]
+  gh CLI is available here (session 1 had none). CI on aca8978:
+    check job : SUCCESS (33 s)  -> T-A1 was a local-only problem, CI never needed it
+    smoke job : FAILURE (npm run smoke step ran 3 m 21 s)
+  Smoke has been red on EVERY run since 0a98002 (region simulation); last green
+  6a7aead (14:21). A docs-only commit (5019faa) also failed, so the breakage is
+  0a98002 or the environment at that time. Failing smoke steps run 2 m 16 s -
+  3 m 21 s vs 1 m 49 s when green: the script dies late in the checks, with one
+  or two 60 s waits timing out.
+  Raw logs (results-receiver.actions.githubusercontent.com) and the screenshots
+  artifact (productionresultssa9.blob.core.windows.net) are OUTSIDE this
+  sandbox's network allowlist, so past failure text is unretrievable. Playwright
+  browser CDNs are blocked too: no local smoke possible. CI is the only runner.
+
+Node repro of the deterministic smoke assertions (seed 1, throwaway vitest file,
+deleted afterwards; generator/spawn are pure so they run in Node):
+  spawn (-26.5, -26.5), feet y=114, on a gentle slope (110 -> 117 over 14
+  blocks - region simulation moved/reshaped the spawn area).
+  pick-block teleport column (+4 x): solidTop=115, no water -> the teleport at
+  feet y=115 lands the player INSIDE the rising ground; settling is fps-dependent
+  against a fixed 500 ms wait.
+  swim hardcoded spot (-39, 84): deep water present at the exact cell. PASS.
+  deep rock (spawn column, y=-205): diorite (15), inside the smoke ROCKS list. PASS.
+  => all deterministic terrain assertions hold on current main; the CI failure is
+  timing/load-related or a page/console error, not a terrain fact.
+
+T-A2a [PARTIAL - awaiting the CI verdict on the PR]
+  scripts/smoke.mjs:
+    - tracks the running check; failures now read: smoke failure during "<check>"
+    - on GitHub Actions, prints every collected error as an
+      ::error title=smoke:: annotation (workflow command, escaped). Readable via
+      the check-runs API and the run page even when the log zip is blocked. The
+      next red run names its own failure.
+    - pick-block check: replaced the fixed 500 ms wait with
+      waitForFunction(onGround || inWater, 20 s) - matches the documented
+      intermittent failure ("standing above a cell that reads as air" = still
+      falling when sampled) and is fps-independent.
+    - deep-chunks ROCKS list: added the spec 20 strata (22, 23, 24) and the
+      spec 26 ores that can host at -61 m depth (28-34). The old 5-rock list
+      could fail on a legal column (ore vein or newer strata).
+
+T-I1  [CLOSED - landed in 38c07f8; reviewed + one follow-up fix]
+  Picker reviewed: radiogroup in both menus, vitals topped up when entering
+  survival, mode persists via the save meta, Menu.setGameMode keeps the picker
+  in step. Follow-up: debugApi.setGameMode assigned game.gameMode directly,
+  bypassing both; now delegates to Game.setGameMode.
+
+T-B1 leftover [CLOSED]
+  TREE_HEIGHT_MIN_M/MAX_M kept as the band's source of truth: tests/config.test.ts
+  now enforces that every species except the bush (small on purpose) fits 8-12 m.
+
+T-E12 [CLOSED] pine -> snowy_taiga, dead_snag -> tundra.
+  Deeper bug found while wiring: treeSpeciesAt grows species only on GRASS
+  surfaces, so spruce was ALSO unreachable (taiga and snowy_taiga had DIRT
+  surfaces), and tundra's DIRT would have blocked the dead snag as well.
+  taiga / snowy_taiga / tundra surfaces are now GRASS (soil unchanged: DIRT).
+  New invariant test (tests/biome.test.ts): every species in the table is named
+  by at least one grass-surface biome - guards T-E11's new species too.
+  Worldgen change: taiga and tundra now grow plants and trees.
+  NEW TASK: T-E14 shrubland/steppe name 'bush' on DIRT surfaces (bush stays
+  reachable via meadow, so the invariant holds; the naming is still dead there).
+
+T-E13 [CLOSED] BiomeDef.treeSpecies: TreeSpecies | null; the cast in
+  treeSpecies() removed. Unknown species in the table now fails typecheck.
+
+T-A3  [CLOSED] Premise was stale: expect(ms).toBeLessThan(50) existed since
+  cdff912, but 50 ms is 16x the target. Tightened to 15 ms (~3x the slowest
+  documented measurement; 5.20 ms best-of-2 measured here). Comment records the
+  3 ms target as still open (T-J1) and says to tighten when it lands.
+
+T-A4  [CLOSED] Timeout tiers documented in vite.config.ts: 30 s default;
+  60 s mountain-column/strata/ore scans; 120 s region-simulation tests.
+  Positional 30_000 annotations (spawn, trees) are redundant, left alone.
+
+T-L7  [CLOSED] This task's own count corrected: 16 specs lack a test-case
+  section (10, 28, 31-44), not 19 - specs 25, 29, 30 have test-case lists.
+  docs/specs/README.md bullet restated.
+T-L8  [CLOSED] docs/plans/volumetric-tools.md got a "Status: built" header.
+T-L11 [CLOSED, now tracked in tasks.md] Cross-reference notes added at the top
+  of specs 34 and 43: 43 is the pure-model reference, 34 owns the rendering.
+T-L1..L4, L9, L10: verified landed in 38c07f8 (files checked, not just the
+  log); tasks.md checkboxes were stale, now [x].
+  Also refreshed the specs/README row for 37 (pine/dead snag now wired).
+
+Verification: npm run check GREEN after all changes - typecheck + 467 tests /
+55 files (3 new: 2 biome wiring, 1 tree band) + build.
+
+Next: push, open a PR so CI runs the annotated smoke; read the annotations via
+gh api; fix whatever it names. Then T-E11 (the 8 missing tree species).
