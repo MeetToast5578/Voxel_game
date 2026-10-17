@@ -189,6 +189,12 @@ export const TEMPERATURE_LAPSE_C_PER_KM = 6.5; // degrees C lost per km of heigh
 export const PRECIPITATION_MIN_MM = 0; // driest biome precipitation, mm/year
 export const PRECIPITATION_MAX_MM = 2000; // wettest biome precipitation, mm/year
 export const OROGRAPHIC_LIFT = 0.3; // precipitation boost per unit of max detail amplitude
+/**
+ * How much of the biome table's precipitation comes from the region simulation's advected
+ * moisture rather than the raw humidity noise. Below 1 keeps some broad-scale humidity so biomes
+ * still vary over a whole region; the rest is the rain shadow the simulation actually resolves.
+ */
+export const REGION_MOISTURE_WEIGHT = 0.75;
 
 // ---- UI ----
 export const HOTBAR_SIZE = 9;

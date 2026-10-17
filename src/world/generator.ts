@@ -34,10 +34,11 @@ import { hash2, mulberry32 } from '../core/random';
 import { BlockId, blocksSky, parseBlockStateName } from './blocks';
 import { Chunk } from './chunk';
 import { TerrainDensity } from './density';
-import { ClimateSampler, detailAmpMeters, heightMeters } from './shape';
+import { ClimateSampler, detailAmpMeters } from './shape';
 import { blockPrecipitation, blockTemperature } from './climate';
 import { FeatureRegistry, type FeatureBlock } from './feature';
 import { biomeAt, soilBlock, surfaceBlock, treeSpecies } from './biome';
+import { climateHeightSource, RegionSampler, REGION_CELLS, type ColumnSample, type RegionData } from './region';
 import { MAX_TREE_RISE, treeBlocks } from './trees';
 
 const CAVE_THRESHOLD = 0.012;
@@ -75,12 +76,14 @@ const ORE_SEED_OFFSET = 1000;
 interface Column {
   /** World y of the highest solid block (the surface, before water and trees). */
   solidTop: Int32Array;
-  /** Surface offset from the shape fields, in meters. */
+  /** Surface offset from the region simulation, in meters. */
   offsets: Float64Array;
   /** Detail amplitude, in meters. */
   amps: Float64Array;
   /** Rock-layer warp: 2D noise in [-1, 1]. */
   warp: Float64Array;
+  /** Water surface height for each cell, in meters. Sea level where there is no lake or channel. */
+  waterLevels: Float64Array;
   /** Biome key for this column (computed once at column center). */
   biomeKey: string;
 }
@@ -89,6 +92,8 @@ export class TerrainGenerator {
   readonly seed: number;
   private readonly climate: ClimateSampler;
   private readonly density: TerrainDensity;
+  /** Region simulation: rivers, lakes, erosion and moisture (spec 41). */
+  private readonly regions: RegionSampler;
   private readonly rockNoise: NoiseFunction2D;
   private readonly caveNoiseA: NoiseFunction3D;
   private readonly caveNoiseB: NoiseFunction3D;
@@ -102,6 +107,9 @@ export class TerrainGenerator {
     this.seed = seed;
     this.climate = new ClimateSampler(seed);
     this.density = new TerrainDensity(seed);
+    // The simulation starts from the plain climate surface and returns an eroded one, so both
+    // the sampler and the height source below read the same `ClimateSampler` instance.
+    this.regions = new RegionSampler(climateHeightSource((xM, zM) => this.climate.fields(xM, zM)));
     this.rockNoise = createNoise2D(mulberry32(seed + 300));
     this.caveNoiseA = createNoise3D(mulberry32(seed + 3));
     this.caveNoiseB = createNoise3D(mulberry32(seed + 4));
@@ -221,18 +229,24 @@ export class TerrainGenerator {
         const surface = soil ? (beach ? BlockId.SAND : surfaceBlock(column.biomeKey, beach)) : BlockId.AIR;
         // Plants only grow on grass, so beaches, deserts and bare rock stay bare.
         const plant = surface === BlockId.GRASS && inSlice ? this.plantAt(wx, wz, h) : BlockId.AIR;
+        // Water level: the sea, or a lake or river surface from the region simulation. A riverbed
+        // or lakebed is sand or gravel, not grass.
+        const waterY = Math.max(SEA_LEVEL, Math.floor(metersToBlocks(column.waterLevels[i]!)));
+        const submerged = h < waterY;
         for (let y = y0; y < y1; y++) {
           let id: number;
           if (this.density.isSolid(wx, y, wz, offsetM, ampM)) {
             if (soil && y === h) {
-              id = surface;
+              // A riverbed or lakebed is sand; gravel and clay join it in a later geology slice.
+              id = submerged ? BlockId.SAND : surface;
               if (id === BlockId.GRASS && !beach) {
                 this.onGrassPlaced?.(wx, y, wz);
               }
-            } else if (soil && y >= h - SOIL_DEPTH) id = beach ? BlockId.SAND : soilBlock(column.biomeKey);
-            else id = this.rockAt(y, warp);
+            } else if (soil && y >= h - SOIL_DEPTH) {
+              id = submerged ? BlockId.SAND : beach ? BlockId.SAND : soilBlock(column.biomeKey);
+            } else id = this.rockAt(y, warp);
           } else if (y === h + 1 && plant !== BlockId.AIR) id = plant;
-          else id = y <= SEA_LEVEL ? BlockId.WATER : BlockId.AIR;
+          else id = y <= waterY ? BlockId.WATER : BlockId.AIR;
           out[localIndex(lx, y - y0, lz)] = id;
         }
         const top = Math.min(this.caveTop(h), y1 - 1);
@@ -246,8 +260,9 @@ export class TerrainGenerator {
   }
 
   /**
-   * The column's cells: the shape fields, the density inputs and the highest solid block. Cached, because the
-   * fields cost six noises per cell and every chunk of a column reads them.
+   * The column's cells: the region simulation's surface, the density inputs and the highest solid
+   * block. Cached, because the region simulation and the fields cost real work per cell and every
+   * chunk of a column reads them.
    */
   private column(cx: number, cz: number): Column {
     const key = columnKey(cx, cz);
@@ -259,6 +274,7 @@ export class TerrainGenerator {
       offsets: new Float64Array(CHUNK_SIZE * CHUNK_SIZE),
       amps: new Float64Array(CHUNK_SIZE * CHUNK_SIZE),
       warp: new Float64Array(CHUNK_SIZE * CHUNK_SIZE),
+      waterLevels: new Float64Array(CHUNK_SIZE * CHUNK_SIZE),
       biomeKey: '',
     };
     for (let lz = 0; lz < CHUNK_SIZE; lz++)
@@ -267,20 +283,32 @@ export class TerrainGenerator {
         const wx = cx * CHUNK_SIZE + lx;
         const wz = cz * CHUNK_SIZE + lz;
         const fields = this.climate.fields(wx * BLOCK_SIZE_M, wz * BLOCK_SIZE_M);
-        column.offsets[i] = heightMeters(fields);
-        column.amps[i] = detailAmpMeters(fields);
+        // The region's surface replaces the raw shape height: it already carries erosion,
+        // river channels and lake basins.
+        const sample = this.regions.sample(wx, wz);
+        column.offsets[i] = sample.offsetM;
+        // The 3D detail noise has an amplitude of up to 22 m, which is far more than a river
+        // channel is deep, so left alone it fills every channel back in with rock and the river
+        // never appears. Damping it inside channels and lakes lets the water show while keeping
+        // some bumpiness.
+        const ampScale = sample.isRiver ? 0.2 : sample.isLake ? 0.35 : 1;
+        column.amps[i] = detailAmpMeters(fields) * ampScale;
         column.warp[i] = this.rockNoise((wx * BLOCK_SIZE_M) / GEOLOGY_WARP_M, (wz * BLOCK_SIZE_M) / GEOLOGY_WARP_M);
+        column.waterLevels[i] = sample.waterLevelM;
         column.solidTop[i] = this.solidTop(wx, wz, column.offsets[i]!, column.amps[i]!);
       }
-    // Compute biome at column center, from real temperature and precipitation (not the raw [-1,1] fields).
+    // Compute biome at column center, from real temperature and precipitation (not the raw [-1,1]
+    // fields). Precipitation comes from the region's advected moisture, so deserts sit in the rain
+    // shadow behind a range instead of wherever the humidity noise happens to be low.
     const cxM = (cx * CHUNK_SIZE + 8) * BLOCK_SIZE_M;
     const czM = (cz * CHUNK_SIZE + 8) * BLOCK_SIZE_M;
     const centerFields = this.climate.fields(cxM, czM);
     const centerHeight = column.offsets[columnIndex(8, 8)]!;
     const centerAmp = column.amps[columnIndex(8, 8)]!;
+    const centerMoisture = this.regions.sample(cx * CHUNK_SIZE + 8, cz * CHUNK_SIZE + 8).moisture;
     column.biomeKey = biomeAt(
       blockTemperature(centerFields, centerHeight),
-      blockPrecipitation(centerFields, centerAmp),
+      blockPrecipitation(centerFields, centerAmp, centerMoisture),
       centerHeight,
       centerAmp,
       false,
@@ -288,6 +316,26 @@ export class TerrainGenerator {
     ).key;
     this.columnCache.set(key, column);
     return column;
+  }
+
+  /** The region simulation's view of one column: rivers, lakes and moisture. */
+  sampleColumn(wx: number, wz: number): ColumnSample {
+    return this.regions.sample(wx, wz);
+  }
+
+  /** The simulated region containing a world column, for tests and the debug map. */
+  regionAt(wx: number, wz: number): RegionData {
+    return this.regions.regionAt(wx, wz);
+  }
+
+  /** Cells across one simulated region grid, including the margins. */
+  static get regionCells(): number {
+    return REGION_CELLS;
+  }
+
+  /** How many simulated regions are cached. Used by tests and the F3 overlay. */
+  get cachedRegions(): number {
+    return this.regions.cachedRegions;
   }
 
   /**
@@ -392,12 +440,13 @@ export class TerrainGenerator {
     if (amp >= BARE_ROCK_AMP_M) return null; // no trees on bare rock
     if (h >= 2 && h <= this.caveTop(h) && this.isCave(anchorX, h, anchorZ)) return null;
 
-    // Species comes from the column's biome, from real temperature/precipitation (height in metres).
+    // Species comes from the column's biome, from real temperature and precipitation (height in
+    // metres). Precipitation uses the region's advected moisture, matching the biome lookup.
     const fields = this.climate.fields(anchorX * BLOCK_SIZE_M, anchorZ * BLOCK_SIZE_M);
     const heightM = h * BLOCK_SIZE_M;
     const biome = biomeAt(
       blockTemperature(fields, heightM),
-      blockPrecipitation(fields, amp),
+      blockPrecipitation(fields, amp, this.regions.sample(anchorX, anchorZ).moisture),
       heightM,
       amp,
       false,

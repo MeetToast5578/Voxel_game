@@ -296,3 +296,115 @@ describe('Biome integration (spec 35 review)', () => {
     expect(seen.size).toBeGreaterThan(3);
   });
 });
+
+describe('Region simulation in the generated world (spec 41)', () => {
+  /** Finds the first column meeting a predicate, scanning a wide area. */
+  const findColumn = (test: (x: number, z: number) => boolean): { x: number; z: number } | null => {
+    for (let z = -1500; z <= 1500; z += 5)
+      for (let x = -1500; x <= 1500; x += 5) if (test(x, z)) return { x, z };
+    return null;
+  };
+
+  it('carves rivers with water in them, above a sand bed', { timeout: 120000 }, () => {
+    const g = new TerrainGenerator(1337);
+    const at = findColumn((x, z) => {
+      const s = g.sampleColumn(x, z);
+      return s.riverDepthM > 0 && s.waterLevelM > 8; // a river, and well above the sea
+    });
+    expect(at).not.toBeNull();
+
+    const x = at!.x;
+    const z = at!.z;
+    const top = g.getHeight(x, z);
+    const cy = Math.floor(top / 16);
+    const chunk = new Chunk(Math.floor(x / 16), cy, Math.floor(z / 16));
+    g.generateChunk(chunk);
+    const lx = x - Math.floor(x / 16) * 16;
+    const lz = z - Math.floor(z / 16) * 16;
+
+    let water = 0;
+    let sand = 0;
+    for (let ly = 0; ly < 16; ly++) {
+      const b = chunk.get(lx, ly, lz);
+      if (b === BlockId.WATER) water++;
+      if (b === BlockId.SAND) sand++;
+    }
+    expect(water).toBeGreaterThan(0);
+    expect(sand).toBeGreaterThan(0);
+  });
+
+  it('runs a river downhill: its water level never rises along the drainage chain', { timeout: 120000 }, () => {
+    const g = new TerrainGenerator(1337);
+    // Start from the region's own river cell, so the chain walk starts inside a channel.
+    const CELLS = TerrainGenerator.regionCells;
+    const region = g.regionAt(0, 0);
+    const origin = -((CELLS / 2) * 32);
+    let start = -1;
+    for (let i = 0; i < CELLS * CELLS; i++) {
+      if (region.river[i] !== 1) continue;
+      if (region.height[i]! <= 20) continue; // a river well above the sea
+      start = i;
+      break;
+    }
+    expect(start).toBeGreaterThanOrEqual(0);
+    const worldOf = (i: number): [number, number] => [origin + (i % CELLS) * 32, origin + Math.floor(i / CELLS) * 32];
+    const [sx, sz] = worldOf(start);
+
+    let last = g.sampleColumn(sx, sz).waterLevelM;
+    let steps = 0;
+    let next = region.downstream[start]!;
+    while (next >= 0 && steps < CELLS) {
+      const [nx, nz] = worldOf(next);
+      const now = g.sampleColumn(nx, nz).waterLevelM;
+      // Water never runs uphill, and the channel floor falls toward the sea.
+      expect(now).toBeLessThanOrEqual(last + 1.5);
+      last = now;
+      next = region.downstream[next]!;
+      steps++;
+    }
+    expect(steps).toBeGreaterThan(2);
+    expect(last).toBeLessThan(20); // and it ends up down at the sea
+  });
+
+  it('fills lake basins with water above their bed', { timeout: 120000 }, () => {
+    const g = new TerrainGenerator(1337);
+    // Lakes are terrain luck: this seed has none near the origin, so scan wide.
+    let at: { x: number; z: number } | null = null;
+    for (let z = -2600; z <= 2600 && !at; z += 9)
+      for (let x = -2600; x <= 2600; x += 9)
+        if (g.sampleColumn(x, z).isLake && g.sampleColumn(x, z).waterLevelM > 1) {
+          at = { x, z };
+          break;
+        }
+    expect(at).not.toBeNull();
+    const x = at!.x;
+    const z = at!.z;
+    const s = g.sampleColumn(x, z);
+    // The bed must sit below the water surface, or there is no lake.
+    expect(g.getHeight(x, z)).toBeLessThan(Math.floor(metersToBlocks(s.waterLevelM)));
+  });
+
+  it('is deterministic: the same seed gives the same blocks', { timeout: 120000 }, () => {
+    const a = new TerrainGenerator(1337);
+    const b = new TerrainGenerator(1337);
+    for (const [cx, cz] of [[0, 0], [3, -2]]) {
+      const ca = new Chunk(cx, 5, cz);
+      const cb = new Chunk(cx, 5, cz);
+      a.generateChunk(ca);
+      b.generateChunk(cb);
+      expect(Array.from(ca.blocks)).toEqual(Array.from(cb.blocks));
+    }
+  });
+
+  it('a different seed gives a different world', { timeout: 120000 }, () => {
+    const a = new TerrainGenerator(1337);
+    const b = new TerrainGenerator(7);
+    // Generate the chunk that actually holds the surface, or both may be all air.
+    const cy = Math.floor(a.getHeight(8, 8) / 16);
+    const ca = new Chunk(0, cy, 0);
+    const cb = new Chunk(0, cy, 0);
+    a.generateChunk(ca);
+    b.generateChunk(cb);
+    expect(Array.from(ca.blocks)).not.toEqual(Array.from(cb.blocks));
+  });
+});
