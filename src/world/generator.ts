@@ -34,6 +34,7 @@ import { BlockId, blocksSky, parseBlockStateName } from './blocks';
 import { Chunk } from './chunk';
 import { TerrainDensity } from './density';
 import { ClimateSampler, detailAmpMeters, heightMeters } from './shape';
+import { FeatureRegistry, type FeatureBlock } from './feature';
 import { MAX_TREE_RISE, treeBlocks } from './trees';
 
 const CAVE_THRESHOLD = 0.012;
@@ -87,6 +88,8 @@ export class TerrainGenerator {
   private readonly caveNoiseA: NoiseFunction3D;
   private readonly caveNoiseB: NoiseFunction3D;
   private readonly columnCache = new Map<string, Column>();
+  /** Feature registry: trees and later biomes register here. */
+  private readonly featureRegistry = new FeatureRegistry();
 
   constructor(seed: number) {
     this.seed = seed;
@@ -95,6 +98,13 @@ export class TerrainGenerator {
     this.rockNoise = createNoise2D(mulberry32(seed + 300));
     this.caveNoiseA = createNoise3D(mulberry32(seed + 3));
     this.caveNoiseB = createNoise3D(mulberry32(seed + 4));
+    this.featureRegistry.registerFeature({
+      key: 'tree',
+      densityPerChunk: TREE_CHANCE * CHUNK_SIZE * CHUNK_SIZE,
+      spacing: 1, // every block is a potential anchor, preserves the old per-block hash behavior
+      maxExtentBlocks: TREE_REACH,
+      place: this.placeTreeFromAnchor.bind(this),
+    });
   }
 
   /** Y of the highest solid block in this column, from the density. Water and trees are not counted. */
@@ -337,31 +347,43 @@ export class TerrainGenerator {
     }
   }
 
+  /**
+   * Place a tree rooted at anchor (anchorX, anchorZ). Checks beach, bare rock, and cave
+   * conditions, then emits all blocks from treeBlocks. The hash check reproduces the
+   * old per-block anchor selection exactly.
+   */
+  private placeTreeFromAnchor(seed: number, anchorX: number, anchorZ: number, emit: (block: FeatureBlock) => void): void {
+    if (hash2(seed, anchorX, anchorZ) >= TREE_CHANCE) return;
+    const h = this.getHeight(anchorX, anchorZ);
+    // Trees grow on grass: not a beach, and the cave carver left the surface block alone.
+    if (h <= SEA_LEVEL + BEACH_BAND) return;
+    if (this.amplitudeAt(anchorX, anchorZ) >= BARE_ROCK_AMP_M) return; // no trees on bare rock
+    if (h >= 2 && h <= this.caveTop(h) && this.isCave(anchorX, h, anchorZ)) return;
+    for (const b of treeBlocks(seed, anchorX, h, anchorZ)) {
+      emit({ x: b.x, y: b.y, z: b.z, state: b.id });
+    }
+  }
+
   /** Trees whose anchor is in this column or within reach of it. Each tree is computed whole, then clipped. */
   private placeTrees(cx: number, cz: number, y0: number, y1: number, out: Uint16Array): void {
     const x0 = cx * CHUNK_SIZE;
     const z0 = cz * CHUNK_SIZE;
-    for (let wz = z0 - TREE_REACH; wz < z0 + CHUNK_SIZE + TREE_REACH; wz++) {
-      for (let wx = x0 - TREE_REACH; wx < x0 + CHUNK_SIZE + TREE_REACH; wx++) {
-        if (hash2(this.seed, wx, wz) >= TREE_CHANCE) continue;
-        const h = this.getHeight(wx, wz);
-        // Trees grow on grass: not a beach, and the cave carver left the surface block alone.
-        if (h <= SEA_LEVEL + BEACH_BAND) continue;
-        if (this.amplitudeAt(wx, wz) >= BARE_ROCK_AMP_M) continue; // no trees on bare rock
-        if (h >= 2 && h <= this.caveTop(h) && this.isCave(wx, h, wz)) continue;
-        if (h >= y1 || h + MAX_TREE_RISE < y0) continue; // this tree has no block in the range
-        for (const b of treeBlocks(this.seed, wx, h, wz)) {
-          const lx = b.x - x0;
-          const ly = b.y - y0;
-          const lz = b.z - z0;
-          if (lx < 0 || lx >= CHUNK_SIZE || lz < 0 || lz >= CHUNK_SIZE || ly < 0 || ly >= y1 - y0) continue;
-          const i = localIndex(lx, ly, lz);
-          // Leaves fill only air; logs and the ground block replace what is there.
-          if (b.id === BlockId.LEAVES) {
-            if (out[i] === BlockId.AIR) out[i] = BlockId.LEAVES;
-          } else out[i] = b.id;
-        }
+    this.featureRegistry.evaluateAnchors(
+      this.seed,
+      x0 - TREE_REACH, x0 + CHUNK_SIZE + TREE_REACH,
+      z0 - TREE_REACH, z0 + CHUNK_SIZE + TREE_REACH,
+      y0, y1,
+      (block) => {
+        const lx = block.x - x0;
+        const ly = block.y - y0;
+        const lz = block.z - z0;
+        if (lx < 0 || lx >= CHUNK_SIZE || lz < 0 || lz >= CHUNK_SIZE || ly < 0 || ly >= y1 - y0) return;
+        const i = localIndex(lx, ly, lz);
+        // Leaves fill only air; logs and the ground block replace what is there.
+        if (block.state === BlockId.LEAVES) {
+          if (out[i] === BlockId.AIR) out[i] = BlockId.LEAVES;
+        } else out[i] = block.state;
       }
-    }
+    );
   }
 }
