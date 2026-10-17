@@ -234,6 +234,9 @@ export const AUTOSAVE_INTERVAL_S = 10;
 // ---- Tick system (spec 25, slice 1) ----
 export const TICK_BUDGET_MS = 2; // max time per frame spent running chunk ticks
 
+// ---- Entity system (spec 31) ----
+export const ENTITY_FRICTION = 8; // per second: how fast an entity slows down on the ground
+
 // ---- Ecology (spec 36) ----
 export const GRASS_SPREAD_CHANCE = 0.02; // chance per tick that grass spreads to adjacent lit dirt
 export const GRASS_SPREAD_LIGHT_MIN = 8; // minimum sky light level for grass to spread
