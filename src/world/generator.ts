@@ -35,7 +35,7 @@ import { Chunk } from './chunk';
 import { TerrainDensity } from './density';
 import { ClimateSampler, detailAmpMeters, heightMeters } from './shape';
 import { FeatureRegistry, type FeatureBlock } from './feature';
-import { biomeAt, soilBlock, surfaceBlock } from './biome';
+import { biomeAt, soilBlock, surfaceBlock, treeSpecies } from './biome';
 import { MAX_TREE_RISE, treeBlocks } from './trees';
 
 const CAVE_THRESHOLD = 0.012;
@@ -374,7 +374,7 @@ export class TerrainGenerator {
   /**
    * Place a tree rooted at anchor (anchorX, anchorZ). Checks beach, bare rock, and cave
    * conditions, then emits all blocks from treeBlocks. The hash check reproduces the
-   * old per-block anchor selection exactly.
+   * old per-block anchor selection exactly. Tree species is determined by the column's biome.
    */
   private placeTreeFromAnchor(seed: number, anchorX: number, anchorZ: number, emit: (block: FeatureBlock) => void): void {
     if (hash2(seed, anchorX, anchorZ) >= TREE_CHANCE) return;
@@ -383,7 +383,13 @@ export class TerrainGenerator {
     if (h <= SEA_LEVEL + BEACH_BAND) return;
     if (this.amplitudeAt(anchorX, anchorZ) >= BARE_ROCK_AMP_M) return; // no trees on bare rock
     if (h >= 2 && h <= this.caveTop(h) && this.isCave(anchorX, h, anchorZ)) return;
-    for (const b of treeBlocks(seed, anchorX, h, anchorZ)) {
+
+    // Determine tree species from the column's biome.
+    const fields = this.climate.fields(anchorX * BLOCK_SIZE_M, anchorZ * BLOCK_SIZE_M);
+    const biome = biomeAt(fields.temperature, fields.humidity, h, this.amplitudeAt(anchorX, anchorZ), false, 0);
+    const species = treeSpecies(biome.key) ?? 'oak';
+
+    for (const b of treeBlocks(seed, anchorX, h, anchorZ, species)) {
       emit({ x: b.x, y: b.y, z: b.z, state: b.id });
     }
   }

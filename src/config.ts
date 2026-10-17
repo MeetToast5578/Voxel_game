@@ -237,3 +237,124 @@ export const TICK_BUDGET_MS = 2; // max time per frame spent running chunk ticks
 // ---- Ecology (spec 36) ----
 export const GRASS_SPREAD_CHANCE = 0.02; // chance per tick that grass spreads to adjacent lit dirt
 export const GRASS_SPREAD_LIGHT_MIN = 8; // minimum sky light level for grass to spread
+
+// ---- Tree species (spec 37) ----
+export type TreeSpecies = 'oak' | 'spruce' | 'birch' | 'pine' | 'jungle_giant' | 'acacia' | 'dead_snag' | 'bush';
+
+export interface TreeSpeciesDef {
+  key: TreeSpecies;
+  name: string;
+  trunkWidth: 1 | 2; // blocks wide
+  heightMinBlocks: number;
+  heightMaxBlocks: number;
+  branchMinBlocks: number;
+  branchMaxBlocks: number;
+  blobRadiusBlocks: number; // leaf cluster radius at branch ends
+  crownBaseFraction: number; // fraction of height where bare trunk ends
+  crownRadiusFactor: number; // crown radius as fraction of height
+}
+
+export const TREE_SPECIES: TreeSpeciesDef[] = [
+  {
+    key: 'oak',
+    name: 'Oak',
+    trunkWidth: 2,
+    heightMinBlocks: 16,
+    heightMaxBlocks: 24,
+    branchMinBlocks: 2,
+    branchMaxBlocks: 4,
+    blobRadiusBlocks: 4,
+    crownBaseFraction: 0.45,
+    crownRadiusFactor: 0.5,
+  },
+  {
+    key: 'spruce',
+    name: 'Spruce',
+    trunkWidth: 1,
+    heightMinBlocks: 20,
+    heightMaxBlocks: 32,
+    branchMinBlocks: 1,
+    branchMaxBlocks: 3,
+    blobRadiusBlocks: 3,
+    crownBaseFraction: 0.55,
+    crownRadiusFactor: 0.3,
+  },
+  {
+    key: 'birch',
+    name: 'Birch',
+    trunkWidth: 1,
+    heightMinBlocks: 14,
+    heightMaxBlocks: 20,
+    branchMinBlocks: 2,
+    branchMaxBlocks: 3,
+    blobRadiusBlocks: 3,
+    crownBaseFraction: 0.5,
+    crownRadiusFactor: 0.4,
+  },
+  {
+    key: 'pine',
+    name: 'Pine',
+    trunkWidth: 1,
+    heightMinBlocks: 18,
+    heightMaxBlocks: 28,
+    branchMinBlocks: 1,
+    branchMaxBlocks: 2,
+    blobRadiusBlocks: 2,
+    crownBaseFraction: 0.6,
+    crownRadiusFactor: 0.25,
+  },
+  {
+    key: 'jungle_giant',
+    name: 'Jungle Giant',
+    trunkWidth: 2,
+    heightMinBlocks: 24,
+    heightMaxBlocks: 40,
+    branchMinBlocks: 3,
+    branchMaxBlocks: 6,
+    blobRadiusBlocks: 5,
+    crownBaseFraction: 0.4,
+    crownRadiusFactor: 0.6,
+  },
+  {
+    key: 'acacia',
+    name: 'Acacia',
+    trunkWidth: 1,
+    heightMinBlocks: 12,
+    heightMaxBlocks: 18,
+    branchMinBlocks: 2,
+    branchMaxBlocks: 4,
+    blobRadiusBlocks: 4,
+    crownBaseFraction: 0.5,
+    crownRadiusFactor: 0.45,
+  },
+  {
+    key: 'dead_snag',
+    name: 'Dead Snag',
+    trunkWidth: 1,
+    heightMinBlocks: 8,
+    heightMaxBlocks: 16,
+    branchMinBlocks: 0,
+    branchMaxBlocks: 2,
+    blobRadiusBlocks: 0,
+    crownBaseFraction: 1.0,
+    crownRadiusFactor: 0,
+  },
+  {
+    key: 'bush',
+    name: 'Bush',
+    trunkWidth: 1,
+    heightMinBlocks: 3,
+    heightMaxBlocks: 6,
+    branchMinBlocks: 0,
+    branchMaxBlocks: 0,
+    blobRadiusBlocks: 2,
+    crownBaseFraction: 0.3,
+    crownRadiusFactor: 0.8,
+  },
+];
+
+export const TREE_SPECIES_KEYS: TreeSpecies[] = TREE_SPECIES.map((s) => s.key);
+
+export function treeSpeciesDef(key: TreeSpecies): TreeSpeciesDef | undefined {
+  return TREE_SPECIES.find((s) => s.key === key);
+}
