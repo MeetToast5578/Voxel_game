@@ -188,7 +188,7 @@ Goal: every place has a recognisable character.
 
 Goal: time and climate are visible and felt.
 
-**Status (2026-10-17):** items 1–4 are partly done. Done: the calendar with seasons and seasonal day length (spec 29), the sky dome with sun, moon and stars (spec 33), the weather model (spec 32), and rain or snow particles with lightning (spec 34). Missing: moon phases, rotating stars, wet darkening (the wetness value is computed but nothing uses it), morning valley fog (only the static distance fog), the F3 weather lines, seasonal foliage (item 5), and smooth lighting (item 6).
+**Status (2026-10-17):** items 1–4 are partly done. Done: the calendar with seasons and seasonal day length (spec 29), the sky dome with sun, moon and stars (spec 33), the weather model (spec 32), and rain or snow particles with lightning (spec 34). Rotating stars are now implemented (T-F2, 2026-10-18). Missing: moon phases, wet darkening (the wetness value is computed but nothing uses it), morning valley fog (only the static distance fog), the F3 weather lines, seasonal foliage (item 5), and smooth lighting (item 6).
 
 1. **Calendar.**
    - A year of 4 seasons × N days (config; default 7).

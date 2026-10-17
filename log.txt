@@ -212,3 +212,79 @@ Verification of latest code: npm run check exited 0; 470 tests / 55 files pass,
 typecheck and production build pass. git diff --check passes. Local full smoke
 remains RED as above; targeted inventory check passes. Owner-only T-C tasks were
 not performed or marked complete. Temporary repro files removed.
+
+================================================================================
+SESSION 3 - 2026-10-18 (continued on arena/22bcf3fa-voxel-game)
+================================================================================
+T-A2a root cause isolated, not merely a timeout increase:
+- CI at 3e0ae5b showed inventoryOpen:true AFTER the E-open assertion timed out.
+- Timer polling, focus restoration and a target-state wait alone did NOT fix it.
+- Instrumented the key event, poll times and HTMLCanvasElement.toDataURL. With a
+  fully loaded seed-1 world and tall grass in non-hotbar slot 10, opening the
+  inventory entered toDataURL at 21304.8 ms and returned at 41479.7 ms: 20174.9 ms
+  blocked on one new item icon. This reproduced without save/reload or focus loss.
+- Source atlas and icon canvases now request willReadFrequently:true (CPU-backed).
+  Same loaded-world repro: 21478.9 -> 21481.7 ms, 2.8 ms, and E/Escape passed.
+- Added three Node tests: readback-friendly context creation, same nearest-neighbour
+  tile draw, one PNG encoding per cached state, and source-atlas context/pixels.
+- E/Escape smoke now explicitly loads the world and adds an item outside the HUD
+  hotbar before opening, so SMOKE_ONLY exercises the uncached-icon regression too.
+- Kept the 10 s open/close assertions. No dependency changes.
+
+Other smoke findings uncovered once inventory worked:
+- Full local run passed inventory and mining, then screenshotting glowstone timed
+  out at 30 s. Its screenshot gets a bounded 60 s software-rendering allowance;
+  it is diagnostic imagery, not a frame-time assertion.
+- CI at eb90f0e passed check and inventory, but mining pickup saw 7 dropped items
+  and no +1 grass. The test left mining HELD during screenshot readback, so extra
+  blocks could break before it released the button. Removed that mid-mining
+  screenshot, and release the button atomically in the poll observing target AIR.
+  A finally block releases on timeout too. Exact-one-item and crack-stage checks
+  remain. Isolated test initially exposed another stale target: after looking
+  down, non-null could still be the old forward target. Now waits for the target
+  below the player's feet. Focused mining/pickup smoke passes.
+- Play was selected by .menu-button.primary, now shared with the mode picker;
+  uses role=button, exact name Play instead. Main page reactivated after each
+  auxiliary context closes, and pick-block waits for targeting rather than 300 ms.
+
+T-F2 DONE: absolute star quaternion from timeOfDay around celestial north at the
+configured latitude. No accumulated frame delta; no geometry rewrite. Two tests
+check quarter/full-day turns, pole invariance, repeatable time jumps and recentering.
+
+T-E14 DONE: shrubland and steppe surfaces GRASS, soil unchanged DIRT. New invariant
+checks EVERY biome naming a tree is generator-eligible, not just each species having
+one valid home. Both real climate lookup fixtures are checked. Worldgen change.
+
+T-K3 audit corrected, remains PARTIAL: Game already has the pointer-lock failure
+listener and E access from the pause menu. The automated failure's cause was icon
+readback; the planned HUD Inventory button and owner playtest still remain.
+
+Reviewed diffs and ran npm run check: exit 0, 476 tests / 57 files, typecheck, build.
+Full smoke and CI results for the latest changes are recorded below when complete.
+Temporary trace/repro scripts removed; browser installation remains outside repo.
+
+Final follow-up smoke hardening:
+- A later full local run passed through inventory, mining, glowstone, deep/high
+  chunks, volumes and physics. Water's transient second-cell absence assertion
+  raced two browser RPCs against live game ticks. Same-frame non-flow is now checked
+  inside the placement evaluate; smoke checks eventual adjacent/two-cell flow.
+  Exact delay is covered in flow.test.ts using the config WATER_TICK_DELAY: first
+  cell tick five, second empty through nine, second flowing on ten. Focused flow
+  test (9 cases) and focused browser water check pass.
+- Auxiliary menu/persistence pages use render distance 2 so their GPU contexts don't
+  compete at full distance with the main world. Primary world, final FPS workload
+  and its default render distance 8 are unchanged. No checks skipped.
+- Pause inventory checks use timer polling and phase-specific errors. Focused
+  Play -> pointer-lock release -> Inventory -> Escape check passes.
+
+FINAL CI at 615c101, run 39075601314:
+  https://github.com/MeetToast5578/Voxel_game/actions/runs/39075601314
+  check SUCCESS, 55 seconds (476 tests / 57 files, typecheck, production build)
+  smoke SUCCESS, 6m30s (full suite, all checks enabled)
+T-A2a CLOSED. T-F2 and T-E14 CLOSED. T-K3 stays partial (HUD button + owner check).
+The separate final local full smoke run's outcome is recorded next.
+FINAL LOCAL FULL SMOKE: SUCCESS, Chromium 153, all 24 checks enabled.
+  fully loaded 814 ms after checks; 7 fps (SwiftShader), 4012 chunks loaded,
+  2063 meshed, 339 draw calls. Performance is not the owner's hardware result.
+All one-shot test processes exited; no preview/test server left running.
+Reviewed git diff --check: clean. No generated browser/artifact files tracked.

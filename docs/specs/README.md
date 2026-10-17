@@ -54,7 +54,7 @@ Status is checked against the code on 2026-10-17. "Open" means the spec's goal i
 | [42-entity-system.md](42-entity-system.md) | Entity system (phase 6, slice 1) | Partial | Pure module, not used by the game. Renumbered from 31 |
 | [32-biome-table.md](32-biome-table.md) | Biome table (Whittaker diagram) | Done | |
 | [43-weather-model.md](43-weather-model.md) | Weather model | Done | Renumbered from 32 |
-| [33-sky-rendering.md](33-sky-rendering.md) | Sky rendering | Partial | Sun, moon and stars are in. No moon phases; stars do not rotate |
+| [33-sky-rendering.md](33-sky-rendering.md) | Sky rendering | Partial | Sun, moon and rotating stars are in (T-F2). Moon phases remain missing |
 | [44-survival-health.md](44-survival-health.md) | Survival mode and health | Partial | Modes, health, fall damage, drowning and respawn are done. Hunger is inert; no UI to pick the mode. Renumbered from 34 |
 | [34-weather-model.md](34-weather-model.md) | Weather model and rendering | Partial | Particles and lightning are in, and the F3 overlay shows the season, weather, biome, temperature and rain. Wet darkening and morning fog are still missing. |
 | [35-biome-integration.md](35-biome-integration.md) | Biome integration into the generator | Partial | Surface, soil and trees follow the biome. Border blending is wired: surface blocks dither within 3 blocks of a border. Open: tints do not blend per vertex, and biomes are still picked per 16x16 chunk column |
