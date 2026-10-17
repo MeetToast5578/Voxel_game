@@ -1,6 +1,7 @@
 import { EDIT_CELLS_PER_STEP, UNDO_LIMIT } from '../config';
 import { worldToChunk } from '../core/coords';
 import { BlockId } from './blocks';
+import { scheduleFallChecks } from './falling';
 import type { ChunkManager } from './chunkManager';
 import type { CellWrite, World } from './world';
 
@@ -99,6 +100,8 @@ export class EditQueue {
       }
       this.chunks.onBlocksChanged(effect);
       for (const v of changed) job.applied.push(v);
+      // Sand or gravel that a volume edit left unsupported falls, as it does after a single-block edit.
+      for (let i = 0; i < changed.length; i += 5) scheduleFallChecks(this.world, changed[i]!, changed[i + 1]!, changed[i + 2]!);
     }
     if (job.next >= job.cells.length) this.finish(job);
   }

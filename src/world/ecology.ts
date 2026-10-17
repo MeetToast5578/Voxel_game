@@ -4,6 +4,7 @@ import { BlockId, blocksSky } from './blocks';
 import { mulberry32 } from '../core/random';
 import { mixSeed } from './randomTick';
 import { orphanedLeaves } from './leafDecay';
+import { FALL_REASON, handleFall } from './falling';
 
 /** Chance per tick that grass spreads to an adjacent lit dirt block. */
 export const GRASS_SPREAD_CHANCE = 0.02;
@@ -30,6 +31,8 @@ export function handleTick(world: World, tick: Tick): TickResult {
       return handleGrassSpread(world, tick);
     case 'leaf-decay':
       return handleLeafDecay(world, tick);
+    case FALL_REASON:
+      return handleFall(world, tick);
     default:
       return 'handled';
   }

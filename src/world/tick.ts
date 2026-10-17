@@ -67,25 +67,29 @@ export class TickQueue {
     const start = performance.now();
     const handedOff: Tick[] = [];
     let ran = 0;
-    const remaining: Tick[] = [];
-
-    for (const tick of this.ticks) {
-      if (tick.dueTick > nowTick) {
-        remaining.push(tick);
-        continue;
+    const kept: Tick[] = [];
+    // Work in rounds. A handler may schedule into this queue while it runs; those ticks wait in this.ticks, which is
+    // emptied before each round, so the round being iterated is never re-sorted under the loop. A tick scheduled
+    // for now runs in the next round of this same step, if the budget allows.
+    let round = this.ticks;
+    this.ticks = [];
+    while (round.length > 0) {
+      for (const tick of round) {
+        if (tick.dueTick > nowTick || performance.now() - start >= budgetMs) {
+          kept.push(tick);
+          continue;
+        }
+        const result = handle(tick, ctx);
+        ran++;
+        if (result === 'handoff') {
+          handedOff.push(tick);
+        }
       }
-      if (performance.now() - start >= budgetMs) {
-        remaining.push(tick);
-        continue;
-      }
-      const result = handle(tick, ctx);
-      ran++;
-      if (result === 'handoff') {
-        handedOff.push(tick);
-      }
+      round = this.ticks;
+      this.ticks = [];
     }
 
-    this.ticks = remaining;
+    this.ticks = kept.concat(this.ticks).sort(compareTicks);
     return { handedOff, ran };
   }
 

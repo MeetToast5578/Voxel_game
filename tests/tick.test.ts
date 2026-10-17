@@ -154,3 +154,36 @@ describe('World tick integration', () => {
     expect(world.currentTick).toBe(2);
   });
 });
+
+describe('TickQueue scheduling during a run', () => {
+  it('handles every queued tick exactly once when a handler schedules a tick that sorts before the rest', () => {
+    const q = new TickQueue();
+    for (let i = 0; i < 6; i++) q.schedule(tick(8 + i, 0, 0, 0, `t${i}`), 0, 0, 0);
+    const seen: string[] = [];
+    q.run(0, 100, (t: Tick, _ctx: unknown) => {
+      seen.push(t.reason);
+      // Due now, and at a lower x than everything queued, so it sorts to the front of the queue.
+      if (t.reason === 't0') q.schedule(tick(1, 0, 0, 0, 'early'), 0, 0, 0);
+      return 'handled';
+    }, undefined);
+    expect(seen.sort()).toEqual(['early', 't0', 't1', 't2', 't3', 't4', 't5']);
+    expect(q.size).toBe(0);
+  });
+
+  it('keeps a tick scheduled for a later step, and runs it then', () => {
+    const q = new TickQueue();
+    q.schedule(tick(1, 0, 0, 0, 'now'), 0, 0, 0);
+    q.run(0, 100, (t: Tick, _ctx: unknown) => {
+      if (t.reason === 'now') q.schedule(tick(0, 0, 0, 1, 'later'), 0, 0, 0);
+      return 'handled';
+    }, undefined);
+    expect(q.size).toBe(1);
+    const seen: string[] = [];
+    q.run(1, 100, (t: Tick, _ctx: unknown) => {
+      seen.push(t.reason);
+      return 'handled';
+    }, undefined);
+    expect(seen).toEqual(['later']);
+    expect(q.size).toBe(0);
+  });
+});

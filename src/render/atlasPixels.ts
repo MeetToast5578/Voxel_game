@@ -38,6 +38,7 @@ const PAINTERS: Record<number, PixelFn> = {
   [Tile.GRASS_TOP]: noisy(GRASS, 0.25),
   [Tile.GRASS_SIDE]: noisy(GRASS, 0.25), // grass all the way down, not a dirt side with a green edge
   [Tile.SAND]: noisy([219, 207, 163], 0.12),
+  [Tile.GRAVEL]: noisy([128, 122, 116], 0.5),
   [Tile.WATER]: noisy([48, 96, 200], 0.1),
   [Tile.LOG_SIDE]: (x, _y, r) => shade(BARK, (x % 4 === 0 ? 0.75 : 1) + (r() - 0.5) * 0.15),
   [Tile.LOG_TOP]: (x, y, r) => {

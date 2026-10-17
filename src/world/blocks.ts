@@ -34,6 +34,7 @@ export const BlockId = {
   DIAMOND_ORE: 32,
   EMERALD_ORE: 33,
   LAPIS_ORE: 34,
+  GRAVEL: 35,
 } as const;
 
 export const Tile = {
@@ -83,6 +84,7 @@ export const Tile = {
   DIAMOND_ORE: 43,
   EMERALD_ORE: 44,
   LAPIS_ORE: 45,
+  GRAVEL: 46,
 } as const;
 
 export type RenderLayer = 'none' | 'opaque' | 'cutout' | 'translucent';
@@ -118,10 +120,22 @@ export interface BlockDef {
    * (water and leaves included); column tops are the highest such block.
    */
   blocksSky: boolean;
+  /** Physics rule (spec 25): the block drops one cell per tick while the cell below is air, water or a plant. */
+  falls: boolean;
+  /** Physics rule (spec 25): the block is a fluid that spreads to lower neighbours. */
+  flows: boolean;
+  /** Physics rule (spec 25): the block holds up the block above it. Defaults to solid. */
+  supports: boolean;
 }
 
 /** What a registry is built from: a type without its assigned first state or derived flags. */
-export type BlockTypeDef = Omit<BlockDef, 'id' | 'blocksSky' | 'shape' | 'hardness'> & { shape?: BlockShape; hardness?: number };
+export type BlockTypeDef = Omit<BlockDef, 'id' | 'blocksSky' | 'shape' | 'hardness' | 'falls' | 'flows' | 'supports'> & {
+  shape?: BlockShape;
+  hardness?: number;
+  falls?: boolean;
+  flows?: boolean;
+  supports?: boolean;
+};
 
 /** Seconds to break a block by hand when its type does not say otherwise: stone-like. */
 export const DEFAULT_HARDNESS = 1.5;
@@ -179,7 +193,14 @@ export function buildBlockRegistry(defs: readonly BlockTypeDef[]): BlockRegistry
     if (!Number.isInteger(d.variants) || d.variants < 1) throw new Error(`Block '${d.key}' needs at least 1 variant`);
     if (next + d.variants > MAX_BLOCK_STATES) throw new Error(`Too many block states (more than ${MAX_BLOCK_STATES})`);
     const type: BlockDef = {
-      ...d, id: next, shape: d.shape ?? 'cube', hardness: d.hardness ?? DEFAULT_HARDNESS, blocksSky: derivedBlocksSky(d),
+      ...d,
+      id: next,
+      shape: d.shape ?? 'cube',
+      hardness: d.hardness ?? DEFAULT_HARDNESS,
+      blocksSky: derivedBlocksSky(d),
+      falls: d.falls ?? false,
+      flows: d.flows ?? false,
+      supports: d.supports ?? d.solid,
     };
     const index = types.length;
     types.push(type);
@@ -262,7 +283,7 @@ export const BLOCK_REGISTRY = buildBlockRegistry([
   def('stone', 'Stone', all(Tile.STONE)),
   def('dirt', 'Dirt', all(Tile.DIRT), { hardness: 0.5 }),
   def('grass', 'Grass', { top: Tile.GRASS_TOP, side: Tile.GRASS_SIDE, bottom: Tile.DIRT }, { hardness: 0.5 }),
-  def('sand', 'Sand', all(Tile.SAND), { hardness: 0.5 }),
+  def('sand', 'Sand', all(Tile.SAND), { hardness: 0.5, falls: true }),
   def('water', 'Water', all(Tile.WATER), {
     solid: false, opaque: false, targetable: false, breakable: false, cullSame: true, layer: 'translucent',
   }),
@@ -295,6 +316,7 @@ export const BLOCK_REGISTRY = buildBlockRegistry([
   def('diamond_ore', 'Diamond ore', all(Tile.DIAMOND_ORE), { hardness: 4 }),
   def('emerald_ore', 'Emerald ore', all(Tile.EMERALD_ORE), { hardness: 4 }),
   def('lapis_ore', 'Lapis ore', all(Tile.LAPIS_ORE), { hardness: 3 }),
+  def('gravel', 'Gravel', all(Tile.GRAVEL), { hardness: 0.6, falls: true }),
 ]);
 
 // BlockId.X is variant 0 of the type whose key is x; keep the two lists in step.

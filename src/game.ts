@@ -39,6 +39,7 @@ import { InventoryScreen } from './ui/inventoryScreen';
 import { Menu } from './ui/menu';
 import { BlockId, getBlockDef, isSolid } from './world/blocks';
 import { scheduleLeafDecay } from './world/ecology';
+import { scheduleFallChecks } from './world/falling';
 import { Chunk } from './world/chunk';
 import { ChunkManager } from './world/chunkManager';
 import { type EditCell, EditQueue } from './world/editQueue';
@@ -498,6 +499,8 @@ export class Game {
     this.chunks.onBlockChanged(x, y, z, oldTop, this.world.topAt(x, z));
     // A log was chopped: the leaves it held up (if no other log holds them) fall a moment later.
     if (prev === BlockId.LOG && id !== BlockId.LOG) scheduleLeafDecay(this.world, x, y, z);
+    // Sand or gravel above a removed block falls; a falling block placed in the air falls too.
+    if (prev !== id) scheduleFallChecks(this.world, x, y, z);
     return true;
   }
 

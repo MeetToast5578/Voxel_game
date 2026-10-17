@@ -3,6 +3,7 @@ import { chunkKey, columnKey, worldToChunk } from '../core/coords';
 import { buildChunkMesh, type ChunkMeshData } from '../render/mesher';
 import { Chunk } from './chunk';
 import { neighborIndex } from './light';
+import { scheduleFallingBlocks } from './falling';
 import type { BatchEffect, World } from './world';
 
 /** Receives finished meshes. Implemented by render/chunkMeshes.ts (and by fakes in tests). */
@@ -406,6 +407,8 @@ export class ChunkManager {
   private addChunk(chunk: Chunk): void {
     this.world.applyEdits(chunk);
     this.world.addChunk(chunk);
+    // A falling block saved mid-fall resumes its fall once its chunk is loaded (see falling.ts).
+    scheduleFallingBlocks(this.world, chunk);
   }
 
   /**
