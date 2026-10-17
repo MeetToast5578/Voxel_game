@@ -1,4 +1,4 @@
-import { CHUNK_SIZE, MAX_JOBS_IN_FLIGHT, roundBlocks, SURFACE_BAND, SURFACE_MAX_DISTANCE_M, TICK_BUDGET_MS, VERTICAL_RENDER_DISTANCE } from '../config';
+import { CHUNK_SIZE, MAX_JOBS_IN_FLIGHT, RANDOM_TICK_BUDGET_MS, roundBlocks, SURFACE_BAND, SURFACE_MAX_DISTANCE_M, TICK_BUDGET_MS, VERTICAL_RENDER_DISTANCE } from '../config';
 import { chunkKey, columnKey, worldToChunk } from '../core/coords';
 import { buildChunkMesh, type ChunkMeshData } from '../render/mesher';
 import { Chunk } from './chunk';
@@ -36,6 +36,9 @@ export interface ChunkStats {
   /** Ticks run in the last step and pending ticks across all loaded chunks. */
   tickRan: number;
   tickPending: number;
+  /** Random ticks run in the last step, and how long the pass took, for the F3 overlay. */
+  randomTickRan: number;
+  randomTickMs: number;
 }
 
 interface ColumnPos {
@@ -104,6 +107,8 @@ export class ChunkManager {
   private setsStale = false;
   /** Result of the last tickStep, for the F3 overlay. */
   private lastTickStats = { ran: 0, pending: 0 };
+  /** Result of the last randomTickStep, for the F3 overlay. */
+  private lastRandomTickStats = { ran: 0, ms: 0 };
   /**
    * Everything in loadList before loadCursor is loaded, and everything in meshList before meshCursor is meshed
    * and clean, so each frame starts scanning there. Reset whenever the lists change or a chunk becomes dirty.
@@ -147,6 +152,8 @@ export class ChunkManager {
 
     // Run chunk ticks (falling blocks, fluid flow, ...) within the per-frame budget.
     this.lastTickStats = this.world.tickStep(TICK_BUDGET_MS);
+    // Run the random-tick pass (ecology) within its own budget.
+    this.lastRandomTickStats = this.world.randomTickStep(RANDOM_TICK_BUDGET_MS);
 
     if (this.jobs) {
       this.dispatchJobs(this.jobs);
@@ -306,6 +313,8 @@ export class ChunkManager {
       jobsInFlight: this.jobsInFlight(),
       tickRan: this.lastTickStats.ran,
       tickPending: this.lastTickStats.pending,
+      randomTickRan: this.lastRandomTickStats.ran,
+      randomTickMs: Math.round(this.lastRandomTickStats.ms * 100) / 100,
     };
   }
 

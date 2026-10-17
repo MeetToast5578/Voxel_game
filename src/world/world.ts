@@ -1,9 +1,10 @@
-import { CHUNK_SIZE, CHUNK_VOLUME } from '../config';
+import { CHUNK_SIZE, CHUNK_VOLUME, RANDOM_TICKS_PER_CHUNK } from '../config';
 import { chunkKey, columnIndex, columnKey, localIndex, worldToChunk, worldToLocal } from '../core/coords';
 import { BlockId, blocksSky } from './blocks';
 import { Chunk } from './chunk';
 import { type TickHandoff } from './tick';
-import { handleTick } from './ecology';
+import { handleTick, handleRandomTick } from './ecology';
+import { forEachRandomCell } from './randomTick';
 
 /** Generates the blocks of a chunk synchronously (without player edits). */
 export type ChunkFallback = (cx: number, cy: number, cz: number) => Uint16Array;
@@ -342,6 +343,24 @@ export class World {
 
   /** Current global tick number. */
   get currentTick(): number { return this.tickCounter; }
+
+  /**
+   * Run one random-tick pass over all loaded chunks within `budgetMs`. Each chunk draws
+   * RANDOM_TICKS_PER_CHUNK cells (deterministically, from seed + tick + chunk) and the
+   * ecology handler runs on each. Returns how many cells were visited and how long it took.
+   */
+  randomTickStep(budgetMs: number, handler: typeof handleRandomTick = handleRandomTick): { ran: number; ms: number } {
+    const start = performance.now();
+    let ran = 0;
+    for (const chunk of this.chunkMap.values()) {
+      if (performance.now() - start >= budgetMs) break;
+      forEachRandomCell(this.seed, this.tickCounter, chunk.cx, chunk.cy, chunk.cz, RANDOM_TICKS_PER_CHUNK, (wx, wy, wz, rng) => {
+        handler(this, wx, wy, wz, rng);
+        ran++;
+      });
+    }
+    return { ran, ms: performance.now() - start };
+  }
 
   /** Total number of pending ticks across all loaded chunks. */
   get pendingTickCount(): number {

@@ -237,6 +237,10 @@ export const TICK_BUDGET_MS = 2; // max time per frame spent running chunk ticks
 // ---- Entity system (spec 31) ----
 export const ENTITY_FRICTION = 8; // per second: how fast an entity slows down on the ground
 
+// ---- Random ticks (spec 38) ----
+export const RANDOM_TICKS_PER_CHUNK = 3; // random cells drawn per loaded chunk per tick step
+export const RANDOM_TICK_BUDGET_MS = 1; // max time per frame spent on the random-tick pass
+
 // ---- Ecology (spec 36) ----
 export const GRASS_SPREAD_CHANCE = 0.02; // chance per tick that grass spreads to adjacent lit dirt
 export const GRASS_SPREAD_LIGHT_MIN = 8; // minimum sky light level for grass to spread

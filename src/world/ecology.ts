@@ -1,6 +1,8 @@
 import { type World } from './world';
 import { type Tick, type TickResult } from './tick';
 import { BlockId, blocksSky } from './blocks';
+import { mulberry32 } from '../core/random';
+import { mixSeed } from './randomTick';
 
 /** Chance per tick that grass spreads to an adjacent lit dirt block. */
 export const GRASS_SPREAD_CHANCE = 0.02;
@@ -29,39 +31,36 @@ export function handleTick(world: World, tick: Tick): TickResult {
 }
 
 /**
- * Grass spreading: grass at (wx, wy, wz) attempts to spread to adjacent dirt
- * blocks that are lit by sunlight. Returns 'handled' (tick consumed) regardless.
+ * Handle one random tick at (x, y, z). Rules are added here as the world gains them
+ * (leaf decay, snow settling, crops). `rng` is the deterministic per-chunk stream, so a
+ * rule may roll as often as it likes.
  */
-function handleGrassSpread(world: World, tick: Tick): TickResult {
-  const { x, y, z } = tick;
+export function handleRandomTick(world: World, x: number, y: number, z: number, rng: () => number): void {
+  if (world.getBlock(x, y, z) === BlockId.GRASS) spreadGrassFrom(world, x, y, z, rng);
+}
 
-  // Only spread from grass blocks.
-  if (world.getBlock(x, y, z) !== BlockId.GRASS) return 'handled';
-
-  // Check each horizontal neighbor for dirt blocks to convert.
+/**
+ * Grass spreading: grass at (x, y, z) attempts to spread to adjacent dirt blocks that are
+ * lit by sunlight. Written once, driven either by a scheduled tick or a random tick.
+ */
+function spreadGrassFrom(world: World, x: number, y: number, z: number, roll: () => number): void {
+  if (world.getBlock(x, y, z) !== BlockId.GRASS) return;
   for (const n of HORIZONTAL_NEIGHBORS) {
     const nx = x + n.x;
     const ny = y + n.y;
     const nz = z + n.z;
-
     // Only spread to dirt blocks.
     if (world.getBlock(nx, ny, nz) !== BlockId.DIRT) continue;
-
-    // Check if the dirt block is lit by sunlight (sky light > 0).
-    // We approximate by checking if the block directly above is not sky-blocking
-    // (i.e., sunlight can reach down to this block).
-    const above = world.getBlock(nx, ny + 1, nz);
-    if (blocksSky(above)) continue; // something blocks sunlight above
-
-    // Random chance to spread.
-    // Use a deterministic hash based on position and tick dueTick.
-    const hashInput = nx * 73856093 ^ ny * 19349663 ^ nz * 83492791 ^ (tick.dueTick * 2654435761);
-    const hash = (hashInput * 16807) % 2147483647;
-    const chance = hash / 2147483647;
-    if (chance < GRASS_SPREAD_CHANCE) {
-      world.setBlock(nx, ny, nz, BlockId.GRASS);
-    }
+    // Only spread where sunlight reaches: nothing sky-blocking directly above.
+    if (blocksSky(world.getBlock(nx, ny + 1, nz))) continue;
+    if (roll() < GRASS_SPREAD_CHANCE) world.setBlock(nx, ny, nz, BlockId.GRASS);
   }
+}
 
+/** A scheduled grass-spread tick rolls on its own stream, keyed by the tick's due time. */
+function handleGrassSpread(world: World, tick: Tick): TickResult {
+  const rng = mulberry32(mixSeed(world.seed, tick.x, tick.y, tick.z, tick.dueTick));
+  spreadGrassFrom(world, tick.x, tick.y, tick.z, rng);
   return 'handled';
 }
+

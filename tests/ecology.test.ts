@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest';
+import { RANDOM_TICKS_PER_CHUNK } from '../src/config';
+import { mulberry32 } from '../src/core/random';
 import { World } from '../src/world/world';
 import { Chunk } from '../src/world/chunk';
 import { localIndex } from '../src/core/coords';
 import { BlockId, blocksSky } from '../src/world/blocks';
-import { handleTick } from '../src/world/ecology';
+import { handleRandomTick, handleTick } from '../src/world/ecology';
 
 describe('ecology - grass spreading', () => {
   it('spreads grass to adjacent lit dirt blocks', () => {
@@ -96,5 +98,56 @@ describe('ecology - grass spreading', () => {
     expect(blocksSky(BlockId.GRASS)).toBe(true);
     expect(blocksSky(BlockId.STONE)).toBe(true);
     expect(blocksSky(BlockId.WATER)).toBe(true); // water blocks sky in this game
+  });
+});
+
+describe('ecology - random ticks', () => {
+  /** One chunk with grass at (8,5,8), lit dirt at (7,5,8) and dirt under stone at (9,5,8). */
+  function grassWorld(): World {
+    const world = new World(42);
+    const chunk = new Chunk(0, 0, 0);
+    world.addChunk(chunk);
+    chunk.blocks[localIndex(8, 5, 8)] = BlockId.GRASS;
+    chunk.blocks[localIndex(7, 5, 8)] = BlockId.DIRT;
+    chunk.blocks[localIndex(9, 5, 8)] = BlockId.DIRT;
+    chunk.blocks[localIndex(9, 6, 8)] = BlockId.STONE;
+    world.installColumnTops(0, 0, new Int32Array(256).fill(5));
+    return world;
+  }
+
+  it('spreads grass to adjacent lit dirt, but not under a roof', () => {
+    const world = grassWorld();
+    const rng = mulberry32(1);
+    for (let i = 0; i < 5000 && world.getBlock(7, 5, 8) !== BlockId.GRASS; i++) {
+      handleRandomTick(world, 8, 5, 8, rng);
+    }
+    expect(world.getBlock(7, 5, 8)).toBe(BlockId.GRASS);
+    expect(world.getBlock(9, 5, 8)).toBe(BlockId.DIRT); // stone above: never spreads
+  });
+
+  it('does nothing to a cell that is not grass', () => {
+    const world = new World(1);
+    world.addChunk(new Chunk(0, 0, 0));
+    world.installColumnTops(0, 0, new Int32Array(256).fill(5));
+    handleRandomTick(world, 1, 1, 1, () => 0);
+    expect(world.getBlock(1, 1, 1)).toBe(BlockId.AIR);
+  });
+
+  it('randomTickStep visits RANDOM_TICKS_PER_CHUNK cells per loaded chunk, deterministically', () => {
+    const run = () => {
+      const world = grassWorld();
+      const seen: string[] = [];
+      const stats = world.randomTickStep(1000, (_w, x, y, z) => seen.push(`${x},${y},${z}`));
+      return { seen, stats };
+    };
+    const a = run();
+    const b = run();
+    expect(a.seen).toEqual(b.seen);
+    expect(a.stats.ran).toBe(RANDOM_TICKS_PER_CHUNK);
+  });
+
+  it('randomTickStep stops at once when the budget is zero', () => {
+    const world = grassWorld();
+    expect(world.randomTickStep(0).ran).toBe(0);
   });
 });

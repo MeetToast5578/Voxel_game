@@ -20,6 +20,8 @@ export interface DebugInfo {
   jobsInFlight: number;
   tickRan: number;
   tickPending: number;
+  randomTickRan: number;
+  randomTickMs: number;
   season: string;
   dayOfSeason: number;
   dayLengthMin: number;
@@ -57,6 +59,7 @@ export function formatDebugLines(info: DebugInfo): string[] {
     `Chunks loaded ${info.loaded}  meshed ${info.meshed}  pending ${info.pendingGen}/${info.pendingMesh}`,
     `Columns ${info.columns}   Jobs in flight ${info.jobsInFlight}`,
     `Ticks ran ${info.tickRan}  pending ${info.tickPending}`,
+    `Random ticks ${info.randomTickRan}  (${info.randomTickMs.toFixed(2)} ms)`,
     `Render distance ${info.renderDistance}   Seed ${info.seed}`,
   ];
 }
