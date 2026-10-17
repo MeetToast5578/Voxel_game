@@ -12,6 +12,15 @@ const PORT = 4173;
 const SEA_LEVEL = 0; // SEA_LEVEL in src/config.ts (y = 0, sea level in the roadmap), in blocks
 const URL_PATH = process.env.SMOKE_PATH || '/?seed=1&autostart=1&nosave=1';
 
+/** Auxiliary windows test menus and persistence, not draw distance. Keep their worlds small so multiple
+ * SwiftShader contexts do not starve startup; the primary world and its performance measurement stay at defaults. */
+async function configureAuxiliaryPage(page) {
+  await page.addInitScript(() => {
+    localStorage.setItem('voxel-game-settings-v1', JSON.stringify({ renderDistance: 2 }));
+  });
+}
+
+
 /** @type {{ name: string, run: (page: import('playwright').Page) => Promise<void> }[]} */
 const CHECKS = [
   {
@@ -97,6 +106,7 @@ const CHECKS = [
     name: 'start menu is shown without autostart',
     run: async (page) => {
       const menuPage = await page.context().browser().newPage({ viewport: { width: 1280, height: 720 } });
+      await configureAuxiliaryPage(menuPage);
       await menuPage.goto(new URL('/?seed=1&nosave=1', page.url()).href);
       await menuPage.waitForFunction(() => window.__game?.ready === true, null, { timeout: 60_000 });
       if (!(await menuPage.locator('.menu-overlay').isVisible())) throw new Error('menu not visible');
@@ -114,9 +124,10 @@ const CHECKS = [
   {
     name: 'saves the world and restores it after a reload',
     run: async (page) => {
-      // A fresh browser context has empty localStorage. No ?seed / ?nosave, so saving is on.
+      // A fresh browser context has no world save. No ?seed / ?nosave, so saving is on.
       const context = await page.context().browser().newContext({ viewport: { width: 1280, height: 720 } });
       const p = await context.newPage();
+      await configureAuxiliaryPage(p);
       const url = new URL('/?autostart=1', page.url()).href;
       await p.goto(url);
       await p.waitForFunction(() => window.__game?.ready === true, null, { timeout: 60_000 });
@@ -488,14 +499,15 @@ const CHECKS = [
       await page.evaluate(([x, z, y]) => {
         for (let i = -6; i <= 6; i++) for (let j = -6; j <= 6; j++) window.__game.setBlock(x + i, y, z + j, 1);
         window.__game.setBlock(x - 2, y + 1, z - 2, 5); // a water source on the floor
+        // Check synchronously with placement, before the game can advance any ticks between browser RPCs.
+        if (window.__game.getBlock(x - 3, y + 1, z - 2) !== 0 || window.__game.getBlock(x - 4, y + 1, z - 2) !== 0)
+          throw new Error('water flowed synchronously when the source was placed');
       }, [x, z, y]);
-      // Water moves one block every five game ticks (a quarter of a second), so two blocks out is not there yet.
       const distOne = [x - 3, y + 1, z - 2];
       const distTwo = [x - 4, y + 1, z - 2];
-      const at = (c) => page.evaluate((c) => window.__game.getBlock(...c), c);
-      if (await at(distTwo) !== 0) throw new Error('water reached two blocks out in the same frame as the source was placed');
+      // Browser RPC/polling latency can span multiple game ticks: do not assert a transient empty second cell
+      // after observing the first. tests/flow.test.ts checks the exact delay for BOTH cells tick by tick.
       await page.waitForFunction((c) => window.__game.getBlock(...c) >= 36 && window.__game.getBlock(...c) < 52, distOne, { timeout: 5_000 });
-      if (await at(distTwo) !== 0) throw new Error('water reached two blocks out before the first block had a tick to pass it on');
       await page.waitForFunction((c) => window.__game.getBlock(...c) >= 36 && window.__game.getBlock(...c) < 52, distTwo, { timeout: 5_000 });
       await page.evaluate(([x, z, y, p]) => {
         for (let i = -6; i <= 6; i++) for (let j = -6; j <= 6; j++) for (let k = 0; k <= 12; k++) window.__game.setBlock(x + i, y + k, z + j, 0);
@@ -543,19 +555,24 @@ const CHECKS = [
     name: 'the pause menu opens the inventory from its button, and Escape goes back to the pause menu',
     run: async (page) => {
       const pausePage = await page.context().browser().newPage({ viewport: { width: 1280, height: 720 } });
+      await configureAuxiliaryPage(pausePage);
       await pausePage.goto(new URL('/?seed=1&nosave=1', page.url()).href);
       await pausePage.waitForFunction(() => window.__game?.ready === true, null, { timeout: 60_000 });
       await pausePage.getByRole('button', { name: 'Play', exact: true }).click(); // The mode picker also has a primary-styled control.
-      await pausePage.waitForFunction(() => window.__game.state().playing, null, { timeout: 10_000 });
+      await pausePage.waitForFunction(() => window.__game.state().playing, null, { timeout: 10_000, polling: 100 })
+        .catch(async () => { throw new Error(`Play did not capture the mouse: ${await pausePage.locator('.menu-overlay').innerText()}`); });
       await pausePage.evaluate(() => document.exitPointerLock());
-      await pausePage.waitForFunction(() => !window.__game.state().playing, null, { timeout: 10_000 });
+      await pausePage.waitForFunction(() => !window.__game.state().playing, null, { timeout: 10_000, polling: 100 })
+        .catch(() => { throw new Error('releasing pointer lock did not pause play'); });
       const title = await pausePage.locator('.menu-title').innerText();
       if (title !== 'Paused') throw new Error(`expected the pause menu, got "${title}"`);
       await pausePage.locator('.menu-button', { hasText: 'Inventory' }).click();
-      await pausePage.waitForFunction(() => window.__game.state().inventoryOpen, null, { timeout: 10_000 });
+      await pausePage.waitForFunction(() => window.__game.state().inventoryOpen, null, { timeout: 10_000, polling: 100 })
+        .catch(() => { throw new Error('pause-menu Inventory button did not open inventory'); });
       if (await pausePage.locator('.menu-overlay').isVisible()) throw new Error('the pause menu should be hidden with the inventory open');
       await pausePage.keyboard.press('Escape');
-      await pausePage.waitForFunction(() => !window.__game.state().inventoryOpen, null, { timeout: 10_000 });
+      await pausePage.waitForFunction(() => !window.__game.state().inventoryOpen, null, { timeout: 10_000, polling: 100 })
+        .catch(() => { throw new Error('Escape did not close pause-menu inventory'); });
       if (!(await pausePage.locator('.menu-overlay').isVisible())) throw new Error('Escape should return to the pause menu');
       await pausePage.close();
       await page.bringToFront();
