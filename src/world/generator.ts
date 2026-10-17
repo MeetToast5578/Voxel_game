@@ -26,6 +26,7 @@ import {
   TERRAIN_CHUNK_BOTTOM,
   TREE_CHANCE,
   TREE_REACH,
+  type TreeSpecies,
 } from '../config';
 import { columnIndex, columnKey, localIndex } from '../core/coords';
 import { floorDiv } from '../core/math';
@@ -34,6 +35,7 @@ import { BlockId, blocksSky, parseBlockStateName } from './blocks';
 import { Chunk } from './chunk';
 import { TerrainDensity } from './density';
 import { ClimateSampler, detailAmpMeters, heightMeters } from './shape';
+import { blockPrecipitation, blockTemperature } from './climate';
 import { FeatureRegistry, type FeatureBlock } from './feature';
 import { biomeAt, soilBlock, surfaceBlock, treeSpecies } from './biome';
 import { MAX_TREE_RISE, treeBlocks } from './trees';
@@ -117,6 +119,11 @@ export class TerrainGenerator {
     const cx = floorDiv(wx, CHUNK_SIZE);
     const cz = floorDiv(wz, CHUNK_SIZE);
     return this.column(cx, cz).solidTop[columnIndex(wx - cx * CHUNK_SIZE, wz - cz * CHUNK_SIZE)]!;
+  }
+
+  /** The biome key of the column that contains (wx, wz). */
+  biomeKeyAt(wx: number, wz: number): string {
+    return this.column(floorDiv(wx, CHUNK_SIZE), floorDiv(wz, CHUNK_SIZE)).biomeKey;
   }
 
   /** Fills chunk.blocks with the generated terrain of chunk (cx, cy, cz). */
@@ -211,12 +218,14 @@ export class TerrainGenerator {
         const wx = cx * CHUNK_SIZE + lx;
         const wz = cz * CHUNK_SIZE + lz;
         const inSlice = h + 1 >= y0 && h + 1 < y1; // the plant cell is in this range
-        const plant = soil && !beach && inSlice ? this.plantAt(wx, wz, h) : BlockId.AIR;
+        const surface = soil ? (beach ? BlockId.SAND : surfaceBlock(column.biomeKey, beach)) : BlockId.AIR;
+        // Plants only grow on grass, so beaches, deserts and bare rock stay bare.
+        const plant = surface === BlockId.GRASS && inSlice ? this.plantAt(wx, wz, h) : BlockId.AIR;
         for (let y = y0; y < y1; y++) {
           let id: number;
           if (this.density.isSolid(wx, y, wz, offsetM, ampM)) {
             if (soil && y === h) {
-              id = beach ? BlockId.SAND : surfaceBlock(column.biomeKey, beach);
+              id = surface;
               if (id === BlockId.GRASS && !beach) {
                 this.onGrassPlaced?.(wx, y, wz);
               }
@@ -263,19 +272,19 @@ export class TerrainGenerator {
         column.warp[i] = this.rockNoise((wx * BLOCK_SIZE_M) / GEOLOGY_WARP_M, (wz * BLOCK_SIZE_M) / GEOLOGY_WARP_M);
         column.solidTop[i] = this.solidTop(wx, wz, column.offsets[i]!, column.amps[i]!);
       }
-    // Compute biome at column center.
+    // Compute biome at column center, from real temperature and precipitation (not the raw [-1,1] fields).
     const cxM = (cx * CHUNK_SIZE + 8) * BLOCK_SIZE_M;
     const czM = (cz * CHUNK_SIZE + 8) * BLOCK_SIZE_M;
     const centerFields = this.climate.fields(cxM, czM);
     const centerHeight = column.offsets[columnIndex(8, 8)]!;
     const centerAmp = column.amps[columnIndex(8, 8)]!;
     column.biomeKey = biomeAt(
-      centerFields.temperature,
-      centerFields.humidity,
+      blockTemperature(centerFields, centerHeight),
+      blockPrecipitation(centerFields, centerAmp),
       centerHeight,
       centerAmp,
       false,
-      0,
+      centerFields.weirdness,
     ).key;
     this.columnCache.set(key, column);
     return column;
@@ -372,23 +381,42 @@ export class TerrainGenerator {
   }
 
   /**
-   * Place a tree rooted at anchor (anchorX, anchorZ). Checks beach, bare rock, and cave
-   * conditions, then emits all blocks from treeBlocks. The hash check reproduces the
-   * old per-block anchor selection exactly. Tree species is determined by the column's biome.
+   * The tree species that grows at this anchor, or null when no tree does. Pure and
+   * side-effect free, so tests and tools can ask the generator the same question.
+   */
+  treeSpeciesAt(anchorX: number, anchorZ: number): TreeSpecies | null {
+    const h = this.getHeight(anchorX, anchorZ);
+    // Trees grow on grass: not a beach or water, and the cave carver left the surface alone.
+    if (h <= SEA_LEVEL + BEACH_BAND) return null;
+    const amp = this.amplitudeAt(anchorX, anchorZ);
+    if (amp >= BARE_ROCK_AMP_M) return null; // no trees on bare rock
+    if (h >= 2 && h <= this.caveTop(h) && this.isCave(anchorX, h, anchorZ)) return null;
+
+    // Species comes from the column's biome, from real temperature/precipitation (height in metres).
+    const fields = this.climate.fields(anchorX * BLOCK_SIZE_M, anchorZ * BLOCK_SIZE_M);
+    const heightM = h * BLOCK_SIZE_M;
+    const biome = biomeAt(
+      blockTemperature(fields, heightM),
+      blockPrecipitation(fields, amp),
+      heightM,
+      amp,
+      false,
+      fields.weirdness,
+    );
+    const species = treeSpecies(biome.key);
+    // No tree where the biome grows none, and none on a surface that is not grass (sand, rock).
+    return species && surfaceBlock(biome.key, false) === BlockId.GRASS ? species : null;
+  }
+
+  /**
+   * Place a tree rooted at anchor (anchorX, anchorZ). The hash check reproduces the
+   * old per-block anchor selection exactly. The species comes from the column's biome.
    */
   private placeTreeFromAnchor(seed: number, anchorX: number, anchorZ: number, emit: (block: FeatureBlock) => void): void {
     if (hash2(seed, anchorX, anchorZ) >= TREE_CHANCE) return;
+    const species = this.treeSpeciesAt(anchorX, anchorZ);
+    if (!species) return;
     const h = this.getHeight(anchorX, anchorZ);
-    // Trees grow on grass: not a beach, and the cave carver left the surface block alone.
-    if (h <= SEA_LEVEL + BEACH_BAND) return;
-    if (this.amplitudeAt(anchorX, anchorZ) >= BARE_ROCK_AMP_M) return; // no trees on bare rock
-    if (h >= 2 && h <= this.caveTop(h) && this.isCave(anchorX, h, anchorZ)) return;
-
-    // Determine tree species from the column's biome.
-    const fields = this.climate.fields(anchorX * BLOCK_SIZE_M, anchorZ * BLOCK_SIZE_M);
-    const biome = biomeAt(fields.temperature, fields.humidity, h, this.amplitudeAt(anchorX, anchorZ), false, 0);
-    const species = treeSpecies(biome.key) ?? 'oak';
-
     for (const b of treeBlocks(seed, anchorX, h, anchorZ, species)) {
       emit({ x: b.x, y: b.y, z: b.z, state: b.id });
     }

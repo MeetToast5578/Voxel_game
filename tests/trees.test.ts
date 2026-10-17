@@ -107,7 +107,9 @@ describe('trees', () => {
             surf === BlockId.SLATE || surf === BlockId.BASALT || surf === BlockId.DEEPSLATE ||
             surf === BlockId.SAND) continue;
         if (hash2(SEED, ax, az) >= TREE_CHANCE) continue; // generator didn't place a tree here
-        const blocks: TreeBlock[] = treeBlocks(SEED, ax, ground, az);
+        const species = g.treeSpeciesAt(ax, az);
+        if (!species) continue; // this anchor grows no tree (wrong biome, or a non-grass surface)
+        const blocks: TreeBlock[] = treeBlocks(SEED, ax, ground, az, species);
         if (new Set(blocks.map((b) => floorDiv(b.x, 16) + ',' + floorDiv(b.z, 16))).size > 1) crossing++;
         for (const b of blocks) {
           if (b.y < 0 || b.y >= LEGACY_HEIGHT) continue;

@@ -132,10 +132,16 @@ describe('buildChunkMesh', () => {
     const tops: Int32Array[] = [];
     for (let dz = -1; dz <= 1; dz++) for (let dx = -1; dx <= 1; dx++) tops.push(g.columnTops(dx, dz));
     buildChunkMesh(chunks, tops, cy); // warm up
-    const t0 = performance.now();
+    // Take the fastest of several runs: the suite runs files in parallel, so a single
+    // wall-clock sample measures machine load as much as the mesher. The minimum is
+    // robust to preemption and still catches a real slowdown.
+    let ms = Infinity;
     let m = buildChunkMesh(chunks, tops, cy);
-    for (let i = 0; i < 9; i++) m = buildChunkMesh(chunks, tops, cy);
-    const ms = (performance.now() - t0) / 10;
+    for (let i = 0; i < 10; i++) {
+      const t0 = performance.now();
+      m = buildChunkMesh(chunks, tops, cy);
+      ms = Math.min(ms, performance.now() - t0);
+    }
     console.log(`buildChunkMesh: ${ms.toFixed(2)} ms, ${quads(m.solid)} solid quads`);
     expect(quads(m.solid)).toBeGreaterThan(100);
     expect(ms).toBeLessThan(50);
