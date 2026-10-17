@@ -1,5 +1,5 @@
 import {
-  AUTOSAVE_INTERVAL_S, BREAK_REPEAT_S, DAY_LENGTH_S, DAYS_PER_SEASON, DEFAULT_MOUSE_SENSITIVITY, EYE_HEIGHT, FIXED_DT,
+  AUTOSAVE_INTERVAL_S, BLOCK_SIZE_M, BREAK_REPEAT_S, DAY_LENGTH_S, DAYS_PER_SEASON, DEFAULT_MOUSE_SENSITIVITY, EYE_HEIGHT, FIXED_DT,
   FOOTSTEP_DISTANCE, FOOTSTEP_MIN_SPEED, GEN_BUDGET_MS, HOTBAR_SIZE, MAX_FRAME_DT, MESH_BUDGET_MS, REACH, SEA_LEVEL,
   SETTINGS_KEY, SPAWN_READY_RADIUS, START_TIME_OF_DAY, WORLD_LATITUDE_DEG, ITEM_SIZE, PLAYER_HEIGHT, WALK_SPEED,
 } from './config';
@@ -23,6 +23,8 @@ import { BlockHighlight, BreakOverlay } from './render/highlight';
 import { ItemMeshes } from './render/itemMeshes';
 import { Renderer } from './render/renderer';
 import { Sky } from './render/sky';
+import { WeatherRenderer } from './render/weather';
+import { WeatherModel } from './world/weather';
 import type { LoadedSave, SavedPlayer, WorldMeta } from './storage/save';
 import { WorldSaver } from './storage/saver';
 import { loadSettings, saveSettings, type Settings } from './storage/settings';
@@ -120,6 +122,9 @@ export class Game {
   private readonly clouds: Clouds;
   /** The sky: dome, sun, moon, stars. */
   readonly sky: Sky;
+  /** Weather model and renderer (spec 34). */
+  readonly weather: WeatherModel;
+  readonly weatherRenderer: WeatherRenderer;
   private stepDistance = 0;
   private readonly usingWorkers: boolean;
 
@@ -166,6 +171,8 @@ export class Game {
     this.breakOverlay = new BreakOverlay(this.renderer.scene, this.renderer.crackMaterial);
     this.clouds = new Clouds(this.renderer.scene, seed);
     this.sky = new Sky(this.renderer.scene);
+    this.weather = new WeatherModel(seed);
+    this.weatherRenderer = new WeatherRenderer(this.renderer.scene);
     this.input = new Input(this.renderer.canvas);
     this.hud = new Hud(container, this.renderer.atlasCanvas);
     this.debugOverlay = new DebugOverlay(container);
@@ -286,6 +293,21 @@ export class Game {
     this.renderer.setCamera(eye.x, eye.y, eye.z, this.player.yaw, this.player.pitch);
     this.renderer.setDaylight(daylightAt(this.timeOfDay));
     this.sky.update(this.timeOfDay, this.calendar.timeOfYear, this.renderer.camera);
+    // Weather: sample at the player's position and update particles/lightning.
+    const weather = this.weather.sample(
+      eye.x,
+      eye.z,
+      this.timeOfDay,
+      this.calendar.timeOfYear,
+      eye.y * BLOCK_SIZE_M,
+    );
+    this.weatherRenderer.update(
+      eye.x,
+      eye.z,
+      weather,
+      frameDt,
+      (x, z) => this.world.topAt(x, z),
+    );
     this.clouds.update(eye.x, eye.z, frameDt, daylightAt(this.timeOfDay));
     this.renderer.setUnderwater(this.isWaterAt(Math.floor(eye.x), Math.floor(eye.y), Math.floor(eye.z)));
     const look = this.player.lookDirection();
