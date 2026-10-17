@@ -6,7 +6,8 @@ export const ICON_PIXELS = 32;
 
 /** Draws a block's side texture into a square canvas, scaled up without smoothing. State 0 clears the canvas. */
 export function drawBlockIcon(canvas: HTMLCanvasElement, atlas: HTMLCanvasElement, state: number): void {
-  const ctx = canvas.getContext('2d');
+  // Keep this canvas CPU-backed: late icon PNG readback must not flush the busy world-rendering GPU queue.
+  const ctx = canvas.getContext('2d', { willReadFrequently: true });
   if (!ctx) return;
   ctx.imageSmoothingEnabled = false;
   ctx.clearRect(0, 0, canvas.width, canvas.height);

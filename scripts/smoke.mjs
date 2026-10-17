@@ -252,6 +252,13 @@ const CHECKS = [
     name: 'E opens the inventory and Escape closes it',
     run: async (page) => {
       await page.bringToFront(); // earlier checks opened other pages, which may have taken the keyboard
+      // Regress late icon readback: wait for the busy world, then put a not-yet-shown item outside the hotbar.
+      // The old GPU-backed toDataURL path blocked for ~20 s when this icon first appeared in the inventory.
+      await page.waitForFunction(() => {
+        const s = window.__game.state();
+        return s.pendingGen === 0 && s.pendingMesh === 0;
+      }, null, { timeout: 120_000, polling: 100 });
+      await page.evaluate(() => window.__game.setHotbarSlot(9, 18)); // slot 10: tall grass, not drawn by the HUD
       await page.keyboard.press('KeyE');
       // Timer polling also observes state when Chromium throttles RAF after the multi-page save checks.
       await page.waitForFunction(() => window.__game.state().inventoryOpen, null, { timeout: 10_000, polling: 100 })
