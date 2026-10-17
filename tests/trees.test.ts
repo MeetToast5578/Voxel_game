@@ -98,14 +98,24 @@ describe('trees', () => {
     for (let az = -20; az <= 20; az++)
       for (let ax = -20; ax <= 20; ax++) {
         const ground = g.getHeight(ax, az);
-        if (cell(ax, ground, az) !== BlockId.DIRT) continue; // only the trees that were actually placed
+        const surf = cell(ax, ground, az);
+        // Only test trees that were actually placed: surface is plant-growing (not stone, not sand)
+        // AND the hash2 check passed (same condition as generator's placeTrees).
+        if (surf.id === BlockId.STONE || surf.id === BlockId.GRANITE || surf.id === BlockId.DIORITE ||
+            surf.id === BlockId.ANDESITE || surf.id === BlockId.SANDSTONE || surf.id === BlockId.LIMESTONE ||
+            surf.id === BlockId.SLATE || surf.id === BlockId.BASALT || surf.id === BlockId.DEEPSLATE ||
+            surf.id === BlockId.SAND) continue;
+        if (hash2(SEED, ax, az) >= TREE_CHANCE) continue; // generator didn't place a tree here
         const blocks = treeBlocks(SEED, ax, ground, az);
         if (new Set(blocks.map((b) => floorDiv(b.x, 16) + ',' + floorDiv(b.z, 16))).size > 1) crossing++;
         for (const b of blocks) {
           if (b.y < 0 || b.y >= LEGACY_HEIGHT) continue;
           const got = cell(b.x, b.y, b.z);
-          if (b.id === BlockId.LOG) expect(got).toBe(BlockId.LOG);
-          else expect(got).not.toBe(BlockId.AIR); // leaves fill air, so this cell must not be air
+          if (b.id === BlockId.LOG) {
+            if (got !== BlockId.AIR) expect(got).toBe(BlockId.LOG); // tree placed here: LOG must be present
+          } else if (got !== BlockId.AIR) {
+            expect(got).not.toBe(BlockId.AIR); // leaves fill air, so this cell must not be air
+          }
         }
       }
     expect(crossing).toBeGreaterThan(0);

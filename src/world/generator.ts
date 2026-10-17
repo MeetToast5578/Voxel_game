@@ -35,6 +35,7 @@ import { Chunk } from './chunk';
 import { TerrainDensity } from './density';
 import { ClimateSampler, detailAmpMeters, heightMeters } from './shape';
 import { FeatureRegistry, type FeatureBlock } from './feature';
+import { biomeAt, soilBlock, surfaceBlock } from './biome';
 import { MAX_TREE_RISE, treeBlocks } from './trees';
 
 const CAVE_THRESHOLD = 0.012;
@@ -78,6 +79,8 @@ interface Column {
   amps: Float64Array;
   /** Rock-layer warp: 2D noise in [-1, 1]. */
   warp: Float64Array;
+  /** Biome key for this column (computed once at column center). */
+  biomeKey: string;
 }
 
 export class TerrainGenerator {
@@ -210,8 +213,8 @@ export class TerrainGenerator {
         for (let y = y0; y < y1; y++) {
           let id: number;
           if (this.density.isSolid(wx, y, wz, offsetM, ampM)) {
-            if (soil && y === h) id = beach ? BlockId.SAND : BlockId.GRASS;
-            else if (soil && y >= h - SOIL_DEPTH) id = beach ? BlockId.SAND : BlockId.DIRT;
+            if (soil && y === h) id = beach ? BlockId.SAND : surfaceBlock(column.biomeKey, beach);
+            else if (soil && y >= h - SOIL_DEPTH) id = beach ? BlockId.SAND : soilBlock(column.biomeKey);
             else id = this.rockAt(y, warp);
           } else if (y === h + 1 && plant !== BlockId.AIR) id = plant;
           else id = y <= SEA_LEVEL ? BlockId.WATER : BlockId.AIR;
@@ -241,6 +244,7 @@ export class TerrainGenerator {
       offsets: new Float64Array(CHUNK_SIZE * CHUNK_SIZE),
       amps: new Float64Array(CHUNK_SIZE * CHUNK_SIZE),
       warp: new Float64Array(CHUNK_SIZE * CHUNK_SIZE),
+      biomeKey: '',
     };
     for (let lz = 0; lz < CHUNK_SIZE; lz++)
       for (let lx = 0; lx < CHUNK_SIZE; lx++) {
@@ -253,6 +257,20 @@ export class TerrainGenerator {
         column.warp[i] = this.rockNoise((wx * BLOCK_SIZE_M) / GEOLOGY_WARP_M, (wz * BLOCK_SIZE_M) / GEOLOGY_WARP_M);
         column.solidTop[i] = this.solidTop(wx, wz, column.offsets[i]!, column.amps[i]!);
       }
+    // Compute biome at column center.
+    const cxM = (cx * CHUNK_SIZE + 8) * BLOCK_SIZE_M;
+    const czM = (cz * CHUNK_SIZE + 8) * BLOCK_SIZE_M;
+    const centerFields = this.climate.fields(cxM, czM);
+    const centerHeight = column.offsets[columnIndex(8, 8)]!;
+    const centerAmp = column.amps[columnIndex(8, 8)]!;
+    column.biomeKey = biomeAt(
+      centerFields.temperature,
+      centerFields.humidity,
+      centerHeight,
+      centerAmp,
+      false,
+      0,
+    ).key;
     this.columnCache.set(key, column);
     return column;
   }

@@ -193,13 +193,21 @@ describe('TerrainGenerator', () => {
       return { id: c.get(lx, top - cy * 16, lz), above: top + 1 < (cy + 1) * 16 ? c.get(lx, top + 1 - cy * 16, lz) : null };
     };
     let plains = 0;
-    for (let z = -40; z < 40; z += 5) for (let x = -40; x < 40; x += 5) if (surface(x, z).id === BlockId.GRASS) plains++;
+    for (let z = -40; z < 40; z += 5) for (let x = -40; x < 40; x += 5) {
+      const s = surface(x, z);
+      // Plains have a plant-growing surface (grass or dirt), not bare rock.
+      if (s.id !== BlockId.STONE && s.id !== BlockId.GRANITE && s.id !== BlockId.DIORITE &&
+          s.id !== BlockId.ANDESITE && s.id !== BlockId.SANDSTONE && s.id !== BlockId.LIMESTONE &&
+          s.id !== BlockId.SLATE && s.id !== BlockId.BASALT && s.id !== BlockId.DEEPSLATE) plains++;
+    }
     let bare = 0;
     for (let z = PEAK.z; z < PEAK.z + 48; z += 6)
       for (let x = PEAK.x; x < PEAK.x + 48; x += 6) {
         const s = surface(x, z);
-        if (s.id === BlockId.GRASS || s.id === BlockId.SAND) continue;
-        bare++;
+        // Bare rock mountains have stone-like surfaces.
+        if (s.id === BlockId.STONE || s.id === BlockId.GRANITE || s.id === BlockId.DIORITE ||
+            s.id === BlockId.ANDESITE || s.id === BlockId.SANDSTONE || s.id === BlockId.LIMESTONE ||
+            s.id === BlockId.SLATE || s.id === BlockId.BASALT || s.id === BlockId.DEEPSLATE) bare++;
         expect(s.above).not.toBe(BlockId.LOG);
       }
     expect(plains).toBeGreaterThan(0);

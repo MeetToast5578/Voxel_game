@@ -1,3 +1,6 @@
+import { BlockId } from './blocks';
+import { hash2 } from '../core/random';
+
 export type BiomeKey = string;
 
 export interface BiomeDef {
@@ -11,6 +14,10 @@ export interface BiomeDef {
   detailAmpMin?: number;
   waterOnly?: boolean;
   landOnly?: boolean;
+  /** Default surface block state for this biome (used by the generator). */
+  surfaceBlock: number;
+  /** Soil block below the surface (used by the generator). */
+  soilBlock: number;
 }
 
 export interface BiomeLookup {
@@ -19,35 +26,42 @@ export interface BiomeLookup {
 }
 
 const BIOMES: BiomeDef[] = [
-  { key: 'warm_ocean', name: 'Warm Ocean', tempMin: 15, tempMax: 45, precipMin: 0, precipMax: 2000, waterOnly: true },
-  { key: 'temperate_ocean', name: 'Temperate Ocean', tempMin: 5, tempMax: 15, precipMin: 0, precipMax: 2000, waterOnly: true },
-  { key: 'cold_ocean', name: 'Cold Ocean', tempMin: 0, tempMax: 5, precipMin: 0, precipMax: 2000, waterOnly: true },
-  { key: 'frozen_ocean', name: 'Frozen Ocean', tempMin: -45, tempMax: 0, precipMin: 0, precipMax: 2000, waterOnly: true },
-  { key: 'beach', name: 'Beach', tempMin: 10, tempMax: 45, precipMin: 0, precipMax: 2000, waterOnly: true },
-  { key: 'stony_shore', name: 'Stony Shore', tempMin: -45, tempMax: 10, precipMin: 0, precipMax: 2000, waterOnly: true },
-  { key: 'river', name: 'River', tempMin: -45, tempMax: 45, precipMin: 0, precipMax: 2000, waterOnly: true },
-  { key: 'lake', name: 'Lake', tempMin: -45, tempMax: 45, precipMin: 0, precipMax: 2000, waterOnly: true },
-  { key: 'swamp', name: 'Swamp', tempMin: 5, tempMax: 45, precipMin: 1000, precipMax: 2000, waterOnly: true },
-  { key: 'mangrove', name: 'Mangrove', tempMin: 20, tempMax: 45, precipMin: 1000, precipMax: 2000, waterOnly: true },
-  { key: 'glacier', name: 'Glacier', tempMin: -45, tempMax: -5, precipMin: 0, precipMax: 2000 },
-  { key: 'snowcapped_peaks', name: 'Snowcapped Peaks', tempMin: -5, tempMax: 10, precipMin: 0, precipMax: 2000 },
-  { key: 'alpine_meadow', name: 'Alpine Meadow', tempMin: 2, tempMax: 15, precipMin: 0, precipMax: 2000 },
-  { key: 'tundra', name: 'Tundra', tempMin: -10, tempMax: 5, precipMin: 0, precipMax: 500, heightMin: 0, landOnly: true },
-  { key: 'scree', name: 'Scree and Bare Rock', tempMin: -45, tempMax: 45, precipMin: 0, precipMax: 2000, detailAmpMin: 18, landOnly: true },
-  { key: 'volcanic', name: 'Volcanic', tempMin: -45, tempMax: 45, precipMin: 0, precipMax: 2000 },
-  { key: 'desert', name: 'Desert', tempMin: 20, tempMax: 45, precipMin: 0, precipMax: 250, landOnly: true },
-  { key: 'badlands', name: 'Badlands', tempMin: 20, tempMax: 45, precipMin: 250, precipMax: 500, landOnly: true },
-  { key: 'shrubland', name: 'Shrubland', tempMin: 15, tempMax: 30, precipMin: 250, precipMax: 500, landOnly: true },
-  { key: 'savanna', name: 'Savanna', tempMin: 20, tempMax: 45, precipMin: 500, precipMax: 1000, landOnly: true },
-  { key: 'steppe', name: 'Steppe', tempMin: 0, tempMax: 20, precipMin: 250, precipMax: 750, landOnly: true },
-  { key: 'plains', name: 'Plains', tempMin: 10, tempMax: 25, precipMin: 500, precipMax: 1000, landOnly: true },
-  { key: 'meadow', name: 'Meadow', tempMin: 5, tempMax: 15, precipMin: 1000, precipMax: 2000, landOnly: true },
-  { key: 'tropical_rainforest', name: 'Tropical Rainforest', tempMin: 25, tempMax: 45, precipMin: 1500, precipMax: 2000, landOnly: true },
-  { key: 'temperate_deciduous', name: 'Temperate Deciduous Forest', tempMin: 10, tempMax: 25, precipMin: 750, precipMax: 1500, landOnly: true },
-  { key: 'birch', name: 'Birch Forest', tempMin: 0, tempMax: 15, precipMin: 750, precipMax: 1500, landOnly: true },
-  { key: 'old_growth_dark_forest', name: 'Old-Growth Dark Forest', tempMin: 5, tempMax: 15, precipMin: 1500, precipMax: 2000, landOnly: true },
-  { key: 'taiga', name: 'Taiga', tempMin: -10, tempMax: 5, precipMin: 500, precipMax: 1000, landOnly: true },
-  { key: 'snowy_taiga', name: 'Snowy Taiga', tempMin: -25, tempMax: -10, precipMin: 500, precipMax: 1000, landOnly: true },
+  // ---- Oceans (water only) ----
+  { key: 'warm_ocean', name: 'Warm Ocean', tempMin: 15, tempMax: 45, precipMin: 0, precipMax: 2000, waterOnly: true, surfaceBlock: BlockId.WATER, soilBlock: BlockId.SAND },
+  { key: 'temperate_ocean', name: 'Temperate Ocean', tempMin: 5, tempMax: 15, precipMin: 0, precipMax: 2000, waterOnly: true, surfaceBlock: BlockId.WATER, soilBlock: BlockId.SAND },
+  { key: 'cold_ocean', name: 'Cold Ocean', tempMin: 0, tempMax: 5, precipMin: 0, precipMax: 2000, waterOnly: true, surfaceBlock: BlockId.WATER, soilBlock: BlockId.SAND },
+  { key: 'frozen_ocean', name: 'Frozen Ocean', tempMin: -45, tempMax: 0, precipMin: 0, precipMax: 2000, waterOnly: true, surfaceBlock: BlockId.WATER, soilBlock: BlockId.STONE },
+  { key: 'beach', name: 'Beach', tempMin: 10, tempMax: 45, precipMin: 0, precipMax: 2000, waterOnly: true, surfaceBlock: BlockId.SAND, soilBlock: BlockId.SAND },
+  { key: 'stony_shore', name: 'Stony Shore', tempMin: -45, tempMax: 10, precipMin: 0, precipMax: 2000, waterOnly: true, surfaceBlock: BlockId.STONE, soilBlock: BlockId.STONE },
+  { key: 'river', name: 'River', tempMin: -45, tempMax: 45, precipMin: 0, precipMax: 2000, waterOnly: true, surfaceBlock: BlockId.WATER, soilBlock: BlockId.SAND },
+  { key: 'lake', name: 'Lake', tempMin: -45, tempMax: 45, precipMin: 0, precipMax: 2000, waterOnly: true, surfaceBlock: BlockId.WATER, soilBlock: BlockId.SAND },
+  { key: 'swamp', name: 'Swamp', tempMin: 5, tempMax: 45, precipMin: 1000, precipMax: 2000, waterOnly: true, surfaceBlock: BlockId.WATER, soilBlock: BlockId.DIRT },
+  { key: 'mangrove', name: 'Mangrove', tempMin: 20, tempMax: 45, precipMin: 1000, precipMax: 2000, waterOnly: true, surfaceBlock: BlockId.WATER, soilBlock: BlockId.SAND },
+
+  // ---- Height overrides (land only) ----
+  { key: 'glacier', name: 'Glacier', tempMin: -45, tempMax: -5, precipMin: 0, precipMax: 2000, surfaceBlock: BlockId.STONE, soilBlock: BlockId.STONE },
+  { key: 'snowcapped_peaks', name: 'Snowcapped Peaks', tempMin: -5, tempMax: 10, precipMin: 0, precipMax: 2000, surfaceBlock: BlockId.STONE, soilBlock: BlockId.STONE },
+  { key: 'alpine_meadow', name: 'Alpine Meadow', tempMin: 2, tempMax: 15, precipMin: 0, precipMax: 2000, surfaceBlock: BlockId.DIRT, soilBlock: BlockId.DIRT },
+  { key: 'tundra', name: 'Tundra', tempMin: -10, tempMax: 5, precipMin: 0, precipMax: 500, heightMin: 0, landOnly: true, surfaceBlock: BlockId.DIRT, soilBlock: BlockId.DIRT },
+  { key: 'scree', name: 'Scree and Bare Rock', tempMin: -45, tempMax: 45, precipMin: 0, precipMax: 2000, detailAmpMin: 18, landOnly: true, surfaceBlock: BlockId.STONE, soilBlock: BlockId.STONE },
+  { key: 'volcanic', name: 'Volcanic', tempMin: -45, tempMax: 45, precipMin: 0, precipMax: 2000, surfaceBlock: BlockId.STONE, soilBlock: BlockId.STONE },
+
+  // ---- Whittaker diagram: open land ----
+  { key: 'desert', name: 'Desert', tempMin: 20, tempMax: 45, precipMin: 0, precipMax: 250, landOnly: true, surfaceBlock: BlockId.SAND, soilBlock: BlockId.SAND },
+  { key: 'badlands', name: 'Badlands', tempMin: 20, tempMax: 45, precipMin: 250, precipMax: 500, landOnly: true, surfaceBlock: BlockId.SAND, soilBlock: BlockId.STONE },
+  { key: 'shrubland', name: 'Shrubland', tempMin: 15, tempMax: 30, precipMin: 250, precipMax: 500, landOnly: true, surfaceBlock: BlockId.DIRT, soilBlock: BlockId.DIRT },
+  { key: 'savanna', name: 'Savanna', tempMin: 20, tempMax: 45, precipMin: 500, precipMax: 1000, landOnly: true, surfaceBlock: BlockId.GRASS, soilBlock: BlockId.DIRT },
+  { key: 'steppe', name: 'Steppe', tempMin: 0, tempMax: 20, precipMin: 250, precipMax: 750, landOnly: true, surfaceBlock: BlockId.DIRT, soilBlock: BlockId.DIRT },
+  { key: 'plains', name: 'Plains', tempMin: 10, tempMax: 25, precipMin: 500, precipMax: 1000, landOnly: true, surfaceBlock: BlockId.GRASS, soilBlock: BlockId.DIRT },
+  { key: 'meadow', name: 'Meadow', tempMin: 5, tempMax: 15, precipMin: 1000, precipMax: 2000, landOnly: true, surfaceBlock: BlockId.GRASS, soilBlock: BlockId.DIRT },
+
+  // ---- Whittaker diagram: forests ----
+  { key: 'tropical_rainforest', name: 'Tropical Rainforest', tempMin: 25, tempMax: 45, precipMin: 1500, precipMax: 2000, landOnly: true, surfaceBlock: BlockId.GRASS, soilBlock: BlockId.DIRT },
+  { key: 'temperate_deciduous', name: 'Temperate Deciduous Forest', tempMin: 10, tempMax: 25, precipMin: 750, precipMax: 1500, landOnly: true, surfaceBlock: BlockId.GRASS, soilBlock: BlockId.DIRT },
+  { key: 'birch', name: 'Birch Forest', tempMin: 0, tempMax: 15, precipMin: 750, precipMax: 1500, landOnly: true, surfaceBlock: BlockId.GRASS, soilBlock: BlockId.DIRT },
+  { key: 'old_growth_dark_forest', name: 'Old-Growth Dark Forest', tempMin: 5, tempMax: 15, precipMin: 1500, precipMax: 2000, landOnly: true, surfaceBlock: BlockId.GRASS, soilBlock: BlockId.DIRT },
+  { key: 'taiga', name: 'Taiga', tempMin: -10, tempMax: 5, precipMin: 500, precipMax: 1000, landOnly: true, surfaceBlock: BlockId.DIRT, soilBlock: BlockId.DIRT },
+  { key: 'snowy_taiga', name: 'Snowy Taiga', tempMin: -25, tempMax: -10, precipMin: 500, precipMax: 1000, landOnly: true, surfaceBlock: BlockId.DIRT, soilBlock: BlockId.DIRT },
 ];
 
 export function biomeAt(
@@ -101,3 +115,26 @@ export function biomeAt(
 
 export const BIOME_KEYS: BiomeKey[] = BIOMES.map((b) => b.key);
 export const BIOME_COUNT = BIOMES.length;
+
+/** The surface block for a biome. Beach columns always use SAND regardless of biome. */
+export function surfaceBlock(biomeKey: BiomeKey, isBeach: boolean): number {
+  if (isBeach) return BlockId.SAND;
+  const def = BIOMES.find((b) => b.key === biomeKey);
+  return def?.surfaceBlock ?? BlockId.GRASS;
+}
+
+/** The soil block below the surface for a biome. */
+export function soilBlock(biomeKey: BiomeKey): number {
+  const def = BIOMES.find((b) => b.key === biomeKey);
+  return def?.soilBlock ?? BlockId.DIRT;
+}
+
+/**
+ * Blend two surface blocks based on a hash. Used for biome blending at borders:
+ * when two adjacent columns have different biomes, the surface block dithers
+ * between them based on a hash of the position.
+ */
+export function blendSurfaceBlocks(a: number, b: number, wx: number, wz: number): number {
+  const r = hash2(1000, wx, wz);
+  return r < 0.5 ? a : b;
+}
