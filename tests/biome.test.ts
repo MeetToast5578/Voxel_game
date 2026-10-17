@@ -129,6 +129,18 @@ describe('tree species wiring (tasks T-E12, T-E13)', () => {
     }
   });
 
+  it('every biome naming a tree has a surface the generator accepts, including shrubland and steppe (T-E14)', () => {
+    for (const key of BIOME_KEYS) {
+      if (treeSpecies(key) !== null || secondarySpecies(key) !== null) {
+        expect(surfaceBlock(key, false), `${key} must permit its named tree`).toBe(BlockId.GRASS);
+      }
+    }
+    expect(biomeAt(16, 300, 100, 5, false, 0.1).key).toBe('shrubland');
+    expect(biomeAt(8, 600, 100, 5, false, 0.1).key).toBe('steppe');
+    expect(treeSpecies('shrubland')).toBe('bush');
+    expect(treeSpecies('steppe')).toBe('bush');
+  });
+
   it('grows spruce in the taiga, pine in the snowy taiga, and dead snags in the tundra', () => {
     expect(treeSpecies('taiga')).toBe('spruce');
     expect(treeSpecies('snowy_taiga')).toBe('pine');

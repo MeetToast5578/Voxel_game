@@ -55,9 +55,9 @@ const BIOMES: BiomeDef[] = [
   // ---- Whittaker diagram: open land ----
   { key: 'desert', name: 'Desert', tempMin: 20, tempMax: 45, precipMin: 0, precipMax: 250, landOnly: true, surfaceBlock: BlockId.SAND, soilBlock: BlockId.SAND, treeSpecies: null },
   { key: 'badlands', name: 'Badlands', tempMin: 20, tempMax: 45, precipMin: 250, precipMax: 500, landOnly: true, surfaceBlock: BlockId.SAND, soilBlock: BlockId.STONE, treeSpecies: null },
-  { key: 'shrubland', name: 'Shrubland', tempMin: 15, tempMax: 30, precipMin: 250, precipMax: 500, landOnly: true, surfaceBlock: BlockId.DIRT, soilBlock: BlockId.DIRT, treeSpecies: 'bush' },
+  { key: 'shrubland', name: 'Shrubland', tempMin: 15, tempMax: 30, precipMin: 250, precipMax: 500, landOnly: true, surfaceBlock: BlockId.GRASS, soilBlock: BlockId.DIRT, treeSpecies: 'bush' },
   { key: 'savanna', name: 'Savanna', tempMin: 20, tempMax: 45, precipMin: 500, precipMax: 1000, landOnly: true, surfaceBlock: BlockId.GRASS, soilBlock: BlockId.DIRT, treeSpecies: 'acacia', secondarySpecies: 'baobab' },
-  { key: 'steppe', name: 'Steppe', tempMin: 0, tempMax: 20, precipMin: 250, precipMax: 750, landOnly: true, surfaceBlock: BlockId.DIRT, soilBlock: BlockId.DIRT, treeSpecies: 'bush' },
+  { key: 'steppe', name: 'Steppe', tempMin: 0, tempMax: 20, precipMin: 250, precipMax: 750, landOnly: true, surfaceBlock: BlockId.GRASS, soilBlock: BlockId.DIRT, treeSpecies: 'bush' },
   { key: 'plains', name: 'Plains', tempMin: 10, tempMax: 25, precipMin: 500, precipMax: 1000, landOnly: true, surfaceBlock: BlockId.GRASS, soilBlock: BlockId.DIRT, treeSpecies: 'oak' },
   { key: 'meadow', name: 'Meadow', tempMin: 5, tempMax: 15, precipMin: 1000, precipMax: 2000, landOnly: true, surfaceBlock: BlockId.GRASS, soilBlock: BlockId.DIRT, treeSpecies: 'bush' },
 
