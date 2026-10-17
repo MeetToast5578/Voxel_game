@@ -1,0 +1,82 @@
+﻿================================================================================
+LOG - Voxel_game task work
+Started: 2026-10-17 22:37:12
+Base: main @ 08314af -> adf5aba
+Task list: docs/tasks.md (110 tasks, 102 open, 8 done)
+================================================================================
+
+ORDER (from docs/tasks.md "Suggested order"):
+  1. T-A1, T-A2   test suite health
+  2. T-C1, T-C9   owner playtest (NOT DOABLE headless - skip, owner only)
+  3. T-I1         survival mode unreachable
+  4. T-L1..L4, L9, L10  doc hygiene
+  5. T-E11, T-E12, T-E13  tree species
+  6. phases D->E->F->G->H->I->J
+  7. T-K (slabs) parallel
+
+NOTE: T-C* are owner-only manual checks. Marked as such, not silently skipped.
+
+--------------------------------------------------------------------------------
+T-A1  [DONE]  Annotate the slow tests, or raise the default testTimeout
+--------------------------------------------------------------------------------
+Change: vite.config.ts - added testTimeout: 30_000 to the test block.
+Chose the config default over annotating 12 individual tests: one line, and it
+covers tests added later too. No test file was touched.
+
+Before: 5-8 files failed / 9-14 tests failed, all "Test timed out in 5000ms".
+After:  Test Files 55 passed (55), Tests 464 passed (464), 57.88s.
+        typecheck + test + build all green.
+
+--------------------------------------------------------------------------------
+T-A2  [DONE - CI IS RED]  Confirm whether CI is actually green
+--------------------------------------------------------------------------------
+No gh CLI installed, so queried the GitHub API directly for adf5aba.
+
+  check  job : SUCCESS   (17:58:05 -> 17:59:02, ~57s)
+  smoke  job : FAILURE   (17:58:04 -> 18:01:14, ~3m10s), exit code 1
+
+VERDICT: tasks.md's "CI is probably green" is WRONG. The check job is green
+(including the 5s timeouts, on faster CI hardware - so T-A1 was a local-only
+problem). The SMOKE job is RED on main.
+
+Also flagged by Actions annotations:
+  - warning: actions/checkout@v4, setup-node@v4, upload-artifact@v4 target
+    deprecated Node.js 20, forced onto Node.js 24.
+  - notice: ubuntu-latest migrates to Ubuntu 26 on 2026-10-19.
+
+NEW TASK RAISED: T-A2a - fix the failing smoke job. Not in the original list.
+Local repro blocked: playwright 1.56.1 wants chromium_headless_shell-1194,
+only 1248 was present. Reinstalling.
+
+--------------------------------------------------------------------------------
+T-L1 T-L2 T-L3 T-L4 T-L9 T-L10  [ALL DONE]  Documentation hygiene
+--------------------------------------------------------------------------------
+docs/HANDOFF.md
+  L1  :3    stale hash 0322d20 -> adf5aba, "eleven commits after 0322d20"
+  L4  :43   test count 461 -> 464; added that the CI check job is green but the
+            CI smoke job FAILS (the assertion was previously unqualified)
+  L2  :90   "419 in 51 files" -> "464 in 55 files"
+  L10 :190  "Open decisions" above -> "Decided (owner approved)" (the section
+            was renamed by adf5aba; the cross-reference was dangling)
+  L3  :198  "Sandbox physics slices 2-6 are open" CONTRADICTED :26 ("all six
+            slices are in code and tested"). Rewrote to: snow layers, saplings,
+            crops, catch-up and lava are open; fluid levels and currents exist
+            but are not wired to bodies; spec 25 is complete.
+
+docs/specs/README.md
+  L9  :59  34-weather-model   "F3 weather lines are missing" -> they exist now
+      :60  35-biome-integration "Border blending is not wired" -> wired, 3-block
+                              dither; open items are per-vertex tints and the
+                              per-chunk-column biome resolution
+      :62  37-tree-species    "Done, sizes open, 4.8-7.2 m" -> Partial; oak is
+                              27-40 blocks (8.1-12.0 m); open items are the 8
+                              missing species and the 2 unreachable ones
+
+ENCODING: HANDOFF.md is UTF-8 without BOM. PowerShell's Get-Content mangles the
+en dash, so line 198 was rewritten with .NET File.ReadAllLines/WriteAllLines
+using a BOM-less UTF8Encoding. Verified round-trip.
+
+NEW TASK RAISED: T-L11 - specs 34 and 43 are BOTH titled "Weather model"
+(34 = "Weather model and rendering", 43 = "Weather model (Phase 4, item 3)",
+renumbered from 32). Different files, overlapping scope, confusing titles.
+
