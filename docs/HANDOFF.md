@@ -1,6 +1,6 @@
 # Handoff: Voxel Game (MeetToast5578/Voxel_game)
 
-Last updated 2026-10-17, verified against the code on `main` (`0322d20`). Every status below was checked in the code, the tests or the smoke run, not only taken from commit messages.
+Last updated 2026-10-17, verified against the code on `main` (`adf5aba`, eleven commits after `0322d20`). Every status below was checked in the code, the tests or the smoke run, not only taken from commit messages.
 
 ## Where things stand
 
@@ -40,7 +40,7 @@ Status key: **done** = in code and tested; **partial** = some of the item is in 
   - not started: tools, crafting, food, beds, healing
 - **Phase 8 (performance):** not started as a phase. Mesh time is 4.1 ms per surface chunk when run alone (target 3 ms; spec 28 is open).
 
-**Verification on 2026-10-17 (after the physics and tool pass):** `npm run check` passes: typecheck, **461 tests in 55 files**, and the build. `npm run smoke` passes its checks in headless Chromium at about 8 fps (SwiftShader, so this number is not the owner's). The smoke test has an intermittent failure at the pick-block check: the player is standing above a cell that reads as air, and it is not yet explained. It also failed in the original code in one run.
+**Verification on 2026-10-17 (after the physics and tool pass):** `npm run check` passes: typecheck, **464 tests in 55 files**, and the build. The CI `check` job is green on `ubuntu-latest`. The CI `smoke` job, however, **fails** — see the "Known gaps" list. `npm run smoke` passes its checks in headless Chromium at about 8 fps (SwiftShader, so this number is not the owner's). The smoke test has an intermittent failure at the pick-block check: the player is standing above a cell that reads as air, and it is not yet explained. It also failed in the original code in one run.
 
 ## Waiting on the owner (not code)
 
@@ -87,7 +87,7 @@ TypeScript 5.9.3, Vite 7.3.6, Vitest 4.0.18, three 0.186.0, simplex-noise 4.0.3,
 ## Commands
 
 - `npm run dev`: opens http://localhost:5173; click Play.
-- `npm run check`: typecheck, the unit tests (419 in 51 files), then the build.
+- `npm run check`: typecheck, the unit tests (464 in 55 files), then the build.
 - `npm run smoke`:
   - Builds, then opens `/?seed=1&autostart=1&nosave=1` in headless Chromium (SwiftShader WebGL).
   - Runs 24 checks through `window.__game` and writes `screenshots/*.png`.
@@ -187,7 +187,7 @@ TypeScript 5.9.3, Vite 7.3.6, Vitest 4.0.18, three 0.186.0, simplex-noise 4.0.3,
 
 ## Known gaps and backlog
 
-See `docs/ROADMAP.md` for the phase list, and the "Open decisions" above for choices the owner has to make.
+See `docs/ROADMAP.md` for the phase list, and the "Decided (owner approved)" above for choices the owner has already made.
 - **Testing.** No real mouse-and-keyboard playtest yet.
 - **Mesh time.** 4.1 ms per surface chunk when run alone (target 3 ms, spec 28).
 - **Cold column generation.** About 8.4 ms median in Node (last measured before region simulation; not re-measured).
@@ -195,7 +195,7 @@ See `docs/ROADMAP.md` for the phase list, and the "Open decisions" above for cho
 - **Region simulation.** About 162 ms per region on seed 1337 (spec 41). Not re-measured.
 - **Biomes.** Biomes are chunk-column-sized (4.8 m), so borders are on a grid. Flowers by biome, reeds and boulders are open.
 - **Sky and weather.** No moon phases; stars do not rotate; no wet darkening; no morning valley fog; no seasonal foliage.
-- **Living world.** Snow, crops, saplings, fluid levels, currents and catch-up are open. Sandbox physics slices 2–6 are open.
+- **Living world.** Snow layers, saplings, crops, catch-up on reload and lava are open. Fluid levels and currents exist but are not wired to bodies. Sandbox physics (spec 25) is complete: all six slices, see the phase 5 list above.
 - **Entities.** Not used by the game yet. No creatures.
 - **Survival.** Hunger does not change; no food, tools, crafting or beds.
 - **Edits.** An edit remeshes up to 8 chunks on the main thread at once, about 3 ms each.

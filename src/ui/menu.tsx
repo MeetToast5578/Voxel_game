@@ -1,5 +1,5 @@
 import { render } from 'preact';
-import { MAX_FOV, MAX_RENDER_DISTANCE, MIN_FOV, MIN_RENDER_DISTANCE } from '../config';
+import { GAME_MODE_CREATIVE, GAME_MODE_SURVIVAL, MAX_FOV, MAX_RENDER_DISTANCE, MIN_FOV, MIN_RENDER_DISTANCE } from '../config';
 import { MAX_SENSITIVITY, MIN_SENSITIVITY, type Settings } from '../storage/settings';
 import { Section } from './components';
 import { CONTROL_SECTIONS } from './controls';
@@ -11,6 +11,8 @@ export interface MenuCallbacks {
   onNewWorld(): void;
   /** The Inventory button in the pause menu. */
   onInventory(): void;
+  /** The Creative / Survival picker. Persisted with the world. */
+  onGameModeChange(mode: string): void;
 }
 
 export type MenuMode = 'start' | 'paused';
@@ -21,6 +23,38 @@ interface ViewProps {
   notes: string[];
   callbacks: MenuCallbacks;
   onSetting: (key: keyof Settings, value: number) => void;
+  gameMode: string;
+}
+
+const GAME_MODES: { key: string; label: string; blurb: string }[] = [
+  { key: GAME_MODE_CREATIVE, label: 'Creative', blurb: 'Fly-free building, no damage, full hotbar.' },
+  { key: GAME_MODE_SURVIVAL, label: 'Survival', blurb: 'Fall damage, drowning and death.' },
+];
+
+/** The Creative / Survival picker. One button per mode, the active one highlighted. */
+function ModePicker({ gameMode, onPick }: { gameMode: string; onPick: (mode: string) => void }) {
+  const active = GAME_MODES.find((m) => m.key === gameMode) ?? GAME_MODES[0];
+  return (
+    <Section title="Game mode">
+      <div class="menu-mode" role="radiogroup" aria-label="Game mode">
+        {GAME_MODES.map((m) => (
+          <button
+            key={m.key}
+            type="button"
+            role="radio"
+            aria-checked={m.key === gameMode}
+            class={`menu-button${m.key === gameMode ? ' primary' : ''}`}
+            onClick={() => onPick(m.key)}
+          >
+            {m.label}
+          </button>
+        ))}
+      </div>
+      <p class="menu-note" role="status">
+        {active.blurb}
+      </p>
+    </Section>
+  );
 }
 
 function Slider(p: {
@@ -52,7 +86,7 @@ function Slider(p: {
   );
 }
 
-function MenuView({ mode, settings, notes, callbacks, onSetting }: ViewProps) {
+function MenuView({ mode, settings, notes, callbacks, onSetting, gameMode }: ViewProps) {
   return (
     <div class="menu-panel">
       <h1 class="menu-title">{mode === 'start' ? 'Voxel Game' : 'Paused'}</h1>
@@ -71,6 +105,7 @@ function MenuView({ mode, settings, notes, callbacks, onSetting }: ViewProps) {
           </button>
         )}
       </div>
+      <ModePicker gameMode={gameMode} onPick={callbacks.onGameModeChange} />
       <Section title="Settings">
         <div class="menu-settings">
           <Slider
@@ -142,20 +177,31 @@ export class Menu {
   private readonly root: HTMLDivElement;
   private mode: MenuMode = 'start';
   private settings: Settings;
+  private gameMode: string;
   private lockNote: string | null = null;
 
   constructor(
     parent: HTMLElement,
     settings: Settings,
+    /** The world's current game mode, shown by the picker in both menus. */
+    gameMode: string,
     /** One line shown in both menus (e.g. that saving is unavailable), or null. */
     private readonly storageNote: string | null,
     private readonly callbacks: MenuCallbacks,
   ) {
     this.settings = { ...settings };
+    this.gameMode = gameMode;
     this.root = document.createElement('div');
     this.root.className = 'menu-overlay';
     this.root.style.display = 'none';
     parent.append(this.root);
+  }
+
+  /** Keeps the picker in step when the mode changes somewhere other than the menu. */
+  setGameMode(mode: string): void {
+    if (mode === this.gameMode) return;
+    this.gameMode = mode;
+    if (this.visible) this.draw();
   }
 
   get visible(): boolean {
@@ -192,6 +238,7 @@ export class Menu {
         settings={this.settings}
         notes={notes}
         callbacks={this.callbacks}
+        gameMode={this.gameMode}
         onSetting={(key, value) => {
           this.settings = { ...this.settings, [key]: value };
           this.callbacks.onSettingsChange({ ...this.settings });

@@ -56,10 +56,10 @@ Status is checked against the code on 2026-10-17. "Open" means the spec's goal i
 | [43-weather-model.md](43-weather-model.md) | Weather model | Done | Renumbered from 32 |
 | [33-sky-rendering.md](33-sky-rendering.md) | Sky rendering | Partial | Sun, moon and stars are in. No moon phases; stars do not rotate |
 | [44-survival-health.md](44-survival-health.md) | Survival mode and health | Partial | Modes, health, fall damage, drowning and respawn are done. Hunger is inert; no UI to pick the mode. Renumbered from 34 |
-| [34-weather-model.md](34-weather-model.md) | Weather model and rendering | Partial | Particles and lightning are in. Wet darkening, morning fog and the F3 weather lines are missing. |
-| [35-biome-integration.md](35-biome-integration.md) | Biome integration into the generator | Partial | Surface, soil and trees follow the biome. Border blending is not wired |
+| [34-weather-model.md](34-weather-model.md) | Weather model and rendering | Partial | Particles and lightning are in, and the F3 overlay shows the season, weather, biome, temperature and rain. Wet darkening and morning fog are still missing. |
+| [35-biome-integration.md](35-biome-integration.md) | Biome integration into the generator | Partial | Surface, soil and trees follow the biome. Border blending is wired: surface blocks dither within 3 blocks of a border. Open: tints do not blend per vertex, and biomes are still picked per 16x16 chunk column |
 | [36-ecology-grass-spreading.md](36-ecology-grass-spreading.md) | Grass spreading | Done | |
-| [37-tree-species.md](37-tree-species.md) | Tree species | Done, sizes open | Species heights are in blocks, so trees are 4.8–7.2 m (oak). See HANDOFF, Open decisions 1 |
+| [37-tree-species.md](37-tree-species.md) | Tree species | Partial | Sizes decided 2026-10-17: oak is 27-40 blocks (8.1-12.0 m), every species sits inside 8-12 m. Open: 8 of the 16 roadmap species do not exist, and pine and dead snag are in the table but named by no biome |
 | [38-random-ticks.md](38-random-ticks.md) | Random ticks | Done | |
 | [39-biome-integration-fix.md](39-biome-integration-fix.md) | Biome integration fix | Done | Review of spec 35 |
 | [40-leaf-decay.md](40-leaf-decay.md) | Leaf decay | Done | |

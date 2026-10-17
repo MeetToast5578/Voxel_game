@@ -8,5 +8,8 @@ export default defineConfig({
   test: {
     include: ['tests/**/*.test.ts'],
     environment: 'node',
+    // The generator and streaming tests build thousands of blocks. On a slow
+    // laptop they need far more than the 5 s default (task T-A1).
+    testTimeout: 30_000,
   },
 });

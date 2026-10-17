@@ -211,15 +211,22 @@ export class Game {
     this.hud = new Hud(container, this.renderer.atlasCanvas);
     this.debugOverlay = new DebugOverlay(container);
     this.inventoryScreen = new InventoryScreen(container, this.renderer.atlasCanvas, this.inventory, () => this.closeInventory());
-    this.menu = new Menu(container, this.settings, save.unavailable ? 'Saving is unavailable in this browser.' : null, {
-      onPlay: () => {
-        this.sounds.unlock();
-        this.input.requestPointerLock();
+    this.menu = new Menu(
+      container,
+      this.settings,
+      this.gameMode,
+      save.unavailable ? 'Saving is unavailable in this browser.' : null,
+      {
+        onPlay: () => {
+          this.sounds.unlock();
+          this.input.requestPointerLock();
+        },
+        onSettingsChange: (s) => this.changeSettings(s),
+        onNewWorld: () => this.newWorld(),
+        onInventory: () => this.openInventory(),
+        onGameModeChange: (mode) => this.setGameMode(mode),
       },
-      onSettingsChange: (s) => this.changeSettings(s),
-      onNewWorld: () => this.newWorld(),
-      onInventory: () => this.openInventory(),
-    });
+    );
 
     this.playing = options.autostart;
     if (options.autostart) this.menu.hide();
@@ -328,6 +335,21 @@ export class Game {
     if (this.health <= 0) {
       this.die();
     }
+  }
+
+  /**
+   * Switch between Creative and Survival from the menu. Entering survival tops health and hunger back up, so opening
+   * the menu mid-fall cannot strand the player at the moment they switch.
+   */
+  setGameMode(mode: string): void {
+    if (mode !== GAME_MODE_CREATIVE && mode !== GAME_MODE_SURVIVAL) return;
+    if (mode === this.gameMode) return;
+    this.gameMode = mode;
+    if (mode === GAME_MODE_SURVIVAL) {
+      this.health = HEALTH_MAX;
+      this.hunger = HUNGER_MAX;
+    }
+    this.menu.setGameMode(mode);
   }
 
   /** Apply damage to the player. Clamps health at 0. */
