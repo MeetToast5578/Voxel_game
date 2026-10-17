@@ -275,7 +275,11 @@ const CHECKS = [
       const PLANTS = ['Tall grass', 'Poppy', 'Fern', 'Dandelion', 'Brown mushroom', 'Red mushroom']; // break at once
       await page.waitForFunction(() => window.__game.state().areaMeshed, null, { timeout: 60_000 });
       await page.evaluate(() => window.__game.look(0, -Math.PI / 2 + 0.01));
-      await page.waitForFunction(() => window.__game.state().target !== null, null, { timeout: 10_000 });
+      await page.waitForFunction(() => {
+        const s = window.__game.state();
+        return s.target !== null && s.target[0] === Math.floor(s.position[0]) &&
+          s.target[2] === Math.floor(s.position[2]) && s.target[1] < s.position[1];
+      }, null, { timeout: 10_000, polling: 100 });
       const s = await page.evaluate(() => window.__game.state());
       const id = await page.evaluate(([x, y, z]) => window.__game.getBlock(x, y, z), s.target);
       const countOf = () =>
@@ -287,9 +291,17 @@ const CHECKS = [
         await page.waitForTimeout(50);
         sawStage = (await page.evaluate(() => window.__game.state().breakStage)) >= 0;
       }
-      if (sawStage) await page.screenshot({ path: 'screenshots/breaking.png' });
-      await page.waitForFunction(([x, y, z]) => window.__game.getBlock(x, y, z) === 0, s.target, { timeout: 8000 });
-      await page.evaluate(() => window.__game.holdButton(0, false));
+      // Do not leave mining held while screenshot readback runs: on slow software rendering it can mine several
+      // more blocks, drop the item into a deeper shaft and turn an exact-one-item assertion into a timing race.
+      try {
+        await page.waitForFunction(([x, y, z]) => {
+          if (window.__game.getBlock(x, y, z) !== 0) return false;
+          window.__game.holdButton(0, false); // release in the same browser task that observes the break
+          return true;
+        }, s.target, { timeout: 8000, polling: 50 });
+      } finally {
+        await page.evaluate(() => window.__game.holdButton(0, false));
+      }
       await page.screenshot({ path: 'screenshots/drop.png' }); // the dropped item, before anyone picks it up
       if (!sawStage && !PLANTS.includes(s.targetName)) throw new Error(`no crack stage shown while breaking ${s.targetName}`);
       // The item drops into the hole. Stand in the hole so the item is in pick-up reach, whether or not the player fell
@@ -336,7 +348,8 @@ const CHECKS = [
         g.look(Math.PI, -0.35); // face south (+Z), slightly down
       }, [x, z]);
       await page.waitForTimeout(1500); // the 8 neighbor chunks are relit over a few frames
-      await page.screenshot({ path: 'screenshots/glowstone.png' });
+      // A fully loaded night scene can make screenshot readback slow on SwiftShader; this is not a frame-time guard.
+      await page.screenshot({ path: 'screenshots/glowstone.png', timeout: 60_000 });
       await page.evaluate(() => window.__game.setTimeOfDay(0.3));
     },
   },
