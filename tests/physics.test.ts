@@ -70,3 +70,56 @@ describe('moveAndCollide', () => {
     expect(pos.z).toBeLessThan(-3);
   });
 });
+
+describe('depenetration', () => {
+  /** True if the body box at pos overlaps any solid cell. */
+  const overlaps = (pos: { x: number; y: number; z: number }, solid: (x: number, y: number, z: number) => boolean): boolean => {
+    const hw = PLAYER_SHAPE.halfWidth;
+    for (let y = Math.floor(pos.y); y <= Math.ceil(pos.y + PLAYER_SHAPE.height) - 1; y++)
+      for (let z = Math.floor(pos.z - hw); z <= Math.ceil(pos.z + hw) - 1; z++)
+        for (let x = Math.floor(pos.x - hw); x <= Math.ceil(pos.x + hw) - 1; x++)
+          if (solid(x, y, z)) return true;
+    return false;
+  };
+  // Solid rock up to and including y = 2, open air above.
+  const rock = (_x: number, y: number) => y <= 2;
+
+  it('pushes a body that starts inside solid back out, whichever way it moves', () => {
+    for (const vy of [-10, 10]) {
+      const pos = { x: 0.5, y: 2, z: 0.5 };
+      const vel = { x: 0, y: vy, z: 0 };
+      expect(overlaps(pos, rock)).toBe(true);
+      for (let i = 0; i < 60; i++) moveAndCollide(pos, vel, DT, shape, rock, 2);
+      expect(overlaps(pos, rock)).toBe(false);
+      expect(pos.y).toBeGreaterThan(2);
+    }
+  });
+
+  it('escapes a body buried well below the surface instead of ratcheting further in', () => {
+    // The failure this fixes: resolution pushes a rising body *down*, so it sinks forever.
+    const pos = { x: 0.5, y: -3.8, z: 0.5 };
+    const vel = { x: 0, y: 10, z: 0 };
+    expect(overlaps(pos, rock)).toBe(true);
+    for (let i = 0; i < 60; i++) moveAndCollide(pos, vel, DT, shape, rock, 2);
+    expect(overlaps(pos, rock)).toBe(false);
+    expect(pos.y).toBeGreaterThan(2);
+  });
+
+  it('leaves a body alone when it is not stuck', () => {
+    const pos = { x: 0.5, y: 10, z: 0.5 };
+    const vel = { x: 0, y: -20, z: 0 };
+    for (let i = 0; i < 20; i++) moveAndCollide(pos, vel, DT, shape, (_x, y) => y <= 5);
+    // It fell onto the floor (whose surface is the top of block 5) and stopped there.
+    expect(pos.y).toBeCloseTo(6, 3);
+  });
+
+  it('leaves a body walled in on every side rather than teleporting it', () => {
+    // Solid well beyond the depenetration reach in all six directions.
+    const sealed = (x: number, y: number, z: number) => Math.abs(x) < 400 && Math.abs(y) < 400 && Math.abs(z) < 400;
+    const pos = { x: 0.5, y: 0.5, z: 0.5 };
+    const vel = { x: 0, y: 10, z: 0 };
+    moveAndCollide(pos, vel, DT, shape, sealed);
+    // Still stuck, and moved only by the one step it actually took.
+    expect(pos.y).toBeLessThan(2);
+  });
+});

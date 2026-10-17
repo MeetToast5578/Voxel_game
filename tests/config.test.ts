@@ -22,7 +22,15 @@ describe('config', () => {
     expect(C.PLAYER_HALF_WIDTH).toBeCloseTo(0.24 / 0.3, 9);
   });
   it('keeps physics steps smaller than the player (no tunneling)', () => {
+    // The solver resolves a collision by moving then pushing back, so a step longer than the
+    // body's own extent can pass straight through a wall. Every speed that can be applied has to
+    // stay under the limit, not just the two extremes.
     expect(C.FLY_SPEED * C.FIXED_DT).toBeLessThan(C.PLAYER_HALF_WIDTH * 2);
     expect(C.TERMINAL_VELOCITY * C.FIXED_DT).toBeLessThan(C.PLAYER_HEIGHT);
+    for (const speed of [C.WALK_SPEED, C.SPRINT_SPEED, C.FLY_SPEED]) {
+      expect(speed * C.FIXED_DT).toBeLessThan(C.PLAYER_HALF_WIDTH * 2);
+    }
+    // Jumping adds to whatever horizontal speed the player already had.
+    expect((C.SPRINT_SPEED + C.JUMP_SPEED) * C.FIXED_DT).toBeLessThan(C.PLAYER_HALF_WIDTH * 2);
   });
 });
