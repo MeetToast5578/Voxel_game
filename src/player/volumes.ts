@@ -37,11 +37,12 @@ export function clampSize(size: number): number {
 }
 
 /**
- * The wall thickness a box or sphere of this size really uses. 0 is solid. Otherwise the wall is at most half the size
- * minus one block, so the cavity inside keeps at least one block.
+ * The wall thickness a box or sphere of this size really uses. 0 is solid. A shell keeps at least one block inside, so
+ * the wall must leave a cavity: when the requested thickness reaches half the size, the shape is solid instead.
  */
 export function effectiveThickness(size: number, thickness: number): number {
-  return Math.max(0, Math.min(Math.round(thickness), Math.floor((size - 1) / 2)));
+  const t = Math.max(0, Math.round(thickness));
+  return t > 0 && 2 * t < size ? t : 0;
 }
 
 /**

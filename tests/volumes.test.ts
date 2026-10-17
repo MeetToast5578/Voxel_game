@@ -26,11 +26,14 @@ const hit = (x: number, y: number, z: number, nx: number, ny: number, nz: number
 });
 
 describe('volume geometry', () => {
-  it('caps the thickness so the cavity keeps at least one block', () => {
+  it('keeps a shell only while the cavity keeps at least one block, and is solid once the cap is reached', () => {
     expect(effectiveThickness(1, 5)).toBe(0);
-    expect(effectiveThickness(3, 5)).toBe(1);
+    expect(effectiveThickness(3, 1)).toBe(1);
+    expect(effectiveThickness(3, 5)).toBe(0);
     expect(effectiveThickness(5, 2)).toBe(2);
-    expect(effectiveThickness(6, 9)).toBe(2);
+    expect(effectiveThickness(6, 2)).toBe(2);
+    expect(effectiveThickness(6, 3)).toBe(0);
+    expect(effectiveThickness(6, 9)).toBe(0);
     expect(effectiveThickness(5, 0)).toBe(0);
   });
 
@@ -188,12 +191,74 @@ describe('build tool', () => {
 
   it('describes the tool for the HUD', () => {
     const tool = new BuildTool();
-    expect(tool.describe()).toBe('Single block');
+    expect(tool.describe()).toBe('');
     tool.mode = 'add';
     tool.size = 6;
     tool.thickness = 1;
     tool.kind = 'sphere';
-    expect(tool.describe()).toBe('Add · Sphere · 1.8 m · shell 0.3 m');
+    expect(tool.describe()).toBe('Sphere 1.8 m, shell 0.3 m');
+    tool.thickness = 0;
+    expect(tool.describe()).toBe('Sphere 1.8 m, solid');
+  });
+
+  it('lists every setting as a HUD row, marking the ones the shape ignores', () => {
+    const tool = new BuildTool();
+    tool.mode = 'add';
+    tool.kind = 'sphere';
+    tool.size = 6;
+    tool.thickness = 1;
+    const rows = Object.fromEntries(tool.rows({ preview: 1234, block: 'Stone', undo: 3 }).map((r) => [r.label, r]));
+    expect(rows.Mode).toEqual({ label: 'Mode', value: 'Add', unused: false });
+    expect(rows.Shape?.value).toBe('Sphere');
+    expect(rows.Size?.value).toBe('1.8 m, 6 blocks per side');
+    expect(rows.Thickness?.value).toBe('shell 0.3 m');
+    expect(rows.Thickness?.unused).toBe(false);
+    expect(rows.Outline?.unused).toBe(true);
+    expect(rows.Frame?.unused).toBe(true);
+    expect(rows.Preview?.value).toBe('1,234 blocks');
+    expect(rows.Block?.value).toBe('Stone');
+    expect(rows.Undo?.value).toBe(`3 of ${20} (Ctrl+Z)`);
+  });
+
+  it('greys out the shape and size rows in single-block mode, and says so for a thickness that leaves no cavity', () => {
+    const tool = new BuildTool();
+    const single = Object.fromEntries(tool.rows({ preview: 1, block: 'Stone', undo: 0 }).map((r) => [r.label, r]));
+    expect(single.Mode?.value).toBe('Single block');
+    expect(single.Shape?.unused).toBe(true);
+    expect(single.Block?.unused).toBe(true);
+    tool.mode = 'add';
+    tool.size = 6;
+    tool.thickness = 3;
+    expect(tool.rows({ preview: null, block: 'Stone', undo: 0 }).find((r) => r.label === 'Thickness')?.value).toBe(
+      'solid (the shell would leave no cavity)',
+    );
+    expect(tool.rows({ preview: null, block: 'Stone', undo: 0 }).find((r) => r.label === 'Preview')?.value).toBe('nothing aimed');
+  });
+
+  it('shows the outline for planes and flatten, and the frame prompt for wall, floor and roof', () => {
+    const tool = new BuildTool();
+    tool.mode = 'add';
+    tool.kind = 'plane';
+    tool.disc = true;
+    const plane = Object.fromEntries(tool.rows({ preview: 9, block: 'Stone', undo: 0 }).map((r) => [r.label, r]));
+    expect(plane.Outline?.value).toBe('disc');
+    expect(plane.Frame?.unused).toBe(true);
+    tool.kind = 'roof';
+    expect(tool.rows({ preview: null, block: 'Stone', undo: 0 }).find((r) => r.label === 'Frame')?.value).toBe(
+      'click to set the first corner',
+    );
+    tool.frame = { base: { x: 0, y: 1, z: 0 }, normal: 1, dir: 1 };
+    expect(tool.rows({ preview: null, block: 'Stone', undo: 0 }).find((r) => r.label === 'Frame')?.value).toBe(
+      'set the far corner (X or Esc cancels)',
+    );
+  });
+
+  it('builds a roof as a layer above the aimed block, growing upward', () => {
+    expect(frameFor('roof', hit(0, 4, 0, 0, 1, 0), { x: 0, y: 0, z: 1 }, true)).toEqual({ base: { x: 0, y: 5, z: 0 }, normal: 1, dir: 1 });
+    expect(frameFor('roof', hit(0, 4, 0, 0, 1, 0), { x: 0, y: 0, z: 1 }, false)).toEqual({ base: { x: 0, y: 4, z: 0 }, normal: 1, dir: 1 });
+    const tool = new BuildTool();
+    tool.kind = 'roof';
+    expect(tool.twoClick).toBe(true);
   });
 
   it('flattens the ground under the footprint to the aimed height', () => {
@@ -227,6 +292,6 @@ describe('build tool', () => {
     tool.mode = 'add';
     tool.kind = 'flatten';
     tool.size = 3;
-    expect(tool.describe()).toBe('Flatten · 0.9 m · square');
+    expect(tool.describe()).toBe('Flatten 0.9 m, square');
   });
 });

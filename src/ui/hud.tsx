@@ -1,5 +1,6 @@
 import { render } from 'preact';
 import { HOTBAR_SIZE } from '../config';
+import type { ToolRow } from '../player/buildTool';
 import type { ItemStack } from '../player/inventory';
 import { getBlockDef } from '../world/blocks';
 import { Slot } from './components';
@@ -8,14 +9,34 @@ import { HINT_KEYS } from './controls';
 const NAME_VISIBLE_S = 1.5;
 /** The key hints show for this many seconds of play, so a new player sees how to open the inventory. */
 const HINT_SECONDS = 60;
+/** The keys of the volume tools, in the order the panel lists them. */
+const TOOL_KEYS = 'R mode · Q shape · [ ] size · , . thickness · G solid or shell · C disc · X cancel · Ctrl+Z undo';
 
 interface HudState {
   slots: (ItemStack | null)[];
   selected: number;
   name: string;
   nameVisible: boolean;
-  tool: string;
+  tool: ToolRow[];
   hints: boolean;
+}
+
+/** Every setting of the volume tools, always shown, so the screen says what is selected (single block mode included). */
+function ToolPanel({ rows }: { rows: ToolRow[] }) {
+  return (
+    <div class="tool-panel" aria-label="Build tool">
+      <h2 class="tool-panel-title">Build tool</h2>
+      <dl class="tool-rows">
+        {rows.map((row) => (
+          <div class={`tool-row${row.unused ? ' unused' : ''}`} key={row.label}>
+            <dt>{row.label}</dt>
+            <dd>{row.value}</dd>
+          </div>
+        ))}
+      </dl>
+      <p class="tool-keys">{TOOL_KEYS}</p>
+    </div>
+  );
 }
 
 function HudView({ state, atlas }: { state: HudState; atlas: HTMLCanvasElement }) {
@@ -23,9 +44,7 @@ function HudView({ state, atlas }: { state: HudState; atlas: HTMLCanvasElement }
     <>
       <div class="crosshair" />
       <div class={`block-name${state.nameVisible ? ' visible' : ''}`}>{state.name}</div>
-      <div class="tool-label" style={{ display: state.tool ? '' : 'none' }}>
-        {state.tool}
-      </div>
+      <ToolPanel rows={state.tool} />
       <div class="hotbar">
         {state.slots.map((stack, i) => (
           <Slot
@@ -56,6 +75,7 @@ export class Hud {
   private readonly root: HTMLDivElement;
   private state: HudState;
   private slotsKey = '';
+  private toolKey = '';
   private nameTimer = 0;
   private hintTimer = HINT_SECONDS;
 
@@ -68,7 +88,7 @@ export class Hud {
       selected: 0,
       name: '',
       nameVisible: false,
-      tool: '',
+      tool: [],
       hints: true,
     };
     this.draw();
@@ -114,10 +134,12 @@ export class Hud {
     if (dirty) this.draw();
   }
 
-  /** The volume tool's line (empty hides it). Only redraws when the text changes. */
-  setToolLabel(text: string): void {
-    if (text === this.state.tool) return;
-    this.state = { ...this.state, tool: text };
+  /** The build tool panel's rows. Only redraws when a row changes. */
+  setTool(rows: ToolRow[]): void {
+    const key = rows.map((r) => `${r.label}=${r.value}:${r.unused}`).join('|');
+    if (key === this.toolKey) return;
+    this.toolKey = key;
+    this.state = { ...this.state, tool: rows };
     this.draw();
   }
 

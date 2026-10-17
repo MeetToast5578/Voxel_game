@@ -217,10 +217,18 @@ const CHECKS = [
   {
     name: 'pick block puts the targeted block into the hotbar',
     run: async (page) => {
+      // After the reload and the swim, the ground under the player may still be loading: wait for it, or the look-down finds air.
+      await page.waitForFunction(() => window.__game.state().areaMeshed, null, { timeout: 60_000 });
       await page.evaluate(() => window.__game.look(0, -Math.PI / 2 + 0.01)); // straight down
       await page.waitForTimeout(300);
       const s = await page.evaluate(() => window.__game.state());
-      if (!s.target) throw new Error('nothing targeted');
+      if (!s.target) {
+        const [px, py, pz] = s.position.map(Math.floor);
+        const below = await page.evaluate(([x, y, z]) => window.__game.getBlock(x, y, z), [px, py - 1, pz]);
+        throw new Error(
+          `nothing targeted at ${JSON.stringify(s.position)}, below ${below}, playing ${s.playing}, inventoryOpen ${s.inventoryOpen}, look ${s.yaw} ${s.pitch}`,
+        );
+      }
       if (!(await page.evaluate(() => window.__game.pickTarget()))) throw new Error('pickTarget returned false');
       const after = await page.evaluate(() => window.__game.state());
       if (after.selectedBlock !== s.targetName)
@@ -242,6 +250,7 @@ const CHECKS = [
     name: 'holding the left button breaks a block over time, and the item is picked up',
     run: async (page) => {
       const PLANTS = ['Tall grass', 'Poppy', 'Fern', 'Dandelion', 'Brown mushroom', 'Red mushroom']; // break at once
+      await page.waitForFunction(() => window.__game.state().areaMeshed, null, { timeout: 60_000 });
       await page.evaluate(() => window.__game.look(0, -Math.PI / 2 + 0.01));
       await page.waitForFunction(() => window.__game.state().target !== null, null, { timeout: 10_000 });
       const s = await page.evaluate(() => window.__game.state());
@@ -260,9 +269,24 @@ const CHECKS = [
       await page.evaluate(() => window.__game.holdButton(0, false));
       await page.screenshot({ path: 'screenshots/drop.png' }); // the dropped item, before anyone picks it up
       if (!sawStage && !PLANTS.includes(s.targetName)) throw new Error(`no crack stage shown while breaking ${s.targetName}`);
-      await page.waitForTimeout(1500); // the item drops into the hole; the player falls in and picks it up
-      const after = await countOf();
-      if (after !== before + 1) throw new Error(`expected one more ${s.targetName} in the inventory: ${before} -> ${after}`);
+      // The item drops into the hole. Stand in the hole so the item is in pick-up reach, whether or not the player fell
+      // in by itself, then poll: a loaded machine can take a while to collect it.
+      // The player is wider than the one-block hole, so clear room around it first; then stand where the item landed.
+      await page.evaluate(([x, y, z]) => {
+        for (let dx = -1; dx <= 1; dx++) for (let dz = -1; dz <= 1; dz++) for (let dy = 0; dy <= 2; dy++) window.__game.setBlock(x + dx, y + dy, z + dz, 0);
+        window.__game.teleport(x + 0.5, y, z + 0.5);
+      }, s.target);
+      let after = await countOf();
+      for (let i = 0; i < 40 && after !== before + 1; i++) {
+        await page.waitForTimeout(250);
+        after = await countOf();
+      }
+      if (after !== before + 1) {
+        const st = await page.evaluate(() => window.__game.state());
+        throw new Error(
+          `expected one more ${s.targetName} in the inventory: ${before} -> ${after} (items on the ground ${st.items}, position ${JSON.stringify(st.position)}, target ${JSON.stringify(s.target)})`,
+        );
+      }
     },
   },
   {
@@ -373,6 +397,40 @@ const CHECKS = [
         window.__game.setFlying(flying);
       }, [start.position, start.flying]);
       await waitMeshed();
+    },
+  },
+  {
+    name: 'the build tool panel shows every setting, in single-block mode as well',
+    run: async (page) => {
+      const panel = () => page.evaluate(() => document.querySelector('.tool-panel')?.textContent ?? '');
+      await page.evaluate(() => window.__game.setTool({ mode: 'single' }));
+      await page
+        .waitForFunction(() => document.querySelector('.tool-panel')?.textContent?.includes('Single block'), null, { timeout: 5_000 })
+        .catch(async () => {
+          throw new Error(`the build tool panel never showed single block mode: ${await panel()}`);
+        });
+      const single = await panel();
+      for (const label of ['Mode', 'Shape', 'Size', 'Thickness', 'Outline', 'Frame', 'Preview', 'Block', 'Undo']) {
+        if (!single.includes(label)) throw new Error(`the build tool panel is missing the ${label} row: ${single}`);
+      }
+      await page.evaluate(() => window.__game.setTool({ mode: 'add', kind: 'sphere', size: 6, thickness: 1 }));
+      await page.waitForFunction(() => document.querySelector('.tool-panel')?.textContent?.includes('shell 0.3 m'), null, { timeout: 5_000 });
+      const sphere = await panel();
+      if (!sphere.includes('shell 0.3 m') || !sphere.includes('Add')) throw new Error(`the panel should show add, sphere and shell: ${sphere}`);
+      await page.evaluate(() => window.__game.setTool({ mode: 'single', kind: 'box', size: 3, thickness: 0 }));
+    },
+  },
+  {
+    name: 'the Blocks tab puts any block into the selected hotbar slot',
+    run: async (page) => {
+      await page.keyboard.press('KeyE'); // open the inventory from play
+      await page.waitForFunction(() => window.__game.state().inventoryOpen, null, { timeout: 5_000 });
+      await page.getByRole('tab', { name: 'Blocks (creative)' }).click();
+      await page.click('.block-picker button[aria-label^="basalt,"]');
+      const selected = await page.evaluate(() => window.__game.state().selectedBlock);
+      if (selected !== 'Basalt') throw new Error(`picking basalt should select it in the hotbar, got ${selected}`);
+      await page.keyboard.press('KeyE'); // close
+      await page.waitForFunction(() => !window.__game.state().inventoryOpen, null, { timeout: 5_000 });
     },
   },
   {

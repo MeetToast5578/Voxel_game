@@ -48,15 +48,19 @@ Press **R** to cycle the mode: single block (the default), add volume, or remove
 | Input | Action |
 |-------|--------|
 | R | Mode: single block, add volume, remove volume |
-| Q | Tool: box, sphere, plane, wall, floor, flatten |
+| Q | Shape: box, sphere, plane, wall, floor, roof, flatten |
 | [ and ] | Size, 1 to 32 blocks (about 9.6 m) |
 | , and . | Thickness (box and sphere: 0 is solid; wall and floor: width) |
 | G | Box and sphere: solid, or a one-block shell |
 | C | Plane and flatten: square or disc |
-| X | Cancel a wall or floor you started |
+| X or Esc | Cancel a wall, floor or roof you started (Esc also pauses) |
 | Ctrl+Z | Undo the last volume action (the last 20 in this session) |
 
-A wall or floor takes two clicks: the first sets its corner, the second sets the far corner. A floor on a ceiling grows downward. Flatten works on either button: it fills the footprint up to the height of the aimed block and clears the blocks above it.
+A wall, floor or roof takes two clicks: the first sets its corner, the second sets the far corner. A roof is a horizontal layer built upward from the aimed block.
+
+The **build tool panel** on the top left shows every setting at once: the mode, shape, size, thickness or outline, the frame state, the number of blocks the next action changes, the block used by add, and the undo steps left. It shows the settings in single-block mode too, so you always know what is selected.
+
+**Blocks tab (creative):** press E, then the **Blocks (creative)** tab, and click any block in the game. A full stack of it goes into the selected hotbar slot. It is there for testing and is not limited by survival rules. A floor on a ceiling grows downward. Flatten works on either button: it fills the footprint up to the height of the aimed block and clears the blocks above it.
 
 The pause menu has a **New world** button that deletes the save and generates a new random world.
 

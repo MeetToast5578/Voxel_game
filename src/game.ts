@@ -222,6 +222,8 @@ export class Game {
         this.menu.hide();
         this.menu.setLockNote(null);
       } else if (!options.autostart && !this.inventoryScreen.isOpen) {
+        // Esc releases the mouse and opens the pause menu, so it also cancels a wall, floor or roof in progress.
+        this.tool.cancelFrame();
         this.menu.show('paused');
       }
     });
@@ -688,15 +690,15 @@ export class Game {
   }
 
   /**
-   * Shows what the volume tools would change: the outline of the volume at the aimed face, or of the wall or floor being
-   * drawn, with its block count on the HUD. Single-block mode shows the aimed block, as before.
+   * Shows what the volume tools would change: the outline of the volume at the aimed face, or of the wall, floor or roof
+   * being drawn. Single-block mode shows the aimed block, as before. The build tool panel shows every setting either way.
    */
   private updatePreview(eye: Vec3, look: Vec3): void {
     const tool = this.tool;
     const t = this.target;
     if (tool.mode === 'single') {
       this.highlight.update(t);
-      this.hud.setToolLabel('');
+      this.showToolRows(t ? 1 : null);
       return;
     }
     if (tool.twoClick) {
@@ -704,19 +706,19 @@ export class Game {
       const box = corner ? tool.boxBetween(corner) : null;
       if (box) {
         this.highlight.showBox(box);
-        this.hud.setToolLabel(`${tool.describe()} · ${volumeOf(box)} blocks`);
+        this.showToolRows(volumeOf(box));
       } else {
         this.highlight.update(t);
-        this.hud.setToolLabel(`${tool.describe()}${tool.frame ? '' : ' · click to start'}`);
+        this.showToolRows(null);
       }
       return;
     }
     if (!t) {
       this.highlight.update(null);
-      this.hud.setToolLabel(tool.describe());
+      this.showToolRows(null);
       return;
     }
-    const key = `${tool.describe()}|${t.x},${t.y},${t.z},${t.nx},${t.ny},${t.nz}`;
+    const key = `${tool.kind}|${tool.mode}|${tool.size}|${tool.thickness}|${tool.disc}|${t.x},${t.y},${t.z},${t.nx},${t.ny},${t.nz}`;
     if (key !== this.previewKey) {
       this.previewKey = key;
       if (tool.kind === 'flatten') {
@@ -729,7 +731,19 @@ export class Game {
       }
     }
     this.highlight.showBox(this.previewBox);
-    this.hud.setToolLabel(`${tool.describe()} · ${this.previewCount} blocks`);
+    this.showToolRows(this.previewCount);
+  }
+
+  /** Sends every tool setting to the HUD panel, with the live preview count (null when nothing is aimed). */
+  private showToolRows(preview: number | null): void {
+    const selected = this.inventory.selectedStack;
+    this.hud.setTool(
+      this.tool.rows({
+        preview,
+        block: selected ? getBlockDef(selected.state).name : 'empty',
+        undo: this.edits.undoCount,
+      }),
+    );
   }
 
   /** E: opens the inventory from play or from the pause menu, or closes it (spec 24). */

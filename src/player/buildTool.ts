@@ -1,4 +1,4 @@
-import { BLOCK_SIZE_M, VOLUME_DEFAULT_SIZE, VOLUME_MAX_SIZE, VOLUME_MAX_THICKNESS } from '../config';
+import { BLOCK_SIZE_M, UNDO_LIMIT, VOLUME_DEFAULT_SIZE, VOLUME_MAX_SIZE, VOLUME_MAX_THICKNESS } from '../config';
 import { BlockId } from '../world/blocks';
 import type { EditCell } from '../world/editQueue';
 import type { Vec3 } from './physics';
@@ -20,13 +20,39 @@ import {
   withCoord,
 } from './volumes';
 
-export type ToolKind = 'box' | 'sphere' | 'plane' | 'wall' | 'floor' | 'flatten';
+export type ToolKind = 'box' | 'sphere' | 'plane' | 'wall' | 'floor' | 'roof' | 'flatten';
 /** single: today's one-block breaking and placing. add and remove: the volume tools. */
 export type ToolMode = 'single' | 'add' | 'remove';
 
-const KINDS: readonly ToolKind[] = ['box', 'sphere', 'plane', 'wall', 'floor', 'flatten'];
+const KINDS: readonly ToolKind[] = ['box', 'sphere', 'plane', 'wall', 'floor', 'roof', 'flatten'];
 const MODES: readonly ToolMode[] = ['single', 'add', 'remove'];
-const NAMES: Record<ToolKind, string> = { box: 'Box', sphere: 'Sphere', plane: 'Plane', wall: 'Wall', floor: 'Floor', flatten: 'Flatten' };
+const NAMES: Record<ToolKind, string> = {
+  box: 'Box',
+  sphere: 'Sphere',
+  plane: 'Plane',
+  wall: 'Wall',
+  floor: 'Floor',
+  roof: 'Roof',
+  flatten: 'Flatten',
+};
+
+/** One row of the tool panel on screen: what it is, and its current value (or "not used" when this tool ignores it). */
+export interface ToolRow {
+  label: string;
+  value: string;
+  /** True when the tool ignores this row, so the panel can grey it out. */
+  unused: boolean;
+}
+
+/** What the HUD needs beyond the tool's own state. */
+export interface ToolContext {
+  /** Blocks the current action would change, or null when nothing is aimed. */
+  preview: number | null;
+  /** The block that add fills with (the selected hotbar block), by name. */
+  block: string;
+  /** Undo steps available. */
+  undo: number;
+}
 
 /** Where a two-click wall or floor starts: the cell of its first corner, its normal axis and the way it grows. */
 export interface Frame {
@@ -50,6 +76,8 @@ function faceOf(hit: RaycastHit): { axis: Axis; sign: 1 | -1 } {
 export function frameFor(kind: ToolKind, hit: RaycastHit, look: Vec3, add: boolean): Frame {
   const hitCell: Cell = { x: hit.x, y: hit.y, z: hit.z };
   const face = faceOf(hit);
+  // A roof is a horizontal layer built upward: add starts just above the aimed block, remove clears from it upward.
+  if (kind === 'roof') return { base: withCoord(hitCell, 1, hit.y + (add ? 1 : 0)), normal: 1, dir: 1 };
   if (kind === 'floor') {
     const vertical = face.axis === 1;
     const step = vertical ? face.sign : 1;
@@ -105,7 +133,7 @@ export class BuildTool {
   frame: Frame | null = null;
 
   get twoClick(): boolean {
-    return this.kind === 'wall' || this.kind === 'floor';
+    return this.kind === 'wall' || this.kind === 'floor' || this.kind === 'roof';
   }
 
   /** The depth in blocks that the current tool uses: a shell thickness for box and sphere, a depth for the rest. */
@@ -207,18 +235,53 @@ export class BuildTool {
     return rectBox(this.frame.base, corner, this.frame.normal, this.frame.dir, this.depth);
   }
 
-  /** One line for the HUD, for example "Add · Sphere · 0.9 m · shell 0.3 m". */
+  /** One line naming the shape and its settings, for example "Sphere 1.8 m, shell 0.3 m". Empty in single-block mode. */
   describe(): string {
-    if (this.mode === 'single') return 'Single block';
-    if (this.kind === 'flatten') return `Flatten · ${metres(this.size)} · ${this.disc ? 'disc' : 'square'}`;
-    const parts = [this.mode === 'add' ? 'Add' : 'Remove', NAMES[this.kind]];
+    if (this.mode === 'single') return '';
+    if (this.kind === 'flatten') return `Flatten ${metres(this.size)}, ${this.disc ? 'disc' : 'square'}`;
     if (this.kind === 'box' || this.kind === 'sphere') {
-      parts.push(metres(this.size), this.depth === 0 ? 'solid' : `shell ${metres(this.depth)}`);
-    } else if (this.kind === 'plane') {
-      parts.push(metres(this.size), this.disc ? 'disc' : 'square', `thickness ${metres(this.depth)}`);
-    } else {
-      parts.push(`width ${metres(this.depth)}`);
+      return `${NAMES[this.kind]} ${metres(this.size)}, ${this.depth === 0 ? 'solid' : `shell ${metres(this.depth)}`}`;
     }
-    return parts.join(' · ');
+    if (this.kind === 'plane') return `Plane ${metres(this.size)}, ${this.disc ? 'disc' : 'square'}, thickness ${metres(this.depth)}`;
+    return `${NAMES[this.kind]} width ${metres(this.depth)}`;
+  }
+
+  /**
+   * Every setting the HUD shows, one row each, so the screen always says what is selected. Rows that this shape ignores
+   * are marked unused. The context supplies the live numbers: the preview count, the block and the undo steps.
+   */
+  rows(ctx: ToolContext): ToolRow[] {
+    const volume = this.kind === 'box' || this.kind === 'sphere';
+    const single = this.mode === 'single';
+    const modeName = single ? 'Single block' : this.mode === 'add' ? 'Add' : 'Remove';
+    const thickness = volume
+      ? this.thickness === 0
+        ? 'solid'
+        : this.depth === 0
+          ? 'solid (the shell would leave no cavity)'
+          : `shell ${metres(this.depth)}`
+      : this.kind === 'plane'
+        ? `${metres(this.depth)} deep`
+        : this.kind === 'flatten'
+          ? ''
+          : `${metres(this.depth)} wide`;
+    const outline = this.kind === 'plane' || this.kind === 'flatten' ? (this.disc ? 'disc' : 'square') : '';
+    let frame = '';
+    if (this.twoClick) frame = this.frame ? 'set the far corner (X or Esc cancels)' : 'click to set the first corner';
+    return [
+      { label: 'Mode', value: modeName, unused: false },
+      { label: 'Shape', value: NAMES[this.kind], unused: single },
+      { label: 'Size', value: `${metres(this.size)}, ${this.size} blocks per side`, unused: single },
+      { label: 'Thickness', value: thickness || 'not used', unused: single || !(volume || this.kind === 'plane' || this.twoClick) },
+      { label: 'Outline', value: outline || 'not used', unused: single || !outline },
+      { label: 'Frame', value: frame || 'not used', unused: single || !this.twoClick },
+      {
+        label: 'Preview',
+        value: ctx.preview === null ? 'nothing aimed' : `${ctx.preview.toLocaleString('en-US')} ${ctx.preview === 1 ? 'block' : 'blocks'}`,
+        unused: false,
+      },
+      { label: 'Block', value: ctx.block, unused: this.mode !== 'add' },
+      { label: 'Undo', value: `${ctx.undo} of ${UNDO_LIMIT} (Ctrl+Z)`, unused: false },
+    ];
   }
 }

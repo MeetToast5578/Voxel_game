@@ -1,15 +1,26 @@
 import { render } from 'preact';
-import { HOTBAR_SIZE, INVENTORY_SIZE } from '../config';
+import { HOTBAR_SIZE, INVENTORY_SIZE, MAX_STACK } from '../config';
 import type { Inventory, ItemStack } from '../player/inventory';
-import { getBlockDef } from '../world/blocks';
+import { BLOCK_STATE_COUNT, BlockId, blockStateName, getBlockDef } from '../world/blocks';
 import { Slot } from './components';
+
+/** The two tabs: the player's own slots, and every block in the game to pick from (creative, for testing). */
+export type InventoryTab = 'inventory' | 'blocks';
+
+/** Every block state in the game except air, in registry order. Each one is a pick in the Blocks tab. */
+const ALL_BLOCK_STATES: readonly number[] = Array.from({ length: BLOCK_STATE_COUNT - 1 }, (_, k) => k + 1).filter(
+  (state) => state !== BlockId.AIR,
+);
 
 interface ViewProps {
   inventory: Inventory;
   atlas: HTMLCanvasElement;
+  tab: InventoryTab;
   cursor: ItemStack | null;
   hovered: number | null;
+  onTab: (tab: InventoryTab) => void;
   onPress: (index: number) => void;
+  onPick: (state: number) => void;
   onHover: (index: number, over: boolean) => void;
   onClose: () => void;
   cursorRef: (el: HTMLDivElement | null) => void;
@@ -36,17 +47,60 @@ function InventoryView(p: ViewProps) {
   const tip = hovered && !p.cursor ? getBlockDef(hovered.state).name : '';
   const grid = Array.from({ length: INVENTORY_SIZE - HOTBAR_SIZE }, (_, k) => slot(HOTBAR_SIZE + k));
   const bar = Array.from({ length: HOTBAR_SIZE }, (_, k) => slot(k));
+  const picks = ALL_BLOCK_STATES.map((state) => (
+    <Slot
+      key={state}
+      stack={{ state, count: MAX_STACK }}
+      atlas={p.atlas}
+      label={`${blockStateName(state)}, full stack`}
+      selected={p.inventory.selectedStack?.state === state}
+      onPress={() => p.onPick(state)}
+    />
+  ));
   return (
     <>
       <div class="inventory-panel" role="dialog" aria-label="Inventory">
         <div class="inventory-head">
-          <h2 class="inventory-title">Inventory</h2>
+          <h2 class="inventory-title">{p.tab === 'blocks' ? 'Blocks' : 'Inventory'}</h2>
           <button type="button" class="menu-button small" onClick={p.onClose}>
             Close (E)
           </button>
         </div>
-        <p class="inventory-hint">Click a slot to pick up or put down a stack. Esc or E closes.</p>
-        <div class="inventory-grid">{grid}</div>
+        <div class="inventory-tabs" role="tablist">
+          <button
+            type="button"
+            role="tab"
+            class="menu-button small"
+            aria-selected={p.tab === 'inventory'}
+            onClick={() => p.onTab('inventory')}
+          >
+            Inventory
+          </button>
+          <button
+            type="button"
+            role="tab"
+            class="menu-button small"
+            aria-selected={p.tab === 'blocks'}
+            onClick={() => p.onTab('blocks')}
+          >
+            Blocks (creative)
+          </button>
+        </div>
+        {p.tab === 'blocks' ? (
+          <>
+            <p class="inventory-hint">
+              Click a block to put a full stack of it in the selected hotbar slot. Every block in the game is here.
+            </p>
+            <div class="block-picker" aria-label="All blocks">
+              {picks}
+            </div>
+          </>
+        ) : (
+          <>
+            <p class="inventory-hint">Click a slot to pick up or put down a stack. Esc or E closes.</p>
+            <div class="inventory-grid">{grid}</div>
+          </>
+        )}
         <div class="inventory-bar">{bar}</div>
       </div>
       {tip && (
@@ -65,12 +119,14 @@ function InventoryView(p: ViewProps) {
 
 /**
  * The inventory grid, opened with E or from the pause menu. A click on a slot takes its stack onto the cursor, or puts
- * the cursor down (see Inventory.clickSlot). The held stack and the name tooltip follow the mouse.
+ * the cursor down (see Inventory.clickSlot). The held stack and the name tooltip follow the mouse. The Blocks tab puts a
+ * full stack of any block into the selected hotbar slot, for testing.
  */
 export class InventoryScreen {
   private readonly root: HTMLDivElement;
   private cursor: ItemStack | null = null;
   private hovered: number | null = null;
+  private tab: InventoryTab = 'inventory';
   private open = false;
   private cursorEl: HTMLDivElement | null = null;
   private tipEl: HTMLDivElement | null = null;
@@ -99,8 +155,14 @@ export class InventoryScreen {
     return this.open;
   }
 
+  /** The tab showing now. */
+  get currentTab(): InventoryTab {
+    return this.tab;
+  }
+
   show(): void {
     this.open = true;
+    this.tab = 'inventory';
     this.root.style.display = '';
     this.refresh();
   }
@@ -125,15 +187,27 @@ export class InventoryScreen {
     this.draw();
   }
 
+  /** Switches tab. Opening the screen always starts on the inventory tab. */
+  setTab(tab: InventoryTab): void {
+    this.tab = tab;
+    this.draw();
+  }
+
   private draw(): void {
     render(
       <InventoryView
         inventory={this.inventory}
         atlas={this.atlas}
+        tab={this.tab}
         cursor={this.cursor}
         hovered={this.hovered}
+        onTab={(tab) => this.setTab(tab)}
         onPress={(i) => {
           this.cursor = this.inventory.clickSlot(i, this.cursor);
+          this.draw();
+        }}
+        onPick={(state) => {
+          this.inventory.setSlot(this.inventory.selected, state, MAX_STACK);
           this.draw();
         }}
         onHover={(i, over) => {
