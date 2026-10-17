@@ -19,8 +19,9 @@ export interface BiomeDef {
   surfaceBlock: number;
   /** Soil block below the surface (used by the generator). */
   soilBlock: number;
-  /** Tree species that grow in this biome, or null if no trees grow here. */
-  treeSpecies: string | null;
+  /** Tree species that grow in this biome, or null if no trees grow here. Typed as the species union (task T-E13),
+   * so a biome naming a species that does not exist fails at compile time, not silently at runtime. */
+  treeSpecies: TreeSpecies | null;
 }
 
 export interface BiomeLookup {
@@ -45,7 +46,7 @@ const BIOMES: BiomeDef[] = [
   { key: 'glacier', name: 'Glacier', tempMin: -45, tempMax: -5, precipMin: 0, precipMax: 2000, surfaceBlock: BlockId.STONE, soilBlock: BlockId.STONE, treeSpecies: null },
   { key: 'snowcapped_peaks', name: 'Snowcapped Peaks', tempMin: -5, tempMax: 10, precipMin: 0, precipMax: 2000, surfaceBlock: BlockId.STONE, soilBlock: BlockId.STONE, treeSpecies: null },
   { key: 'alpine_meadow', name: 'Alpine Meadow', tempMin: 2, tempMax: 15, precipMin: 0, precipMax: 2000, surfaceBlock: BlockId.DIRT, soilBlock: BlockId.DIRT, treeSpecies: null },
-  { key: 'tundra', name: 'Tundra', tempMin: -10, tempMax: 5, precipMin: 0, precipMax: 500, heightMin: 0, landOnly: true, surfaceBlock: BlockId.DIRT, soilBlock: BlockId.DIRT, treeSpecies: null },
+  { key: 'tundra', name: 'Tundra', tempMin: -10, tempMax: 5, precipMin: 0, precipMax: 500, heightMin: 0, landOnly: true, surfaceBlock: BlockId.GRASS, soilBlock: BlockId.DIRT, treeSpecies: 'dead_snag' },
   { key: 'scree', name: 'Scree and Bare Rock', tempMin: -45, tempMax: 45, precipMin: 0, precipMax: 2000, detailAmpMin: 18, landOnly: true, surfaceBlock: BlockId.STONE, soilBlock: BlockId.STONE, treeSpecies: null },
   { key: 'volcanic', name: 'Volcanic', tempMin: -45, tempMax: 45, precipMin: 0, precipMax: 2000, surfaceBlock: BlockId.STONE, soilBlock: BlockId.STONE, treeSpecies: null },
 
@@ -63,8 +64,10 @@ const BIOMES: BiomeDef[] = [
   { key: 'temperate_deciduous', name: 'Temperate Deciduous Forest', tempMin: 10, tempMax: 25, precipMin: 750, precipMax: 1500, landOnly: true, surfaceBlock: BlockId.GRASS, soilBlock: BlockId.DIRT, treeSpecies: 'oak' },
   { key: 'birch', name: 'Birch Forest', tempMin: 0, tempMax: 15, precipMin: 750, precipMax: 1500, landOnly: true, surfaceBlock: BlockId.GRASS, soilBlock: BlockId.DIRT, treeSpecies: 'birch' },
   { key: 'old_growth_dark_forest', name: 'Old-Growth Dark Forest', tempMin: 5, tempMax: 15, precipMin: 1500, precipMax: 2000, landOnly: true, surfaceBlock: BlockId.GRASS, soilBlock: BlockId.DIRT, treeSpecies: 'oak' },
-  { key: 'taiga', name: 'Taiga', tempMin: -10, tempMax: 5, precipMin: 500, precipMax: 1000, landOnly: true, surfaceBlock: BlockId.DIRT, soilBlock: BlockId.DIRT, treeSpecies: 'spruce' },
-  { key: 'snowy_taiga', name: 'Snowy Taiga', tempMin: -25, tempMax: -10, precipMin: 500, precipMax: 1000, landOnly: true, surfaceBlock: BlockId.DIRT, soilBlock: BlockId.DIRT, treeSpecies: 'spruce' },
+  // Conifer forests keep a grass surface, so their trees actually grow: treeSpeciesAt rejects any biome whose
+  // surface is not grass, which made the spruce (and every dirt-surface species) unreachable (task T-E12).
+  { key: 'taiga', name: 'Taiga', tempMin: -10, tempMax: 5, precipMin: 500, precipMax: 1000, landOnly: true, surfaceBlock: BlockId.GRASS, soilBlock: BlockId.DIRT, treeSpecies: 'spruce' },
+  { key: 'snowy_taiga', name: 'Snowy Taiga', tempMin: -25, tempMax: -10, precipMin: 500, precipMax: 1000, landOnly: true, surfaceBlock: BlockId.GRASS, soilBlock: BlockId.DIRT, treeSpecies: 'pine' },
 ];
 
 export function biomeAt(
@@ -148,5 +151,5 @@ export function blendSurfaceBlocks(a: number, b: number, wx: number, wz: number,
 /** The tree species that grows in a biome, or null if no trees grow there. */
 export function treeSpecies(biomeKey: BiomeKey): TreeSpecies | null {
   const def = BIOMES.find((b) => b.key === biomeKey);
-  return (def?.treeSpecies ?? null) as TreeSpecies | null;
+  return def?.treeSpecies ?? null;
 }

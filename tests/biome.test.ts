@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { biomeAt, BIOME_COUNT, BIOME_KEYS, blendSurfaceBlocks } from '../src/world/biome';
+import { TREE_SPECIES } from '../src/config';
+import { BlockId } from '../src/world/blocks';
+import { biomeAt, BIOME_COUNT, BIOME_KEYS, blendSurfaceBlocks, surfaceBlock, treeSpecies } from '../src/world/biome';
 
 function expectBiome(
   temperatureC: number,
@@ -101,6 +103,26 @@ describe('BIOME_COUNT and BIOME_KEYS', () => {
       expect(typeof key).toBe('string');
       expect(key.length).toBeGreaterThan(0);
     }
+  });
+});
+
+describe('tree species wiring (tasks T-E12, T-E13)', () => {
+  it('every species in the table is reachable: some biome names it and has a grass surface', () => {
+    // treeSpeciesAt (generator.ts) grows a species only where the biome names it and the biome's surface block is
+    // grass, so a species named by no grass-surface biome can never generate. Spruce and pine were dead this way.
+    for (const species of TREE_SPECIES) {
+      const home = BIOME_KEYS.find((key) => treeSpecies(key) === species.key && surfaceBlock(key, false) === BlockId.GRASS);
+      expect(home, `${species.key} is named by no grass-surface biome, so it can never generate`).toBeDefined();
+    }
+  });
+
+  it('grows spruce in the taiga, pine in the snowy taiga, and dead snags in the tundra', () => {
+    expect(treeSpecies('taiga')).toBe('spruce');
+    expect(treeSpecies('snowy_taiga')).toBe('pine');
+    expect(treeSpecies('tundra')).toBe('dead_snag');
+    expect(surfaceBlock('taiga', false)).toBe(BlockId.GRASS);
+    expect(surfaceBlock('snowy_taiga', false)).toBe(BlockId.GRASS);
+    expect(surfaceBlock('tundra', false)).toBe(BlockId.GRASS);
   });
 });
 
