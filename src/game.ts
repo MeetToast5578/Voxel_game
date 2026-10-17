@@ -22,6 +22,7 @@ import { HeldBlock } from './render/heldBlock';
 import { BlockHighlight, BreakOverlay } from './render/highlight';
 import { ItemMeshes } from './render/itemMeshes';
 import { Renderer } from './render/renderer';
+import { Sky } from './render/sky';
 import type { LoadedSave, SavedPlayer, WorldMeta } from './storage/save';
 import { WorldSaver } from './storage/saver';
 import { loadSettings, saveSettings, type Settings } from './storage/settings';
@@ -38,7 +39,7 @@ import { ChunkManager } from './world/chunkManager';
 import { type EditCell, EditQueue } from './world/editQueue';
 import { TerrainGenerator } from './world/generator';
 import { findSpawnColumn, surfaceY } from './world/spawn';
-import { daylightAt, skyColorAt } from './world/time';
+import { daylightAt } from './world/time';
 import { WorkerPool } from './workers/workerPool';
 import { World } from './world/world';
 import { Calendar } from './world/calendar';
@@ -117,6 +118,8 @@ export class Game {
   /** Where the player was when the game was saved; used instead of the spawn search. */
   private readonly savedPlayer: SavedPlayer | null;
   private readonly clouds: Clouds;
+  /** The sky: dome, sun, moon, stars. */
+  readonly sky: Sky;
   private stepDistance = 0;
   private readonly usingWorkers: boolean;
 
@@ -162,6 +165,7 @@ export class Game {
     this.highlight = new BlockHighlight(this.renderer.scene);
     this.breakOverlay = new BreakOverlay(this.renderer.scene, this.renderer.crackMaterial);
     this.clouds = new Clouds(this.renderer.scene, seed);
+    this.sky = new Sky(this.renderer.scene);
     this.input = new Input(this.renderer.canvas);
     this.hud = new Hud(container, this.renderer.atlasCanvas);
     this.debugOverlay = new DebugOverlay(container);
@@ -281,7 +285,7 @@ export class Game {
     this.renderer.setSurfaceDistance(this.chunks.surfaceDistance(eye.y));
     this.renderer.setCamera(eye.x, eye.y, eye.z, this.player.yaw, this.player.pitch);
     this.renderer.setDaylight(daylightAt(this.timeOfDay));
-    this.renderer.setSkyColor(skyColorAt(this.timeOfDay));
+    this.sky.update(this.timeOfDay, this.calendar.timeOfYear, this.renderer.camera);
     this.clouds.update(eye.x, eye.z, frameDt, daylightAt(this.timeOfDay));
     this.renderer.setUnderwater(this.isWaterAt(Math.floor(eye.x), Math.floor(eye.y), Math.floor(eye.z)));
     const look = this.player.lookDirection();
