@@ -222,7 +222,13 @@ const CHECKS = [
       const p = await page.evaluate(() => window.__game.state().position);
       await page.evaluate(([x, y, z]) => window.__game.teleport(x + 4, y + 2, z), p);
       await page.waitForFunction(() => window.__game.state().areaMeshed, null, { timeout: 60_000 });
-      await page.waitForTimeout(500);
+      // Wait for the body to settle instead of a fixed delay: the terrain at +4 blocks can be higher or lower than the
+      // spawn ground (region simulation made the spawn area a slope), and a fixed 500 ms is fps-dependent (task T-A2a).
+      await page.waitForFunction(() => {
+        const s = window.__game.state();
+        return s.onGround || s.inWater;
+      }, null, { timeout: 20_000 });
+      await page.waitForTimeout(200);
       await page.evaluate(() => window.__game.look(0, -Math.PI / 2 + 0.01)); // straight down
       await page.waitForTimeout(300);
       const s = await page.evaluate(() => window.__game.state());
@@ -336,7 +342,8 @@ const CHECKS = [
       }, [x, z]);
       await waitMeshed();
       const below = await page.evaluate(([x, z]) => window.__game.getBlock(x, -205, z), [bx, bz]);
-      const ROCKS = [1, 14, 15, 16, 17]; // stone, granite, diorite, andesite, sandstone (spec 15)
+      // stone and the seven strata rocks (specs 15, 20), plus the ores that can host at this depth (spec 26).
+      const ROCKS = [1, 14, 15, 16, 17, 22, 23, 24, 28, 29, 30, 31, 32, 33, 34];
       if (!ROCKS.includes(below)) throw new Error(`expected rock 5 blocks below y = -200, found ${below}`);
 
       await page.evaluate(([x, z]) => window.__game.teleport(x, 8400, z), [x, z]); // above the highest terrain (2,450 m, 8,167 blocks)
@@ -540,6 +547,8 @@ const CHECKS = [
 mkdirSync('screenshots', { recursive: true });
 const server = await preview({ preview: { port: PORT, strictPort: true }, logLevel: 'warn' });
 const errors = [];
+/** The name of the check (or phase) currently running, so a failure says where it happened (task T-A2a). */
+let running = 'startup (goto and ready)';
 let browser;
 try {
   browser = await chromium.launch({
@@ -564,11 +573,13 @@ try {
   // SMOKE_ONLY=text runs only the checks whose name contains the text (for debugging one check).
   const only = process.env.SMOKE_ONLY;
   for (const check of CHECKS.filter((c) => !only || c.name.includes(only))) {
+    running = check.name;
     await check.run(page);
     console.log(`check passed: ${check.name}`);
   }
 
   // Measurement only (not a check): time until nothing is left to load or mesh, then the steady frame rate.
+  running = 'final measurement';
   const loadStart = Date.now();
   await page.evaluate(() => window.__game.look(0, -0.1));
   await page
@@ -582,7 +593,7 @@ try {
   const steady = await page.evaluate(() => window.__game.state());
   console.log(`fully loaded ${loadMs} ms after the checks; then ${steady.fps} fps, ${steady.loaded} chunks loaded, ${steady.meshed} meshed, ${steady.drawCalls} draw calls`);
 } catch (err) {
-  errors.push(`smoke failure: ${err instanceof Error ? err.message : String(err)}`);
+  errors.push(`smoke failure during "${running}": ${err instanceof Error ? err.message : String(err)}`);
 } finally {
   await browser?.close();
   await new Promise((resolve) => server.httpServer.close(resolve));
@@ -590,6 +601,12 @@ try {
 
 if (errors.length > 0) {
   console.error(`SMOKE TEST FAILED\n${errors.join('\n')}`);
+  // GitHub Actions annotations (task T-A2a): raw CI logs are not always retrievable, so failures are also published
+  // as run annotations, readable from the check-runs API and the run page. Escaping per the workflow-commands spec.
+  if (process.env.GITHUB_ACTIONS) {
+    const esc = (s) => String(s).replace(/%/g, '%25').replace(/\r/g, '%0D').replace(/\n/g, '%0A');
+    for (const e of errors) console.log(`::error title=smoke::${esc(e)}`);
+  }
   process.exit(1);
 }
 console.log('SMOKE TEST PASSED');
