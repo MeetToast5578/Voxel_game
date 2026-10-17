@@ -276,7 +276,20 @@ export const GRASS_SPREAD_LIGHT_MIN = 8; // minimum sky light level for grass to
 export const BIOME_BLEND_BLOCKS = 3; // surface blocks dither into the next biome over this many blocks from its border
 
 // ---- Tree species (spec 37) ----
-export type TreeSpecies = 'oak' | 'spruce' | 'birch' | 'pine' | 'jungle_giant' | 'acacia' | 'dead_snag' | 'bush';
+export type TreeSpecies =
+  | 'oak'
+  | 'maple'
+  | 'spruce'
+  | 'fir'
+  | 'larch'
+  | 'pine'
+  | 'birch'
+  | 'jungle_giant'
+  | 'palm'
+  | 'acacia'
+  | 'baobab'
+  | 'dead_snag'
+  | 'bush';
 
 export interface TreeSpeciesDef {
   key: TreeSpecies;
@@ -305,6 +318,18 @@ export const TREE_SPECIES: TreeSpeciesDef[] = [
     crownRadiusFactor: 0.5,
   },
   {
+    key: 'maple',
+    name: 'Maple',
+    trunkWidth: 1,
+    heightMinBlocks: 27,
+    heightMaxBlocks: 35,
+    branchMinBlocks: 2,
+    branchMaxBlocks: 4,
+    blobRadiusBlocks: 4,
+    crownBaseFraction: 0.4,
+    crownRadiusFactor: 0.55,
+  },
+  {
     key: 'spruce',
     name: 'Spruce',
     trunkWidth: 1,
@@ -315,6 +340,30 @@ export const TREE_SPECIES: TreeSpeciesDef[] = [
     blobRadiusBlocks: 3,
     crownBaseFraction: 0.55,
     crownRadiusFactor: 0.3,
+  },
+  {
+    key: 'fir',
+    name: 'Fir',
+    trunkWidth: 1,
+    heightMinBlocks: 33,
+    heightMaxBlocks: 40,
+    branchMinBlocks: 1,
+    branchMaxBlocks: 2,
+    blobRadiusBlocks: 2,
+    crownBaseFraction: 0.5,
+    crownRadiusFactor: 0.18, // the narrowest conifer: a spire
+  },
+  {
+    key: 'larch',
+    name: 'Larch',
+    trunkWidth: 1,
+    heightMinBlocks: 27,
+    heightMaxBlocks: 35,
+    branchMinBlocks: 2,
+    branchMaxBlocks: 4,
+    blobRadiusBlocks: 3,
+    crownBaseFraction: 0.45,
+    crownRadiusFactor: 0.35, // an open, spreading conifer
   },
   {
     key: 'birch',
@@ -353,6 +402,18 @@ export const TREE_SPECIES: TreeSpeciesDef[] = [
     crownRadiusFactor: 0.6,
   },
   {
+    key: 'palm',
+    name: 'Palm',
+    trunkWidth: 1,
+    heightMinBlocks: 30,
+    heightMaxBlocks: 40,
+    branchMinBlocks: 1,
+    branchMaxBlocks: 2,
+    blobRadiusBlocks: 3,
+    crownBaseFraction: 0.85, // a bare pole with a small tuft at the top
+    crownRadiusFactor: 0.15,
+  },
+  {
     key: 'acacia',
     name: 'Acacia',
     trunkWidth: 1,
@@ -363,6 +424,18 @@ export const TREE_SPECIES: TreeSpeciesDef[] = [
     blobRadiusBlocks: 4,
     crownBaseFraction: 0.5,
     crownRadiusFactor: 0.45,
+  },
+  {
+    key: 'baobab',
+    name: 'Baobab',
+    trunkWidth: 2,
+    heightMinBlocks: 27,
+    heightMaxBlocks: 32,
+    branchMinBlocks: 3,
+    branchMaxBlocks: 6,
+    blobRadiusBlocks: 5,
+    crownBaseFraction: 0.6, // a thick bare trunk under a wide, flat crown
+    crownRadiusFactor: 0.7,
   },
   {
     key: 'dead_snag',
@@ -389,6 +462,12 @@ export const TREE_SPECIES: TreeSpeciesDef[] = [
     crownRadiusFactor: 0.8,
   },
 ];
+
+/**
+ * The share of a biome's tree anchors that grow its secondary species, where the biome names one (task T-E11).
+ * The pick is a hash of the anchor, so it is deterministic and chunk-independent, like every tree decision.
+ */
+export const SECONDARY_TREE_CHANCE = 0.3;
 
 export const TREE_SPECIES_KEYS: TreeSpecies[] = TREE_SPECIES.map((s) => s.key);
 

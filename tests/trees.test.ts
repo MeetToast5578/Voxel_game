@@ -24,6 +24,31 @@ function tree(ax: number, az: number): TreeBlock[] {
 }
 
 describe('trees', () => {
+  it('new species have distinct deterministic geometry at the same anchor (T-E11)', () => {
+    const keys = ['maple', 'fir', 'larch', 'baobab', 'palm'] as const;
+    const signatures = new Set<string>();
+    for (const key of keys) {
+      const blocks = treeBlocks(SEED, 0, 20, 0, key);
+      expect(blocks).toEqual(treeBlocks(SEED, 0, 20, 0, key));
+      const signature = blocks.map((b) => `${b.x},${b.y},${b.z},${b.id}`).sort().join(';');
+      signatures.add(signature);
+      const logs = new Set(blocks.filter((b) => b.id === BlockId.LOG).map((b) => `${b.x},${b.y},${b.z}`));
+      const seen = new Set(['0,21,0']);
+      const queue = ['0,21,0'];
+      while (queue.length) {
+        const [x, y, z] = queue.pop()!.split(',').map(Number) as [number, number, number];
+        for (const [dx, dy, dz] of [[1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1], [0, 0, -1]] as const) {
+          const next = `${x + dx},${y + dy},${z + dz}`;
+          if (logs.has(next) && !seen.has(next)) {
+            seen.add(next);
+            queue.push(next);
+          }
+        }
+      }
+      expect(seen.size, `${key} logs must connect to the trunk`).toBe(logs.size);
+    }
+    expect(signatures.size).toBe(keys.length);
+  });
   it('reach their species height (branches may rise a little above the trunk)', () => {
     for (const def of TREE_SPECIES) {
       for (const [ax, az] of ANCHORS.slice(0, 24)) {

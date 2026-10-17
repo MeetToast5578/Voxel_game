@@ -1,6 +1,6 @@
 import { BlockId } from './blocks';
 import { hash2 } from '../core/random';
-import { type TreeSpecies } from '../config';
+import { SECONDARY_TREE_CHANCE, type TreeSpecies } from '../config';
 
 export type BiomeKey = string;
 
@@ -22,6 +22,8 @@ export interface BiomeDef {
   /** Tree species that grow in this biome, or null if no trees grow here. Typed as the species union (task T-E13),
    * so a biome naming a species that does not exist fails at compile time, not silently at runtime. */
   treeSpecies: TreeSpecies | null;
+  /** A second species mixed in on a share of the biome's anchors (task T-E11), or none. */
+  secondarySpecies?: TreeSpecies | null;
 }
 
 export interface BiomeLookup {
@@ -54,20 +56,20 @@ const BIOMES: BiomeDef[] = [
   { key: 'desert', name: 'Desert', tempMin: 20, tempMax: 45, precipMin: 0, precipMax: 250, landOnly: true, surfaceBlock: BlockId.SAND, soilBlock: BlockId.SAND, treeSpecies: null },
   { key: 'badlands', name: 'Badlands', tempMin: 20, tempMax: 45, precipMin: 250, precipMax: 500, landOnly: true, surfaceBlock: BlockId.SAND, soilBlock: BlockId.STONE, treeSpecies: null },
   { key: 'shrubland', name: 'Shrubland', tempMin: 15, tempMax: 30, precipMin: 250, precipMax: 500, landOnly: true, surfaceBlock: BlockId.DIRT, soilBlock: BlockId.DIRT, treeSpecies: 'bush' },
-  { key: 'savanna', name: 'Savanna', tempMin: 20, tempMax: 45, precipMin: 500, precipMax: 1000, landOnly: true, surfaceBlock: BlockId.GRASS, soilBlock: BlockId.DIRT, treeSpecies: 'acacia' },
+  { key: 'savanna', name: 'Savanna', tempMin: 20, tempMax: 45, precipMin: 500, precipMax: 1000, landOnly: true, surfaceBlock: BlockId.GRASS, soilBlock: BlockId.DIRT, treeSpecies: 'acacia', secondarySpecies: 'baobab' },
   { key: 'steppe', name: 'Steppe', tempMin: 0, tempMax: 20, precipMin: 250, precipMax: 750, landOnly: true, surfaceBlock: BlockId.DIRT, soilBlock: BlockId.DIRT, treeSpecies: 'bush' },
   { key: 'plains', name: 'Plains', tempMin: 10, tempMax: 25, precipMin: 500, precipMax: 1000, landOnly: true, surfaceBlock: BlockId.GRASS, soilBlock: BlockId.DIRT, treeSpecies: 'oak' },
   { key: 'meadow', name: 'Meadow', tempMin: 5, tempMax: 15, precipMin: 1000, precipMax: 2000, landOnly: true, surfaceBlock: BlockId.GRASS, soilBlock: BlockId.DIRT, treeSpecies: 'bush' },
 
   // ---- Whittaker diagram: forests ----
-  { key: 'tropical_rainforest', name: 'Tropical Rainforest', tempMin: 25, tempMax: 45, precipMin: 1500, precipMax: 2000, landOnly: true, surfaceBlock: BlockId.GRASS, soilBlock: BlockId.DIRT, treeSpecies: 'jungle_giant' },
-  { key: 'temperate_deciduous', name: 'Temperate Deciduous Forest', tempMin: 10, tempMax: 25, precipMin: 750, precipMax: 1500, landOnly: true, surfaceBlock: BlockId.GRASS, soilBlock: BlockId.DIRT, treeSpecies: 'oak' },
+  { key: 'tropical_rainforest', name: 'Tropical Rainforest', tempMin: 25, tempMax: 45, precipMin: 1500, precipMax: 2000, landOnly: true, surfaceBlock: BlockId.GRASS, soilBlock: BlockId.DIRT, treeSpecies: 'jungle_giant', secondarySpecies: 'palm' },
+  { key: 'temperate_deciduous', name: 'Temperate Deciduous Forest', tempMin: 10, tempMax: 25, precipMin: 750, precipMax: 1500, landOnly: true, surfaceBlock: BlockId.GRASS, soilBlock: BlockId.DIRT, treeSpecies: 'oak', secondarySpecies: 'maple' },
   { key: 'birch', name: 'Birch Forest', tempMin: 0, tempMax: 15, precipMin: 750, precipMax: 1500, landOnly: true, surfaceBlock: BlockId.GRASS, soilBlock: BlockId.DIRT, treeSpecies: 'birch' },
   { key: 'old_growth_dark_forest', name: 'Old-Growth Dark Forest', tempMin: 5, tempMax: 15, precipMin: 1500, precipMax: 2000, landOnly: true, surfaceBlock: BlockId.GRASS, soilBlock: BlockId.DIRT, treeSpecies: 'oak' },
   // Conifer forests keep a grass surface, so their trees actually grow: treeSpeciesAt rejects any biome whose
   // surface is not grass, which made the spruce (and every dirt-surface species) unreachable (task T-E12).
-  { key: 'taiga', name: 'Taiga', tempMin: -10, tempMax: 5, precipMin: 500, precipMax: 1000, landOnly: true, surfaceBlock: BlockId.GRASS, soilBlock: BlockId.DIRT, treeSpecies: 'spruce' },
-  { key: 'snowy_taiga', name: 'Snowy Taiga', tempMin: -25, tempMax: -10, precipMin: 500, precipMax: 1000, landOnly: true, surfaceBlock: BlockId.GRASS, soilBlock: BlockId.DIRT, treeSpecies: 'pine' },
+  { key: 'taiga', name: 'Taiga', tempMin: -10, tempMax: 5, precipMin: 500, precipMax: 1000, landOnly: true, surfaceBlock: BlockId.GRASS, soilBlock: BlockId.DIRT, treeSpecies: 'spruce', secondarySpecies: 'larch' },
+  { key: 'snowy_taiga', name: 'Snowy Taiga', tempMin: -25, tempMax: -10, precipMin: 500, precipMax: 1000, landOnly: true, surfaceBlock: BlockId.GRASS, soilBlock: BlockId.DIRT, treeSpecies: 'pine', secondarySpecies: 'fir' },
 ];
 
 export function biomeAt(
@@ -152,4 +154,29 @@ export function blendSurfaceBlocks(a: number, b: number, wx: number, wz: number,
 export function treeSpecies(biomeKey: BiomeKey): TreeSpecies | null {
   const def = BIOMES.find((b) => b.key === biomeKey);
   return def?.treeSpecies ?? null;
+}
+
+/** The biome's mixed-in second species, or null if it has none (task T-E11). */
+export function secondarySpecies(biomeKey: BiomeKey): TreeSpecies | null {
+  const def = BIOMES.find((b) => b.key === biomeKey);
+  return def?.secondarySpecies ?? null;
+}
+
+/** A salt for the species-mix hash, so the mix never correlates with the anchor hash or the tree shape hash. */
+const MIX_SALT = 23;
+
+/**
+ * The species that grows at one tree anchor: the biome's secondary species on a `SECONDARY_TREE_CHANCE` share of
+ * anchors, the primary on the rest. Pure and deterministic in `(seed, x, z)`, so every chunk asking about the same
+ * anchor grows the same tree (task T-E11).
+ */
+export function anchorSpecies(
+  primary: TreeSpecies,
+  secondary: TreeSpecies | null,
+  seed: number,
+  x: number,
+  z: number,
+): TreeSpecies {
+  if (secondary !== null && hash2(seed + MIX_SALT, x, z) < SECONDARY_TREE_CHANCE) return secondary;
+  return primary;
 }

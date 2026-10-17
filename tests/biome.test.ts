@@ -1,7 +1,16 @@
 import { describe, expect, it } from 'vitest';
 import { TREE_SPECIES } from '../src/config';
 import { BlockId } from '../src/world/blocks';
-import { biomeAt, BIOME_COUNT, BIOME_KEYS, blendSurfaceBlocks, surfaceBlock, treeSpecies } from '../src/world/biome';
+import {
+  anchorSpecies,
+  biomeAt,
+  BIOME_COUNT,
+  BIOME_KEYS,
+  blendSurfaceBlocks,
+  secondarySpecies,
+  surfaceBlock,
+  treeSpecies,
+} from '../src/world/biome';
 
 function expectBiome(
   temperatureC: number,
@@ -107,11 +116,15 @@ describe('BIOME_COUNT and BIOME_KEYS', () => {
 });
 
 describe('tree species wiring (tasks T-E12, T-E13)', () => {
-  it('every species in the table is reachable: some biome names it and has a grass surface', () => {
+  it('every species in the table is reachable: some grass-surface biome names it, as primary or secondary', () => {
     // treeSpeciesAt (generator.ts) grows a species only where the biome names it and the biome's surface block is
     // grass, so a species named by no grass-surface biome can never generate. Spruce and pine were dead this way.
     for (const species of TREE_SPECIES) {
-      const home = BIOME_KEYS.find((key) => treeSpecies(key) === species.key && surfaceBlock(key, false) === BlockId.GRASS);
+      const home = BIOME_KEYS.find(
+        (key) =>
+          (treeSpecies(key) === species.key || secondarySpecies(key) === species.key) &&
+          surfaceBlock(key, false) === BlockId.GRASS,
+      );
       expect(home, `${species.key} is named by no grass-surface biome, so it can never generate`).toBeDefined();
     }
   });
@@ -123,6 +136,27 @@ describe('tree species wiring (tasks T-E12, T-E13)', () => {
     expect(surfaceBlock('taiga', false)).toBe(BlockId.GRASS);
     expect(surfaceBlock('snowy_taiga', false)).toBe(BlockId.GRASS);
     expect(surfaceBlock('tundra', false)).toBe(BlockId.GRASS);
+  });
+});
+
+describe('secondary species mixing (task T-E11)', () => {
+  it('mixes the five new species into their host biomes', () => {
+    expect(secondarySpecies('temperate_deciduous')).toBe('maple');
+    expect(secondarySpecies('taiga')).toBe('larch');
+    expect(secondarySpecies('snowy_taiga')).toBe('fir');
+    expect(secondarySpecies('savanna')).toBe('baobab');
+    expect(secondarySpecies('tropical_rainforest')).toBe('palm');
+    expect(secondarySpecies('plains')).toBeNull();
+  });
+
+  it('anchorSpecies is deterministic, grows the secondary on the configured share, and the primary with none', () => {
+    expect(anchorSpecies('oak', 'maple', 1, 100, 200)).toBe(anchorSpecies('oak', 'maple', 1, 100, 200));
+    let secondary = 0;
+    const n = 4000;
+    for (let i = 0; i < n; i++) if (anchorSpecies('oak', 'maple', 1, i * 16, (i % 97) * 16) === 'maple') secondary++;
+    expect(secondary / n).toBeGreaterThan(0.2); // SECONDARY_TREE_CHANCE is 0.3
+    expect(secondary / n).toBeLessThan(0.4);
+    for (let i = 0; i < 100; i++) expect(anchorSpecies('oak', null, 1, i, 7)).toBe('oak');
   });
 });
 
