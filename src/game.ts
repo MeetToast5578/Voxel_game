@@ -38,6 +38,7 @@ import { Hud } from './ui/hud';
 import { InventoryScreen } from './ui/inventoryScreen';
 import { Menu } from './ui/menu';
 import { BlockId, getBlockDef, isSolid } from './world/blocks';
+import { scheduleLeafDecay } from './world/ecology';
 import { Chunk } from './world/chunk';
 import { ChunkManager } from './world/chunkManager';
 import { type EditCell, EditQueue } from './world/editQueue';
@@ -490,8 +491,11 @@ export class Game {
   /** Changes a block and remeshes the affected chunks. Returns false if the chunk is not loaded. */
   setBlock(x: number, y: number, z: number, id: number): boolean {
     const oldTop = this.world.topAt(x, z);
+    const prev = this.world.getBlock(x, y, z);
     if (!this.world.setBlock(x, y, z, id)) return false;
     this.chunks.onBlockChanged(x, y, z, oldTop, this.world.topAt(x, z));
+    // A log was chopped: the leaves it held up (if no other log holds them) fall a moment later.
+    if (prev === BlockId.LOG && id !== BlockId.LOG) scheduleLeafDecay(this.world, x, y, z);
     return true;
   }
 

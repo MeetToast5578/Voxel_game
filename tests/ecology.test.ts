@@ -5,7 +5,8 @@ import { World } from '../src/world/world';
 import { Chunk } from '../src/world/chunk';
 import { localIndex } from '../src/core/coords';
 import { BlockId, blocksSky } from '../src/world/blocks';
-import { handleRandomTick, handleTick } from '../src/world/ecology';
+import { handleRandomTick, handleTick, scheduleLeafDecay } from '../src/world/ecology';
+import { orphanedLeaves } from '../src/world/leafDecay';
 
 describe('ecology - grass spreading', () => {
   it('spreads grass to adjacent lit dirt blocks', () => {
@@ -149,5 +150,55 @@ describe('ecology - random ticks', () => {
   it('randomTickStep stops at once when the budget is zero', () => {
     const world = grassWorld();
     expect(world.randomTickStep(0).ran).toBe(0);
+  });
+});
+
+describe('ecology - leaf decay', () => {
+  it('finds the leaves a broken log alone was holding up, and none when a log remains', () => {
+    const cells = new Map<string, number>();
+    const set = (x: number, y: number, z: number, id: number) => cells.set(`${x},${y},${z}`, id);
+    const get = (x: number, y: number, z: number) => cells.get(`${x},${y},${z}`) ?? BlockId.AIR;
+
+    // The log's cell is already empty (that is what "broken" means).
+    set(0, 1, 0, BlockId.LEAVES);
+    set(1, 1, 0, BlockId.LEAVES);
+    set(-1, 1, 0, BlockId.LEAVES);
+    set(0, 2, 0, BlockId.LEAVES); // attached to (0,1,0), not to the log
+
+    const orphans = orphanedLeaves(get, 0, 0, 0, 100);
+    expect(orphans.map((o) => `${o.x},${o.y},${o.z}`).sort()).toEqual(['-1,1,0', '0,1,0', '0,2,0', '1,1,0']);
+    expect(Math.max(...orphans.map((o) => o.depth))).toBe(2);
+
+    // A second log next to the break still holds the canopy up.
+    set(0, -1, 0, BlockId.LOG);
+    expect(orphanedLeaves(get, 0, 0, 0, 100)).toEqual([]);
+  });
+
+  it('fells an orphaned canopy through the tick queue, in a cascade', () => {
+    const world = new World(3);
+    const chunk = new Chunk(0, 0, 0);
+    world.addChunk(chunk);
+    world.installColumnTops(0, 0, new Int32Array(256).fill(8));
+    chunk.blocks[localIndex(8, 5, 8)] = BlockId.LOG;
+    chunk.blocks[localIndex(8, 6, 8)] = BlockId.LEAVES;
+    chunk.blocks[localIndex(9, 6, 8)] = BlockId.LEAVES;
+    world.setBlock(8, 5, 8, BlockId.AIR);
+    expect(scheduleLeafDecay(world, 8, 5, 8)).toBe(2);
+    for (let i = 0; i < 10; i++) world.tickStep(100);
+    expect(world.getBlock(8, 6, 8)).toBe(BlockId.AIR);
+    expect(world.getBlock(9, 6, 8)).toBe(BlockId.AIR);
+  });
+
+  it('does not fell a canopy that another log still holds up', () => {
+    const world = new World(4);
+    const chunk = new Chunk(0, 0, 0);
+    world.addChunk(chunk);
+    world.installColumnTops(0, 0, new Int32Array(256).fill(8));
+    chunk.blocks[localIndex(8, 4, 8)] = BlockId.LOG;
+    chunk.blocks[localIndex(8, 5, 8)] = BlockId.LOG;
+    chunk.blocks[localIndex(8, 6, 8)] = BlockId.LEAVES;
+    world.setBlock(8, 5, 8, BlockId.AIR); // bottom log stays, so the leaves stay
+    expect(scheduleLeafDecay(world, 8, 5, 8)).toBe(0);
+    expect(world.getBlock(8, 6, 8)).toBe(BlockId.LEAVES);
   });
 });

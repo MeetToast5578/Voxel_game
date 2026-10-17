@@ -3,11 +3,14 @@ import { type Tick, type TickResult } from './tick';
 import { BlockId, blocksSky } from './blocks';
 import { mulberry32 } from '../core/random';
 import { mixSeed } from './randomTick';
+import { orphanedLeaves } from './leafDecay';
 
 /** Chance per tick that grass spreads to an adjacent lit dirt block. */
 export const GRASS_SPREAD_CHANCE = 0.02;
 /** Minimum sky light level for grass to spread. */
 export const GRASS_SPREAD_LIGHT_MIN = 8;
+/** Most leaves one broken log may fell, so a huge canopy cannot stall a tick step. */
+export const LEAF_DECAY_LIMIT = 4096;
 
 /** All four horizontal neighbor offsets. */
 const HORIZONTAL_NEIGHBORS = [
@@ -25,9 +28,32 @@ export function handleTick(world: World, tick: Tick): TickResult {
   switch (tick.reason) {
     case 'grass-spread':
       return handleGrassSpread(world, tick);
+    case 'leaf-decay':
+      return handleLeafDecay(world, tick);
     default:
       return 'handled';
   }
+}
+
+/**
+ * When a log is removed at (x, y, z), schedule the leaves it was holding up. Each leaf is
+ * due a little later the further it sits from the break, so the canopy fades outward.
+ * Returns how many leaves were scheduled (0 when another log still holds the tree up).
+ */
+export function scheduleLeafDecay(world: World, x: number, y: number, z: number): number {
+  const orphans = orphanedLeaves((bx, by, bz) => world.getBlock(bx, by, bz), x, y, z, LEAF_DECAY_LIMIT);
+  for (const leaf of orphans) {
+    world.scheduleTick(leaf.x, leaf.y, leaf.z, world.currentTick + 1 + Math.min(leaf.depth, 20), 'leaf-decay');
+  }
+  return orphans.length;
+}
+
+/** A leaf scheduled to decay: remove it if it is still a leaf (a log placed since the chop would keep it). */
+function handleLeafDecay(world: World, tick: Tick): TickResult {
+  if (world.getBlock(tick.x, tick.y, tick.z) === BlockId.LEAVES) {
+    world.setBlock(tick.x, tick.y, tick.z, BlockId.AIR);
+  }
+  return 'handled';
 }
 
 /**
