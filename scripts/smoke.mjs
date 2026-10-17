@@ -437,6 +437,38 @@ const CHECKS = [
     },
   },
   {
+    name: 'water flows over game ticks, one block at a time, not in one frame',
+    run: async (page) => {
+      const waitMeshed = () => page.waitForFunction(() => window.__game.state().areaMeshed, null, { timeout: 60_000 });
+      const start = await page.evaluate(() => window.__game.state());
+      const [x, z] = [Math.floor(start.position[0]), Math.floor(start.position[2])];
+      const y = 8390; // the clean area the other physics checks use
+      await page.evaluate(([x, z, y]) => {
+        window.__game.setFlying(true);
+        window.__game.teleport(x + 0.5, y + 10, z + 0.5);
+      }, [x, z, y]);
+      await waitMeshed();
+      await page.evaluate(([x, z, y]) => {
+        for (let i = -6; i <= 6; i++) for (let j = -6; j <= 6; j++) window.__game.setBlock(x + i, y, z + j, 1);
+        window.__game.setBlock(x - 2, y + 1, z - 2, 5); // a water source on the floor
+      }, [x, z, y]);
+      // Water moves one block every five game ticks (a quarter of a second), so two blocks out is not there yet.
+      const distOne = [x - 3, y + 1, z - 2];
+      const distTwo = [x - 4, y + 1, z - 2];
+      const at = (c) => page.evaluate((c) => window.__game.getBlock(...c), c);
+      if (await at(distTwo) !== 0) throw new Error('water reached two blocks out in the same frame as the source was placed');
+      await page.waitForFunction((c) => window.__game.getBlock(...c) >= 36 && window.__game.getBlock(...c) < 52, distOne, { timeout: 5_000 });
+      if (await at(distTwo) !== 0) throw new Error('water reached two blocks out before the first block had a tick to pass it on');
+      await page.waitForFunction((c) => window.__game.getBlock(...c) >= 36 && window.__game.getBlock(...c) < 52, distTwo, { timeout: 5_000 });
+      await page.evaluate(([x, z, y, p]) => {
+        for (let i = -6; i <= 6; i++) for (let j = -6; j <= 6; j++) for (let k = 0; k <= 12; k++) window.__game.setBlock(x + i, y + k, z + j, 0);
+        window.__game.setFlying(false);
+        window.__game.teleport(p[0], p[1], p[2]);
+      }, [x, z, y, start.position]);
+      await waitMeshed();
+    },
+  },
+  {
     name: 'the build tool panel shows every setting, in single-block mode as well',
     run: async (page) => {
       const panel = () => page.evaluate(() => document.querySelector('.tool-panel')?.textContent ?? '');

@@ -1,4 +1,4 @@
-import { CHUNK_SIZE } from '../config';
+import { CHUNK_SIZE, GRAVITY_TICK_DELAY } from '../config';
 import { BlockId, getBlockDef, isWaterState } from './blocks';
 import type { Chunk } from './chunk';
 import type { Tick, TickResult } from './tick';
@@ -17,10 +17,10 @@ export function canFallInto(id: number): boolean {
 
 /**
  * Schedules a fall check for a cell that just changed, and for the cell above it, since a block there may have lost
- * its support. The checks run on the next tick.
+ * its support. The checks run after the gravity delay, as in Minecraft.
  */
 export function scheduleFallChecks(world: World, x: number, y: number, z: number): void {
-  const due = world.currentTick + 1;
+  const due = world.currentTick + GRAVITY_TICK_DELAY;
   world.scheduleTick(x, y, z, due, FALL_REASON);
   world.scheduleTick(x, y + 1, z, due, FALL_REASON);
 }
@@ -58,7 +58,7 @@ export function handleFall(world: World, tick: Tick): TickResult {
   if (!world.setBlock(x, y - 1, z, id)) return 'handled';
   world.setBlock(x, y, z, BlockId.AIR);
   // The block keeps falling from its new cell, and the cell it left may have freed the block above.
-  world.scheduleTick(x, y - 1, z, world.currentTick + 1, FALL_REASON);
+  world.scheduleTick(x, y - 1, z, world.currentTick + GRAVITY_TICK_DELAY, FALL_REASON);
   scheduleFallChecks(world, x, y, z);
   return 'handled';
 }

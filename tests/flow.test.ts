@@ -110,6 +110,18 @@ describe('flowing water (spec 25, slice 4)', () => {
     expect(blockTopHeight(flowingWaterState(SOURCE_LEVEL, true))).toBe(1); // a falling cell is always full
   });
 
+  it('moves one block per water delay, so a placed source does not flow in one tick', () => {
+    const world = stacked();
+    floor(world);
+    pour(world, 4, 1, 4, BlockId.WATER);
+    const WATER_TICK_DELAY = 5; // Minecraft's overworld water delay
+    for (let t = 1; t < WATER_TICK_DELAY; t++) world.tickStep(1000);
+    expect(world.getBlock(5, 1, 4)).toBe(BlockId.AIR); // not yet, four ticks in
+    world.tickStep(1000);
+    expect(isWaterState(world.getBlock(5, 1, 4))).toBe(true); // the first block, on tick five
+    expect(world.getBlock(6, 1, 4)).toBe(BlockId.AIR); // the next block waits another five ticks
+  });
+
   it('uses its own tick reason', () => {
     expect(FLOW_REASON).toBe('flow');
   });

@@ -107,6 +107,12 @@ export class ChunkManager {
   private eye = { x: 0, y: 0, z: 0 };
   /** Set when column tops change: the surface bands, and so the sets, must be recomputed. */
   private setsStale = false;
+  /** One game tick: the scheduled block updates (falling blocks, fluid flow, ...), then the random-tick pass. */
+  tick(): void {
+    this.lastTickStats = this.world.tickStep(TICK_BUDGET_MS);
+    this.lastRandomTickStats = this.world.randomTickStep(RANDOM_TICK_BUDGET_MS);
+  }
+
   /** Result of the last tickStep, for the F3 overlay. */
   private lastTickStats = { ran: 0, pending: 0 };
   /** Result of the last randomTickStep, for the F3 overlay. */
@@ -151,11 +157,6 @@ export class ChunkManager {
     } else if (this.setsStale) {
       this.recomputeSets();
     }
-
-    // Run chunk ticks (falling blocks, fluid flow, ...) within the per-frame budget.
-    this.lastTickStats = this.world.tickStep(TICK_BUDGET_MS);
-    // Run the random-tick pass (ecology) within its own budget.
-    this.lastRandomTickStats = this.world.randomTickStep(RANDOM_TICK_BUDGET_MS);
 
     if (this.jobs) {
       this.dispatchJobs(this.jobs);

@@ -1,3 +1,4 @@
+import { WATER_TICK_DELAY } from '../config';
 import {
   BlockId, flowingWaterState, getBlockDef, isFallingWater, isFlowingWaterState, isWaterState, SOURCE_WATER_LEVEL, waterLevel,
 } from './blocks';
@@ -21,13 +22,17 @@ function open(id: number): boolean {
   return id === BlockId.AIR || getBlockDef(id).shape === 'cross';
 }
 
-/** Schedules a flow check for a cell that changed and for each of its six neighbours. */
+/**
+ * Schedules a flow tick for a changed cell and its six neighbours, as Minecraft does when a block changes: only water
+ * cells get one. An air cell takes its water from the water beside it, on that water's own tick, so the water
+ * spreads one block per delay and never two blocks in one tick.
+ */
 export function scheduleFlowChecks(world: World, x: number, y: number, z: number): void {
-  const due = world.currentTick + 1;
-  world.scheduleTick(x, y, z, due, FLOW_REASON);
-  world.scheduleTick(x, y + 1, z, due, FLOW_REASON);
-  world.scheduleTick(x, y - 1, z, due, FLOW_REASON);
-  for (const [dx, dz] of SIDES) world.scheduleTick(x + dx, y, z + dz, due, FLOW_REASON);
+  const due = world.currentTick + WATER_TICK_DELAY;
+  const cells = [[x, y, z], [x, y + 1, z], [x, y - 1, z], [x + 1, y, z], [x - 1, y, z], [x, y, z + 1], [x, y, z - 1]];
+  for (const [cx, cy, cz] of cells) {
+    if (isWaterState(world.getBlock(cx!, cy!, cz!))) world.scheduleTick(cx!, cy!, cz!, due, FLOW_REASON);
+  }
 }
 
 /**

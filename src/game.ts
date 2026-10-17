@@ -3,7 +3,7 @@ import {
   FOOTSTEP_DISTANCE, FOOTSTEP_MIN_SPEED, GEN_BUDGET_MS, HOTBAR_SIZE, MAX_FRAME_DT, MESH_BUDGET_MS, REACH, SEA_LEVEL,
   SETTINGS_KEY, SPAWN_READY_RADIUS, START_TIME_OF_DAY, WORLD_LATITUDE_DEG, ITEM_SIZE, PLAYER_HEIGHT, WALK_SPEED,
   GAME_MODE_CREATIVE, GAME_MODE_SURVIVAL, HEALTH_MAX, HUNGER_MAX, FALL_DAMAGE_THRESHOLD_M_S, FALL_DAMAGE_MULTIPLIER,
-  DROWN_DAMAGE_PER_S, AIR_MAX_S, GRAVITY_M_S2,
+  DROWN_DAMAGE_PER_S, AIR_MAX_S, GRAVITY_M_S2, GAME_TICKS_PER_SECOND,
 } from './config';
 import { Sounds } from './audio/sounds';
 import { FixedStepLoop } from './core/loop';
@@ -80,6 +80,8 @@ export class Game {
   readonly player = new Player();
   inventory = new Inventory();
   readonly items = new ItemEntities();
+  /** Seconds since the last game tick (see fixedUpdate). */
+  private tickTimer = 0;
   /** Blocks that broke free of a big collapse and tumble until they settle (spec 25, slice 6). */
   readonly bodies = new LooseBodies();
   private readonly breaking = new BlockBreaking();
@@ -268,6 +270,12 @@ export class Game {
     this.timeOfDay = (this.timeOfDay + dt / DAY_LENGTH_S) % 1;
     this.player.update(dt, this.playing ? this.readControls() : NO_CONTROLS, this.isSolidAt, this.isWaterAt);
     this.items.step(dt, this.isSolidAt);
+    // Block updates run at a fixed rate of game ticks, so a flow or a fall takes several ticks, as in Minecraft.
+    this.tickTimer += dt;
+    while (this.tickTimer >= 1 / GAME_TICKS_PER_SECOND) {
+      this.tickTimer -= 1 / GAME_TICKS_PER_SECOND;
+      this.chunks.tick();
+    }
     for (const body of this.bodies.step(dt, this.isSolidAt, this.isWaterAt, (state) => getBlockDef(state).density)) {
       this.settleBody(body);
     }

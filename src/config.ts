@@ -239,7 +239,11 @@ export const SETTINGS_KEY = 'voxel-game-settings-v1';
 export const AUTOSAVE_INTERVAL_S = 10;
 
 // ---- Tick system (spec 25, slice 1) ----
-export const TICK_BUDGET_MS = 2; // max time per frame spent running chunk ticks
+export const TICK_BUDGET_MS = 2; // max time per game tick spent running chunk ticks
+// Block updates run in game ticks, as in Minecraft, not once per frame. A change is applied after its delay in ticks.
+export const GAME_TICKS_PER_SECOND = 20;
+export const WATER_TICK_DELAY = 5; // ticks before water moves one block (Minecraft overworld: 5)
+export const GRAVITY_TICK_DELAY = 2; // ticks before a falling block moves one block (Minecraft: 2)
 
 // ---- Structural collapse (spec 25, slice 5) ----
 export const SUPPORT_RADIUS_BLOCKS = 4; // a support check looks this far from the removed block; a group reaching the edge is held up

@@ -23,6 +23,16 @@ function settle(world: World, steps = 40): void {
 }
 
 describe('falling blocks (spec 25, slice 3)', () => {
+  it('falls one block every two ticks, as in Minecraft, so a fall takes time', () => {
+    const world = stacked();
+    place(world, 0, 0, 0, BlockId.STONE);
+    place(world, 0, 5, 0, BlockId.SAND);
+    world.tickStep(1000);
+    expect(world.getBlock(0, 5, 0)).toBe(BlockId.SAND); // one tick is not enough to move
+    world.tickStep(1000);
+    expect(world.getBlock(0, 4, 0)).toBe(BlockId.SAND); // the first move, on the second tick
+  });
+
   it('a single column of sand falls to the ground', () => {
     const world = stacked();
     place(world, 0, 0, 0, BlockId.STONE);

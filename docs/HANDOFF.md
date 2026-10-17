@@ -29,6 +29,7 @@ Status key: **done** = in code and tested; **partial** = some of the item is in 
     - slice 3, falling sand and gravel: one cell per tick into air, water or plants, and across chunk borders. Pending falls are not saved; a scan on chunk load resumes them (shortcut, spec says save the ticks).
     - slice 4, flowing water: 8 levels with a falling flag, drains without a feed, the mesh stands at its level. Lava is not in the game, so water meeting lava is not built.
     - slice 5, structural collapse: a removed block's neighbours check their support within 4 blocks. Terrain and long roofs are held up by the edge of the check. Leaves never collapse.
+    - block updates run at 20 game ticks a second, as in Minecraft: water moves one block every 5 ticks and falling blocks every 2 (`WATER_TICK_DELAY`, `GRAVITY_TICK_DELAY` in `src/config.ts`). They were running every frame, so a flow finished in a few frames.
     - slice 6, loose bodies: a collapse of 2 or more blocks tumbles as bodies that float or sink by density, and settle back into blocks or items. Bodies are saved as items.
   - not started: snow, crops and saplings; catch-up after reload; currents (flowing water pushing the player); fall damage from water; waterfalls and river flow
 - **Phase 6 (creatures):** partial. `src/world/entity.ts` is a pure entity system (spec 31) with gravity and collision, and the game does not use it yet. No animals, AI or pathfinding.
