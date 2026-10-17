@@ -1,6 +1,8 @@
 import { createNoise2D, type NoiseFunction2D } from 'simplex-noise';
 import { mulberry32 } from '../core/random';
 import {
+  DAYS_PER_SEASON,
+  DAY_LENGTH_S,
   WEATHER_PRESSURE_WAVELENGTH_M,
   WEATHER_WIND_SPEED_M_S,
   WEATHER_HUMIDITY_WAVELENGTH_M,
@@ -11,6 +13,9 @@ import {
   WEATHER_TEMP_SNOW_C,
   WEATHER_TEMP_RAIN_C,
 } from '../config';
+
+/** Length of one in-game year in seconds. The weather front drift is measured in these, not real-world seconds. */
+export const SECONDS_PER_YEAR = DAYS_PER_SEASON * 4 * DAY_LENGTH_S;
 
 export type PrecipType = 'none' | 'rain' | 'snow' | 'sleet';
 
@@ -73,8 +78,8 @@ export class WeatherModel {
     timeOfYear: number,
     altitudeM: number,
   ): WeatherSample {
-    // Weather fronts drift eastward with wind over the course of the year.
-    const driftM = WEATHER_WIND_SPEED_M_S * timeOfYear * 365 * 24 * 3600;
+    // Weather fronts drift eastward with wind over the course of the year (in game seconds).
+    const driftM = WEATHER_WIND_SPEED_M_S * timeOfYear * SECONDS_PER_YEAR;
     const px = (x + driftM) / WEATHER_PRESSURE_WAVELENGTH_M;
     const pz = z / WEATHER_PRESSURE_WAVELENGTH_M;
 

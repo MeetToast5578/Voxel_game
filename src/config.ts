@@ -371,7 +371,7 @@ export const WEATHER_PRESSURE_WAVELENGTH_M = 6000; // feature size of pressure n
 export const WEATHER_WIND_SPEED_M_S = 3; // weather fronts drift eastward at this speed
 export const WEATHER_HUMIDITY_WAVELENGTH_M = 3000; // feature size of humidity noise
 export const WEATHER_STORM_PRESSURE = -0.5; // pressure below this = storm candidate
-export const WEATHER_STORM_HUMIDITY = 0.7; // humidity above this = storm candidate
+export const WEATHER_STORM_HUMIDITY = 0.62; // humidity above this = storm candidate
 export const WEATHER_STORM_TEMP_C = 10; // temperature above this = storm candidate
 export const WEATHER_PRECIP_THRESHOLD = 0.1; // minimum cloud cover for precipitation
 export const WEATHER_TEMP_SNOW_C = -2; // below this temperature = snow

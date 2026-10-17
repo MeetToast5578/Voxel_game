@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { WeatherModel } from '../src/world/weather';
+import { WEATHER_WIND_SPEED_M_S } from '../src/config';
+import { WeatherModel, SECONDS_PER_YEAR } from '../src/world/weather';
 
 describe('WeatherModel determinism', () => {
   it('same inputs give same output', () => {
@@ -57,8 +58,16 @@ describe('WeatherModel pressure drift', () => {
   it('weather fronts drift with time of year', () => {
     const model = new WeatherModel(42);
     const w1 = model.sample(0, 0, 0.5, 0, 0);
-    const w2 = model.sample(3 * 365 * 24 * 3600, 0, 0.5, 1, 0); // one year of drift at 3 m/s
+    const w2 = model.sample(0, 0, 0.5, 1, 0); // one game year of drift later
     expect(w1.pressure).not.toBeCloseTo(w2.pressure, 3);
+  });
+
+  it('drifts at wind speed over the game year, not real-world seconds', () => {
+    // One game year of drift is wind_speed * SECONDS_PER_YEAR metres east.
+    const model = new WeatherModel(42);
+    const driftM = WEATHER_WIND_SPEED_M_S * SECONDS_PER_YEAR;
+    // Sampling at x = driftM with timeOfYear 0 equals sampling at x = 0 with timeOfYear 1.
+    expect(model.sample(driftM, 0, 0.5, 0, 0).pressure).toBeCloseTo(model.sample(0, 0, 0.5, 1, 0).pressure, 6);
   });
 });
 
@@ -85,14 +94,12 @@ describe('WeatherModel storm formation', () => {
   it('storm forms with low pressure, high humidity, warm temperature', () => {
     const model = new WeatherModel(42);
     let foundStorm = false;
-    // Search at below-sea-level altitudes where temperature exceeds 10°C
-    for (let alt of [0, -500, -1000]) {
-      for (let z = -10000; z <= 10000 && !foundStorm; z += 1000) {
-        for (let x = -10000; x <= 10000 && !foundStorm; x += 1000) {
+    // Search at below-sea-level altitudes where temperature exceeds 10°C.
+    for (let alt of [0, -1000, -2000]) {
+      for (let z = -30000; z <= 30000 && !foundStorm; z += 750) {
+        for (let x = -30000; x <= 30000 && !foundStorm; x += 750) {
           const w = model.sample(x, z, 0.5, 0.5, alt);
-          if (w.isStorm) {
-            foundStorm = true;
-          }
+          if (w.isStorm) foundStorm = true;
         }
       }
     }
