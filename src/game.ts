@@ -144,6 +144,9 @@ export class Game {
       this.generator.generateChunk(chunk);
       return chunk.blocks;
     });
+    this.generator.onGrassPlaced = (wx, wy, wz) => {
+      this.world.scheduleTick(wx, wy, wz, this.world.currentTick + 1, 'grass-spread');
+    };
     this.calendar = new Calendar(DAYS_PER_SEASON, WORLD_LATITUDE_DEG);
     if (save.loaded && loaded) {
       this.world.loadEdits(save.loaded.edits);

@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { TickQueue } from '../src/world/tick';
+import { TickQueue, type Tick } from '../src/world/tick';
 import { Chunk } from '../src/world/chunk';
 import { World } from '../src/world/world';
 
-function tick(x: number, y: number, z: number, due: number, reason: string) {
+function tick(x: number, y: number, z: number, due: number, reason: string): Tick {
   return { x, y, z, dueTick: due, reason };
 }
 
@@ -14,11 +14,12 @@ describe('TickQueue ordering', () => {
     q.schedule(tick(1, 1, 1, 1, 'a'), 0, 0, 0);
     q.schedule(tick(3, 3, 3, 2, 'b'), 0, 0, 0);
     const order: string[] = [];
-    q.run(10, 100, (t: { reason: string }) => {
-      order.push(t.reason);
+    q.run(10, 100, (_t: Tick, _ctx: unknown) => {
+      order.push(_t.reason);
       return 'handled';
-    });
+    }, undefined);
     expect(order).toEqual(['a', 'b', 'c']);
+    expect(q.size).toBe(0);
   });
 
   it('breaks ties by cell position (x, then y, then z)', () => {
@@ -28,10 +29,24 @@ describe('TickQueue ordering', () => {
     q.schedule(tick(3, 1, 5, 1, 'y1'), 0, 0, 0);
     q.schedule(tick(3, 5, 1, 1, 'z1'), 0, 0, 0);
     const order: string[] = [];
-    q.run(10, 100, (t: { reason: string }) => {
-      order.push(t.reason);
+    q.run(10, 100, (_t: Tick, _ctx: unknown) => {
+      order.push(_t.reason);
       return 'handled';
-    });
+    }, undefined);
+    expect(order).toEqual(['x1', 'y1', 'z1', 'z5']);
+  });
+
+  it('breaks ties by cell position (x, then y, then z)', () => {
+    const q = new TickQueue();
+    q.schedule(tick(5, 5, 5, 1, 'z5'), 0, 0, 0);
+    q.schedule(tick(1, 5, 5, 1, 'x1'), 0, 0, 0);
+    q.schedule(tick(3, 1, 5, 1, 'y1'), 0, 0, 0);
+    q.schedule(tick(3, 5, 1, 1, 'z1'), 0, 0, 0);
+    const order: string[] = [];
+    q.run(10, 100, (_t: Tick, _ctx: unknown) => {
+      order.push(_t.reason);
+      return 'handled';
+    }, undefined);
     expect(order).toEqual(['x1', 'y1', 'z1', 'z5']);
   });
 
@@ -40,10 +55,10 @@ describe('TickQueue ordering', () => {
     q.schedule(tick(1, 1, 1, 5, 'late'), 0, 0, 0);
     q.schedule(tick(2, 2, 2, 1, 'now'), 0, 0, 0);
     const order: string[] = [];
-    q.run(1, 100, (t: { reason: string }) => {
-      order.push(t.reason);
+    q.run(1, 100, (_t: Tick, _ctx: unknown) => {
+      order.push(_t.reason);
       return 'handled';
-    });
+    }, undefined);
     expect(order).toEqual(['now']);
     expect(q.size).toBe(1);
   });
@@ -52,7 +67,7 @@ describe('TickQueue ordering', () => {
     const q = new TickQueue();
     expect(q.isEmpty).toBe(true);
     expect(q.size).toBe(0);
-    const result = q.run(10, 100, () => 'handled');
+    const result = q.run(10, 100, (_t: Tick, _ctx: unknown) => 'handled', undefined);
     expect(result.ran).toBe(0);
     expect(result.handedOff).toEqual([]);
   });
@@ -61,10 +76,10 @@ describe('TickQueue ordering', () => {
     const q = new TickQueue();
     for (let i = 0; i < 100; i++) q.schedule(tick(i, 0, 0, 1, `t${i}`), 0, 0, 0);
     let budgetUses = 0;
-    q.run(10, 0.001, () => {
+    q.run(10, 0.001, (_t: Tick, _ctx: unknown) => {
       budgetUses++;
       return 'handled';
-    });
+    }, undefined);
     expect(budgetUses).toBeLessThan(100);
     expect(q.size).toBeGreaterThan(0);
   });
@@ -73,13 +88,13 @@ describe('TickQueue ordering', () => {
     const q = new TickQueue();
     q.schedule(tick(1, 1, 1, 1, 'first'), 0, 0, 0);
     q.schedule(tick(2, 2, 2, 2, 'second'), 0, 0, 0);
-    q.run(1, 100, () => 'handled');
+    q.run(1, 100, (_t: Tick, _ctx: unknown) => 'handled', undefined);
     expect(q.size).toBe(1);
     const order: string[] = [];
-    q.run(2, 100, (t: { reason: string }) => {
-      order.push(t.reason);
+    q.run(2, 100, (_t: Tick, _ctx: unknown) => {
+      order.push(_t.reason);
       return 'handled';
-    });
+    }, undefined);
     expect(order).toEqual(['second']);
   });
 });

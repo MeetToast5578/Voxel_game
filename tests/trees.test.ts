@@ -101,12 +101,12 @@ describe('trees', () => {
         const surf = cell(ax, ground, az);
         // Only test trees that were actually placed: surface is plant-growing (not stone, not sand)
         // AND the hash2 check passed (same condition as generator's placeTrees).
-        if (surf.id === BlockId.STONE || surf.id === BlockId.GRANITE || surf.id === BlockId.DIORITE ||
-            surf.id === BlockId.ANDESITE || surf.id === BlockId.SANDSTONE || surf.id === BlockId.LIMESTONE ||
-            surf.id === BlockId.SLATE || surf.id === BlockId.BASALT || surf.id === BlockId.DEEPSLATE ||
-            surf.id === BlockId.SAND) continue;
+        if (surf === BlockId.STONE || surf === BlockId.GRANITE || surf === BlockId.DIORITE ||
+            surf === BlockId.ANDESITE || surf === BlockId.SANDSTONE || surf === BlockId.LIMESTONE ||
+            surf === BlockId.SLATE || surf === BlockId.BASALT || surf === BlockId.DEEPSLATE ||
+            surf === BlockId.SAND) continue;
         if (hash2(SEED, ax, az) >= TREE_CHANCE) continue; // generator didn't place a tree here
-        const blocks = treeBlocks(SEED, ax, ground, az);
+        const blocks: TreeBlock[] = treeBlocks(SEED, ax, ground, az);
         if (new Set(blocks.map((b) => floorDiv(b.x, 16) + ',' + floorDiv(b.z, 16))).size > 1) crossing++;
         for (const b of blocks) {
           if (b.y < 0 || b.y >= LEGACY_HEIGHT) continue;

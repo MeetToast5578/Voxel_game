@@ -3,6 +3,7 @@ import { chunkKey, columnIndex, columnKey, localIndex, worldToChunk, worldToLoca
 import { BlockId, blocksSky } from './blocks';
 import { Chunk } from './chunk';
 import { type TickHandoff } from './tick';
+import { handleTick } from './ecology';
 
 /** Generates the blocks of a chunk synchronously (without player edits). */
 export type ChunkFallback = (cx: number, cy: number, cz: number) => Uint16Array;
@@ -319,7 +320,7 @@ export class World {
     let pending = 0;
 
     for (const chunk of this.chunks()) {
-      const { handedOff, ran: r } = chunk.ticks.run(this.tickCounter, budgetMs, () => 'handled');
+      const { handedOff, ran: r } = chunk.ticks.run(this.tickCounter, budgetMs, (tick, world) => handleTick(world as World, tick), this);
       ran += r;
       pending += chunk.ticks.size;
       // Re-schedule border handoffs in the neighbour chunk's queue.

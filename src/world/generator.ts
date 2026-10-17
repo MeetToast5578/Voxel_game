@@ -93,6 +93,8 @@ export class TerrainGenerator {
   private readonly columnCache = new Map<string, Column>();
   /** Feature registry: trees and later biomes register here. */
   private readonly featureRegistry = new FeatureRegistry();
+  /** Callback when a grass block is placed during generation. Used to schedule grass-spread ticks. */
+  onGrassPlaced?: (wx: number, wy: number, wz: number) => void;
 
   constructor(seed: number) {
     this.seed = seed;
@@ -213,8 +215,12 @@ export class TerrainGenerator {
         for (let y = y0; y < y1; y++) {
           let id: number;
           if (this.density.isSolid(wx, y, wz, offsetM, ampM)) {
-            if (soil && y === h) id = beach ? BlockId.SAND : surfaceBlock(column.biomeKey, beach);
-            else if (soil && y >= h - SOIL_DEPTH) id = beach ? BlockId.SAND : soilBlock(column.biomeKey);
+            if (soil && y === h) {
+              id = beach ? BlockId.SAND : surfaceBlock(column.biomeKey, beach);
+              if (id === BlockId.GRASS && !beach) {
+                this.onGrassPlaced?.(wx, y, wz);
+              }
+            } else if (soil && y >= h - SOIL_DEPTH) id = beach ? BlockId.SAND : soilBlock(column.biomeKey);
             else id = this.rockAt(y, warp);
           } else if (y === h + 1 && plant !== BlockId.AIR) id = plant;
           else id = y <= SEA_LEVEL ? BlockId.WATER : BlockId.AIR;

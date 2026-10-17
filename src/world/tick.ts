@@ -55,13 +55,14 @@ export class TickQueue {
 
   /**
    * Run all due ticks up to the time budget. `handle` is called for each due tick
-   * and returns 'handled', 'handoff', or 'skip'. Handoff ticks are returned so the
-   * caller can re-schedule them in the neighbouring chunk's queue.
+   * with `ctx` as context and returns 'handled', 'handoff', or 'skip'. Handoff ticks
+   * are returned so the caller can re-schedule them in the neighbouring chunk's queue.
    */
-  run(
+  run<T>(
     nowTick: number,
     budgetMs: number,
-    handle: (tick: Tick) => TickResult,
+    handle: (tick: Tick, ctx: T) => TickResult,
+    ctx: T,
   ): { handedOff: Tick[]; ran: number } {
     const start = performance.now();
     const handedOff: Tick[] = [];
@@ -77,7 +78,7 @@ export class TickQueue {
         remaining.push(tick);
         continue;
       }
-      const result = handle(tick);
+      const result = handle(tick, ctx);
       ran++;
       if (result === 'handoff') {
         handedOff.push(tick);
