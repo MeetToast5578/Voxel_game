@@ -37,6 +37,16 @@ export interface FeatureDef {
  */
 export const ANCHOR_SPACING_BLOCKS = 16;
 
+/** A stable 32-bit hash (FNV-1a) of a feature key, so two features never share a jitter stream. */
+function keySeed(key: string): number {
+  let h = 0x811c9dc5 >>> 0;
+  for (let i = 0; i < key.length; i++) {
+    h ^= key.charCodeAt(i);
+    h = Math.imul(h, 0x01000193) >>> 0;
+  }
+  return h >>> 0;
+}
+
 /**
  * Feature registry: maps feature keys to definitions. Provides deterministic,
  * jittered-grid anchor evaluation so that a chunk can evaluate every anchor whose
@@ -78,6 +88,8 @@ export class FeatureRegistry {
       // so spacing^2 = CHUNK_SIZE^2 / densityPerChunk. Override if the feature says so.
       const spacing = def.spacing ?? Math.max(1, Math.round(CHUNK_SIZE / Math.sqrt(def.densityPerChunk)));
       const half = def.maxExtentBlocks;
+      // A per-key seed, so two features (even with equal-length keys) jitter independently.
+      const ks = keySeed(def.key);
 
       // Anchor grid cells that could reach into [x0, x1) × [z0, z1).
       const gx0 = Math.floor((x0 - half) / spacing) - 1;
@@ -88,8 +100,8 @@ export class FeatureRegistry {
       for (let gz = gz0; gz <= gz1; gz++) {
         for (let gx = gx0; gx <= gx1; gx++) {
           // Jitter each anchor within its grid cell, deterministic per (seed, key, gx, gz).
-          const jx = hash2(seed + 1000 + def.key.length, gx, gz);
-          const jz = hash2(seed + 2000 + def.key.length, gx, gz);
+          const jx = hash2(seed + 1000 + ks, gx, gz);
+          const jz = hash2(seed + 2000 + ks, gx, gz);
           const ax = gx * spacing + Math.floor(jx * spacing);
           const az = gz * spacing + Math.floor(jz * spacing);
 

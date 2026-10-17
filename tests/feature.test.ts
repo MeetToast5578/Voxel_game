@@ -103,8 +103,7 @@ describe('FeatureRegistry', () => {
     }
   });
 
-  it('respects maxExtentBlocks: anchors too far away are not evaluated', () => {
-    const reg = new FeatureRegistry();
+  it('respects maxExtentBlocks: anchors too far away are not evaluated', () => {    const reg = new FeatureRegistry();
     let evaluated = 0;
     reg.registerFeature({
       key: 'near',
@@ -114,5 +113,22 @@ describe('FeatureRegistry', () => {
     });
     reg.evaluateAnchors(42, 0, 16, 0, 16, 0, 1, () => {});
     expect(evaluated).toBeGreaterThan(0);
+  });
+
+  it('gives features with equal-length keys independent anchor jitter', () => {
+    const run = (key: string) => {
+      const reg = new FeatureRegistry();
+      const out: number[] = [];
+      reg.registerFeature({
+        key,
+        densityPerChunk: 1,
+        maxExtentBlocks: 0,
+        place: (_seed, ax, az, emit) => emit({ x: ax, y: 0, z: az, state: 1 }),
+      });
+      reg.evaluateAnchors(42, 0, 64, 0, 64, 0, 1, (b) => out.push(b.x * 1000 + b.z));
+      return out.sort();
+    };
+    // The jitter used to be keyed by key.length, so these two would coincide.
+    expect(run('aaaa')).not.toEqual(run('bbbb'));
   });
 });
