@@ -108,6 +108,7 @@ const CHECKS = [
       if (!sections.includes('Volume tools')) throw new Error(`controls sections: ${sections}`);
       await menuPage.screenshot({ path: 'screenshots/menu.png' });
       await menuPage.close();
+      await page.bringToFront(); // Closing a separate browser context does not reliably reactivate the game page.
     },
   },
   {
@@ -158,6 +159,7 @@ const CHECKS = [
         )
         .then(() => true, () => false);
       await context.close();
+      await page.bringToFront();
       if (after.seed !== before.seed) throw new Error(`seed changed: ${before.seed} -> ${after.seed}`);
       if (brick !== 12) throw new Error(`saved brick missing, found block ${brick}`);
       if (!deepAndHigh) throw new Error('the bricks 40 blocks below and above were not restored');
@@ -230,7 +232,8 @@ const CHECKS = [
       }, null, { timeout: 20_000 });
       await page.waitForTimeout(200);
       await page.evaluate(() => window.__game.look(0, -Math.PI / 2 + 0.01)); // straight down
-      await page.waitForTimeout(300);
+      await page.waitForFunction(() => window.__game.state().target !== null, null, { timeout: 10_000, polling: 100 })
+        .catch(() => {}); // Capture the useful position/ground diagnostic below if targeting still fails.
       const s = await page.evaluate(() => window.__game.state());
       if (!s.target) {
         const [px, py, pz] = s.position.map(Math.floor);
@@ -250,11 +253,12 @@ const CHECKS = [
     run: async (page) => {
       await page.bringToFront(); // earlier checks opened other pages, which may have taken the keyboard
       await page.keyboard.press('KeyE');
-      await page.waitForFunction(() => window.__game.state().inventoryOpen, null, { timeout: 10_000 })
+      // Timer polling also observes state when Chromium throttles RAF after the multi-page save checks.
+      await page.waitForFunction(() => window.__game.state().inventoryOpen, null, { timeout: 10_000, polling: 100 })
         .catch(async () => { throw new Error(`E did not open inventory: ${JSON.stringify(await page.evaluate(() => window.__game.state()))}`); });
       await page.screenshot({ path: 'screenshots/inventory.png' });
       await page.keyboard.press('Escape');
-      await page.waitForFunction(() => !window.__game.state().inventoryOpen, null, { timeout: 10_000 })
+      await page.waitForFunction(() => !window.__game.state().inventoryOpen, null, { timeout: 10_000, polling: 100 })
         .catch(async () => { throw new Error(`Escape did not close inventory: ${JSON.stringify(await page.evaluate(() => window.__game.state()))}`); });
     },
   },
@@ -521,7 +525,7 @@ const CHECKS = [
       const pausePage = await page.context().browser().newPage({ viewport: { width: 1280, height: 720 } });
       await pausePage.goto(new URL('/?seed=1&nosave=1', page.url()).href);
       await pausePage.waitForFunction(() => window.__game?.ready === true, null, { timeout: 60_000 });
-      await pausePage.click('.menu-button.primary'); // Play: captures the mouse
+      await pausePage.getByRole('button', { name: 'Play', exact: true }).click(); // The mode picker also has a primary-styled control.
       await pausePage.waitForFunction(() => window.__game.state().playing, null, { timeout: 10_000 });
       await pausePage.evaluate(() => document.exitPointerLock());
       await pausePage.waitForFunction(() => !window.__game.state().playing, null, { timeout: 10_000 });
@@ -534,6 +538,7 @@ const CHECKS = [
       await pausePage.waitForFunction(() => !window.__game.state().inventoryOpen, null, { timeout: 10_000 });
       if (!(await pausePage.locator('.menu-overlay').isVisible())) throw new Error('Escape should return to the pause menu');
       await pausePage.close();
+      await page.bringToFront();
     },
   },
   {
