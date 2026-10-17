@@ -1,184 +1,154 @@
 # Handoff: Voxel Game (MeetToast5578/Voxel_game)
 
-Last updated 2026-10-15.
+Last updated 2026-10-17, verified against the code on `main` (`0322d20`). Every status below was checked in the code, the tests or the smoke run, not only taken from commit messages.
 
 ## Where things stand
 
-**Phase 1 of `docs/ROADMAP.md` is complete and merged** (PRs #5–#10), and so is phase 1b (meter-based scale, specs 9–10):
-- CI (spec 1), world scale (spec 2), step-up (spec 3)
-- 16-bit block states with names (spec 4)
-- cubic 16³ chunks with no height limit, 3D light and mesher, 3D streaming (specs 5–7)
-- the world save in IndexedDB, including the hotbar and time of day (spec 8)
-- 0.3 m blocks, realistic trees and the save version 3 (specs 9–10)
+Status key: **done** = in code and tested; **partial** = some of the item is in code; **not started** = no code.
 
-**Phase 2 (terrain) is under way.** Merged:
-- the debug map `?map=1` (spec 11)
-- climate and shape fields (spec 12)
-- terrain from those fields (spec 13)
-- Minecraft-style 3D density, so the surface is lumpy and can overhang (spec 14, PR #16)
-- rock strata (granite, diorite, andesite, sandstone) and bare rock on steep ground (spec 15, PR #18)
-- seven strata rocks (adds limestone, slate, basalt) and deepslate below −100 m (spec 20)
-- mountains capped at 60 m, so the highest surface is about 232 m (spec 22). Before this, a 2,380 m peak looked like an infinite wall, because there is no horizon LOD yet.
-- ore veins by depth and rock type: coal, iron, gold, redstone, lapis, diamond and emerald, below −100 m in deepslate (spec 26)
+- **Phase 0 (groundwork):** CI (spec 1) done. The hand playtest is not done (owner).
+- **Phase 1 (foundation):** done in code, specs 2–8. The manual checks in "Waiting on the owner" are open.
+- **Phase 1b (meter scale):** blocks are 0.3 m (spec 10), and the save is version 3. Trees **do not** reach the 8–12 m the spec promises; see "Open decisions" 1.
+- **Phase 2 (terrain):**
+  - done: debug map (spec 11), climate and shape fields (12), terrain from the fields (13), 3D density (14), strata, bare rock and deepslate (15, 20), ores (26), mountains capped at 60 m (22)
+  - done: region simulation (41), which sets the surface offset, carves river channels and lake basins, and sets moisture for the biome table. Whether rivers run without breaks at region seams is not yet checked by eye.
+  - partial: caves (basic noise caves only, no aquifers, lava pools or ravines); the riverbed gravel and clay wait for the rivers
+  - not started: coasts beyond the beach band (7), horizon LOD (8)
+- **Phase 3 (biomes and flora):**
+  - done: climate at block resolution (31), biome table (32), feature system (30, with trees as its only feature), tree species (37), tall grass, poppies, ferns, dandelions and mushrooms (18, 19, 21)
+  - partial: biome integration (35, 39): the generator uses the biome for surface and soil blocks, and for trees. Blending across biome borders is **not wired**: `blendSurfaceBlocks` exists in `src/world/biome.ts` and has no caller or test.
+  - not started: flowers by biome, reeds, boulders, fallen logs, lily pads, moss
+- **Phase 4 (sky, seasons, weather):**
+  - done: calendar and seasons with seasonal day length (29), sky dome with sun, moon and stars (33), weather model (32), weather particles and lightning (34)
+  - not started: moon phases; stars do not rotate; the wetness value is computed but nothing uses it, so wet darkening is missing; no morning valley fog (only the static distance fog); seasonal foliage colours; smooth lighting
+- **Phase 5 (living world):**
+  - done: tick queue (25, slice 1), random ticks with a time budget (38), grass spreading (36), leaf decay (40), player buoyancy and quadratic drag (16), wading and splash (17)
+  - not started: snow, crops and saplings; catch-up after reload; fluid levels and flow; currents; lava; floating items; fluid rendering
+  - **Sandbox physics (spec 25):** only slice 1 is built. Slices 2–6 (rule fields, falling blocks, fluid flow, structural collapse, loose bodies) are not started.
+- **Phase 6 (creatures):** partial. `src/world/entity.ts` is a pure entity system (spec 31) with gravity and collision, and the game does not use it yet. No animals, AI or pathfinding.
+- **Phase 7 (survival):**
+  - done: survival and creative modes, health, fall damage, drowning, death and respawn with the inventory dropped (34); mining hardness and crack stages (24)
+  - partial: hunger is saved and shown, but nothing changes it (no food, no starvation)
+  - not started: tools, crafting, food, beds, healing
+- **Phase 8 (performance):** not started as a phase. Mesh time is 4.1 ms per surface chunk when run alone (target 3 ms; spec 28 is open).
 
-**Phase 5 item 5 (liquid physics) is partly done**, brought forward at the owner's request:
-- buoyancy and quadratic drag for the player in water (spec 16, PR #19)
-- wading slow-down and a splash on entry (spec 17, PR #20)
+**Verification on 2026-10-17:** `npm run check` passes: typecheck, **419 tests in 51 files**, and the build. `npm run smoke` passes **20 checks** in headless Chromium at about 8 fps (SwiftShader, so this number is not the owner's).
 
-**Phase 3 item 6 (ground cover) is partly done**, also brought forward ("make the world alive"):
-- tall grass and poppies, on a new cross-shaped plant mesh (spec 18, PR #21)
-- ferns and dandelions (spec 19, PR #22)
-- brown and red mushrooms, rare, on grass (spec 21)
-
-**Other fixes:**
-- favicon link in `index.html` (PR #24), so cloud smoke has no console error
-- README and HANDOFF block counts and gap notes brought up to date
-
-Everything since PR #24 was pushed straight to `main` at the owner's request. `npm run check` (214 tests in 34 files) and `npm run smoke` (15 checks) are green on `main`.
-
-The owner is continuing with **Claude Haiku 5.5** to save tokens. The next section is written for that.
-
-## For the next session (Haiku)
-
-### Do first
-
-1. Read `.claude/skills/working-style/SKILL.md`. It overrides everything else: do exactly what is asked, ask before big decisions, keep replies short.
-2. Ask the owner what they want next. Don't start a phase on your own.
-
-### Waiting on the owner (not code)
+## Waiting on the owner (not code)
 
 - **Playtest.** 5–10 minutes with a real mouse and keyboard. Everything so far has only been tested headless.
   - Check pointer lock, mouse look, audio, and stepping up 0.6 m ledges (2 blocks).
   - Check that a 2 m high tunnel fits the player (1.75 m tall) and a 1.5 m high one doesn't.
   - Anything broken here jumps the queue.
-- **Frame rate on the owner's machine.** Cubic chunks mean more draw calls. CI's headless Chromium shows about 18 FPS once everything is loaded (303 draw calls). The owner's machine has a slow CPU.
+- **Frame rate on the owner's machine.** Cubic chunks mean more draw calls. The smoke run loads about 3,900 chunks and draws 249 calls. The owner's machine has a slow CPU.
 - **Manual checks from the phase 1 PRs:**
   - Dig a shaft 30 m (100 blocks) down: chunks keep appearing below and the sky shows above.
   - From a valley, hills are visible to the full render distance.
   - Pick a new block into the hotbar, dig 9 m (30 blocks) down, wait 10 s and reload: the hotbar, the hole and roughly the same time of day come back.
-- **Terrain look after spec 22.** Peaks are now at most about 232 m, and no part of the map should read as an infinite wall. Check this from a valley and from a ridge. Edits made on the old 2 km mountain in an existing save may now float or look hollow, because unedited ground regenerates with the new terrain.
-- **Playtest of the new rock and ground cover.** The limestone, slate, basalt, deepslate and mushroom textures were checked only as atlas code and in headless smoke, not by eye.
+- **Terrain after spec 22 and region simulation (spec 41).** Peaks are at most about 232 m. Check rivers, lakes and seams from a valley and from a ridge. Edits made in an existing save may float, because unedited ground regenerates.
+- **Look of the new rock and plants.** The limestone, slate, basalt, deepslate and mushroom textures were checked only as atlas code and in headless smoke, not by eye.
 
-### Good Haiku-sized tasks (only when the owner asks)
+## Open decisions (raise with the owner before changing)
 
-- **Refresh these docs** if they drift from the code again.
-- **Geology, phase 2 item 5, more slices**: ores by depth and rock type are done (spec 26). Gravel and clay in riverbeds wait for rivers (item 3).
-- **More ground cover, phase 3 item 6** (reeds, boulders, fallen logs). Specs 18, 19 and 21 set the pattern: a `cross` block type, a placement band in `plantAt` (generator), and a painted tile. Append new bands after the existing ones so no plant moves. Write the next spec first. Flowers by biome wait for biomes (phase 3 items 1–2).
-- **Bug fixes from the playtest**, one per branch and pull request.
-- **Any spec written in `docs/specs/` style:** prose requirements, acceptance criteria and test cases.
+1. **Tree size.** The species table in `src/config.ts` is in blocks, and `treeBlocks` uses it as is. Oak is 16–24 blocks (4.8–7.2 m), spruce 20–32 blocks, and jungle giant 24–40 blocks. The README, spec 9, spec 10 and the phase 1b "done when" all say trees are 8–12 m, and the roadmap says a mature oak is 30–35 blocks. **Recommendation:** scale every species so its height matches the docs. This changes the trees in every world, so it needs the owner's yes.
+2. **Spec numbers.** Specs 31, 32 and 34 each have two files, and the commit messages reuse those numbers. Specs 27, 29 and 30 have no file, although commits cite 29 (calendar) and 30 (feature system). **Recommendation:** renumber the later duplicates (entity system, weather model, survival) to 42–44, and write short specs for 29 and 30.
+3. **Biome blending (spec 35).** Not wired. It needs a neighbour lookup in the generator, so it is a design choice as well as a fix.
+4. **F3 overlay.** Spec 34 and the roadmap ask for biome, temperature, humidity, season and weather. The overlay shows none of them.
 
-### Not Haiku-sized (raise with the owner first)
+## Decisions so far
 
-- **Phase 2 region simulation (item 3):** rivers, erosion, lakes and moisture. Needs a plan and specs first, and the roadmap marks region simulation as work for a larger model. Haiku should not design it.
-- **Phase 2 horizon LOD (item 8)** and the caves beyond spaghetti (item 6). Horizon LOD also gates taller mountains: raise `MOUNTAIN_M` in `shape.ts` only after it exists.
-- **The mesher, lighting, worker pipeline, chunk streaming and renderer core.** Changes there are easy to get subtly wrong; light must stay exact across chunk borders.
-- **Mesh time.** It averages 3.1–3.7 ms per surface chunk in Node, against spec 6's 3 ms target. The remaining cost is region building and the face loop.
-- **Cold column generation.** A cold surface chunk builds its column and takes about 8.4 ms median in Node (2.4 ms before spec 14). Warm chunks take about 0.6 ms. Fixing this touches the column cache and the surface scan.
-- **Draw calls.** Cave culling and batching are phase 8.
-- **Living-world ticks (phase 5 item 1–2)** and **the entity system (phase 6)**. Random ticks, grass spreading, snow, and animals touch the simulation core and need a larger model's plan first.
-- **Currents (phase 5 item 5)** need fluid levels (phase 5 item 4). **Fall damage** needs health (phase 7).
-
-### How to work in this repo
-
-- **One spec or fix per branch and per pull request.**
-  - Don't refactor code the task doesn't mention.
-  - Don't add, remove or upgrade packages (see Stack).
-- **Run `npm run check` before every push.** Smoke runs in CI; locally it's heavy on the owner's machine.
-- **Pure modules stay pure:** `src/core`, `src/world`, `src/player`, `src/render/mesher.ts`, `src/storage` (except `worldStore.ts`'s IndexedDB class) and `src/ui/debugText.ts`. No three.js and no DOM; they're tested in Node.
-- **Tunable numbers live in `src/config.ts`.** Distances and speeds are written in meters and converted with `metersToBlocks`.
-- **Test helpers** live in `tests/support/`:
-  - `stackedColumn.ts`: stacks chunks into a column, up to the column's top
-  - `testWorld.ts`: 27 neighbour arrays plus exact column tops for light and mesher tests
-  - `fakeGenerator.ts`: given tops, for ChunkManager tests
-- **No git identity is configured in cloud sessions.** Commit with `git -c user.name="Yunus Alizade" -c user.email=62231698+MeetToast5578@users.noreply.github.com`.
-- **Pushing.** The owner asked for direct pushes to `main` from now on, with no PR and no merge question. The session's designated branch, `claude/nice-albattani-8jtgz1`, must also match the pushed commit, or the stop hook reports unpushed commits. Push both with a fast-forward (`git push origin HEAD:main` and `git push origin HEAD:claude/nice-albattani-8jtgz1`), never a force push.
-- **The owner's machine is Windows with a slow CPU.** Prefer CI or a cloud session for `npm run check` and `npm run smoke`.
-
-## Decisions so far (updated 2026-10-15)
-
-- **Scale.** 1 block = 0.3 m (spec 10; it was 0.6 m). The player is 1.75 m: about 5.8 blocks tall and 1.6 blocks wide.
+- **Scale.** 1 block = 0.3 m (spec 10). The player is 1.75 m: about 5.8 blocks tall and 1.6 blocks wide.
 - **Step-up.** Physics step-up, not auto-jump. Its height is 0.6 m (2 blocks).
-- **Height.** Cubic chunks with unlimited height. Terrain lives in the band −400 m to +2,600 m (spec 13). The surface stays under 232 m: mountains add at most 60 m (spec 22). Taller peaks read as infinite walls until horizon LOD exists (phase 2 item 8).
+- **Height.** Cubic chunks with unlimited height. Terrain lives in the band −400 m to +2,600 m (spec 13). The surface stays under 232 m: mountains add at most 60 m (spec 22). Taller peaks would read as infinite walls until horizon LOD exists (phase 2 item 8).
 - **Sea level.** y = 0 m (spec 13).
-- **Terrain (phase 2).** The shape fields set the large scale (spec 12). A 3D density gives the surface its shape (spec 14). Region drainage and erosion (item 3) are still to come.
+- **Terrain.** The shape fields set the large scale (spec 12). A 3D density gives the surface its shape (spec 14). Region simulation (spec 41) sets the surface offset, river channels and lakes.
 - **Water.** The player floats at about 80% under water (`PLAYER_DENSITY` 800 kg/m³ against 1000 for water). Swim speed comes from quadratic drag and a stroke: about 2.6 m/s (spec 16). Wading slows the walk by half the submerged fraction (spec 17).
-- **Plants.** Tall grass, ferns, poppies and dandelions grow on grass surfaces only, one per cell above the surface, by one hash per column (spec 18, spec 19). Plants are walk-through and do not block the sun.
-- **Plants (continued).** Mushrooms (brown, red) join the same grass-only bands, appended after the fern band (spec 21). Mushrooms grow in daylight on grass for now (shortcut).
-- **Scope.** Everything on the roadmap: ecology, fluids (including liquid physics), creatures and survival. Multiplayer is parked.
-- **Saves.** IndexedDB, block states stored by name. The save version is 3 (spec 10). A save of another version is not loaded, and its chunk records are cleared on load. `voxel-game-save-v1` (the 128-high world) is never read, written or deleted.
+- **Plants.** Tall grass, ferns, poppies, dandelions and mushrooms grow on grass surfaces only, one per cell above the surface, by one hash per column (specs 18, 19, 21). Plants are walk-through and do not block the sun.
+- **Biomes.** Each column's biome comes from real temperature (°C, lapse rate applied) and precipitation (mm/year, from the region moisture). Trees grow only where the biome names a species and the surface is grass.
+- **Scope.** Everything on the roadmap: ecology, fluids, creatures and survival. Multiplayer is parked.
+- **Saves.** IndexedDB, block states stored by name. Save version 3 (spec 10). A save of another version is not loaded, and its chunk records are cleared on load. `voxel-game-save-v1` (the 128-high world) is never read, written or deleted.
 
 ## Stack (versions pinned on purpose)
 
-TypeScript 5.9.3, Vite 7.3.6, Vitest 4.0.18, three 0.186.0, simplex-noise 4.0.3, Playwright 1.56.1.
+TypeScript 5.9.3, Vite 7.3.6, Vitest 4.0.18, three 0.186.0, simplex-noise 4.0.3, Playwright 1.56.1, preact 10.29.8.
 - Do NOT upgrade Vitest to 4.1.x: `npm install` crashes ("Cannot read properties of null (reading 'edgesOut')").
-- Node 20+ works; the dev container runs Node 22, and spec 1 uses Node 22 in CI.
+- Node 20+ works; the dev container runs Node 22, and CI uses Node 22.
 
 ## Commands
 
 - `npm run dev`: opens http://localhost:5173; click Play.
-- `npm run check`: typecheck, 283 unit tests in 40 files, then build.
+- `npm run check`: typecheck, the unit tests (419 in 51 files), then the build.
 - `npm run smoke`:
   - Builds, then opens `/?seed=1&autostart=1&nosave=1` in headless Chromium (SwiftShader WebGL).
-  - Runs 15 checks through `window.__game` and writes `screenshots/*.png`.
+  - Runs 20 checks through `window.__game` and writes `screenshots/*.png`.
   - Then logs a measurement: the time until everything is loaded, the FPS, and the chunk and draw-call counts.
-  - Needs `npx playwright install chromium`, or set `CHROMIUM_PATH`. In cloud sessions, use `/opt/pw-browsers/chromium-1194/chrome-linux/chrome`.
+  - Needs `npx playwright install chromium`, or set `CHROMIUM_PATH`. In cloud sessions, use `CHROMIUM_PATH=/opt/pw-browsers/chromium-1194/chrome-linux/chrome`.
 
 ## Architecture
 
-- `src/config.ts`: every tunable constant (world size, physics, render, storage keys).
-- `src/core`:
-  - math (`floorDiv`/`mod`)
-  - seeded random (`mulberry32`, `hash2`)
-  - coords
-  - fixed-timestep loop (1/60 s steps, frames clamped to 0.25 s)
+- `src/config.ts`: every tunable constant (world size, physics, render, storage keys, tree species, weather, survival).
+- `src/core`: math (`floorDiv`/`mod`), seeded random (`mulberry32`, `hash2`), coords, fixed-timestep loop (1/60 s steps, frames clamped to 0.25 s).
 - `src/world`:
-  - `blocks.ts`: `BlockId`/`Tile` are objects, not enums. Ids run AIR 0, STONE 1, DIRT 2, GRASS 3, SAND 4, WATER 5, LOG 6, LEAVES 7, PLANKS 8, GLASS 9, BEDROCK 10, COBBLESTONE 11, BRICK 12, GLOWSTONE 13, GRANITE 14, DIORITE 15, ANDESITE 16, SANDSTONE 17, TALL_GRASS 18, POPPY 19, FERN 20, DANDELION 21, LIMESTONE 22, SLATE 23, BASALT 24, DEEPSLATE 25, BROWN_MUSHROOM 26, RED_MUSHROOM 27. Each type has a `shape`: `'cube'` (default) or `'cross'` for plants.
+  - `blocks.ts`: `BlockId`/`Tile` are objects, not enums. Ids run AIR 0, STONE 1, DIRT 2, GRASS 3, SAND 4, WATER 5, LOG 6, LEAVES 7, PLANKS 8, GLASS 9, BEDROCK 10, COBBLESTONE 11, BRICK 12, GLOWSTONE 13, GRANITE 14, DIORITE 15, ANDESITE 16, SANDSTONE 17, TALL_GRASS 18, POPPY 19, FERN 20, DANDELION 21, LIMESTONE 22, SLATE 23, BASALT 24, DEEPSLATE 25, BROWN_MUSHROOM 26, RED_MUSHROOM 27, COAL_ORE 28, IRON_ORE 29, GOLD_ORE 30, REDSTONE_ORE 31, DIAMOND_ORE 32, EMERALD_ORE 33, LAPIS_ORE 34 (35 types including air). Each type has a `shape`: `'cube'` (default) or `'cross'` for plants.
   - `chunk.ts`: 16×16×16 `Uint16Array` of block states, indexed `(ly*16+lz)*16+lx`, addressed by `(cx, cy, cz)`. No height limit.
-  - `world.ts`: the chunk map, the `edits` map (what gets saved), and per-column **tops** (world y of the highest sky-blocking block per cell), kept exact on every edit.
-  - `shape.ts`: the six climate fields and `heightMeters` (a spline of continentalness, plus mountains up to `MOUNTAIN_M` = 60 m, spec 22), and `detailAmpMeters` (the density's amplitude).
+  - `world.ts`: the chunk map, the `edits` map (what gets saved), per-column **tops** (world y of the highest sky-blocking block per cell), kept exact on every edit, `tickStep` and `randomTickStep`.
+  - `shape.ts`: the climate fields and `heightMeters` (a spline of continentalness, plus mountains up to `MOUNTAIN_M` = 60 m), and `detailAmpMeters`.
+  - `climate.ts`: `blockTemperature` and `blockPrecipitation` at block resolution (spec 31).
+  - `biome.ts`: the Whittaker table `biomeAt`, `surfaceBlock`, `soilBlock`, `treeSpecies` (spec 32, 35). `blendSurfaceBlocks` is unused (see Open decisions 3).
   - `density.ts`: `TerrainDensity`. A block is solid where `offset − y + amp × noise > 0`, with two octaves of 3D simplex noise.
+  - `region.ts`: region simulation (spec 41). Regions of 128 cells of 32 blocks, with a margin on each side. Drainage, lakes, river cells, moisture.
   - `generator.ts`:
     - the surface is the highest solid block of each column (`getHeight`), found by scanning the density down from above the offset
+    - the region sample sets the column offset, damps the detail noise inside river channels and lakes, and gives the water level
     - sea level 0: air at or below it becomes water
-    - stone below the band, air above it
-    - caves carved below the surface, trees (`trees.ts`) from anchors within reach
-    - rock: below the soil, a block's rock comes from its strata layer, bent by a 2D warp noise (spec 15). The layers cycle through seven rocks (spec 20). Below −100 m the rock is deepslate. Columns with a detail amplitude of at least 12 m are bare rock.
-    - plants: `plantAt` picks one plant per grass column from one hash, in bands (spec 18, spec 19). Trees skip bare columns.
-    - per-column data (surface, offsets, amplitudes) cached, `COLUMN_CACHE_LIMIT` columns
+    - caves carved below the surface; trees (`trees.ts`) from anchors within reach through the feature registry
+    - rock: below the soil, a block's rock comes from its strata layer, bent by a 2D warp noise (spec 15). Below −100 m the rock is deepslate. Ores by depth and rock type (spec 26). Columns with a detail amplitude of at least 12 m are bare rock.
+    - plants: `plantAt` picks one plant per grass column from one hash, in bands (specs 18, 19, 21)
+    - `treeSpeciesAt` and `biomeKeyAt` are the accessors tools and tests use
+    - per-column data cached, `COLUMN_CACHE_LIMIT` = 2048 columns
+  - `trees.ts`: `treeBlocks(seed, ax, ground, az, species)`, pure. Heights come from the species table (see Open decisions 1).
+  - `feature.ts`: `FeatureRegistry`, the anchor system that keeps multi-chunk features seamless (spec 30). Trees are its only feature.
+  - `calendar.ts`: seasons, day of season, solar declination, day length by latitude (spec 29).
+  - `weather.ts`: the pure `WeatherModel` (spec 32).
+  - `tick.ts`, `randomTick.ts`, `ecology.ts`, `leafDecay.ts`: scheduled ticks, random ticks, grass spreading, and leaf decay (specs 25, 38, 36, 40).
+  - `entity.ts`: the pure entity system (spec 31). Not used by the game yet.
   - `debugMap.ts`: the colouring for `?map=1`.
-  - Also: `chunkManager.ts`, `light.ts`, `spawn.ts`, `time.ts`.
+  - Also: `chunkManager.ts`, `light.ts`, `spawn.ts`, `time.ts`, `editQueue.ts`.
 - `src/render`:
-  - `mesher.ts`: pure. Does face culling, per-vertex AO and lighting, and takes 27 neighbour chunks plus 9 column-top arrays. Cube blocks give faces; `shape: 'cross'` blocks (plants) give two diagonal quads, drawn from both sides and not culled against neighbours.
-  - Also: `faces.ts`, `tiles.ts`, `atlasPixels.ts` (procedural textures), `renderer.ts`, `chunkMeshes.ts`, `lightMaterial.ts`, `highlight.ts`, `clouds.ts`.
+  - `mesher.ts`: pure. Face culling, per-vertex AO and lighting, takes 27 neighbour chunks plus 9 column-top arrays. Cube blocks give faces; `shape: 'cross'` blocks (plants) give two diagonal quads.
+  - `sky.ts`, `skyMaterial.ts`: the sky dome with sun, moon and stars (spec 33).
+  - `weather.ts`: `WeatherRenderer`, particles and lightning (spec 34).
+  - Also: `faces.ts`, `tiles.ts`, `atlasPixels.ts` (procedural textures), `renderer.ts`, `chunkMeshes.ts`, `lightMaterial.ts`, `highlight.ts`, `clouds.ts`, `heldBlock.ts`, `itemMeshes.ts`, `blockGeometry.ts`.
 - `src/player`:
   - `physics.ts`: AABB sweep in the order Y → X → Z.
-  - `player.ts`: walk, sprint, jump, fly, swim. Swimming uses buoyancy and quadratic drag (spec 16); `submergedFraction` gives how much of the body is under water. Wading slows the walk (spec 17), and `splashSpeed` is set on the frame a fast fall enters water.
+  - `player.ts`: walk, sprint, jump, fly, swim. Buoyancy and quadratic drag (spec 16); `submergedFraction`; wading (spec 17); `splashSpeed`.
   - `raycast.ts`: Amanatides–Woo.
-  - Also: `interaction.ts`, `inventory.ts` (36 slots, the hotbar is the first 9, spec 24), `breaking.ts` (timed breaking with crack stages).
+  - Also: `interaction.ts`, `inventory.ts` (36 slots, the hotbar is the first 9, spec 24), `breaking.ts` (timed breaking with crack stages), `buildTool.ts` and `volumes.ts` (volume tools and undo).
 - `src/items`: `itemEntities.ts`, dropped items: gravity, friction, lifetime, the cap of 256, pick-up (spec 24).
-- `src/ui`: HUD, menu, F3 overlay.
+- `src/ui`: HUD, menu, F3 overlay (`debugText.ts`).
 - `src/input`, `src/audio`: procedural noise SFX.
 - `src/storage`:
   - settings in `localStorage`
-  - the world save in IndexedDB (`voxel-game`): one meta record (seed, player, hotbar and block states by name, time of day) plus one record per edited chunk. Only chunks edited since the last write are written; `WorldSaver` never runs two writes at once.
+  - the world save in IndexedDB (`voxel-game`): one meta record (seed, player, hotbar, block states by name, time of day, game mode, health, hunger, air, dropped items) plus one record per edited chunk. Only chunks edited since the last write are written; `WorldSaver` never runs two writes at once.
   - `main.ts` opens and loads the save before creating the `Game`; without IndexedDB the game runs on a memory store and the menu says so.
 - `src/workers`: `WorkerPool`, which implements `ChunkJobs`.
-- `src/game.ts` wires everything together. `src/debugApi.ts` exposes `window.__game`.
+- `src/game.ts` wires everything together, including survival (`updateSurvival`, `die`). `src/debugApi.ts` exposes `window.__game`.
 
 ### Key mechanics
 
 - **Pure modules.** `core`, `world`, `player`, the mesher, `storage` and `ui/debugText` must not import three or touch the DOM. They are unit-tested in Node.
 - **ChunkManager.**
   - Loads column tops within renderDistance + 2, then chunks; one list sorted by distance from the eye.
-  - Meshes the near cylinder (renderDistance horizontally, `VERTICAL_RENDER_DISTANCE` = 4 up and down) plus each column's surface band (lowest top − 1 up to highest top), once all 26 neighbours and 9 column tops exist.
+  - Meshes the near cylinder (renderDistance horizontally, `VERTICAL_RENDER_DISTANCE` = 4 up and down) plus each column's surface band, once all 26 neighbours and 9 column tops exist.
   - Unloads with hysteresis (meshes beyond +1, blocks beyond +3; surface bands are kept).
-  - Time budgets apply on the main thread. With workers, at most 16 jobs are in flight, slots are refilled as soon as results arrive, and a per-chunk version counter drops stale results.
+  - Time budgets apply on the main thread. With workers, at most 16 jobs are in flight, and a per-chunk version counter drops stale results.
 - **Lighting.**
-  - Sky light and block light are computed fresh for each mesh from the 3×3×3 chunk region. This is exact because light reaches at most 14 blocks. Sunlight is seeded from the column tops, so it is right even when the chunks above are not loaded.
-  - An edit remeshes its chunk (and any neighbour whose padded volume holds the block) immediately and marks the rest of the 3×3×3 dirty; if it moved a column top, chunks around the old and new top are marked dirty too.
+  - Sky light and block light are computed fresh for each mesh from the 3×3×3 chunk region. This is exact because light reaches at most 14 blocks. Sunlight is seeded from the column tops.
+  - An edit remeshes its chunk (and any neighbour whose padded volume holds the block) immediately and marks the rest of the 3×3×3 dirty.
 - **Day/night.**
   - A shader patch (`onBeforeCompile`) multiplies colour by `max(aLight.sky * uDaylight, aLight.block)`.
   - Every chunk geometry MUST have an `aLight` attribute, or it renders black.
+- **Survival.** Fall damage uses `GRAVITY_M_S2` (config) for the impact speed. Drowning costs air, and damage starts when the air runs out. Death drops the inventory and respawns at the spawn point.
 - **Conventions.**
   - Y is up.
   - Yaw 0 looks toward −Z, and moving the mouse right decreases yaw.
@@ -188,8 +158,8 @@ TypeScript 5.9.3, Vite 7.3.6, Vitest 4.0.18, three 0.186.0, simplex-noise 4.0.3,
   - `?seed=N` also disables saving.
   - `?nosave=1`, `?autostart=1`, `?workers=0`, `?map=1`.
 - **Debug API.**
-  - Methods: `ready`, `state()`, `teleport`, `look`, `setFlying`, `getBlock`, `setBlock`, `breakTarget`, `placeTarget`, `pickTarget`, `selectSlot`, `setHotbarSlot`, `holdButton` (presses a mouse button, for timed breaking), `save()` (returns a promise), `setTimeOfDay`.
-  - `state()` also includes `hotbar`, `areaMeshed` (the 3×3×3 around the feet is meshed), `drawCalls` and the chunk stats.
+  - Methods: `ready`, `state()`, `teleport`, `look`, `setFlying`, `getBlock`, `setBlock`, `breakTarget`, `placeTarget`, `pickTarget`, `selectSlot`, `setHotbarSlot`, `holdButton` (presses a mouse button, for timed breaking), `save()` (returns a promise), `setTimeOfDay`, `setGameMode`, `setHealth`, `damage`, `setHunger`, `setAir`.
+  - `state()` also includes `hotbar`, `inventory`, `areaMeshed` (the 3×3×3 around the feet is meshed), `drawCalls`, the chunk and tick stats, and the survival fields.
 
 ### Gotchas
 
@@ -200,18 +170,22 @@ TypeScript 5.9.3, Vite 7.3.6, Vitest 4.0.18, three 0.186.0, simplex-noise 4.0.3,
 - `getHeight` is the highest **solid** block, not the top of the water. For the sky-blocking top (water counts), use `columnTops`.
 - The surface is not one height per column any more (spec 14), so do not assume the blocks under `getHeight` are all solid.
 - A plant is not solid and does not block the sky, so `solid`, `opaque` and `blocksSky` must all be checked for it, not one of them.
-- Changing a plant or rock chance in `config.ts` changes every generated world, not only new ones.
+- Changing a plant, rock or tree chance in `config.ts` changes every generated world, not only new ones.
 - `getHeight(x, z)` takes **block** coordinates, and `heightMeters` takes **meters**. A scan that mixes them looks at the wrong place (this caused a wrong 2.4 km reading during spec 22). Multiply blocks by `BLOCK_SIZE_M` to get meters.
 - Tests that need a mountain use `PEAK` in `tests/generator.test.ts`, a rugged point found by a field scan. If the shape changes, find a new point and update `PEAK` rather than loosening the assertion.
+- Tests that time the generator or mesher take the fastest of several runs, and the slow ones have explicit timeouts (spec 39 and `tests/spawn.test.ts`). Do not make them tighter to pass.
 
 ## Known gaps and backlog
 
-See `docs/ROADMAP.md` for phases 2–8. Known gaps after phase 2 items 1–2, specs 13–15 and spec 20:
+See `docs/ROADMAP.md` for the phase list, and the "Open decisions" above for choices the owner has to make.
 - **Testing.** No real mouse-and-keyboard playtest yet.
-- **Mesh time.** 3.1–3.7 ms per surface chunk, against a 3 ms target.
-- **Cold column generation.** About 8.4 ms median (see above).
-- **Plains.** Some stepped ground remains on gentle slopes (spec 14 out-of-scope note).
-- **Mountains.** Capped at 60 m above the spline (spec 22). This is a stopgap until horizon LOD exists, so the terrain is less varied than the roadmap's mountain ranges.
-- **Terrain.** Geology beyond specs 15 and 20 (item 5), region simulation with rivers and erosion (item 3), caves beyond spaghetti (item 6), coasts (item 7) and horizon LOD (item 8) are still to come.
-- **Draw calls.** A loaded world has ~1,800 meshed chunks, ~300 drawn after frustum culling. Cave culling and batching are phase 8.
+- **Mesh time.** 4.1 ms per surface chunk when run alone (target 3 ms, spec 28).
+- **Cold column generation.** About 8.4 ms median in Node (last measured before region simulation; not re-measured).
+- **Spawn search.** `tests/spawn.test.ts` takes about 6 s for 30 seeds (about 200 ms per seed), so it needs its explicit timeout.
+- **Region simulation.** About 162 ms per region on seed 1337 (spec 41). Not re-measured.
+- **Biomes.** Blending across borders is not wired (see Open decisions 3). Flowers by biome, reeds and boulders are open.
+- **Sky and weather.** No moon phases; stars do not rotate; no wet darkening; no morning valley fog; no seasonal foliage.
+- **Living world.** Snow, crops, saplings, fluid levels, currents and catch-up are open. Sandbox physics slices 2–6 are open.
+- **Entities.** Not used by the game yet. No creatures.
+- **Survival.** Hunger does not change; no food, tools, crafting or beds.
 - **Edits.** An edit remeshes up to 8 chunks on the main thread at once, about 3 ms each.

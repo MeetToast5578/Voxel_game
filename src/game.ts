@@ -3,7 +3,7 @@ import {
   FOOTSTEP_DISTANCE, FOOTSTEP_MIN_SPEED, GEN_BUDGET_MS, HOTBAR_SIZE, MAX_FRAME_DT, MESH_BUDGET_MS, REACH, SEA_LEVEL,
   SETTINGS_KEY, SPAWN_READY_RADIUS, START_TIME_OF_DAY, WORLD_LATITUDE_DEG, ITEM_SIZE, PLAYER_HEIGHT, WALK_SPEED,
   GAME_MODE_CREATIVE, GAME_MODE_SURVIVAL, HEALTH_MAX, HUNGER_MAX, FALL_DAMAGE_THRESHOLD_M_S, FALL_DAMAGE_MULTIPLIER,
-  DROWN_DAMAGE_PER_S, AIR_MAX_S,
+  DROWN_DAMAGE_PER_S, AIR_MAX_S, GRAVITY_M_S2,
 } from './config';
 import { Sounds } from './audio/sounds';
 import { FixedStepLoop } from './core/loop';
@@ -281,7 +281,7 @@ export class Game {
       this.fallStartY = p.position.y;
     } else if (!this.wasOnGround && p.onGround && this.fallStartY !== null) {
       const fallDistanceM = (this.fallStartY - p.position.y) * BLOCK_SIZE_M;
-      const impactSpeedM_S = Math.sqrt(2 * 28 * fallDistanceM); // 28 m/s^2 gravity
+      const impactSpeedM_S = Math.sqrt(2 * GRAVITY_M_S2 * fallDistanceM);
       if (impactSpeedM_S > FALL_DAMAGE_THRESHOLD_M_S) {
         const damage = (impactSpeedM_S - FALL_DAMAGE_THRESHOLD_M_S) * FALL_DAMAGE_MULTIPLIER;
         this.damage(damage);

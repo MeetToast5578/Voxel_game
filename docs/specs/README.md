@@ -1,6 +1,10 @@
-# Specs: Phase 1 (Foundation)
+# Specs
 
-Phase 1 of [the roadmap](../ROADMAP.md): the new scale, cubic chunks with no height limit, 16-bit block states, and a save that can grow. Each spec gives the goal, requirements, acceptance criteria and test cases. None of them contain implementation code.
+Each spec gives the goal, requirements, acceptance criteria and test cases. None of them contain implementation code. The roadmap is in [../ROADMAP.md](../ROADMAP.md); the current state is in [../HANDOFF.md](../HANDOFF.md).
+
+## Phase 1: Foundation
+
+Phase 1 of the roadmap: the new scale, cubic chunks with no height limit, 16-bit block states, and a save that can grow.
 
 | # | Spec | Size | Built by | Depends on |
 |---|------|------|----------|------------|
@@ -21,9 +25,51 @@ Phase 1 of [the roadmap](../ROADMAP.md): the new scale, cubic chunks with no hei
 - Spec 8 comes last.
 - Specs 5–7 may share one branch, because the game doesn't run between them.
 
-**Retired.** The old spec 2 (save hotbar and time) is folded into spec 8. The old spec 4 (chunk-edge trees) is replaced by the phase 3 feature system, whose canopies are seamless by construction.
+## Phases 2–7: all specs
 
-Written against `main` at commit `c44d94e`.
+Status is checked against the code on 2026-10-17. "Open" means the spec's goal is not met yet; the notes say what is missing.
+
+| Spec file | Title | Status | Notes |
+|-----------|-------|--------|-------|
+| [11-debug-map.md](11-debug-map.md) | Debug map (`?map=1`) | Done | |
+| [12-climate-shape-fields.md](12-climate-shape-fields.md) | Climate and shape fields | Done | |
+| [13-terrain-from-fields.md](13-terrain-from-fields.md) | Terrain from the fields | Done | |
+| [14-minecraft-density-terrain.md](14-minecraft-density-terrain.md) | Minecraft-style density terrain | Done | |
+| [15-geology.md](15-geology.md) | Geology: strata and slope soil | Done | |
+| [16-water-buoyancy-drag.md](16-water-buoyancy-drag.md) | Water buoyancy and drag | Done | |
+| [17-wading-and-splash.md](17-wading-and-splash.md) | Wading and splash | Done | |
+| [18-ground-cover.md](18-ground-cover.md) | Tall grass and poppies | Done | |
+| [19-ferns-and-dandelions.md](19-ferns-and-dandelions.md) | Ferns and dandelions | Done | |
+| [20-geology-slice-2.md](20-geology-slice-2.md) | Limestone, slate, basalt, deepslate | Done | |
+| [21-mushrooms.md](21-mushrooms.md) | Brown and red mushrooms | Done | |
+| [22-natural-mountain-height.md](22-natural-mountain-height.md) | Natural mountain height | Done | Mountains capped at 60 m |
+| [23-grass-blocks.md](23-grass-blocks.md) | Grass blocks green on every side | Done | |
+| [24-inventory-and-items.md](24-inventory-and-items.md) | Inventory, held block, breaking, drops | Done | Tools not built |
+| [25-sandbox-physics.md](25-sandbox-physics.md) | Sandbox physics (program) | Partial | Only slice 1 (tick core) is built; slices 2–6 are open |
+| [26-ores.md](26-ores.md) | Ores (geology slice 3) | Done | |
+| [28-mesh-performance.md](28-mesh-performance.md) | Mesh performance, 3 ms target | Open | 4.1 ms measured alone. No test-case section |
+| [29 (missing)](#missing-spec-files) | Calendar and seasons | Done, no spec file | Code: `src/world/calendar.ts`. Commit "spec 29" |
+| [30 (missing)](#missing-spec-files) | Feature system | Done, no spec file | Code: `src/world/feature.ts`. Commit "spec 30" |
+| [31-climate-block-resolution.md](31-climate-block-resolution.md) | Climate model at block resolution | Done | Number 31 is shared with the entity system |
+| [31-entity-system.md](31-entity-system.md) | Entity system (phase 6, slice 1) | Partial | Pure module, not used by the game. Number 31 is shared with the climate model |
+| [32-biome-table.md](32-biome-table.md) | Biome table (Whittaker diagram) | Done | Number 32 is shared with the weather model |
+| [32-weather-model.md](32-weather-model.md) | Weather model | Done | Number 32 is shared with the biome table |
+| [33-sky-rendering.md](33-sky-rendering.md) | Sky rendering | Partial | Sun, moon and stars are in. No moon phases; stars do not rotate |
+| [34-survival-health.md](34-survival-health.md) | Survival mode and health | Partial | Modes, health, fall damage, drowning and respawn are done. Hunger is inert; no UI to pick the mode |
+| [34-weather-model.md](34-weather-model.md) | Weather model and rendering | Partial | Particles and lightning are in. Wet darkening, morning fog and the F3 weather lines are missing. Number 34 is shared with survival |
+| [35-biome-integration.md](35-biome-integration.md) | Biome integration into the generator | Partial | Surface, soil and trees follow the biome. Border blending is not wired |
+| [36-ecology-grass-spreading.md](36-ecology-grass-spreading.md) | Grass spreading | Done | |
+| [37-tree-species.md](37-tree-species.md) | Tree species | Done, sizes open | Species heights are in blocks, so trees are 4.8–7.2 m (oak). See HANDOFF, Open decisions 1 |
+| [38-random-ticks.md](38-random-ticks.md) | Random ticks | Done | |
+| [39-biome-integration-fix.md](39-biome-integration-fix.md) | Biome integration fix | Done | Review of spec 35 |
+| [40-leaf-decay.md](40-leaf-decay.md) | Leaf decay | Done | |
+| [41-region-simulation.md](41-region-simulation.md) | Region simulation: rivers, lakes, erosion, moisture | Done | Feeds the terrain. Seam continuity not yet checked by eye |
+
+### Known problems in the spec files
+
+- **Duplicate numbers.** Specs 31, 32 and 34 each have two files, and commit messages use the same numbers for both features. Open decision 2 in `HANDOFF.md` proposes renumbering the later ones.
+- <a id="missing-spec-files"></a>**Missing spec files.** Calendar (29) and feature system (30) were built without a spec file. Spec 27 never existed in the repo.
+- **Test-case sections.** Specs 28 and 31–40 have goals and acceptance criteria but no separate test-case list, which the rules below ask for. Their test files are named in each spec's "Files" line.
 
 ## Rules for every spec
 
