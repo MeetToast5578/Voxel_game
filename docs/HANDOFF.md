@@ -8,7 +8,7 @@ Status key: **done** = in code and tested; **partial** = some of the item is in 
 
 - **Phase 0 (groundwork):** CI (spec 1) done. The hand playtest is not done (owner).
 - **Phase 1 (foundation):** done in code, specs 2–8. The manual checks in "Waiting on the owner" are open.
-- **Phase 1b (meter scale):** blocks are 0.3 m (spec 10), and the save is version 3. Trees **do not** reach the 8–12 m the spec promises; see "Open decisions" 1.
+- **Phase 1b (meter scale):** blocks are 0.3 m (spec 10), and the save is version 3. Trees are 8–12 m (see "Decided" 1).
 - **Phase 2 (terrain):**
   - done: debug map (spec 11), climate and shape fields (12), terrain from the fields (13), 3D density (14), strata, bare rock and deepslate (15, 20), ores (26), mountains capped at 60 m (22)
   - done: region simulation (41), which sets the surface offset, carves river channels and lake basins, and sets moisture for the biome table. Whether rivers run without breaks at region seams is not yet checked by eye.
@@ -104,7 +104,7 @@ TypeScript 5.9.3, Vite 7.3.6, Vitest 4.0.18, three 0.186.0, simplex-noise 4.0.3,
   - `world.ts`: the chunk map, the `edits` map (what gets saved), per-column **tops** (world y of the highest sky-blocking block per cell), kept exact on every edit, `tickStep` and `randomTickStep`.
   - `shape.ts`: the climate fields and `heightMeters` (a spline of continentalness, plus mountains up to `MOUNTAIN_M` = 60 m), and `detailAmpMeters`.
   - `climate.ts`: `blockTemperature` and `blockPrecipitation` at block resolution (spec 31).
-  - `biome.ts`: the Whittaker table `biomeAt`, `surfaceBlock`, `soilBlock`, `treeSpecies` (spec 32, 35). `blendSurfaceBlocks` is unused (see Open decisions 3).
+  - `biome.ts`: the Whittaker table `biomeAt`, `surfaceBlock`, `soilBlock`, `treeSpecies` (spec 32, 35). `blendSurfaceBlocks` dithers the surface across biome borders.
   - `density.ts`: `TerrainDensity`. A block is solid where `offset − y + amp × noise > 0`, with two octaves of 3D simplex noise.
   - `region.ts`: region simulation (spec 41). Regions of 128 cells of 32 blocks, with a margin on each side. Drainage, lakes, river cells, moisture.
   - `generator.ts`:
@@ -116,7 +116,7 @@ TypeScript 5.9.3, Vite 7.3.6, Vitest 4.0.18, three 0.186.0, simplex-noise 4.0.3,
     - plants: `plantAt` picks one plant per grass column from one hash, in bands (specs 18, 19, 21)
     - `treeSpeciesAt` and `biomeKeyAt` are the accessors tools and tests use
     - per-column data cached, `COLUMN_CACHE_LIMIT` = 2048 columns
-  - `trees.ts`: `treeBlocks(seed, ax, ground, az, species)`, pure. Heights come from the species table (see Open decisions 1).
+  - `trees.ts`: `treeBlocks(seed, ax, ground, az, species)`, pure. Heights come from the species table, inside 8–12 m.
   - `feature.ts`: `FeatureRegistry`, the anchor system that keeps multi-chunk features seamless (spec 30). Trees are its only feature.
   - `calendar.ts`: seasons, day of season, solar declination, day length by latitude (spec 29).
   - `weather.ts`: the pure `WeatherModel` (spec 43).
