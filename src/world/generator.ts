@@ -400,8 +400,8 @@ export class TerrainGenerator {
     const z0 = cz * CHUNK_SIZE;
     this.featureRegistry.evaluateAnchors(
       this.seed,
-      x0 - TREE_REACH, x0 + CHUNK_SIZE + TREE_REACH,
-      z0 - TREE_REACH, z0 + CHUNK_SIZE + TREE_REACH,
+      x0, x0 + CHUNK_SIZE,
+      z0, z0 + CHUNK_SIZE,
       y0, y1,
       (block) => {
         const lx = block.x - x0;

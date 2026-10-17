@@ -2,12 +2,10 @@ import { describe, expect, it } from 'vitest';
 import {
   BLOCK_SIZE_M,
   LEGACY_HEIGHT,
-  roundBlocks,
   TREE_CHANCE,
   TREE_DENSITY_PER_M2,
-  TREE_HEIGHT_MAX_M,
-  TREE_HEIGHT_MIN_M,
   TREE_REACH,
+  TREE_SPECIES,
 } from '../src/config';
 import { floorDiv } from '../src/core/math';
 import { hash2 } from '../src/core/random';
@@ -26,25 +24,28 @@ function tree(ax: number, az: number): TreeBlock[] {
 }
 
 describe('trees', () => {
-  it('reach 8–12 m up (the crown top may be one block lower than the height)', () => {
-    const minTall = roundBlocks(TREE_HEIGHT_MIN_M) - 1;
-    for (const [ax, az] of ANCHORS) {
-      const rise = Math.max(...tree(ax, az).map((b) => b.y)) - 20;
-      expect(rise).toBeGreaterThanOrEqual(minTall);
-      expect(rise).toBeLessThanOrEqual(roundBlocks(TREE_HEIGHT_MAX_M));
+  it('reach their species height (branches may rise a little above the trunk)', () => {
+    for (const def of TREE_SPECIES) {
+      for (const [ax, az] of ANCHORS.slice(0, 24)) {
+        const rise = Math.max(...treeBlocks(SEED, ax, 20, az, def.key).map((b) => b.y)) - 20;
+        expect(rise).toBeGreaterThanOrEqual(def.heightMinBlocks - 1);
+        expect(rise).toBeLessThanOrEqual(MAX_TREE_RISE);
+      }
     }
   });
-  it('stay within reach of the trunk and within MAX_TREE_RISE of the ground', () => {
-    const outside = ANCHORS.flatMap(([ax, az]) =>
-      tree(ax, az).filter(
-        (b) =>
-          Math.abs(b.x - ax) > TREE_REACH ||
-          Math.abs(b.z - az) > TREE_REACH ||
-          b.y - 20 < 0 ||
-          b.y - 20 > MAX_TREE_RISE,
-      ),
-    );
-    expect(outside).toEqual([]);
+  it('stay within reach of the trunk and within MAX_TREE_RISE of the ground, for every species', () => {
+    for (const def of TREE_SPECIES) {
+      const outside = ANCHORS.flatMap(([ax, az]) =>
+        treeBlocks(SEED, ax, 20, az, def.key).filter(
+          (b) =>
+            Math.abs(b.x - ax) > TREE_REACH ||
+            Math.abs(b.z - az) > TREE_REACH ||
+            b.y - 20 < 0 ||
+            b.y - 20 > MAX_TREE_RISE,
+        ),
+      );
+      expect(outside).toEqual([]);
+    }
   });
   it('every log is connected to the trunk through logs', () => {
     for (const [ax, az] of ANCHORS) {

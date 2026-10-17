@@ -1,9 +1,8 @@
 import {
-  TREE_BLOB_RADIUS_M,
   TREE_BRANCH_MAX_M,
   TREE_BRANCH_MIN_M,
-  TREE_HEIGHT_MAX_M,
-  TREE_HEIGHT_MIN_M,
+  TREE_REACH,
+  TREE_SPECIES,
   roundBlocks,
   type TreeSpecies,
   treeSpeciesDef,
@@ -12,7 +11,7 @@ import { hash2, mulberry32 } from '../core/random';
 import { BlockId } from './blocks';
 
 /** The highest a tree's blocks reach above its ground block, in blocks. Chunk slices use it to skip trees. */
-export const MAX_TREE_RISE = roundBlocks(TREE_HEIGHT_MAX_M) + 2;
+export const MAX_TREE_RISE = Math.max(...TREE_SPECIES.map((s) => s.heightMaxBlocks)) + 2;
 
 /** One block of a tree, in world coordinates. */
 export interface TreeBlock {
@@ -33,11 +32,14 @@ const TREE_SALT = 7;
 export function treeBlocks(seed: number, ax: number, ground: number, az: number, species: TreeSpecies = 'oak'): TreeBlock[] {
   const def = treeSpeciesDef(species)!;
   const rng = mulberry32(Math.floor(hash2(seed + TREE_SALT, ax, az) * 4294967296)); // hash2 is a fraction, not a seed
-  const height = roundBlocks(TREE_HEIGHT_MIN_M + (TREE_HEIGHT_MAX_M - TREE_HEIGHT_MIN_M) * rng());
+  // Species heights are already in blocks; the crown radius is a fraction of that height, also in blocks.
+  const height = def.heightMinBlocks + Math.floor(rng() * (def.heightMaxBlocks - def.heightMinBlocks + 1));
   const trunkWidth = def.trunkWidth;
   const crownBase = Math.round(height * (def.crownBaseFraction + 0.1 * rng())); // top of the bare trunk, above ground
-  const crownRadius = Math.max(2, roundBlocks(height * def.crownRadiusFactor * (0.7 + 0.6 * rng())));
-  const crownRy = Math.max(2, Math.ceil((height - crownBase) / 2));
+  // Clamped to TREE_REACH so the crown never reaches past the extent the generator reserves for a tree.
+  const crownRadius = Math.max(2, Math.min(TREE_REACH, Math.round(height * def.crownRadiusFactor * (0.7 + 0.6 * rng()))));
+  // crownRy is bounded so the crown never reaches below the ground block, even for a short species.
+  const crownRy = Math.max(1, Math.min(Math.ceil((height - crownBase) / 2), Math.floor(height / 2)));
 
   // Keys are relative to the ground block. A log overwrites a leaf in the same cell; a leaf never overwrites one.
   const cells = new Map<string, TreeBlock>();
@@ -67,7 +69,7 @@ export function treeBlocks(seed: number, ax: number, ground: number, az: number,
 
   // Branches
   const branchCount = def.branchMinBlocks + Math.floor(rng() * (def.branchMaxBlocks - def.branchMinBlocks + 1));
-  const blob = roundBlocks(TREE_BLOB_RADIUS_M);
+  const blob = Math.max(1, def.blobRadiusBlocks);
   for (let i = 0; i < branchCount; i++) {
     const angle = rng() * Math.PI * 2;
     const cosA = Math.cos(angle);
