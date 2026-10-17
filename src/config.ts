@@ -372,3 +372,13 @@ export const WEATHER_STORM_TEMP_C = 10; // temperature above this = storm candid
 export const WEATHER_PRECIP_THRESHOLD = 0.1; // minimum cloud cover for precipitation
 export const WEATHER_TEMP_SNOW_C = -2; // below this temperature = snow
 export const WEATHER_TEMP_RAIN_C = 2; // above this temperature = rain
+
+// ---- Survival (spec 34) ----
+export const GAME_MODE_SURVIVAL = 'survival';
+export const GAME_MODE_CREATIVE = 'creative';
+export const HEALTH_MAX = 20; // 10 hearts
+export const HUNGER_MAX = 20;
+export const FALL_DAMAGE_THRESHOLD_M_S = 6; // impact speed above this causes damage
+export const FALL_DAMAGE_MULTIPLIER = 2; // damage per m/s above threshold
+export const DROWN_DAMAGE_PER_S = 2; // damage per second when out of air
+export const AIR_MAX_S = 15; // seconds the player can hold their breath

@@ -1,4 +1,4 @@
-import { CHUNK_VOLUME, HOTBAR_SIZE, INVENTORY_SIZE, MAX_ITEMS, MAX_STACK, START_TIME_OF_DAY, STARTING_STACK } from '../config';
+import { CHUNK_VOLUME, GAME_MODE_CREATIVE, GAME_MODE_SURVIVAL, HEALTH_MAX, HUNGER_MAX, HOTBAR_SIZE, INVENTORY_SIZE, MAX_ITEMS, MAX_STACK, START_TIME_OF_DAY, STARTING_STACK, AIR_MAX_S } from '../config';
 import type { DroppedItem } from '../items/itemEntities';
 import { DEFAULT_HOTBAR, type ItemStack } from '../player/inventory';
 import { BlockId, blockStateName, parseBlockStateName } from '../world/blocks';
@@ -27,6 +27,14 @@ export interface WorldMeta {
   timeOfDay: number;
   /** 0..1, wraps. 0 = spring equinox. */
   timeOfYear: number;
+  /** Game mode: 'survival' or 'creative'. */
+  gameMode: string;
+  /** Player health, 0..HEALTH_MAX. */
+  health: number;
+  /** Player hunger, 0..HUNGER_MAX. */
+  hunger: number;
+  /** Seconds of air remaining, 0..AIR_MAX_S. */
+  air: number;
 }
 
 /** A stack as stored: the block's name and the count. */
@@ -45,6 +53,10 @@ export interface MetaRecord {
   items: (StoredStack & { x: number; y: number; z: number })[];
   timeOfDay: number;
   timeOfYear: number;
+  gameMode: string;
+  health: number;
+  hunger: number;
+  air: number;
 }
 
 /** One chunk's player edits: chunk key "cx,cy,cz" and [localIndex 0..4095, state name] pairs. */
@@ -71,6 +83,10 @@ export function metaRecord(meta: WorldMeta): MetaRecord {
     items: meta.items.map((i) => ({ name: blockStateName(i.state), count: i.count, x: i.x, y: i.y, z: i.z })),
     timeOfDay: meta.timeOfDay,
     timeOfYear: meta.timeOfYear,
+    gameMode: meta.gameMode,
+    health: meta.health,
+    hunger: meta.hunger,
+    air: meta.air,
   };
 }
 
@@ -163,6 +179,12 @@ export function parseMeta(raw: unknown): WorldMeta | null {
     items: repairItems(d.items),
     timeOfDay: repairTimeOfDay(d.timeOfDay),
     timeOfYear: repairTimeOfDay(d.timeOfYear ?? 0),
+    gameMode: typeof d.gameMode === 'string' && (d.gameMode === GAME_MODE_SURVIVAL || d.gameMode === GAME_MODE_CREATIVE)
+      ? d.gameMode
+      : GAME_MODE_CREATIVE,
+    health: isNum(d.health) ? Math.max(0, Math.min(HEALTH_MAX, d.health)) : HEALTH_MAX,
+    hunger: isNum(d.hunger) ? Math.max(0, Math.min(HUNGER_MAX, d.hunger)) : HUNGER_MAX,
+    air: isNum(d.air) ? Math.max(0, Math.min(AIR_MAX_S, d.air)) : AIR_MAX_S,
   };
 }
 

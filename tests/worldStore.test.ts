@@ -15,6 +15,10 @@ const meta = (seed: number): WorldMeta => ({
   items: [],
   timeOfDay: 0.5,
   timeOfYear: 0.5,
+  gameMode: 'creative',
+  health: 20,
+  hunger: 20,
+  air: 15,
 });
 
 /** A world with chunk (0, 0, 0) loaded and its column's tops installed, so blocks can be edited. */

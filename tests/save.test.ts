@@ -17,6 +17,10 @@ const sample: WorldMeta = {
   items: [{ state: BlockId.STONE, count: 1, x: 3.5, y: 40, z: 2.25 }],
   timeOfDay: 0.6,
   timeOfYear: 0.3,
+  gameMode: 'creative',
+  health: 20,
+  hunger: 20,
+  air: 15,
 };
 const stored = () => metaRecord(sample);
 /** A save from before spec 24: a hotbar of names and no inventory or items. */

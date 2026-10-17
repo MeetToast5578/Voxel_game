@@ -2,6 +2,8 @@ import {
   AUTOSAVE_INTERVAL_S, BLOCK_SIZE_M, BREAK_REPEAT_S, DAY_LENGTH_S, DAYS_PER_SEASON, DEFAULT_MOUSE_SENSITIVITY, EYE_HEIGHT, FIXED_DT,
   FOOTSTEP_DISTANCE, FOOTSTEP_MIN_SPEED, GEN_BUDGET_MS, HOTBAR_SIZE, MAX_FRAME_DT, MESH_BUDGET_MS, REACH, SEA_LEVEL,
   SETTINGS_KEY, SPAWN_READY_RADIUS, START_TIME_OF_DAY, WORLD_LATITUDE_DEG, ITEM_SIZE, PLAYER_HEIGHT, WALK_SPEED,
+  GAME_MODE_CREATIVE, GAME_MODE_SURVIVAL, HEALTH_MAX, HUNGER_MAX, FALL_DAMAGE_THRESHOLD_M_S, FALL_DAMAGE_MULTIPLIER,
+  DROWN_DAMAGE_PER_S, AIR_MAX_S,
 } from './config';
 import { Sounds } from './audio/sounds';
 import { FixedStepLoop } from './core/loop';
@@ -89,6 +91,14 @@ export class Game {
   fps = 0;
   /** 0 sunrise, 0.25 noon, 0.5 sunset, 0.75 midnight; wraps at 1. */
   timeOfDay = START_TIME_OF_DAY;
+  /** Game mode: 'creative' (current behaviour) or 'survival'. Defaults to creative for backwards compatibility. */
+  gameMode = GAME_MODE_CREATIVE;
+  /** Player health, 0..HEALTH_MAX. 0 = dead. */
+  health = HEALTH_MAX;
+  /** Player hunger, 0..HUNGER_MAX. */
+  hunger = HUNGER_MAX;
+  /** Seconds of air remaining, 0..AIR_MAX_S. Decreases when submerged. */
+  air = AIR_MAX_S;
   /** Calendar: tracks season and day of year. */
   readonly calendar: Calendar;
   private readonly loop: FixedStepLoop;
@@ -99,6 +109,10 @@ export class Game {
   private actionCooldown = 0;
   /** True while the inventory is open from the pause menu (closing it goes back to the menu). */
   private inventoryFromMenu = false;
+  /** Y where the current fall started (null when on ground). */
+  private fallStartY: number | null = null;
+  /** Was the player on the ground last frame? */
+  private wasOnGround = false;
   /** The volumetric build tools (see src/player/buildTool.ts). */
   readonly tool = new BuildTool();
   private readonly edits: EditQueue;
@@ -155,6 +169,10 @@ export class Game {
       this.items.restore(loaded.items);
       this.timeOfDay = loaded.timeOfDay;
       this.calendar.timeOfYear = loaded.timeOfYear ?? 0;
+      this.gameMode = loaded.gameMode ?? GAME_MODE_CREATIVE;
+      this.health = loaded.health ?? HEALTH_MAX;
+      this.hunger = loaded.hunger ?? HUNGER_MAX;
+      this.air = loaded.air ?? AIR_MAX_S;
     }
     this.savedPlayer = loaded?.player ?? null;
     this.saver = new WorldSaver(this.worldStore, this.world, () => this.worldMeta());
@@ -246,6 +264,79 @@ export class Game {
       this.saveTimer = 0;
       void this.saveNow();
     }
+
+    // Survival mode: fall damage, drowning, death.
+    if (this.gameMode === GAME_MODE_SURVIVAL) {
+      this.updateSurvival(dt);
+    }
+  }
+
+  /** Fall damage, drowning, and death for survival mode. */
+  private updateSurvival(dt: number): void {
+    const p = this.player;
+
+    // Fall damage: track fall start when leaving ground.
+    if (this.wasOnGround && !p.onGround) {
+      this.fallStartY = p.position.y;
+    } else if (!this.wasOnGround && p.onGround && this.fallStartY !== null) {
+      const fallDistanceM = (this.fallStartY - p.position.y) * BLOCK_SIZE_M;
+      const impactSpeedM_S = Math.sqrt(2 * 28 * fallDistanceM); // 28 m/s^2 gravity
+      if (impactSpeedM_S > FALL_DAMAGE_THRESHOLD_M_S) {
+        const damage = (impactSpeedM_S - FALL_DAMAGE_THRESHOLD_M_S) * FALL_DAMAGE_MULTIPLIER;
+        this.damage(damage);
+      }
+      this.fallStartY = null;
+    }
+    this.wasOnGround = p.onGround;
+
+    // Drowning: lose air when submerged, take damage when air runs out.
+    if (p.inWater) {
+      this.air = Math.max(0, this.air - dt);
+      if (this.air <= 0) {
+        this.damage(DROWN_DAMAGE_PER_S * dt);
+      }
+    } else {
+      this.air = Math.min(AIR_MAX_S, this.air + dt * 2); // restore air twice as fast as it depletes
+    }
+
+    // Death: respawn at spawn point, drop inventory.
+    if (this.health <= 0) {
+      this.die();
+    }
+  }
+
+  /** Apply damage to the player. Clamps health at 0. */
+  damage(amount: number): void {
+    if (this.gameMode !== GAME_MODE_SURVIVAL) return;
+    this.health = Math.max(0, this.health - amount);
+  }
+
+  /** Heal the player. Clamps health at MAX. */
+  heal(amount: number): void {
+    this.health = Math.min(HEALTH_MAX, this.health + amount);
+  }
+
+  /** Die: drop inventory, reset health, respawn at spawn. */
+  private die(): void {
+    // Drop all inventory on the ground.
+    const p = this.player.position;
+    for (let i = 0; i < this.inventory.slots.length; i++) {
+      const stack = this.inventory.slots[i];
+      if (stack) {
+        this.items.spawn(stack.state, stack.count, p.x, p.y + 1, p.z, Math.random);
+      }
+    }
+    this.inventory = new Inventory();
+    this.inventory.select(0);
+
+    // Reset health and air.
+    this.health = HEALTH_MAX;
+    this.air = AIR_MAX_S;
+
+    // Respawn at spawn point.
+    const spawnY = this.spawnFeetY ?? this.world.topAt(Math.floor(this.spawn.x), Math.floor(this.spawn.z)) ?? SEA_LEVEL;
+    this.player.setPosition(this.spawn.x, spawnY, this.spawn.z);
+    this.ready = true;
   }
 
   /**
@@ -267,6 +358,10 @@ export class Game {
       items: this.items.snapshot(),
       timeOfDay: this.timeOfDay,
       timeOfYear: this.calendar.timeOfYear,
+      gameMode: this.gameMode,
+      health: this.health,
+      hunger: this.hunger,
+      air: this.air,
     };
   }
 
@@ -708,6 +803,10 @@ export class Game {
       season: this.calendar.season,
       dayOfSeason: this.calendar.day,
       dayLengthMin: Math.round(this.calendar.dayLengthMin),
+      gameMode: this.gameMode,
+      health: this.health,
+      hunger: this.hunger,
+      air: Math.round(this.air * 100) / 100,
       target: this.target ? [this.target.x, this.target.y, this.target.z] : null,
       targetName: this.target ? getBlockDef(this.world.getBlock(this.target.x, this.target.y, this.target.z)).name : null,
       selectedSlot: this.inventory.selected,

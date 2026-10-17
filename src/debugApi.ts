@@ -1,5 +1,6 @@
 import type { Game } from './game';
 import type { ToolKind, ToolMode } from './player/buildTool';
+import { HEALTH_MAX, HUNGER_MAX, AIR_MAX_S } from './config';
 
 /** Exposed as window.__game so automated tests (scripts/smoke.mjs) can inspect and drive the game. */
 export interface DebugApi {
@@ -29,6 +30,16 @@ export interface DebugApi {
   undoEdit(): boolean;
   /** True while a volume action is still being applied. */
   readonly editsBusy: boolean;
+  /** Game mode: 'survival' or 'creative'. */
+  setGameMode(mode: 'survival' | 'creative'): void;
+  /** Set player health (0..20). */
+  setHealth(health: number): void;
+  /** Apply damage to the player. */
+  damage(amount: number): void;
+  /** Set player hunger (0..20). */
+  setHunger(hunger: number): void;
+  /** Set player air (0..15 seconds). */
+  setAir(air: number): void;
 }
 
 declare global {
@@ -70,6 +81,21 @@ export function installDebugApi(game: Game): void {
     undoEdit: () => game.undoEdit(),
     get editsBusy() {
       return game.editsBusy;
+    },
+    setGameMode: (mode) => {
+      game.gameMode = mode;
+    },
+    setHealth: (health) => {
+      game.health = Math.max(0, Math.min(HEALTH_MAX, health));
+    },
+    damage: (amount) => {
+      game.damage(amount);
+    },
+    setHunger: (hunger) => {
+      game.hunger = Math.max(0, Math.min(HUNGER_MAX, hunger));
+    },
+    setAir: (air) => {
+      game.air = Math.max(0, Math.min(AIR_MAX_S, air));
     },
   };
 }

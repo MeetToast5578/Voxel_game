@@ -1,28 +1,26 @@
-# Spec 33: Sky rendering (atmospheric scattering)
+# Spec 33: Sky rendering — atmospheric scattering (Phase 4, item 2)
 
-**Goal:** Replace the static sky color with an atmospheric scattering sky shader that shows sunrise/sunset colors, a sun, moon, and stars. The sky color and sun/moon position are driven by the time of day and the calendar (season, solar declination).
+**Goal:** An atmospheric scattering sky shader with sunrise/sunset colours, sun, moon, and stars. The sky colour changes with time of day and season.
 
-**Why:** Phase 4 item 2 of the roadmap. Builds on spec 29 (calendar/seasons). The current sky uses a simple day/night color lerp; this adds a proper atmospheric sky with celestial bodies.
+**Why:** Phase 4 item 2 of the roadmap. Builds on the existing day/night cycle, calendar, and weather systems. Replaces the current simple sky colour lerp.
 
 **Scope (ponytail):**
-- `src/render/sky.ts` (three.js): a Sky class that creates a sky material (atmospheric scattering approximation), a sun mesh (billboard quad), a moon mesh, and a star field (points). Updates sun/moon position and sky colors each frame based on time of day, season, and solar declination.
-- `src/render/skyMaterial.ts`: custom three.js ShaderMaterial for the atmospheric sky (Rayleigh scattering approximation), sun glow, and star field.
-- `src/game.ts`: create Sky in constructor, update each frame, dispose on cleanup. Replace the simple day/night sky color lerp with the sky material.
-- Config: `SUN_SIZE`, `MOON_SIZE`, `STAR_COUNT`, `SKY_INTENSITY` (already have DAY_LENGTH_S, START_TIME_OF_DAY).
-- F3: no change needed (season already shown).
+- `src/render/sky.ts` (new): `Sky` class — Three.js shader material with atmospheric scattering
+- Sky colour: blends day/night colours based on `daylightAt(timeOfDay)` and season
+- Sun: directional light + visible sun disc near horizon at sunrise/sunset
+- Moon: phase based on time of month, visible at night
+- Stars: rotate with time, visible at night
+- Integrates with existing `game.ts` render loop (replaces `renderer.setSkyColor` call)
 
 **Out of scope:**
-- Clouds beyond the existing decorative layer (they already exist).
-- Weather (pressure systems, precipitation) — phase 4 item 3.
-- Moon phases, star rotation beyond fixed positions — later refinement.
-- Atmospheric scattering that affects ground lighting (just the sky visual).
+- Clouds (already have decorative cloud layer)
+- Weather affecting sky colour (storm darkening) — can be added later
+- Volumetric lighting / god rays
 
-**Files:** `src/render/sky.ts` (new), `src/render/skyMaterial.ts` (new), `src/game.ts` (modify), `src/config.ts` (add constants if needed).
+**Files:** `src/render/sky.ts` (new), `src/game.ts` (wiring), `src/render/renderer.ts` (optional: remove setSkyColor if unused)
 
 **Acceptance criteria:**
 - `npm run check` passes.
-- `npm run build` passes.
-- Sky renders with day/night color transition.
-- Sun is visible during day, moon at night, stars at night.
-- No console errors related to shaders.
-- Existing renderer tests still pass.
+- Sky renders without errors.
+- Sky colour changes with time of day and season.
+- Sun, moon, stars are visible at appropriate times.
