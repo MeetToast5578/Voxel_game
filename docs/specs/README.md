@@ -48,15 +48,15 @@ Status is checked against the code on 2026-10-17. "Open" means the spec's goal i
 | [25-sandbox-physics.md](25-sandbox-physics.md) | Sandbox physics (program) | Done, slices 1–6 | Tick core, rule fields, falling sand and gravel, flowing water, structural collapse, loose bodies. Pending falls are found by a scan on load, not saved; lava is not in the game |
 | [26-ores.md](26-ores.md) | Ores (geology slice 3) | Done | |
 | [28-mesh-performance.md](28-mesh-performance.md) | Mesh performance, 3 ms target | Open | 4.1 ms measured alone. No test-case section |
-| [29 (missing)](#missing-spec-files) | Calendar and seasons | Done, no spec file | Code: `src/world/calendar.ts`. Commit "spec 29" |
-| [30 (missing)](#missing-spec-files) | Feature system | Done, no spec file | Code: `src/world/feature.ts`. Commit "spec 30" |
-| [31-climate-block-resolution.md](31-climate-block-resolution.md) | Climate model at block resolution | Done | Number 31 is shared with the entity system |
-| [31-entity-system.md](31-entity-system.md) | Entity system (phase 6, slice 1) | Partial | Pure module, not used by the game. Number 31 is shared with the climate model |
-| [32-biome-table.md](32-biome-table.md) | Biome table (Whittaker diagram) | Done | Number 32 is shared with the weather model |
-| [32-weather-model.md](32-weather-model.md) | Weather model | Done | Number 32 is shared with the biome table |
+| [29-calendar-and-seasons.md](29-calendar-and-seasons.md) | Calendar and seasons | Done | Written after the code |
+| [30-feature-system.md](30-feature-system.md) | Feature system | Done | Written after the code |
+| [31-climate-block-resolution.md](31-climate-block-resolution.md) | Climate model at block resolution | Done | |
+| [42-entity-system.md](42-entity-system.md) | Entity system (phase 6, slice 1) | Partial | Pure module, not used by the game. Renumbered from 31 |
+| [32-biome-table.md](32-biome-table.md) | Biome table (Whittaker diagram) | Done | |
+| [43-weather-model.md](43-weather-model.md) | Weather model | Done | Renumbered from 32 |
 | [33-sky-rendering.md](33-sky-rendering.md) | Sky rendering | Partial | Sun, moon and stars are in. No moon phases; stars do not rotate |
-| [34-survival-health.md](34-survival-health.md) | Survival mode and health | Partial | Modes, health, fall damage, drowning and respawn are done. Hunger is inert; no UI to pick the mode |
-| [34-weather-model.md](34-weather-model.md) | Weather model and rendering | Partial | Particles and lightning are in. Wet darkening, morning fog and the F3 weather lines are missing. Number 34 is shared with survival |
+| [44-survival-health.md](44-survival-health.md) | Survival mode and health | Partial | Modes, health, fall damage, drowning and respawn are done. Hunger is inert; no UI to pick the mode. Renumbered from 34 |
+| [34-weather-model.md](34-weather-model.md) | Weather model and rendering | Partial | Particles and lightning are in. Wet darkening, morning fog and the F3 weather lines are missing. |
 | [35-biome-integration.md](35-biome-integration.md) | Biome integration into the generator | Partial | Surface, soil and trees follow the biome. Border blending is not wired |
 | [36-ecology-grass-spreading.md](36-ecology-grass-spreading.md) | Grass spreading | Done | |
 | [37-tree-species.md](37-tree-species.md) | Tree species | Done, sizes open | Species heights are in blocks, so trees are 4.8–7.2 m (oak). See HANDOFF, Open decisions 1 |
@@ -67,9 +67,8 @@ Status is checked against the code on 2026-10-17. "Open" means the spec's goal i
 
 ### Known problems in the spec files
 
-- **Duplicate numbers.** Specs 31, 32 and 34 each have two files, and commit messages use the same numbers for both features. Open decision 2 in `HANDOFF.md` proposes renumbering the later ones.
-- <a id="missing-spec-files"></a>**Missing spec files.** Calendar (29) and feature system (30) were built without a spec file. Spec 27 never existed in the repo.
-- **Test-case sections.** Specs 28 and 31–40 have goals and acceptance criteria but no separate test-case list, which the rules below ask for. Their test files are named in each spec's "Files" line.
+- **Spec 27** never existed in the repo. Specs 29 and 30 were added afterwards, to document the code.
+- **Test-case sections.** Specs 28 and 31–41 have goals and acceptance criteria but no separate test-case list. Their test files are named in each spec's "Files" line.
 
 ## Rules for every spec
 

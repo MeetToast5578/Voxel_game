@@ -1,4 +1,4 @@
-# Spec 32: Weather model (Phase 4, item 3)
+# Spec 43: Weather model (Phase 4, item 3)
 
 **Goal:** A deterministic weather model that produces pressure systems, cloud cover, precipitation, and storms based on seed, position, and time — no state to save. Pure module, unit-tested in Node.
 

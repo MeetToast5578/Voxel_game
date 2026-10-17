@@ -1,4 +1,4 @@
-# Spec 31: Entity system (Phase 6, slice 1)
+# Spec 42: Entity system (Phase 6, slice 1)
 
 **Goal:** A minimal entity system: entities have IDs, positions, velocities, types, and sizes. They can be spawned, despawned, and stepped each frame with gravity and block collision. Pure module (no three.js, no DOM), tested in Node.
 

@@ -32,7 +32,7 @@ Status key: **done** = in code and tested; **partial** = some of the item is in 
     - block updates run at 20 game ticks a second, as in Minecraft: water moves one block every 5 ticks and falling blocks every 2 (`WATER_TICK_DELAY`, `GRAVITY_TICK_DELAY` in `src/config.ts`). They were running every frame, so a flow finished in a few frames.
     - slice 6, loose bodies: a collapse of 2 or more blocks tumbles as bodies that float or sink by density, and settle back into blocks or items. Bodies are saved as items.
   - not started: snow, crops and saplings; catch-up after reload; currents (flowing water pushing the player); fall damage from water; waterfalls and river flow
-- **Phase 6 (creatures):** partial. `src/world/entity.ts` is a pure entity system (spec 31) with gravity and collision, and the game does not use it yet. No animals, AI or pathfinding.
+- **Phase 6 (creatures):** partial. `src/world/entity.ts` is a pure entity system (spec 42) with gravity and collision, and the game does not use it yet. No animals, AI or pathfinding.
 - **Build tools and block menu (this pass):** the build tool panel on screen always shows every setting, including in single-block mode. The inventory's Blocks (creative) tab puts any block into the selected hotbar slot. A solid shell with no cavity left becomes solid, and roofs are a horizontal layer built upward.
 - **Phase 7 (survival):**
   - done: survival and creative modes, health, fall damage, drowning, death and respawn with the inventory dropped (34); mining hardness and crack stages (24)
@@ -117,9 +117,9 @@ TypeScript 5.9.3, Vite 7.3.6, Vitest 4.0.18, three 0.186.0, simplex-noise 4.0.3,
   - `trees.ts`: `treeBlocks(seed, ax, ground, az, species)`, pure. Heights come from the species table (see Open decisions 1).
   - `feature.ts`: `FeatureRegistry`, the anchor system that keeps multi-chunk features seamless (spec 30). Trees are its only feature.
   - `calendar.ts`: seasons, day of season, solar declination, day length by latitude (spec 29).
-  - `weather.ts`: the pure `WeatherModel` (spec 32).
+  - `weather.ts`: the pure `WeatherModel` (spec 43).
   - `tick.ts`, `randomTick.ts`, `ecology.ts`, `leafDecay.ts`: scheduled ticks, random ticks, grass spreading, and leaf decay (specs 25, 38, 36, 40).
-  - `entity.ts`: the pure entity system (spec 31). Not used by the game yet.
+  - `entity.ts`: the pure entity system (spec 42). Not used by the game yet.
   - `debugMap.ts`: the colouring for `?map=1`.
   - Also: `chunkManager.ts`, `light.ts`, `spawn.ts`, `time.ts`, `editQueue.ts`.
 - `src/render`:

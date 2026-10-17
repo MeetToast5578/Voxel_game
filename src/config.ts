@@ -124,7 +124,7 @@ export const EYE_HEIGHT = metersToBlocks(1.62); // 2.7 blocks
 export const WALK_SPEED = metersToBlocks(4.3);
 export const SPRINT_SPEED = metersToBlocks(6.0);
 export const FLY_SPEED = metersToBlocks(12);
-export const GRAVITY_M_S2 = 28; // m/s², also used for fall damage (spec 34)
+export const GRAVITY_M_S2 = 28; // m/s², also used for fall damage (spec 44)
 export const GRAVITY = metersToBlocks(GRAVITY_M_S2);
 export const JUMP_SPEED = metersToBlocks(8.7); // jump height ~1.35 m (~2.25 blocks)
 export const TERMINAL_VELOCITY = metersToBlocks(50);
@@ -259,7 +259,7 @@ export const LOOSE_BODY_WATER_DRAG = 3; // per second: how quickly a submerged b
 export const LOOSE_BODY_FRICTION = 1.5; // per second: a body on the ground slides a while (dropped items stop at once, ITEM_FRICTION)
 export const LOOSE_BODY_SPIN_RATE = 4; // radians per second: how fast a tumbling body spins after it breaks free
 
-// ---- Entity system (spec 31) ----
+// ---- Entity system (spec 42) ----
 export const ENTITY_FRICTION = 8; // per second: how fast an entity slows down on the ground
 
 // ---- Random ticks (spec 38) ----
@@ -391,7 +391,7 @@ export function treeSpeciesDef(key: TreeSpecies): TreeSpeciesDef | undefined {
   return TREE_SPECIES.find((s) => s.key === key);
 }
 
-// ---- Weather (spec 32) ----
+// ---- Weather (spec 43) ----
 export const WEATHER_PRESSURE_WAVELENGTH_M = 6000; // feature size of pressure noise
 export const WEATHER_WIND_SPEED_M_S = 3; // weather fronts drift eastward at this speed
 export const WEATHER_HUMIDITY_WAVELENGTH_M = 3000; // feature size of humidity noise
@@ -402,7 +402,7 @@ export const WEATHER_PRECIP_THRESHOLD = 0.1; // minimum cloud cover for precipit
 export const WEATHER_TEMP_SNOW_C = -2; // below this temperature = snow
 export const WEATHER_TEMP_RAIN_C = 2; // above this temperature = rain
 
-// ---- Survival (spec 34) ----
+// ---- Survival (spec 44) ----
 export const GAME_MODE_SURVIVAL = 'survival';
 export const GAME_MODE_CREATIVE = 'creative';
 export const HEALTH_MAX = 20; // 10 hearts

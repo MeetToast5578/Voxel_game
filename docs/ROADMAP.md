@@ -259,7 +259,7 @@ Goal: the world changes without the player.
 
 Goal: animals that live believably, and danger at night.
 
-**Status (2026-10-17):** item 1 is partly done: `src/world/entity.ts` (spec 31) is a pure entity system with gravity and collision, and the game does not use it yet. Everything else in this phase is open.
+**Status (2026-10-17):** item 1 is partly done: `src/world/entity.ts` (spec 42) is a pure entity system with gravity and collision, and the game does not use it yet. Everything else in this phase is open.
 
 1. **Entity system.** Components, per-chunk persistence, and despawn and respawn rules.
 2. **Shared physics.** Reuse the player's AABB physics, including step-up. Bodies come in sizes of 1, 2 and 3 blocks tall.

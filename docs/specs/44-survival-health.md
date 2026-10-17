@@ -1,4 +1,4 @@
-# Spec 34: Survival mode and health (Phase 7, items 1–2)
+# Spec 44: Survival mode and health (Phase 7, items 1–2)
 
 **Goal:** Add survival and creative game modes, health, and fall damage. In survival mode, the player can take damage and die; in creative mode (current behaviour), the player is invulnerable with instant block breaking and flight.
 
