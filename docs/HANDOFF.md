@@ -23,16 +23,23 @@ Status key: **done** = in code and tested; **partial** = some of the item is in 
   - not started: moon phases; stars do not rotate; the wetness value is computed but nothing uses it, so wet darkening is missing; no morning valley fog (only the static distance fog); seasonal foliage colours; smooth lighting
 - **Phase 5 (living world):**
   - done: tick queue (25, slice 1), random ticks with a time budget (38), grass spreading (36), leaf decay (40), player buoyancy and quadratic drag (16), wading and splash (17)
-  - not started: snow, crops and saplings; catch-up after reload; fluid levels and flow; currents; lava; floating items; fluid rendering
-  - **Sandbox physics (spec 25):** only slice 1 is built. Slices 2–6 (rule fields, falling blocks, fluid flow, structural collapse, loose bodies) are not started.
+  - **Sandbox physics (spec 25), all six slices are in code and tested:**
+    - slice 1, tick queue: fixed in this pass. A tick scheduled while the queue runs could be dropped or run twice.
+    - slice 2, rule fields: `falls`, `flows`, `supports` and `density` on every block type.
+    - slice 3, falling sand and gravel: one cell per tick into air, water or plants, and across chunk borders. Pending falls are not saved; a scan on chunk load resumes them (shortcut, spec says save the ticks).
+    - slice 4, flowing water: 8 levels with a falling flag, drains without a feed, the mesh stands at its level. Lava is not in the game, so water meeting lava is not built.
+    - slice 5, structural collapse: a removed block's neighbours check their support within 4 blocks. Terrain and long roofs are held up by the edge of the check. Leaves never collapse.
+    - slice 6, loose bodies: a collapse of 2 or more blocks tumbles as bodies that float or sink by density, and settle back into blocks or items. Bodies are saved as items.
+  - not started: snow, crops and saplings; catch-up after reload; currents (flowing water pushing the player); fall damage from water; waterfalls and river flow
 - **Phase 6 (creatures):** partial. `src/world/entity.ts` is a pure entity system (spec 31) with gravity and collision, and the game does not use it yet. No animals, AI or pathfinding.
+- **Build tools and block menu (this pass):** the build tool panel on screen always shows every setting, including in single-block mode. The inventory's Blocks (creative) tab puts any block into the selected hotbar slot. A solid shell with no cavity left becomes solid, and roofs are a horizontal layer built upward.
 - **Phase 7 (survival):**
   - done: survival and creative modes, health, fall damage, drowning, death and respawn with the inventory dropped (34); mining hardness and crack stages (24)
   - partial: hunger is saved and shown, but nothing changes it (no food, no starvation)
   - not started: tools, crafting, food, beds, healing
 - **Phase 8 (performance):** not started as a phase. Mesh time is 4.1 ms per surface chunk when run alone (target 3 ms; spec 28 is open).
 
-**Verification on 2026-10-17:** `npm run check` passes: typecheck, **419 tests in 51 files**, and the build. `npm run smoke` passes **20 checks** in headless Chromium at about 8 fps (SwiftShader, so this number is not the owner's).
+**Verification on 2026-10-17 (after the physics and tool pass):** `npm run check` passes: typecheck, **461 tests in 55 files**, and the build. `npm run smoke` passes its checks in headless Chromium at about 8 fps (SwiftShader, so this number is not the owner's). The smoke test has an intermittent failure at the pick-block check: the player is standing above a cell that reads as air, and it is not yet explained. It also failed in the original code in one run.
 
 ## Waiting on the owner (not code)
 
@@ -80,7 +87,7 @@ TypeScript 5.9.3, Vite 7.3.6, Vitest 4.0.18, three 0.186.0, simplex-noise 4.0.3,
 - `npm run check`: typecheck, the unit tests (419 in 51 files), then the build.
 - `npm run smoke`:
   - Builds, then opens `/?seed=1&autostart=1&nosave=1` in headless Chromium (SwiftShader WebGL).
-  - Runs 20 checks through `window.__game` and writes `screenshots/*.png`.
+  - Runs 24 checks through `window.__game` and writes `screenshots/*.png`.
   - Then logs a measurement: the time until everything is loaded, the FPS, and the chunk and draw-call counts.
   - Needs `npx playwright install chromium`, or set `CHROMIUM_PATH`. In cloud sessions, use `CHROMIUM_PATH=/opt/pw-browsers/chromium-1194/chrome-linux/chrome`.
 

@@ -218,7 +218,7 @@ Goal: time and climate are visible and felt.
 
 Goal: the world changes without the player.
 
-**Status (2026-10-17):** item 1 is done (the tick queue, spec 25 slice 1, and random ticks, spec 38, both budgeted and shown in F3). Item 2 is partly done: grass spreading (spec 36) and leaf decay (spec 40). Snow, crops and saplings are open. Item 3 (catch-up) and item 4 (fluids) are open. Item 5 is partly done: player buoyancy and drag (spec 16), and wading and splash (spec 17). Currents, floating items and lava are open. Item 6 is open. The sandbox physics program (spec 25) has only its first slice built.
+**Status (2026-10-17):** item 1 is done (the tick queue, spec 25 slice 1, and random ticks, spec 38, both budgeted and shown in F3). Item 2 is partly done: grass spreading (spec 36) and leaf decay (spec 40). Snow, crops and saplings are open. Item 3 (catch-up) is open. Item 4 (fluids) is done for water: 8 levels with a falling flag, spreading and draining, and the mesh at its level (spec 25 slice 4). Lava is not in the game. Item 5 is partly done: player buoyancy and drag (spec 16), wading and splash (spec 17), loose bodies that float or sink by density (spec 25 slice 6). Currents, and the player pushed by a river, are open. Item 6 is open. The sandbox physics program (spec 25) is built through slice 6: rule fields, falling sand and gravel, flowing water, structural collapse and loose bodies.
 
 1. **Tick system.**
    - Random ticks: K random cells per loaded chunk per tick.

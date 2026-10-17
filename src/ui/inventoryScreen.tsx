@@ -1,16 +1,17 @@
 import { render } from 'preact';
 import { HOTBAR_SIZE, INVENTORY_SIZE, MAX_STACK } from '../config';
 import type { Inventory, ItemStack } from '../player/inventory';
-import { BLOCK_STATE_COUNT, BlockId, blockStateName, getBlockDef } from '../world/blocks';
+import { BLOCKS, BlockId, blockStateName, getBlockDef } from '../world/blocks';
 import { Slot } from './components';
 
 /** The two tabs: the player's own slots, and every block in the game to pick from (creative, for testing). */
 export type InventoryTab = 'inventory' | 'blocks';
 
-/** Every block state in the game except air, in registry order. Each one is a pick in the Blocks tab. */
-const ALL_BLOCK_STATES: readonly number[] = Array.from({ length: BLOCK_STATE_COUNT - 1 }, (_, k) => k + 1).filter(
-  (state) => state !== BlockId.AIR,
-);
+/**
+ * Every block type in the game except air, by its first state, in registry order. Each one is a pick in the Blocks tab.
+ * Flowing water has a state for each level, so only its first state is listed.
+ */
+const ALL_BLOCK_STATES: readonly number[] = BLOCKS.filter((def) => def.id !== BlockId.AIR).map((def) => def.id);
 
 interface ViewProps {
   inventory: Inventory;

@@ -45,7 +45,7 @@ Status is checked against the code on 2026-10-17. "Open" means the spec's goal i
 | [22-natural-mountain-height.md](22-natural-mountain-height.md) | Natural mountain height | Done | Mountains capped at 60 m |
 | [23-grass-blocks.md](23-grass-blocks.md) | Grass blocks green on every side | Done | |
 | [24-inventory-and-items.md](24-inventory-and-items.md) | Inventory, held block, breaking, drops | Done | Tools not built |
-| [25-sandbox-physics.md](25-sandbox-physics.md) | Sandbox physics (program) | Partial | Only slice 1 (tick core) is built; slices 2–6 are open |
+| [25-sandbox-physics.md](25-sandbox-physics.md) | Sandbox physics (program) | Done, slices 1–6 | Tick core, rule fields, falling sand and gravel, flowing water, structural collapse, loose bodies. Pending falls are found by a scan on load, not saved; lava is not in the game |
 | [26-ores.md](26-ores.md) | Ores (geology slice 3) | Done | |
 | [28-mesh-performance.md](28-mesh-performance.md) | Mesh performance, 3 ms target | Open | 4.1 ms measured alone. No test-case section |
 | [29 (missing)](#missing-spec-files) | Calendar and seasons | Done, no spec file | Code: `src/world/calendar.ts`. Commit "spec 29" |
