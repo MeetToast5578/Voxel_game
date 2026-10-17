@@ -1,5 +1,16 @@
 import { describe, expect, it } from 'vitest';
-import { biomeAt, BIOME_COUNT, BIOME_KEYS, blendSurfaceBlocks } from '../src/world/biome';
+import { TREE_SPECIES } from '../src/config';
+import { BlockId } from '../src/world/blocks';
+import {
+  anchorSpecies,
+  biomeAt,
+  BIOME_COUNT,
+  BIOME_KEYS,
+  blendSurfaceBlocks,
+  secondarySpecies,
+  surfaceBlock,
+  treeSpecies,
+} from '../src/world/biome';
 
 function expectBiome(
   temperatureC: number,
@@ -101,6 +112,63 @@ describe('BIOME_COUNT and BIOME_KEYS', () => {
       expect(typeof key).toBe('string');
       expect(key.length).toBeGreaterThan(0);
     }
+  });
+});
+
+describe('tree species wiring (tasks T-E12, T-E13)', () => {
+  it('every species in the table is reachable: some grass-surface biome names it, as primary or secondary', () => {
+    // treeSpeciesAt (generator.ts) grows a species only where the biome names it and the biome's surface block is
+    // grass, so a species named by no grass-surface biome can never generate. Spruce and pine were dead this way.
+    for (const species of TREE_SPECIES) {
+      const home = BIOME_KEYS.find(
+        (key) =>
+          (treeSpecies(key) === species.key || secondarySpecies(key) === species.key) &&
+          surfaceBlock(key, false) === BlockId.GRASS,
+      );
+      expect(home, `${species.key} is named by no grass-surface biome, so it can never generate`).toBeDefined();
+    }
+  });
+
+  it('every biome naming a tree has a surface the generator accepts, including shrubland and steppe (T-E14)', () => {
+    for (const key of BIOME_KEYS) {
+      if (treeSpecies(key) !== null || secondarySpecies(key) !== null) {
+        expect(surfaceBlock(key, false), `${key} must permit its named tree`).toBe(BlockId.GRASS);
+      }
+    }
+    expect(biomeAt(16, 300, 100, 5, false, 0.1).key).toBe('shrubland');
+    expect(biomeAt(8, 600, 100, 5, false, 0.1).key).toBe('steppe');
+    expect(treeSpecies('shrubland')).toBe('bush');
+    expect(treeSpecies('steppe')).toBe('bush');
+  });
+
+  it('grows spruce in the taiga, pine in the snowy taiga, and dead snags in the tundra', () => {
+    expect(treeSpecies('taiga')).toBe('spruce');
+    expect(treeSpecies('snowy_taiga')).toBe('pine');
+    expect(treeSpecies('tundra')).toBe('dead_snag');
+    expect(surfaceBlock('taiga', false)).toBe(BlockId.GRASS);
+    expect(surfaceBlock('snowy_taiga', false)).toBe(BlockId.GRASS);
+    expect(surfaceBlock('tundra', false)).toBe(BlockId.GRASS);
+  });
+});
+
+describe('secondary species mixing (task T-E11)', () => {
+  it('mixes the five new species into their host biomes', () => {
+    expect(secondarySpecies('temperate_deciduous')).toBe('maple');
+    expect(secondarySpecies('taiga')).toBe('larch');
+    expect(secondarySpecies('snowy_taiga')).toBe('fir');
+    expect(secondarySpecies('savanna')).toBe('baobab');
+    expect(secondarySpecies('tropical_rainforest')).toBe('palm');
+    expect(secondarySpecies('plains')).toBeNull();
+  });
+
+  it('anchorSpecies is deterministic, grows the secondary on the configured share, and the primary with none', () => {
+    expect(anchorSpecies('oak', 'maple', 1, 100, 200)).toBe(anchorSpecies('oak', 'maple', 1, 100, 200));
+    let secondary = 0;
+    const n = 4000;
+    for (let i = 0; i < n; i++) if (anchorSpecies('oak', 'maple', 1, i * 16, (i % 97) * 16) === 'maple') secondary++;
+    expect(secondary / n).toBeGreaterThan(0.2); // SECONDARY_TREE_CHANCE is 0.3
+    expect(secondary / n).toBeLessThan(0.4);
+    for (let i = 0; i < 100; i++) expect(anchorSpecies('oak', null, 1, i, 7)).toBe('oak');
   });
 });
 

@@ -21,6 +21,20 @@ describe('config', () => {
     expect(C.EYE_HEIGHT).toBeCloseTo(1.62 / 0.3, 9);
     expect(C.PLAYER_HALF_WIDTH).toBeCloseTo(0.24 / 0.3, 9);
   });
+  it('every tree species except the bush fits the documented 8-12 m band (task T-B1 leftover)', () => {
+    // TREE_SPECIES is written in blocks (owner decision 1); these constants give the band they must fit, so they are
+    // no longer orphans. Bushes stay small on purpose. Compare metres directly to avoid rounding the band outward.
+    const min = C.TREE_HEIGHT_MIN_M;
+    const max = C.TREE_HEIGHT_MAX_M;
+    for (const s of C.TREE_SPECIES) {
+      if (s.key === 'bush') {
+        expect(s.heightMaxBlocks * C.BLOCK_SIZE_M, 'the bush stays below the tree band').toBeLessThan(min);
+        continue;
+      }
+      expect(s.heightMinBlocks * C.BLOCK_SIZE_M, `${s.key} min`).toBeGreaterThanOrEqual(min);
+      expect(s.heightMaxBlocks * C.BLOCK_SIZE_M, `${s.key} max`).toBeLessThanOrEqual(max);
+    }
+  });
   it('keeps physics steps smaller than the player (no tunneling)', () => {
     // The solver resolves a collision by moving then pushing back, so a step longer than the
     // body's own extent can pass straight through a wall. Every speed that can be applied has to

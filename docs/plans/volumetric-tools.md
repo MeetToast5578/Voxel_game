@@ -1,5 +1,10 @@
 # Plan: volumetric block tools (part 1), and building tools (part 2)
 
+**Status: built (task T-L8).** All three parts landed: the batch path (`World.setBlocks`), the pure volume module
+(`src/player/volumes.ts`), the tools (box, sphere, plane, wall, floor, roof, flatten in `src/player/buildTool.ts`),
+the preview, the tool panel and the 20-step undo (`Ctrl+Z`). This file is kept as the design record; the player docs
+are in `README.md` and the audit trail is in `docs/tasks.md`, section K.
+
 ## Context
 
 0.3 m blocks are too small to build or mine one at a time. The owner wants tools that change many blocks at once, at a size they choose, and still keeps the single-block control:

@@ -38,7 +38,7 @@ import { TerrainDensity } from './density';
 import { ClimateSampler, detailAmpMeters } from './shape';
 import { blockPrecipitation, blockTemperature } from './climate';
 import { FeatureRegistry, type FeatureBlock } from './feature';
-import { biomeAt, biomeName, blendSurfaceBlocks, soilBlock, surfaceBlock, treeSpecies } from './biome';
+import { anchorSpecies, biomeAt, biomeName, blendSurfaceBlocks, secondarySpecies, soilBlock, surfaceBlock, treeSpecies } from './biome';
 import { climateHeightSource, RegionSampler, REGION_CELLS, type ColumnSample, type RegionData } from './region';
 import { MAX_TREE_RISE, treeBlocks } from './trees';
 
@@ -514,7 +514,9 @@ export class TerrainGenerator {
     );
     const species = treeSpecies(biome.key);
     // No tree where the biome grows none, and none on a surface that is not grass (sand, rock).
-    return species && surfaceBlock(biome.key, false) === BlockId.GRASS ? species : null;
+    if (!species || surfaceBlock(biome.key, false) !== BlockId.GRASS) return null;
+    // Biomes that name a secondary species mix it in on a share of the anchors (task T-E11), deterministically.
+    return anchorSpecies(species, secondarySpecies(biome.key), this.seed, anchorX, anchorZ);
   }
 
   /**

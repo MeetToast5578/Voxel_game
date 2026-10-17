@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { WATER_TICK_DELAY } from '../src/config';
 import { Chunk } from '../src/world/chunk';
 import { BlockId, blockTopHeight, flowingWaterState, isWaterState, SOURCE_WATER_LEVEL as SOURCE_LEVEL, waterLevel } from '../src/world/blocks';
 import { FLOW_REASON, scheduleFlowChecks } from '../src/world/flow';
@@ -114,12 +115,18 @@ describe('flowing water (spec 25, slice 4)', () => {
     const world = stacked();
     floor(world);
     pour(world, 4, 1, 4, BlockId.WATER);
-    const WATER_TICK_DELAY = 5; // Minecraft's overworld water delay
     for (let t = 1; t < WATER_TICK_DELAY; t++) world.tickStep(1000);
     expect(world.getBlock(5, 1, 4)).toBe(BlockId.AIR); // not yet, four ticks in
     world.tickStep(1000);
     expect(isWaterState(world.getBlock(5, 1, 4))).toBe(true); // the first block, on tick five
     expect(world.getBlock(6, 1, 4)).toBe(BlockId.AIR); // the next block waits another five ticks
+    for (let t = 1; t < WATER_TICK_DELAY; t++) {
+      world.tickStep(1000);
+      expect(world.getBlock(6, 1, 4)).toBe(BlockId.AIR); // still empty through tick nine
+    }
+    world.tickStep(1000);
+    expect(isWaterState(world.getBlock(6, 1, 4))).toBe(true); // second cell at tick ten
+    expect(world.currentTick).toBe(2 * WATER_TICK_DELAY);
   });
 
   it('uses its own tick reason', () => {
