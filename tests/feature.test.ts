@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 import { FeatureRegistry } from '../src/world/feature';
-import { CHUNK_SIZE } from '../src/config';
 
 describe('FeatureRegistry', () => {
   it('registers and looks up features by key', () => {

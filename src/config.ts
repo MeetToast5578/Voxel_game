@@ -182,6 +182,14 @@ export const MIN_DAYLIGHT = 0.15;
 export const DAYS_PER_SEASON = 7; // days per season; a year is 4 * this
 export const WORLD_LATITUDE_DEG = 45; // world latitude, drives day length variation
 
+// ---- Climate at block resolution (spec 31) ----
+export const TEMPERATURE_MIN_C = -30; // coldest biome temperature
+export const TEMPERATURE_MAX_C = 30; // hottest biome temperature
+export const TEMPERATURE_LAPSE_C_PER_KM = 6.5; // degrees C lost per km of height
+export const PRECIPITATION_MIN_MM = 0; // driest biome precipitation, mm/year
+export const PRECIPITATION_MAX_MM = 2000; // wettest biome precipitation, mm/year
+export const OROGRAPHIC_LIFT = 0.3; // precipitation boost per unit of max detail amplitude
+
 // ---- UI ----
 export const HOTBAR_SIZE = 9;
 
