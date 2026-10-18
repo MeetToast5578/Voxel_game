@@ -70,6 +70,8 @@ export function treeBlocks(seed: number, ax: number, ground: number, az: number,
 
   // Branches
   const branchCount = def.branchMinBlocks + Math.floor(rng() * (def.branchMaxBlocks - def.branchMinBlocks + 1));
+  // Zero is deliberate: dead snags keep their logs but grow neither branch blobs nor a canopy.
+  const hasFoliage = def.blobRadiusBlocks > 0;
   const blob = Math.max(1, def.blobRadiusBlocks);
   for (let i = 0; i < branchCount; i++) {
     const angle = rng() * Math.PI * 2;
@@ -96,9 +98,9 @@ export function treeBlocks(seed: number, ax: number, ground: number, az: number,
       else z += signZ;
       put(x, y, z, BlockId.LOG);
     }
-    crown(x, y, z, blob, blob, blob);
+    if (hasFoliage) crown(x, y, z, blob, blob, blob);
   }
 
-  crown(0, height - crownRy, 0, crownRadius, crownRy, crownRadius);
+  if (hasFoliage) crown(0, height - crownRy, 0, crownRadius, crownRy, crownRadius);
   return Array.from(cells.values());
 }

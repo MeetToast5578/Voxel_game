@@ -24,6 +24,37 @@ function tree(ax: number, az: number): TreeBlock[] {
 }
 
 describe('trees', () => {
+  it('dead snags are leafless, deterministic and connected across seeds and anchors (T-E15)', () => {
+    for (const seed of [1, 42, 99, 2026]) for (const [ax, az] of ANCHORS.filter((_, i) => i % 40 === 0)) {
+      const blocks = treeBlocks(seed, ax, 20, az, 'dead_snag');
+      expect(blocks).toEqual(treeBlocks(seed, ax, 20, az, 'dead_snag'));
+      expect(blocks.some((b) => b.id === BlockId.LEAVES)).toBe(false);
+      expect(blocks.every((b) => Math.abs(b.x - ax) <= TREE_REACH && Math.abs(b.z - az) <= TREE_REACH &&
+        b.y >= 20 && b.y <= 20 + MAX_TREE_RISE)).toBe(true);
+      const logs = new Set(blocks.filter((b) => b.id === BlockId.LOG).map((b) => `${b.x},${b.y},${b.z}`));
+      const start = `${ax},21,${az}`;
+      expect(logs.has(start)).toBe(true);
+      const seen = new Set([start]);
+      const queue = [start];
+      while (queue.length) {
+        const [x, y, z] = queue.pop()!.split(',').map(Number) as [number, number, number];
+        for (const [dx, dy, dz] of [[1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1], [0, 0, -1]] as const) {
+          const next = `${x + dx},${y + dy},${z + dz}`;
+          if (logs.has(next) && !seen.has(next)) { seen.add(next); queue.push(next); }
+        }
+      }
+      expect(seen.size).toBe(logs.size);
+    }
+  });
+  it('every species with a nonzero foliage radius still produces leaves (T-E15)', () => {
+    for (const def of TREE_SPECIES.filter((s) => s.blobRadiusBlocks > 0)) {
+      for (const seed of [1, 42, 99]) {
+        const blocks = treeBlocks(seed, -16, 20, 15, def.key);
+        expect(blocks.some((b) => b.id === BlockId.LEAVES), def.key).toBe(true);
+        expect(blocks).toEqual(treeBlocks(seed, -16, 20, 15, def.key));
+      }
+    }
+  });
   it('new species have distinct deterministic geometry at the same anchor (T-E11)', () => {
     const keys = ['maple', 'fir', 'larch', 'baobab', 'palm'] as const;
     const signatures = new Set<string>();
@@ -165,7 +196,7 @@ describe('trees', () => {
     expect(withTrees).toBeGreaterThan(5);
     expect(withTrees).toBeLessThan(60);
   });
-  it('every trunk top in a column has leaves directly above it', { timeout: 30000 }, () => {
+  it('every leafy trunk top in a column has leaves directly above it', { timeout: 30000 }, () => {
     const g = new TerrainGenerator(SEED);
     for (let i = 0; i < 20; i++) {
       const c = stackedColumn(g, ...[landColumns(g, 20)[i]!.cx, landColumns(g, 20)[i]!.cz] as const);
@@ -174,6 +205,8 @@ describe('trees', () => {
           for (let y = 1; y < c.blocks.length / 256 - 1; y++) {
             // A trunk base is a log on dirt; walk up the trunk and check the cell above its top.
             if (c.get(lx, y, lz) !== BlockId.LOG || c.get(lx, y - 1, lz) !== BlockId.DIRT) continue;
+            const species = g.treeSpeciesAt(c.cx * 16 + lx, c.cz * 16 + lz);
+            if (TREE_SPECIES.find((s) => s.key === species)?.blobRadiusBlocks === 0) continue;
             let top = y;
             while (c.get(lx, top + 1, lz) === BlockId.LOG) top++;
             expect(c.get(lx, top + 1, lz)).toBe(BlockId.LEAVES);

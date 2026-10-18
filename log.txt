@@ -288,3 +288,47 @@ FINAL LOCAL FULL SMOKE: SUCCESS, Chromium 153, all 24 checks enabled.
   2063 meshed, 339 draw calls. Performance is not the owner's hardware result.
 All one-shot test processes exited; no preview/test server left running.
 Reviewed git diff --check: clean. No generated browser/artifact files tracked.
+
+2026-10-18 — Follow-up batch: T-F9 / T-E15 / T-K3 HUD button
+Scope: the three tasks recommended in the discovery pass; no biome flowers,
+wet-surface rendering, slabs or unrelated backlog expansion.
+- Preserved the existing dirty checkout. Saved touched-file review baselines in
+  /tmp/voxel-next-task-baseline; no reset, blanket commit, branch change or push.
+- T-F9: reproduced three failing game-clock regressions before the fix (loading
+  guard already passed). Advance Calendar beside the day clock after ready.
+  Season boundary/year wrap, restored time and existing menu behaviour covered.
+- T-E15: reproduced leaves on dead_snag despite radius zero. Guard both branch
+  blobs and canopy. Four seeds x twelve anchors cover no leaves, deterministic
+  connected logs and bounds; all leafy species retain deterministic foliage.
+  Worldgen caveat: unedited snags regenerate with changed branches/no leaves;
+  edits remain. Leafy paths and RNG consumption are unchanged.
+- T-K3: added native HUD Inventory button, shared toggle, E hint, focus ring and
+  disabled/loading/open state. Only its stacking rises above menu overlays;
+  inventory remains above it. Store originating menu mode so start-menu access
+  returns to start (not pause), pause returns to pause, and play still requests
+  capture on close. Five state/lifecycle tests pass, including cursor overflow.
+- Reviewed production/test diffs against the saved pre-batch baseline. No new
+  dependencies in the game, no test skips/timeouts raised, no save format changes.
+- npm run check: PASS, 487 tests in 58 files + typecheck + production build.
+- Browser setup is external to the repo (@sparticuz/chromium 153). Initial smoke
+  could not launch because its AL2023 shared libraries were not extracted; fixed
+  environment by extracting the package's bundled libraries, not changing tests.
+  Full smoke restarted with all checks enabled; result pending.
+FINAL FOLLOW-UP VERIFICATION (local, current branch):
+- Full npm run smoke: PASS, exit 0, all 25 checks enabled on Chromium 153.
+  Includes HUD start-menu pointer-free click, pause-overlay HUD click,
+  Tab/Shift+Tab visible focus, Enter and Space activation, E/Escape/Close,
+  originating-menu restoration, disabled HUD while open, no capture on return.
+  Existing keyboard inventory, saves/reload, mining/drops, building, physics,
+  water, lighting and worker checks all retained and passed.
+- Final measurement: fully loaded 725 ms after checks; 6 fps on SwiftShader,
+  3967 chunks loaded, 2048 meshed, 340 draw calls (not owner hardware).
+- Inspected screenshots/hud-inventory.png: button is legible at top right with
+  its visible focus ring, above the menu; other HUD elements remain dimmed.
+- T-F9 and T-E15 CLOSED. T-K3 HUD implementation/automation complete, but task
+  remains PARTIAL for the owner's original physical-browser verification.
+- No new CI run, commit or push is claimed. The previous CI evidence remains
+  historical. Browser process and preview server exited successfully.
+- Final re-run npm run check after documentation/review: PASS, 487 tests in
+  58 files, typecheck and build. Output bundle hashes match the successful
+  smoke build. Final git diff --check: clean. Generated outputs stay ignored.

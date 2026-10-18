@@ -574,7 +574,55 @@ const CHECKS = [
       await pausePage.waitForFunction(() => !window.__game.state().inventoryOpen, null, { timeout: 10_000, polling: 100 })
         .catch(() => { throw new Error('Escape did not close pause-menu inventory'); });
       if (!(await pausePage.locator('.menu-overlay').isVisible())) throw new Error('Escape should return to the pause menu');
+      // Only the HUD button, not the whole HUD, must sit above the pause overlay.
+      await pausePage.locator('.hud-inventory').click();
+      await pausePage.waitForFunction(() => window.__game.state().inventoryOpen, null, { timeout: 5_000 });
+      await pausePage.keyboard.press('Escape');
+      await pausePage.waitForFunction(() => !window.__game.state().inventoryOpen, null, { timeout: 5_000 });
+      if ((await pausePage.locator('.menu-title').innerText()) !== 'Paused') throw new Error('HUD inventory must return to the pause menu');
+      if (await pausePage.evaluate(() => document.pointerLockElement !== null)) throw new Error('HUD inventory should leave the pause-menu pointer free');
       await pausePage.close();
+      await page.bringToFront();
+    },
+  },
+  {
+    name: 'HUD Inventory button works without pointer capture and with Tab, Enter and Space',
+    run: async (page) => {
+      const hudPage = await page.context().browser().newPage({ viewport: { width: 1280, height: 720 } });
+      await configureAuxiliaryPage(hudPage);
+      await hudPage.goto(new URL('/?seed=1&nosave=1', page.url()).href);
+      await hudPage.waitForFunction(() => window.__game?.ready === true, null, { timeout: 60_000 });
+      const button = hudPage.getByRole('button', { name: 'Inventory', exact: true });
+      const waitOpen = () => hudPage.waitForFunction(() => window.__game.state().inventoryOpen, null, { timeout: 5_000 });
+      const waitClosed = () => hudPage.waitForFunction(() => !window.__game.state().inventoryOpen, null, { timeout: 5_000 });
+      if (await hudPage.evaluate(() => document.pointerLockElement !== null)) throw new Error('test requires a free pointer');
+      await button.click(); // A real hit-test: must work above the start-menu overlay.
+      await waitOpen();
+      if (await hudPage.locator('.menu-overlay').isVisible()) throw new Error('inventory must hide the start menu');
+      await hudPage.waitForFunction(() => document.querySelector('.hud-inventory')?.disabled, null, { timeout: 5_000 });
+      await hudPage.keyboard.press('KeyE');
+      await waitClosed();
+      if ((await hudPage.locator('.menu-title').innerText()) !== 'Voxel Game') throw new Error('E must return to the originating start menu');
+
+      await button.focus();
+      await hudPage.keyboard.press('Tab');
+      await hudPage.keyboard.press('Shift+Tab');
+      if (!(await button.evaluate((el) => el === document.activeElement && el.matches(':focus-visible') && getComputedStyle(el).outlineStyle !== 'none')))
+        throw new Error('HUD Inventory button must be keyboard reachable with a visible focus ring');
+      await hudPage.screenshot({ path: 'screenshots/hud-inventory.png' });
+      await hudPage.keyboard.press('Enter');
+      await waitOpen();
+      await hudPage.keyboard.press('Escape');
+      await waitClosed();
+      await button.focus();
+      await hudPage.keyboard.press('Space');
+      await waitOpen();
+      await hudPage.getByRole('button', { name: 'Close (E)', exact: true }).click();
+      await waitClosed();
+      if ((await hudPage.locator('.menu-title').innerText()) !== 'Voxel Game') throw new Error('Close must restore the start menu');
+      if (await hudPage.evaluate(() => document.pointerLockElement !== null || window.__game.state().playing))
+        throw new Error('inventory access from a menu must not capture the pointer or start play');
+      await hudPage.close();
       await page.bringToFront();
     },
   },

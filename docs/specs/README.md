@@ -48,7 +48,7 @@ Status is checked against the code on 2026-10-17. "Open" means the spec's goal i
 | [25-sandbox-physics.md](25-sandbox-physics.md) | Sandbox physics (program) | Done, slices 1–6 | Tick core, rule fields, falling sand and gravel, flowing water, structural collapse, loose bodies. Pending falls are found by a scan on load, not saved; lava is not in the game |
 | [26-ores.md](26-ores.md) | Ores (geology slice 3) | Done | |
 | [28-mesh-performance.md](28-mesh-performance.md) | Mesh performance, 3 ms target | Open | 4.1 ms measured alone. No test-case section |
-| [29-calendar-and-seasons.md](29-calendar-and-seasons.md) | Calendar and seasons | Done | Written after the code |
+| [29-calendar-and-seasons.md](29-calendar-and-seasons.md) | Calendar and seasons | Done | Game-loop advancement wired and regression-tested 2026-10-18 (T-F9); same ready/menu rules as the day clock |
 | [30-feature-system.md](30-feature-system.md) | Feature system | Done | Written after the code |
 | [31-climate-block-resolution.md](31-climate-block-resolution.md) | Climate model at block resolution | Done | |
 | [42-entity-system.md](42-entity-system.md) | Entity system (phase 6, slice 1) | Partial | Pure module, not used by the game. Renumbered from 31 |
@@ -59,7 +59,7 @@ Status is checked against the code on 2026-10-17. "Open" means the spec's goal i
 | [34-weather-model.md](34-weather-model.md) | Weather model and rendering | Partial | Particles and lightning are in, and the F3 overlay shows the season, weather, biome, temperature and rain. Wet darkening and morning fog are still missing. |
 | [35-biome-integration.md](35-biome-integration.md) | Biome integration into the generator | Partial | Surface, soil and trees follow the biome. Border blending is wired: surface blocks dither within 3 blocks of a border. Open: tints do not blend per vertex, and biomes are still picked per 16x16 chunk column |
 | [36-ecology-grass-spreading.md](36-ecology-grass-spreading.md) | Grass spreading | Done | |
-| [37-tree-species.md](37-tree-species.md) | Tree species | Partial | Sizes decided 2026-10-17: oak is 27-40 blocks (8.1-12.0 m), every species sits inside 8-12 m. Pine (snowy taiga) and dead snag (tundra) are wired to biomes, and every species is reachable (task T-E12). Five additional species are mixed into their host biomes. Open: willow, mangrove and saguaro; visual silhouette review |
+| [37-tree-species.md](37-tree-species.md) | Tree species | Partial | Sizes decided 2026-10-17: oak is 27-40 blocks (8.1-12.0 m), every species sits inside 8-12 m. Pine (snowy taiga) and dead snag (tundra) are wired to biomes, and every species is reachable (task T-E12). Five additional species are mixed into their host biomes. Dead snags now respect zero-radius foliage (T-E15). Open: willow, mangrove and saguaro; visual silhouette review |
 | [38-random-ticks.md](38-random-ticks.md) | Random ticks | Done | |
 | [39-biome-integration-fix.md](39-biome-integration-fix.md) | Biome integration fix | Done | Review of spec 35 |
 | [40-leaf-decay.md](40-leaf-decay.md) | Leaf decay | Done | |

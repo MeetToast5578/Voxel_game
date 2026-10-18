@@ -19,6 +19,7 @@ interface HudState {
   nameVisible: boolean;
   tool: ToolRow[];
   hints: boolean;
+  inventoryAvailable: boolean;
 }
 
 /** Every setting of the volume tools, always shown, so the screen says what is selected (single block mode included). */
@@ -39,9 +40,12 @@ function ToolPanel({ rows }: { rows: ToolRow[] }) {
   );
 }
 
-function HudView({ state, atlas }: { state: HudState; atlas: HTMLCanvasElement }) {
+function HudView({ state, atlas, onInventory }: { state: HudState; atlas: HTMLCanvasElement; onInventory: () => void }) {
   return (
     <>
+      <button type="button" class="hud-inventory" aria-keyshortcuts="E" disabled={!state.inventoryAvailable} onClick={onInventory}>
+        Inventory <kbd aria-hidden="true">E</kbd>
+      </button>
       <div class="crosshair" />
       <div class={`block-name${state.nameVisible ? ' visible' : ''}`}>{state.name}</div>
       <ToolPanel rows={state.tool} />
@@ -79,7 +83,7 @@ export class Hud {
   private nameTimer = 0;
   private hintTimer = HINT_SECONDS;
 
-  constructor(parent: HTMLElement, private readonly atlas: HTMLCanvasElement) {
+  constructor(parent: HTMLElement, private readonly atlas: HTMLCanvasElement, private readonly onInventory: () => void) {
     this.root = document.createElement('div');
     this.root.className = 'hud';
     parent.append(this.root);
@@ -90,16 +94,21 @@ export class Hud {
       nameVisible: false,
       tool: [],
       hints: true,
+      inventoryAvailable: false,
     };
     this.draw();
   }
 
   /** Call once per frame. `playing` is true while the game receives input (the hints count down only then). */
-  update(stacks: readonly (ItemStack | null)[], selected: number, frameDt: number, playing: boolean): void {
+  update(stacks: readonly (ItemStack | null)[], selected: number, frameDt: number, playing: boolean, inventoryAvailable: boolean): void {
     const slots = stacks.slice(0, HOTBAR_SIZE);
     const key = slots.map((s) => (s ? `${s.state}:${s.count}` : '-')).join(',');
     let next = this.state;
     let dirty = false;
+    if (inventoryAvailable !== next.inventoryAvailable) {
+      next = { ...next, inventoryAvailable };
+      dirty = true;
+    }
     if (key !== this.slotsKey) {
       this.slotsKey = key;
       next = { ...next, slots: slots.map((s) => (s ? { ...s } : null)) };
@@ -144,6 +153,6 @@ export class Hud {
   }
 
   private draw(): void {
-    render(<HudView state={this.state} atlas={this.atlas} />, this.root);
+    render(<HudView state={this.state} atlas={this.atlas} onInventory={this.onInventory} />, this.root);
   }
 }

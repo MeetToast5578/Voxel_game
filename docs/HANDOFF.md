@@ -1,6 +1,6 @@
 # Handoff: Voxel Game (MeetToast5578/Voxel_game)
 
-Last updated 2026-10-17, verified against the code on `main` (`adf5aba`, eleven commits after `0322d20`). Every status below was checked in the code, the tests or the smoke run, not only taken from commit messages.
+Baseline audited 2026-10-17 against `main` (`adf5aba`, eleven commits after `0322d20`); follow-up verification updated 2026-10-18 on the working branch. Baseline status below is supplemented by the dated task-batch results, checked in code, tests and smoke rather than only commit messages.
 
 ## Where things stand
 
@@ -40,7 +40,9 @@ Status key: **done** = in code and tested; **partial** = some of the item is in 
   - not started: tools, crafting, food, beds, healing
 - **Phase 8 (performance):** not started as a phase. Mesh time is 4.1 ms per surface chunk when run alone (target 3 ms; spec 28 is open).
 
-**Latest task-batch verification (2026-10-18):** `npm run check` passes locally: typecheck, **476 tests in 57 files**, production build. The inventory smoke failure was isolated to ~20 s GPU readback while creating an uncached icon; CPU-backed atlas/icon canvases reduce the same call to ~3 ms. After fixing later screenshot/mining/water timing races, **both CI jobs pass at `615c101`** ([run 39075601314](https://github.com/MeetToast5578/Voxel_game/actions/runs/39075601314)): `check` 55 s and full `smoke` 6m30s. The full local smoke also passed on Chromium 153 (4,012 loaded chunks, 339 draw calls, 7 fps on SwiftShader). T-A2a is closed; this does not substitute for the owner-only playtests. Stars now rotate (T-F2), and shrubland/steppe now generate their named bushes (T-E14). T-E11 is still partial: 13 of 16 tree species, with willow, mangrove, saguaro and silhouette review remaining.
+**Current follow-up batch (2026-10-18):** calendar advancement is wired into the fixed simulation update (T-F9), dead snags are leafless (T-E15), and the planned HUD Inventory button works through the shared toggle (T-K3). Start/pause menu inventory closes back to its originating menu; only inventory opened from play requests capture on close. Code review checked clock readiness/pause/save behaviour, deterministic connected tree bounds, and HUD/menu/inventory stacking. `npm run check` passes: typecheck, **487 tests in 58 files**, build. Full local browser smoke **passes all 25 checks** on Chromium 153, including pointer-free HUD access, pause-overlay clicks, visible keyboard focus and native Tab/Enter/Space activation. Final measurement: 3,967 loaded chunks, 340 draw calls, 6 fps on SwiftShader (not owner hardware). T-F9 and T-E15 are closed. T-K3 remains partial until the owner's physical-browser check; biome plants, wet-surface rendering and slabs are not part of this batch.
+
+**Previous task-batch verification (2026-10-18):** `npm run check` passes locally: typecheck, **476 tests in 57 files**, production build. The inventory smoke failure was isolated to ~20 s GPU readback while creating an uncached icon; CPU-backed atlas/icon canvases reduce the same call to ~3 ms. After fixing later screenshot/mining/water timing races, **both CI jobs pass at `615c101`** ([run 39075601314](https://github.com/MeetToast5578/Voxel_game/actions/runs/39075601314)): `check` 55 s and full `smoke` 6m30s. The full local smoke also passed on Chromium 153 (4,012 loaded chunks, 339 draw calls, 7 fps on SwiftShader). T-A2a is closed; this does not substitute for the owner-only playtests. Stars now rotate (T-F2), and shrubland/steppe now generate their named bushes (T-E14). T-E11 is still partial: 13 of 16 tree species, with willow, mangrove, saguaro and silhouette review remaining.
 
 **Verification on 2026-10-17 (after the physics and tool pass):** `npm run check` passes: typecheck, **464 tests in 55 files**, and the build. The CI `check` job is green on `ubuntu-latest`. The CI `smoke` job, however, **fails** — see the "Known gaps" list. `npm run smoke` passes its checks in headless Chromium at about 8 fps (SwiftShader, so this number is not the owner's). The smoke test has an intermittent failure at the pick-block check: the player is standing above a cell that reads as air, and it is not yet explained. It also failed in the original code in one run.
 
@@ -89,7 +91,7 @@ TypeScript 5.9.3, Vite 7.3.6, Vitest 4.0.18, three 0.186.0, simplex-noise 4.0.3,
 ## Commands
 
 - `npm run dev`: opens http://localhost:5173; click Play.
-- `npm run check`: typecheck, the unit tests (476 in 57 files; latest task-batch verification), then the build.
+- `npm run check`: typecheck, the unit tests (487 in 58 files; current follow-up verification), then the build.
 - `npm run smoke`:
   - Builds, then opens `/?seed=1&autostart=1&nosave=1` in headless Chromium (SwiftShader WebGL).
   - Runs 24 checks through `window.__game` and writes `screenshots/*.png`.

@@ -38,7 +38,7 @@ import { DebugOverlay } from './ui/debugOverlay';
 import { formatDebugLines } from './ui/debugText';
 import { Hud } from './ui/hud';
 import { InventoryScreen } from './ui/inventoryScreen';
-import { Menu } from './ui/menu';
+import { Menu, type MenuMode } from './ui/menu';
 import { BlockId, getBlockDef, isSolid, isWaterState } from './world/blocks';
 import { scheduleLeafDecay } from './world/ecology';
 import { scheduleFallChecks } from './world/falling';
@@ -119,8 +119,8 @@ export class Game {
   private spawnFeetY: number | null = null;
   private readonly highlight: BlockHighlight;
   private actionCooldown = 0;
-  /** True while the inventory is open from the pause menu (closing it goes back to the menu). */
-  private inventoryFromMenu = false;
+  /** The menu to return to when inventory was opened without capturing the pointer. */
+  private inventoryReturnMenu: MenuMode | null = null;
   /** Y where the current fall started (null when on ground). */
   private fallStartY: number | null = null;
   /** Was the player on the ground last frame? */
@@ -208,7 +208,7 @@ export class Game {
     this.weather = new WeatherModel(seed);
     this.weatherRenderer = new WeatherRenderer(this.renderer.scene);
     this.input = new Input(this.renderer.canvas);
-    this.hud = new Hud(container, this.renderer.atlasCanvas);
+    this.hud = new Hud(container, this.renderer.atlasCanvas, () => this.toggleInventory());
     this.debugOverlay = new DebugOverlay(container);
     this.inventoryScreen = new InventoryScreen(container, this.renderer.atlasCanvas, this.inventory, () => this.closeInventory());
     this.menu = new Menu(
@@ -275,6 +275,7 @@ export class Game {
   private fixedUpdate(dt: number): void {
     if (!this.ready) return;
     this.timeOfDay = (this.timeOfDay + dt / DAY_LENGTH_S) % 1;
+    this.calendar.advance(dt); // Both clocks follow simulation time, including the existing menu-time behaviour.
     this.player.update(dt, this.playing ? this.readControls() : NO_CONTROLS, this.isSolidAt, this.isWaterAt);
     this.items.step(dt, this.isSolidAt);
     // Block updates run at a fixed rate of game ticks, so a flow or a fall takes several ticks, as in Minecraft.
@@ -470,7 +471,7 @@ export class Game {
     this.held.update(frameDt, walking, this.breaking.target !== null);
     if (frameDt > 0) this.fps += (1 / frameDt - this.fps) * 0.05;
     this.renderer.render();
-    this.hud.update(this.inventory.slots, this.inventory.selected, frameDt, this.playing);
+    this.hud.update(this.inventory.slots, this.inventory.selected, frameDt, this.playing, this.ready && !this.inventoryScreen.isOpen);
     this.debugOverlay.update(frameDt, () => formatDebugLines(this.debugState()));
   }
 
@@ -827,27 +828,28 @@ export class Game {
     );
   }
 
-  /** E: opens the inventory from play or from the pause menu, or closes it (spec 24). */
+  /** E or the HUD button: toggle the same inventory screen (spec 24). */
   private toggleInventory(): void {
     if (this.inventoryScreen.isOpen) this.closeInventory();
     else this.openInventory();
   }
 
-  /** Frees the pointer and shows the inventory. From the pause menu, the menu is put away and closing returns to it. */
+  /** Frees the pointer and shows the inventory, remembering the originating menu when not playing. */
   private openInventory(): void {
-    this.inventoryFromMenu = !this.playing;
+    this.inventoryReturnMenu = this.playing ? null : this.menu.currentMode;
     this.menu.hide();
     this.inventoryScreen.show();
     this.input.releasePointerLock();
   }
 
-  /** Closes the inventory. Back to the pause menu when it was opened from there, otherwise back to play. */
+  /** Closes the inventory. Restore its originating menu, or request pointer capture to return to play. */
   private closeInventory(): void {
     const leftover = this.inventoryScreen.hide();
     if (leftover) this.dropStack(leftover);
-    if (this.inventoryFromMenu) {
-      this.inventoryFromMenu = false;
-      this.menu.show('paused');
+    if (this.inventoryReturnMenu !== null) {
+      const mode = this.inventoryReturnMenu;
+      this.inventoryReturnMenu = null;
+      this.menu.show(mode);
     } else {
       this.input.requestPointerLock();
     }

@@ -299,7 +299,7 @@ export interface TreeSpeciesDef {
   heightMaxBlocks: number;
   branchMinBlocks: number;
   branchMaxBlocks: number;
-  blobRadiusBlocks: number; // leaf cluster radius at branch ends
+  blobRadiusBlocks: number; // leaf cluster radius at branch ends; 0 disables all foliage, including the canopy
   crownBaseFraction: number; // fraction of height where bare trunk ends
   crownRadiusFactor: number; // crown radius as fraction of height
 }
