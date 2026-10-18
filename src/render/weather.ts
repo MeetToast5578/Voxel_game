@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { type WeatherSample } from '../world/weather';
-import { BLOCK_SIZE_M } from '../config';
+import { WEATHER_WETNESS_RESPONSE_PER_S } from '../config';
 
 /** Number of precipitation particles. */
 const PARTICLE_COUNT = 1500;
@@ -67,7 +67,7 @@ export class WeatherRenderer {
 
   /**
    * Update weather visuals. `wx, wz` is the camera position. `sample` is the current
-   * weather sample. `dt` is seconds since last update. `getColumnTop` returns the
+   * weather sample. Positions, cameraY and column tops are in blocks. `dt` is seconds since last update. `getColumnTop` returns the
    * highest sky-blocking block at a cell, used to cull particles under solid blocks
    * (no precipitation under a roof).
    */
@@ -77,11 +77,12 @@ export class WeatherRenderer {
     sample: WeatherSample,
     dt: number,
     getColumnTop: (x: number, z: number) => number | undefined,
+    cameraY = 0,
   ): void {
     // Wetness: lerp toward target based on precipitation type.
     const targetWetness =
-      sample.precipitation === 'rain' ? Math.min(1, sample.cloudCover * 0.8) : 0;
-    this.wetness += (targetWetness - this.wetness) * dt * 3;
+      sample.precipitation === 'rain' || sample.precipitation === 'sleet' ? Math.min(1, sample.cloudCover * 0.8) : 0;
+    this.wetness += (targetWetness - this.wetness) * (1 - Math.exp(-Math.max(0, dt) * WEATHER_WETNESS_RESPONSE_PER_S));
 
     // Lightning: random flashes during storms.
     if (sample.isStorm && this.lightningFlash <= 0) {
@@ -120,12 +121,12 @@ export class WeatherRenderer {
       const pwz = wz + this.particlePositions[i * 3 + 2];
 
       // Cull particle if there's a solid block above it (no rain under a roof).
-      const top = getColumnTop(Math.floor(pwx / BLOCK_SIZE_M), Math.floor(pwz / BLOCK_SIZE_M));
-      const py = this.particlePositions[i * 3 + 1];
-      if (top !== undefined && py > top * BLOCK_SIZE_M) {
-        // Particle is above a solid block — reset it high above the camera.
+      const top = getColumnTop(Math.floor(pwx), Math.floor(pwz));
+      const py = cameraY + this.particlePositions[i * 3 + 1];
+      if (top !== undefined && py <= top + 1) {
+        // A drop below the roof is sheltered. Recycle it above both camera and roof.
         this.resetParticle(i);
-        this.particlePositions[i * 3 + 1] = 60;
+        this.particlePositions[i * 3 + 1] = Math.max(60, top + 2 - cameraY);
         continue;
       }
 
@@ -136,7 +137,7 @@ export class WeatherRenderer {
     }
 
     this.particles.geometry.attributes.position.needsUpdate = true;
-    this.particles.position.set(wx, 0, wz);
+    this.particles.position.set(wx, cameraY, wz);
   }
 
   /** Lightning flash intensity (0..1) for this frame. */

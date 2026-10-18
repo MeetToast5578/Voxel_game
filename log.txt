@@ -368,3 +368,47 @@ T-E11 review and final batch result:
 - Follow-on rendering review reproduced four failing regressions (in separate,
   not-yet-committed tests): sun/daylight clock mismatch, precipitation altitude,
   roof/coordinate errors and wetness overshoot. These are the next repair batch.
+
+2026-10-18 — Rendering correctness and phase-4 features (in progress)
+- Tree batch bef031a pushed successfully to origin/main after review and passing
+  full check + smoke. Owner-only acceptance tasks remain open.
+- Reproduced four rendering regressions before fixes: sun was at the wrong clock
+  phase, precipitation ignored camera altitude and used wrong block/metre units,
+  roof culling was reversed, and wetness overshot 1 on a long frame.
+- Fixed those failures and the weather model's seasonal phase. Replaced two
+  vacuous weather tests with a grid that must actually observe rain/snow.
+- Fixed sky clipping when view distance updates reduce the far plane; restored
+  day/night fog colour, removed non-rotating screen-space pseudo-stars, and made
+  the sky shader independent of camera distance from the world origin.
+- Added lunar phases from the saved year clock, exposed wet-top darkening, and
+  cached humidity/dawn valley fog which fades above the valley walls.
+- Review caught missing normals on chunk meshes: replaced normal-attribute wet
+  exposure with shader derivatives. GPU regression geometry now omits normals.
+- GPU checks passed: dry/wet exposed pixels 255 -> 178; sheltered 128 -> 128;
+  day/night sky means 154.53 -> 4.21; translated sky mean unchanged; new/quarter/
+  full/last-quarter lit pixel counts 0 / 2614 / 5228 / 2614. Cold Vite cache passes.
+- First full rendering smoke failed in the HUD Inventory accessibility case at
+  a 5-second state wait, after all preceding checks passed. Not accepted as a
+  passing batch. Added phase/focus/visibility diagnostics without weakening
+  assertions or increasing timeouts. Final full-code smoke and diagnosis pending.
+Rendering batch final validation and review:
+- npm run check: PASS, 527 tests / 62 files, typecheck and production build.
+- Full final-code gameplay smoke: PASS, all 25 checks; 3967 loaded / 2048 meshed
+  chunks, 340 draw calls, 4 FPS on SwiftShader. No physical hardware claim.
+- Focused HUD accessibility retest: interaction check PASS with phase/focus/
+  visibility diagnostics and auxiliary-page error collection. First full failure
+  overlapped other CPU/GPU validation; subsequent full run was isolated. The
+  intermittent failure is retained in this log; no timeout or assertion weakened.
+- GPU script passes with both warm and cold Vite caches. Inspected the resulting
+  screenshots/render-regressions.png: dry/wet tops, day/night sky, lunar discs.
+- Initial GPU harness run hit only a missing favicon after pixel assertions had
+  succeeded. The isolated fixture now serves an empty favicon; application errors
+  are still collected. A Vite virtual module avoids duplicate Three.js instances
+  and assumptions about optimizer cache paths.
+- Added render-smoke.mjs to CI before full gameplay smoke; dependencies unchanged.
+- Reviewed weather units, altitude/roof conditions, bounded wetness, shader cache
+  separation, missing-normal geometry, lunar time jumps, fog altitude/cache and
+  underwater priority. Preserved mesh output and save format.
+- T-F1, T-F3, T-F4 and discovered repairs T-F10..T-F13 checked DONE in tasks.md.
+  T-F14 tracks unconnected lightning intensity/delayed thunder; not claimed done.
+- Updated README, handoff and spec index. git diff --check clean.

@@ -2,6 +2,14 @@
 
 Baseline audited 2026-10-17 against `main` (`adf5aba`, eleven commits after `0322d20`); follow-up verification updated 2026-10-18 on the working branch. Baseline status below is supplemented by the dated task-batch results, checked in code, tests and smoke rather than only commit messages.
 
+## Latest autonomous batch (2026-10-18)
+
+Tree implementation committed and pushed to `main` as `bef031a`: all 16 species, habitat wiring, cactus blocks, conifer/palm/umbrella/wetland silhouettes, 515 passing tests and all 25 gameplay smoke checks. T-E11a and existing inventory-backed hotbar T-I10 are done. T-E11 remains partial for owner visual review.
+
+The follow-on rendering batch fixes sun/daylight alignment, clipped and position-dependent sky, precipitation altitude/units/roof culling, seasonal weather timing, and wetness overshoot. Moon phases (T-F1), wet tops (T-F3), humidity/dawn valley fog (T-F4) and their regression checks are implemented. `npm run check`: 527 tests / 62 files, typecheck and build PASS. Full gameplay smoke PASS; GPU regression script PASS with a cold Vite cache. An earlier concurrent-validation run failed at a HUD inventory state wait; diagnostics and auxiliary-page error collection were strengthened, with focused retest tracked in `log.txt`. Physical-browser acceptance remains open. Lightning flash/thunder wiring is still missing (T-F14).
+
+The older phase summary below contains historical details; use `docs/tasks.md` and `log.txt` for the latest per-task evidence.
+
 ## Where things stand
 
 Status key: **done** = in code and tested; **partial** = some of the item is in code; **not started** = no code.

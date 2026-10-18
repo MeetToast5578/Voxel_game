@@ -54,12 +54,12 @@ Status is checked against the code on 2026-10-17. "Open" means the spec's goal i
 | [42-entity-system.md](42-entity-system.md) | Entity system (phase 6, slice 1) | Partial | Pure module, not used by the game. Renumbered from 31 |
 | [32-biome-table.md](32-biome-table.md) | Biome table (Whittaker diagram) | Done | |
 | [43-weather-model.md](43-weather-model.md) | Weather model | Done | Renumbered from 32 |
-| [33-sky-rendering.md](33-sky-rendering.md) | Sky rendering | Partial | Sun, moon and rotating stars are in (T-F2). Moon phases remain missing |
+| [33-sky-rendering.md](33-sky-rendering.md) | Sky rendering | Done | Sun/daylight clocks aligned, lunar phases and rotating stars rendered; GPU regressions pass |
 | [44-survival-health.md](44-survival-health.md) | Survival mode and health | Partial | Modes, health, fall damage, drowning and respawn are done. Hunger is inert; no UI to pick the mode. Renumbered from 34 |
-| [34-weather-model.md](34-weather-model.md) | Weather model and rendering | Partial | Particles and lightning are in, and the F3 overlay shows the season, weather, biome, temperature and rain. Wet darkening and morning fog are still missing. |
+| [34-weather-model.md](34-weather-model.md) | Weather model and rendering | Partial | Particles and lightning are in, and the F3 overlay shows the season, weather, biome, temperature and rain. Wet darkening and humidity/dawn valley fog are implemented and GPU/integration-tested. Lightning flash/thunder wiring remains open (T-F14). |
 | [35-biome-integration.md](35-biome-integration.md) | Biome integration into the generator | Partial | Surface, soil and trees follow the biome. Border blending is wired: surface blocks dither within 3 blocks of a border. Open: tints do not blend per vertex, and biomes are still picked per 16x16 chunk column |
 | [36-ecology-grass-spreading.md](36-ecology-grass-spreading.md) | Grass spreading | Done | |
-| [37-tree-species.md](37-tree-species.md) | Tree species | Partial | Sizes decided 2026-10-17: oak is 27-40 blocks (8.1-12.0 m), every species sits inside 8-12 m. Pine (snowy taiga) and dead snag (tundra) are wired to biomes, and every species is reachable (task T-E12). Five additional species are mixed into their host biomes. Dead snags now respect zero-radius foliage (T-E15). Open: willow, mangrove and saguaro; visual silhouette review |
+| [37-tree-species.md](37-tree-species.md) | Tree species | Partial | Sizes decided 2026-10-17: oak is 27-40 blocks (8.1-12.0 m), every species sits inside 8-12 m. Pine (snowy taiga) and dead snag (tundra) are wired to biomes, and every species is reachable (task T-E12). Five additional species are mixed into their host biomes. Dead snags now respect zero-radius foliage (T-E15). All 16 species implemented, with habitat and silhouette regressions; owner visual review remains open |
 | [38-random-ticks.md](38-random-ticks.md) | Random ticks | Done | |
 | [39-biome-integration-fix.md](39-biome-integration-fix.md) | Biome integration fix | Done | Review of spec 35 |
 | [40-leaf-decay.md](40-leaf-decay.md) | Leaf decay | Done | |

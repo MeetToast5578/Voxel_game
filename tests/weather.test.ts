@@ -72,21 +72,16 @@ describe('WeatherModel pressure drift', () => {
 });
 
 describe('WeatherModel precipitation type by temperature', () => {
-  it('snow at freezing temperatures', () => {
+  it.each([[0.25, 'rain'], [0.75, 'snow']] as const)('actually precipitates as %s in season %s', (year, expected) => {
     const model = new WeatherModel(42);
-    const w = model.sample(0, 0, 0.5, 0.5, 0); // winter (timeOfYear=0.5), sea level → cold
-    if (w.precipitation !== 'none') {
-      expect(w.precipitation).toBe('snow');
+    let precipitation = 0;
+    for (let z = -8000; z <= 8000; z += 1000) for (let x = -8000; x <= 8000; x += 1000) {
+      const w = model.sample(x,z,0.25,year,0);
+      if (w.precipitation === 'none') continue;
+      precipitation++;
+      expect(w.precipitation).toBe(expected);
     }
-  });
-
-  it('rain at warm temperatures', () => {
-    const model = new WeatherModel(42);
-    // Peak warmth at timeOfYear=0.5: seasonalTemp = 10 * sin(2π * 0.25) = 10°C
-    const w = model.sample(0, 0, 0.5, 0.5, 0);
-    if (w.precipitation !== 'none') {
-      expect(w.precipitation).toBe('rain');
-    }
+    expect(precipitation).toBeGreaterThan(0); // A dry sample must not make a temperature test pass vacuously.
   });
 });
 

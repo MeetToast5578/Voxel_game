@@ -21,6 +21,14 @@ async function configureAuxiliaryPage(page) {
 }
 
 
+/** Include auxiliary menus and persistence windows in the same error contract as the primary game. */
+function watchPage(page) {
+  page.on('console', (msg) => {
+    if (msg.type() === 'error') errors.push(`console.error (${page.url()}): ${msg.text()}`);
+  });
+  page.on('pageerror', (err) => errors.push(`page error (${page.url()}): ${err.message}`));
+}
+
 /** @type {{ name: string, run: (page: import('playwright').Page) => Promise<void> }[]} */
 const CHECKS = [
   {
@@ -106,6 +114,7 @@ const CHECKS = [
     name: 'start menu is shown without autostart',
     run: async (page) => {
       const menuPage = await page.context().browser().newPage({ viewport: { width: 1280, height: 720 } });
+      watchPage(menuPage);
       await configureAuxiliaryPage(menuPage);
       await menuPage.goto(new URL('/?seed=1&nosave=1', page.url()).href);
       await menuPage.waitForFunction(() => window.__game?.ready === true, null, { timeout: 60_000 });
@@ -127,6 +136,7 @@ const CHECKS = [
       // A fresh browser context has no world save. No ?seed / ?nosave, so saving is on.
       const context = await page.context().browser().newContext({ viewport: { width: 1280, height: 720 } });
       const p = await context.newPage();
+      watchPage(p);
       await configureAuxiliaryPage(p);
       const url = new URL('/?autostart=1', page.url()).href;
       await p.goto(url);
@@ -560,6 +570,7 @@ const CHECKS = [
     name: 'the pause menu opens the inventory from its button, and Escape goes back to the pause menu',
     run: async (page) => {
       const pausePage = await page.context().browser().newPage({ viewport: { width: 1280, height: 720 } });
+      watchPage(pausePage);
       await configureAuxiliaryPage(pausePage);
       await pausePage.goto(new URL('/?seed=1&nosave=1', page.url()).href);
       await pausePage.waitForFunction(() => window.__game?.ready === true, null, { timeout: 60_000 });
@@ -594,17 +605,34 @@ const CHECKS = [
     name: 'HUD Inventory button works without pointer capture and with Tab, Enter and Space',
     run: async (page) => {
       const hudPage = await page.context().browser().newPage({ viewport: { width: 1280, height: 720 } });
+      watchPage(hudPage);
       await configureAuxiliaryPage(hudPage);
       await hudPage.goto(new URL('/?seed=1&nosave=1', page.url()).href);
       await hudPage.waitForFunction(() => window.__game?.ready === true, null, { timeout: 60_000 });
       const button = hudPage.getByRole('button', { name: 'Inventory', exact: true });
-      const waitOpen = () => hudPage.waitForFunction(() => window.__game.state().inventoryOpen, null, { timeout: 5_000 });
-      const waitClosed = () => hudPage.waitForFunction(() => !window.__game.state().inventoryOpen, null, { timeout: 5_000 });
+      let phase = 'initial HUD click';
+      const waitState = async (open) => {
+        try {
+          await hudPage.waitForFunction((open) => window.__game.state().inventoryOpen === open, open, { timeout: 5_000 });
+        } catch (error) {
+          const snapshot = await hudPage.evaluate(() => ({
+            open: window.__game.state().inventoryOpen,
+            focused: document.activeElement?.outerHTML,
+            hasFocus: document.hasFocus(),
+            visibility: document.visibilityState,
+            buttonDisabled: document.querySelector('.hud-inventory')?.disabled,
+          }));
+          throw new Error(`HUD inventory ${phase}: expected open=${open}; ${JSON.stringify(snapshot)}; ${error}`);
+        }
+      };
+      const waitOpen = () => waitState(true);
+      const waitClosed = () => waitState(false);
       if (await hudPage.evaluate(() => document.pointerLockElement !== null)) throw new Error('test requires a free pointer');
       await button.click(); // A real hit-test: must work above the start-menu overlay.
       await waitOpen();
       if (await hudPage.locator('.menu-overlay').isVisible()) throw new Error('inventory must hide the start menu');
       await hudPage.waitForFunction(() => document.querySelector('.hud-inventory')?.disabled, null, { timeout: 5_000 });
+      phase = 'E returns to the start menu';
       await hudPage.keyboard.press('KeyE');
       await waitClosed();
       if ((await hudPage.locator('.menu-title').innerText()) !== 'Voxel Game') throw new Error('E must return to the originating start menu');
@@ -615,13 +643,17 @@ const CHECKS = [
       if (!(await button.evaluate((el) => el === document.activeElement && el.matches(':focus-visible') && getComputedStyle(el).outlineStyle !== 'none')))
         throw new Error('HUD Inventory button must be keyboard reachable with a visible focus ring');
       await hudPage.screenshot({ path: 'screenshots/hud-inventory.png' });
+      phase = 'Enter activation after the focus screenshot';
       await hudPage.keyboard.press('Enter');
       await waitOpen();
+      phase = 'Escape closes keyboard inventory';
       await hudPage.keyboard.press('Escape');
       await waitClosed();
       await button.focus();
+      phase = 'Space activation';
       await hudPage.keyboard.press('Space');
       await waitOpen();
+      phase = 'Close button returns to the start menu';
       await hudPage.getByRole('button', { name: 'Close (E)', exact: true }).click();
       await waitClosed();
       if ((await hudPage.locator('.menu-title').innerText()) !== 'Voxel Game') throw new Error('Close must restore the start menu');
@@ -653,10 +685,7 @@ try {
     args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'],
   });
   const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
-  page.on('console', (msg) => {
-    if (msg.type() === 'error') errors.push(`console.error: ${msg.text()}`);
-  });
-  page.on('pageerror', (err) => errors.push(`page error: ${err.message}`));
+  watchPage(page);
 
   const t0 = Date.now();
   await page.goto(`http://localhost:${PORT}${URL_PATH}`);

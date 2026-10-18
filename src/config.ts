@@ -506,6 +506,17 @@ export const MANGROVE_ROOT_REACH_BLOCKS = 4;
 export const SAGUARO_ARM_REACH_BLOCKS = 4;
 
 // ---- Weather (spec 43) ----
+export const WEATHER_WETNESS_RESPONSE_PER_S = 3;
+export const WEATHER_WET_DARKENING = 0.3;
+export const WEATHER_SEASONAL_AMPLITUDE_C = 10;
+export const MOON_CYCLES_PER_YEAR = 4;
+export const FOG_HUMIDITY_HAZE = 0.12;
+export const FOG_VALLEY_STRENGTH = 0.7;
+export const FOG_VALLEY_DEPTH_M = 12;
+export const FOG_GROUND_LAYER_M = 2;
+export const FOG_VALLEY_SAMPLE_M = 24;
+export const FOG_SAMPLE_INTERVAL_S = 2;
+
 export const WEATHER_PRESSURE_WAVELENGTH_M = 6000; // feature size of pressure noise
 export const WEATHER_WIND_SPEED_M_S = 3; // weather fronts drift eastward at this speed
 export const WEATHER_HUMIDITY_WAVELENGTH_M = 3000; // feature size of humidity noise

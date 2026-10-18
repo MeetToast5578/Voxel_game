@@ -2,6 +2,7 @@ import { createNoise2D, type NoiseFunction2D } from 'simplex-noise';
 import { mulberry32 } from '../core/random';
 import {
   DAYS_PER_SEASON,
+  WEATHER_SEASONAL_AMPLITUDE_C,
   DAY_LENGTH_S,
   WEATHER_PRESSURE_WAVELENGTH_M,
   WEATHER_WIND_SPEED_M_S,
@@ -24,6 +25,8 @@ export interface WeatherSample {
   precipitation: PrecipType;
   /** Cloud cover, 0..1. */
   cloudCover: number;
+  /** Local relative humidity, 0..1, for haze and morning fog. */
+  humidity: number;
   /** True when storm conditions are met. */
   isStorm: boolean;
   /** Pressure field value, -1..1. Lower = stormier. */
@@ -97,7 +100,7 @@ export class WeatherModel {
 
     // Temperature from season (sinusoidal, warmest at summer solstice = 0.25)
     // and altitude lapse rate.
-    const seasonalTempC = 10 * Math.sin(2 * Math.PI * (timeOfYear - 0.25));
+    const seasonalTempC = WEATHER_SEASONAL_AMPLITUDE_C * Math.sin(2 * Math.PI * timeOfYear);
     const temperatureC = seasonalTempC - altitudeM * LAPSE_RATE_C_PER_M;
 
     // Cloud cover increases with low pressure, humidity, and seasonal moisture.
@@ -127,6 +130,7 @@ export class WeatherModel {
     return {
       precipitation: precipType,
       cloudCover,
+      humidity,
       isStorm,
       pressure,
       windSpeed,

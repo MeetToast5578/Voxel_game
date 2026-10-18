@@ -1,4 +1,6 @@
+import { atmosphericFogStrength } from './world/atmosphere';
 import {
+  FOG_SAMPLE_INTERVAL_S, FOG_VALLEY_SAMPLE_M, FOG_GROUND_LAYER_M, metersToBlocks,
   AUTOSAVE_INTERVAL_S, BLOCK_SIZE_M, BREAK_REPEAT_S, DAY_LENGTH_S, DAYS_PER_SEASON, DEFAULT_MOUSE_SENSITIVITY, EYE_HEIGHT, FIXED_DT,
   FOOTSTEP_DISTANCE, FOOTSTEP_MIN_SPEED, GEN_BUDGET_MS, HOTBAR_SIZE, MAX_FRAME_DT, MESH_BUDGET_MS, REACH, SEA_LEVEL,
   SETTINGS_KEY, SPAWN_READY_RADIUS, START_TIME_OF_DAY, WORLD_LATITUDE_DEG, ITEM_SIZE, PLAYER_HEIGHT, WALK_SPEED,
@@ -50,7 +52,7 @@ import { ChunkManager } from './world/chunkManager';
 import { type EditCell, EditQueue } from './world/editQueue';
 import { TerrainGenerator } from './world/generator';
 import { findSpawnColumn, surfaceY } from './world/spawn';
-import { daylightAt } from './world/time';
+import { daylightAt, skyColorAt } from './world/time';
 import { WorkerPool } from './workers/workerPool';
 import { World } from './world/world';
 import { Calendar } from './world/calendar';
@@ -151,6 +153,9 @@ export class Game {
   /** Weather model and renderer (spec 34). */
   readonly weather: WeatherModel;
   readonly weatherRenderer: WeatherRenderer;
+  private fogSampleTimer = 0;
+  private fogValleyDepthM = 0;
+  private fogGroundM = 0;
   private stepDistance = 0;
   private readonly usingWorkers: boolean;
 
@@ -441,23 +446,7 @@ export class Game {
     const eye = this.player.eyePosition(alpha);
     this.renderer.setSurfaceDistance(this.chunks.surfaceDistance(eye.y));
     this.renderer.setCamera(eye.x, eye.y, eye.z, this.player.yaw, this.player.pitch);
-    this.renderer.setDaylight(daylightAt(this.timeOfDay));
-    this.sky.update(this.timeOfDay, this.calendar.timeOfYear, this.renderer.camera);
-    // Weather: sample at the player's position and update particles/lightning.
-    const weather = this.weather.sample(
-      eye.x,
-      eye.z,
-      this.timeOfDay,
-      this.calendar.timeOfYear,
-      eye.y * BLOCK_SIZE_M,
-    );
-    this.weatherRenderer.update(
-      eye.x,
-      eye.z,
-      weather,
-      frameDt,
-      (x, z) => this.world.topAt(x, z),
-    );
+    this.updateAtmosphere(eye, frameDt);
     this.clouds.update(eye.x, eye.z, frameDt, daylightAt(this.timeOfDay));
     this.renderer.setUnderwater(this.isWaterAt(Math.floor(eye.x), Math.floor(eye.y), Math.floor(eye.z)));
     const look = this.player.lookDirection();
@@ -473,6 +462,42 @@ export class Game {
     this.renderer.render();
     this.hud.update(this.inventory.slots, this.inventory.selected, frameDt, this.playing, this.ready && !this.inventoryScreen.isOpen);
     this.debugOverlay.update(frameDt, () => formatDebugLines(this.debugState()));
+  }
+
+  /** Keep atmospheric sampling and visual clocks together; positions here are in blocks. */
+  private updateAtmosphere(eye: { x: number; y: number; z: number }, frameDt: number): void {
+    this.renderer.setSkyColor(skyColorAt(this.timeOfDay));
+    this.renderer.setDaylight(daylightAt(this.timeOfDay));
+    this.sky.update(this.timeOfDay, this.calendar.timeOfYear, this.renderer.camera);
+    // Weather: sample at the player's position and update particles/lightning.
+    const weather = this.weather.sample(
+      eye.x * BLOCK_SIZE_M,
+      eye.z * BLOCK_SIZE_M,
+      this.timeOfDay,
+      this.calendar.timeOfYear,
+      eye.y * BLOCK_SIZE_M,
+    );
+    this.weatherRenderer.update(
+      eye.x,
+      eye.z,
+      weather,
+      frameDt,
+      (x, z) => this.world.topAt(x, z),
+      eye.y,
+    );
+    this.renderer.setWetness(this.weatherRenderer.wetness);
+    this.fogSampleTimer -= frameDt;
+    if (this.fogSampleTimer <= 0) {
+      this.fogSampleTimer = FOG_SAMPLE_INTERVAL_S;
+      const span = metersToBlocks(FOG_VALLEY_SAMPLE_M);
+      const local = this.generator.sampleColumn(eye.x, eye.z).offsetM;
+      this.fogGroundM = local;
+      const neighbours = [[span,0],[-span,0],[0,span],[0,-span]];
+      const surrounding = neighbours.reduce((sum, [dx,dz]) => sum + this.generator.sampleColumn(eye.x + dx!, eye.z + dz!).offsetM, 0) / neighbours.length;
+      this.fogValleyDepthM = Math.max(0, surrounding - local);
+    }
+    const aboveGround = Math.max(0, eye.y * BLOCK_SIZE_M - this.fogGroundM - FOG_GROUND_LAYER_M);
+    this.renderer.setAtmosphericFog(atmosphericFogStrength(this.timeOfDay, weather.humidity, Math.max(0, this.fogValleyDepthM - aboveGround)));
   }
 
   /** Where chunks are loaded around before the player is placed: the spawn point (or its column top). */
@@ -892,7 +917,7 @@ export class Game {
     const c = this.world.isLoadedAt(Math.floor(p.position.x), Math.floor(p.position.y), Math.floor(p.position.z))
       ? this.generator.climateAt(Math.floor(p.position.x), Math.floor(p.position.y), Math.floor(p.position.z))
       : null;
-    const w = this.weather.sample(p.position.x, p.position.z, this.timeOfDay, this.calendar.timeOfYear, p.position.y * BLOCK_SIZE_M);
+    const w = this.weather.sample(p.position.x * BLOCK_SIZE_M, p.position.z * BLOCK_SIZE_M, this.timeOfDay, this.calendar.timeOfYear, p.position.y * BLOCK_SIZE_M);
     return {
       biome: c?.biome ?? 'unknown',
       temperatureC: c ? Math.round(c.temperatureC * 10) / 10 : 0,

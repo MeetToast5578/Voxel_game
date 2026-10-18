@@ -2,6 +2,8 @@ import * as THREE from 'three';
 import { WORLD_LATITUDE_DEG } from '../config';
 import { type SkyUniforms, skyFragmentShader, skyVertexShader } from './skyMaterial';
 import { AXIAL_TILT_DEG } from '../world/calendar';
+import { moonPhaseAt } from '../world/moon';
+import { smoothstep } from '../world/time';
 
 /** Radius of the sky dome, in blocks. Large enough to always be behind the fog. */
 const SKY_RADIUS = 1000;
@@ -66,8 +68,25 @@ export class Sky {
     scene.add(this.sun);
 
     // Moon: billboard quad facing the camera.
-    const moonMaterial = new THREE.MeshBasicMaterial({
-      color: 0xddddee,
+    const moonMaterial = new THREE.ShaderMaterial({
+      uniforms: { uPhase: { value: 0 } },
+      vertexShader: `varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
+      fragmentShader: `
+        uniform float uPhase;
+        varying vec2 vUv;
+        void main() {
+          vec2 p = vUv * 2.0 - 1.0;
+          float radius2 = dot(p, p);
+          if (radius2 > 1.0) discard;
+          vec3 normal = vec3(p, sqrt(max(0.0, 1.0 - radius2)));
+          float angle = uPhase * 6.28318530718;
+          float lit = dot(normal, vec3(sin(angle), 0.0, -cos(angle)));
+          if (lit <= 0.0) discard;
+          gl_FragColor = vec4(vec3(0.86, 0.86, 0.94) * (0.7 + 0.3 * lit), 1.0);
+          #include <tonemapping_fragment>
+          #include <colorspace_fragment>
+        }
+      `,
       transparent: true,
       depthWrite: false,
     });
@@ -113,7 +132,7 @@ export class Sky {
     const latitudeRad = (WORLD_LATITUDE_DEG * Math.PI) / 180;
 
     // Hour angle: noon is 0, sunrise/sunset at ±~PI/2 (simplified).
-    const hourAngle = (timeOfDay - 0.5) * 2 * Math.PI;
+    const hourAngle = (timeOfDay - 0.25) * 2 * Math.PI;
 
     // Sun altitude: simplified model.
     const sunAltitudeRad = Math.asin(
@@ -138,13 +157,14 @@ export class Sky {
     this.sun.position.copy(camera.position).add(this.uniforms.uSunPos.value);
     this.sun.lookAt(camera.position); // billboard: always face camera
 
-    // Moon: opposite the sun, visible at night.
+    // Stylised night-time orbit; the phase is derived from the saved year clock.
+    (this.moon.material as THREE.ShaderMaterial).uniforms.uPhase.value = moonPhaseAt(season);
     this.uniforms.uMoonPos.value.set(-sunX, -sunY, -sunZ);
     this.moon.position.copy(camera.position).add(this.uniforms.uMoonPos.value);
     this.moon.lookAt(camera.position);
 
     // Star intensity: 0 at day, 1 at night.
-    const nightFactor = Math.max(0, Math.cos(sunAltitude + 0.3));
+    const nightFactor = 1 - smoothstep(-0.12, 0.08, Math.sin(sunAltitude));
     this.uniforms.uStarIntensity.value = nightFactor * nightFactor;
     (this.stars.material as THREE.PointsMaterial).opacity = this.uniforms.uStarIntensity.value;
 

@@ -8,7 +8,8 @@ A Minecraft-like voxel sandbox that runs in the browser, built with TypeScript, 
 - Break and place 35 block types, gravel included. Water flows: the source block spreads, and it levels out.
 - Physics: sand and gravel fall, water flows and levels out (flowing water is shown at its level), and a big enough collapse makes the broken blocks tumble, float or sink by their density, and settle back into blocks Breaking takes time and shows cracks; the block drops as an item that you pick up by walking over it
 - 36-slot inventory (E) with a 9-slot hotbar and stacks of 64; the selected block is shown in your hand
-- Day/night cycle, sky and block lighting (glowstone), clouds, simple sound effects
+- Day/night cycle with lunar phases, sky and block lighting (glowstone), clouds, simple sound effects
+- Rain and sleet darken exposed block tops; humid valleys gain fog around sunrise
 - Start/pause menu with render distance, field of view and mouse sensitivity
 - Automatic saving in the browser (IndexedDB), including the inventory, items on the ground and time of day
 - Saves from older versions, including the 0.6 m blocks, are not loaded.
@@ -78,7 +79,8 @@ The pause menu has a **New world** button that deletes the save and generates a 
 ## Development
 
     npm run check      # typecheck + unit tests + production build
-    npm run smoke      # headless Chromium test; writes screenshots to screenshots/
+    npm run smoke      # headless Chromium gameplay test; writes screenshots to screenshots/
+    node scripts/render-smoke.mjs # GPU regressions for wet surfaces, sky and moon phases
 
 `npm run smoke` needs a Chromium for Playwright; run `npx playwright install chromium` once if it is missing.
 

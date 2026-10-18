@@ -133,15 +133,27 @@ Newly found while auditing:
 
 ## F. Phase 4 — Sky, seasons and weather
 
-- [ ] **T-F1 — Moon phases.** Spec 33 is partial without them.
+- [x] **T-F1 — Moon phases.** Four cycles per saved game year; shader renders new, waxing, full and waning discs. Pure clock tests and actual GPU lit-pixel checks pass. New moons are dark; the orbit remains a stylised opposite-sun night orbit.
 - [x] **T-F2 — Stars that rotate.** Closed 2026-10-18: `Sky.update` sets an absolute quaternion from time of day around the celestial pole at the configured latitude. It does not accumulate frame deltas or rewrite star geometry. Node tests check a quarter-day turn, a full-day wrap, pole invariance, repeatable time jumps and camera recentering. Spec 33 remains partial for moon phases.
-- [ ] **T-F3 — Wet-surface darkening.** `weather.ts` computes `wetness` (`src/render/weather.ts:32-84`) and nothing outside that file reads it. Spec 43/34 is partial without it.
-- [ ] **T-F4 — Morning valley fog and humidity haze.** Only the static distance fog exists.
+- [x] **T-F3 — Wet-surface darkening.** Rain/sleet wetness now reaches the block material; directly exposed upward faces darken and dry again. Sheltered faces, water and items retain their colour. GPU test uses geometry without normals, matching real chunk meshes: exposed 255→178, sheltered 128→128.
+- [x] **T-F4 — Morning valley fog and humidity haze.** Humidity reduces visibility; terrain depression adds dawn fog, fading above the valley walls. Neighbouring terrain samples are cached for two seconds. Unit/integration tests cover dawn, dry air, ridges, altitude, caching and underwater fog priority.
 - [ ] **T-F5 — Wind.** Foliage sway in the vertex shader, slanted particles, drifting clouds. Item 4.
 - [x] **T-F6 — F3 weather lines.** Closed in `656c247` with T-B4.
 - [ ] **T-F7 — Seasonal visuals.** Item 5. Foliage colours shift through the year; deciduous leaves render bare in winter through the shader with no block changes; grass browns in a dry summer.
 - [ ] **T-F8 — Smooth lighting.** Item 6, deferred since phase 1. Per-vertex light averaging in the mesher, done together with AO.
 - [x] **T-F9 — Advance the calendar in the game loop.** Discovered 2026-10-18: the calendar's unit-tested `advance` had no game caller, so seasons never progressed. `Game.fixedUpdate` now advances it with the same simulation delta as the day clock, after the ready guard. Nine game-lifecycle tests include four calendar cases: exact delta, loading guard, restored-year season boundary/year wrap, and the existing menu-time behaviour. Reviewed and verified: `npm run check` passes (487 tests/58 files, typecheck, build); all 25 full browser smoke checks pass. No change to save format or pause semantics.
+
+---
+
+Resolved correctness defects discovered during the autonomous rendering review:
+
+- [x] **T-F10 — Align sun, stars and daylight clocks.** Noon is 0.25, midnight 0.75; sun placement, star visibility and fog colour now agree. Removed fixed screen-space pseudo-stars.
+- [x] **T-F11 — Fix precipitation altitude, coordinate units and roof culling.** Weather samples use metres; particles/column tops use blocks and camera altitude. Sheltered drops recycle above the roof. Wetness remains bounded through long frames.
+- [x] **T-F12 — Align weather temperature with calendar seasons.** Summer peaks at year 0.25, winter at 0.75. Tests must actually observe precipitation, replacing conditional checks that could pass on dry samples.
+- [x] **T-F13 — Keep the sky visible and stable away from the origin.** Camera far plane retains the sky range; shader directions are camera-relative. GPU test verifies position invariance and day/night contrast.
+- [ ] **T-F14 — Connect lightning flashes and delayed thunder.** Renderer computes flash intensity, but the game does not consume it; delayed thunder is also absent. Existing particle/lightning status descriptions overstated completion.
+
+Rendering batch validation: `npm run check` PASS (527 tests / 62 files, typecheck and build), GPU regression script PASS including cold Vite cache, full gameplay smoke PASS (25 checks). An earlier full run under concurrent validation failed at a HUD inventory 5-second wait; unchanged application interactions passed the subsequent full run. Phase/focus/visibility diagnostics and auxiliary-page error collection were added. See `log.txt` for failure and retest evidence.
 
 ---
 

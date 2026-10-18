@@ -46,8 +46,8 @@ export const skyFragmentShader = `
     vec3 color = mix(horizon, zenith, t);
 
     // Add sun glow near the sun direction.
-    vec3 viewDir = normalize(vWorldPosition);
-    vec3 sunDir = normalize(uSunPos - vWorldPosition);
+    vec3 viewDir = normalize(vNormal);
+    vec3 sunDir = normalize(uSunPos);
     float sunAngle = dot(viewDir, sunDir);
     float glow = pow(max(sunAngle, 0.0), 64.0);
     color += glow * 0.5 * vec3(1.0, 0.8, 0.6);
@@ -62,7 +62,7 @@ export const skyFragmentShader = `
     color = mix(color, dayHorizon, dayFactor * 0.3);
 
     // Night: darken everything.
-    float nightFactor = smoothstep(0.2, -0.2, sunHeight);
+    float nightFactor = (1.0 - smoothstep(-0.2, 0.2, sunHeight));
     color *= mix(1.0, 0.05, nightFactor);
 
     return color;
@@ -70,21 +70,13 @@ export const skyFragmentShader = `
 
   void main() {
     // Sun height: positive = above horizon.
-    float sunHeight = dot(normalize(uSunPos - vWorldPosition), vec3(0.0, 1.0, 0.0));
+    float sunHeight = normalize(uSunPos).y;
     vec3 zenith = vec3(0.1, 0.2, 0.5);
     vec3 horizon = vec3(0.4, 0.6, 0.8);
 
     vec3 color = skyColorFromSun(zenith, horizon, sunHeight, 0.0);
 
-    // Stars: visible at night, intensity varies with time of day.
-    float stars = uStarIntensity;
-    if (stars > 0.0) {
-      // Deterministic star field from world position.
-      vec2 st = gl_FragCoord.xy * 0.01;
-      float star = fract(sin(dot(st, vec2(12.9898, 78.233))) * 43758.5453);
-      star = smoothstep(0.995, 1.0, star);
-      color += star * stars * 0.3;
-    }
+    // The rotating Points field owns the stars; screen-space noise would remain fixed.
 
     gl_FragColor = vec4(color, 1.0);
   }
