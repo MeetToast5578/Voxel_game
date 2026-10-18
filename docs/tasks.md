@@ -43,7 +43,7 @@ Also landed, not previously tracked: `abd4435` puts block updates on a fixed 20 
   - `ROCKS` in the "deep and high chunks" check grew from spec 15's five rocks to include the spec 20 strata (limestone 22, slate 23, basalt 24) and the spec 26 ores that can host at that depth (28–34). The old list could fail on a legal column.
   - A Node repro of the deterministic smoke assertions for seed 1 (spawn search, the pick-block column, the hardcoded swim spot, the deep rock) passes on current `main`, but that does not establish the CI failure's cause; the annotations subsequently identified the inventory check.
 
-- [~] **T-A3 — Give spec 28 a real budget guard.** Regression guard tightened 2026-10-17; the required **3 ms guard remains open**, coupled to T-J1. Premise corrected: a millisecond assertion did exist (`expect(ms).toBeLessThan(50)`, since `cdff912`) — but 50 ms is 16× the target, so the point stood. Tightened to **15 ms**, about 3× the slowest documented measurement (4.1 ms alone, 5.20 ms best-of-2 in the cloud container): it catches a real regression (the spec 39 tree bug was ~100×) without flaking on a slow laptop under parallel load. A comment in the test records that the 3 ms target is still not met and that the guard tightens toward it when T-J1 lands.
+- [x] **T-A3 — Give spec 28 a real budget guard.** CI now runs `node scripts/benchmark.mjs --assert-generation-budget --assert-mesh-budget` in an isolated Node worker after unit/build checks. It measures three passes over the same 50 seed-1 visible-top chunks (including canopies), and fails if mean meshing exceeds 3 ms. The guard failed at 4.011 ms before T-J1 and passes at 2.787 ms after it on Node 22. The separate parallel seed-42 unit test retains its 15 ms broad regression guard; it is not the strict budget check.
 
 - [x] **T-A4 — Make the timeouts consistent.** Closed 2026-10-17. The rule is documented in a `vite.config.ts` comment: 30 s default; 60 s for mountain-column, strata and ore scans; 120 s for the region-simulation tests. The older positional `}, 30_000)` annotations (spawn, trees) are redundant with the default but harmless and were left alone. No test timing changed.
 
@@ -212,7 +212,7 @@ All six sandbox-physics slices (spec 25) are built and tested. One known shortcu
 
 ## J. Phase 8 — Scale and performance
 
-- [ ] **T-J1 — Mesh time 4.1 ms → 3 ms.** Spec 28. Open, and unguarded — see T-A3.
+- [x] **T-J1 — Mesh time ≤3 ms on the reference fixture.** CPU profiling identified neighbour-region copying as a major cost. Bulk typed-array row copies reduce the Node-22 visible-top fixture from 4.011 ms to 2.598 ms (repeat 2.787 ms). All mesh buffer bytes match the baseline hash. Existing light/mesher tests unchanged; full gameplay/GPU checks pass. This is the specified 50-chunk seed-1 reference measurement, not a guarantee for every world/hardware.
 - [ ] **T-J2 — Section visibility culling** ("cave culling" via per-chunk face connectivity).
 - [ ] **T-J3 — Fewer draw calls** through batched buffers.
 - [ ] **T-J4 — Packed vertex format:** positions as bytes, packed light and colour.
@@ -220,10 +220,10 @@ All six sandbox-physics slices (spec 25) are built and tested. One known shortcu
 - [ ] **T-J6 — Adaptive time budgets** and memory caps.
 - [ ] **T-J7 — Quality presets.**
 - [ ] **T-J8 — Frame-time graph in F3.**
-- [ ] **T-J9 — Chunk generation ≤ 3 ms.** `ROADMAP.md` phase 2 "done when" sets this budget for generating one chunk in a worker. It has no measurement and no guard anywhere.
-- [ ] **T-J10 — Re-measure cold column generation.** ~8.4 ms median in Node, taken *before* region simulation landed (`HANDOFF.md:193`).
-- [ ] **T-J11 — Re-measure the spawn search.** ~200 ms per seed; `tests/spawn.test.ts` ~6 s for 30 seeds (`HANDOFF.md:194`).
-- [ ] **T-J12 — Re-measure region simulation.** ~162 ms per region on seed 1337 (`HANDOFF.md:195`).
+- [~] **T-J9 — Chunk generation ≤3 ms.** Warm visible-surface generation is measured in an actual Node worker and guarded in CI (1.365 ms mean, 50 chunks × three passes). Cold region/column preparation is measured separately and remains over 3 ms; the complete cold streaming workflow is not claimed within budget.
+- [x] **T-J10 — Re-measure cold column preparation.** Reusable benchmark: 12 fresh-generator column-top requests with regions within feature reach pre-warmed. Node 22: mean 44.031 ms, median 44.625 ms. This explicitly defined operation includes tops/features and neighbouring column preparation; the old undocumented 8.4 ms figure is not directly comparable.
+- [x] **T-J11 — Re-measure the spawn search.** Fresh generators for seeds 1–30 in the worker: Node-22 mean 140.215 ms, median 115.793 ms. Reproduce with `node scripts/benchmark.mjs` while browser tests are idle.
+- [x] **T-J12 — Re-measure region simulation.** Three independent seed-1337 regions: Node-22 mean 77.037 ms, median 65.866 ms. Runtime and sample counts are included in the benchmark JSON.
 - [ ] **T-J13 — Edit remesh cost.** A single edit remeshes up to 8 chunks on the main thread, ~3 ms each (`HANDOFF.md:201`). Worse now that block updates run at 20 Hz.
 
 ---

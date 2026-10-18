@@ -453,3 +453,29 @@ Performance follow-on:
 - Mesh data hash before optimization: 803974a7770501157d9409fc8622d26838a45e03e5c06ed3661d8989843715ae.
 - Capturing a CPU profile before making a performance change; benchmark script
   remains part of the next, uncommitted performance batch.
+
+2026-10-18 — T-J1/T-A3 mesh budget and T-J10..T-J12 measurements
+- CPU profile (30 visible-surface passes, Node 22) identified buildChunkMesh and
+  buildRegion as dominant meshing costs. Baseline profile files in
+  /tmp/voxel-mesh-profile; baseline mesh hash recorded above.
+- Replaced scalar 16-cell lighting-region row copies with Uint16Array.set of a
+  subarray. No public API, light algorithm, face output or allocation lifetime
+  changed. Candidate mean 2.598 ms; repeated final mean 2.787 ms (all three pass
+  means <=2.887 ms), versus failing pre-change 4.011 ms.
+- Automatically compared mesh hash before/after: EXACT MATCH,
+  803974a7770501157d9409fc8622d26838a45e03e5c06ed3661d8989843715ae.
+- npm run check: PASS, 533 tests / 63 files, typecheck and build. Existing
+  light/mesher tests unchanged. GPU script PASS. Full gameplay smoke PASS,
+  all 25 checks including auxiliary-page error collection; 4012 loaded / 2063
+  meshed chunks, 340 draw calls, 4 FPS on SwiftShader.
+- CI now includes isolated worker generation/mesh 3 ms guards after check;
+  the separate parallel seed-42 test retains its 15 ms broader regression guard.
+- Final Node-22 measurements: warm generation mean 1.365 ms; cold column tops
+  (12 fresh generators, surrounding regions pre-warmed) mean 44.031 ms / median
+  44.625; spawn seeds 1..30 mean 140.215 / median 115.793 ms; region seed 1337,
+  three regions mean 77.037 / median 65.866 ms. Cold preparation is NOT <=3 ms.
+- T-A3/T-J1/T-J10/T-J11/T-J12 checked DONE; T-J9 stays PARTIAL for cold streaming.
+- Riverbed batch b486eda pushed successfully to origin/main. GitHub API remains
+  proxy-blocked, so CI success is not claimed. No dependency or lockfile changes.
+- Starting independent planned slab work in the working tree. This commit stages
+  only the verified performance snapshot and its instructions/evidence.

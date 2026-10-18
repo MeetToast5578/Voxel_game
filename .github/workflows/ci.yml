@@ -25,6 +25,7 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run check
+      - run: node scripts/benchmark.mjs --assert-generation-budget --assert-mesh-budget
 
   smoke:
     runs-on: ubuntu-latest

@@ -10,6 +10,8 @@ The follow-on rendering batch fixes sun/daylight alignment, clipped and position
 
 The riverbed batch completes T-D1 and T-D5: seeded sand/gravel/clay sediment, stable old block IDs, local-water-level cave roofs and no underwater terrestrial plants. Generation/registry/atlas tests and the full 25-check gameplay smoke pass.
 
+Performance follow-on completes T-A3/T-J1 and measurements T-J10–T-J12. A profiled three-line bulk region-copy change preserves all mesh bytes and brings the Node-22 reference fixture from 4.011 ms to 2.787 ms; isolated 3 ms guards are added to CI. Warm generation is 1.365 ms, while cold preparation remains outside that budget (T-J9 partial). Full checks: 533 tests / 63 files, GPU and all 25 gameplay checks PASS.
+
 The older phase summary below contains historical details; use `docs/tasks.md` and `log.txt` for the latest per-task evidence.
 
 ## Where things stand

@@ -82,10 +82,13 @@ The pause menu has a **New world** button that deletes the save and generates a 
     npm run check      # typecheck + unit tests + production build
     npm run smoke      # headless Chromium gameplay test; writes screenshots to screenshots/
     node scripts/render-smoke.mjs # GPU regressions for wet surfaces, sky and moon phases
+    node scripts/benchmark.mjs --assert-generation-budget --assert-mesh-budget # isolated worker budgets
 
 `npm run smoke` needs a Chromium for Playwright; run `npx playwright install chromium` once if it is missing.
 
-CI (GitHub Actions) runs `npm run check` and `npm run smoke` on every pull request and every push to `main`.
+Run performance and browser checks sequentially so GPU/CPU contention does not distort their results. The worker benchmark reports cold preparation separately from warm visible-surface generation/meshing, using 50 seed-1 chunks including canopy tops.
+
+CI (GitHub Actions) runs `npm run check`, worker budget guards, GPU regressions and `npm run smoke` on every pull request and every push to `main`.
 
 ### Layout
 

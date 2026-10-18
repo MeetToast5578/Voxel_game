@@ -44,7 +44,8 @@ export function buildRegion(neighbors: readonly Uint16Array[]): Uint16Array {
       const from = localIndex(0, ly, rz % CHUNK_SIZE);
       for (let dx = 0; dx < 3; dx++) {
         const src = neighbors[dy * 9 + dz * 3 + dx]!;
-        for (let k = 0; k < CHUNK_SIZE; k++) region[to++] = src[from + k]!;
+        region.set(src.subarray(from, from + CHUNK_SIZE), to);
+        to += CHUNK_SIZE;
       }
     }
   }

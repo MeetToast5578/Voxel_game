@@ -47,7 +47,7 @@ Status is checked against the code on 2026-10-17. "Open" means the spec's goal i
 | [24-inventory-and-items.md](24-inventory-and-items.md) | Inventory, held block, breaking, drops | Done | Tools not built |
 | [25-sandbox-physics.md](25-sandbox-physics.md) | Sandbox physics (program) | Done, slices 1–6 | Tick core, rule fields, falling sand and gravel, flowing water, structural collapse, loose bodies. Pending falls are found by a scan on load, not saved; lava is not in the game |
 | [26-ores.md](26-ores.md) | Ores (geology slice 3) | Done | |
-| [28-mesh-performance.md](28-mesh-performance.md) | Mesh performance, 3 ms target | Open | 4.1 ms measured alone. No test-case section |
+| [28-mesh-performance.md](28-mesh-performance.md) | Mesh performance, 3 ms target | Done on reference fixture | Node-22 mean 2.787 ms after bulk region copies; 3 ms worker guard in CI and byte-identical output hash. Hardware/workload results vary |
 | [29-calendar-and-seasons.md](29-calendar-and-seasons.md) | Calendar and seasons | Done | Game-loop advancement wired and regression-tested 2026-10-18 (T-F9); same ready/menu rules as the day clock |
 | [30-feature-system.md](30-feature-system.md) | Feature system | Done | Written after the code |
 | [31-climate-block-resolution.md](31-climate-block-resolution.md) | Climate model at block resolution | Done | |
