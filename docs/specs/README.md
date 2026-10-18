@@ -48,18 +48,18 @@ Status is checked against the code on 2026-10-17. "Open" means the spec's goal i
 | [25-sandbox-physics.md](25-sandbox-physics.md) | Sandbox physics (program) | Done, slices 1–6 | Tick core, rule fields, falling sand and gravel, flowing water, structural collapse, loose bodies. Pending falls are found by a scan on load, not saved; lava is not in the game |
 | [26-ores.md](26-ores.md) | Ores (geology slice 3) | Done | |
 | [28-mesh-performance.md](28-mesh-performance.md) | Mesh performance, 3 ms target | Open | 4.1 ms measured alone. No test-case section |
-| [29-calendar-and-seasons.md](29-calendar-and-seasons.md) | Calendar and seasons | Done | Written after the code |
+| [29-calendar-and-seasons.md](29-calendar-and-seasons.md) | Calendar and seasons | Done | Game-loop advancement wired and regression-tested 2026-10-18 (T-F9); same ready/menu rules as the day clock |
 | [30-feature-system.md](30-feature-system.md) | Feature system | Done | Written after the code |
 | [31-climate-block-resolution.md](31-climate-block-resolution.md) | Climate model at block resolution | Done | |
 | [42-entity-system.md](42-entity-system.md) | Entity system (phase 6, slice 1) | Partial | Pure module, not used by the game. Renumbered from 31 |
 | [32-biome-table.md](32-biome-table.md) | Biome table (Whittaker diagram) | Done | |
 | [43-weather-model.md](43-weather-model.md) | Weather model | Done | Renumbered from 32 |
-| [33-sky-rendering.md](33-sky-rendering.md) | Sky rendering | Partial | Sun, moon and stars are in. No moon phases; stars do not rotate |
+| [33-sky-rendering.md](33-sky-rendering.md) | Sky rendering | Partial | Sun, moon and rotating stars are in (T-F2). Moon phases remain missing |
 | [44-survival-health.md](44-survival-health.md) | Survival mode and health | Partial | Modes, health, fall damage, drowning and respawn are done. Hunger is inert; no UI to pick the mode. Renumbered from 34 |
 | [34-weather-model.md](34-weather-model.md) | Weather model and rendering | Partial | Particles and lightning are in, and the F3 overlay shows the season, weather, biome, temperature and rain. Wet darkening and morning fog are still missing. |
 | [35-biome-integration.md](35-biome-integration.md) | Biome integration into the generator | Partial | Surface, soil and trees follow the biome. Border blending is wired: surface blocks dither within 3 blocks of a border. Open: tints do not blend per vertex, and biomes are still picked per 16x16 chunk column |
 | [36-ecology-grass-spreading.md](36-ecology-grass-spreading.md) | Grass spreading | Done | |
-| [37-tree-species.md](37-tree-species.md) | Tree species | Partial | Sizes decided 2026-10-17: oak is 27-40 blocks (8.1-12.0 m), every species sits inside 8-12 m. Open: 8 of the 16 roadmap species do not exist, and pine and dead snag are in the table but named by no biome |
+| [37-tree-species.md](37-tree-species.md) | Tree species | Partial | Sizes decided 2026-10-17: oak is 27-40 blocks (8.1-12.0 m), every species sits inside 8-12 m. Pine (snowy taiga) and dead snag (tundra) are wired to biomes, and every species is reachable (task T-E12). Five additional species are mixed into their host biomes. Dead snags now respect zero-radius foliage (T-E15). Open: willow, mangrove and saguaro; visual silhouette review |
 | [38-random-ticks.md](38-random-ticks.md) | Random ticks | Done | |
 | [39-biome-integration-fix.md](39-biome-integration-fix.md) | Biome integration fix | Done | Review of spec 35 |
 | [40-leaf-decay.md](40-leaf-decay.md) | Leaf decay | Done | |
@@ -68,7 +68,7 @@ Status is checked against the code on 2026-10-17. "Open" means the spec's goal i
 ### Known problems in the spec files
 
 - **Spec 27** never existed in the repo. Specs 29 and 30 were added afterwards, to document the code.
-- **Test-case sections.** Specs 28 and 31–41 have goals and acceptance criteria but no separate test-case list. Their test files are named in each spec's "Files" line.
+- **Test-case sections.** Specs 10, 28 and 31–44 have goals and acceptance criteria but no separate numbered test-case list (task T-L7 corrected the old "28 and 31–41" line: specs 25, 29 and 30 do have test-case lists, and 42–44 do not). Where one exists, a `Tests:` or `Files:` line in the spec names the test files.
 
 ## Rules for every spec
 

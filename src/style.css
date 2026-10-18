@@ -46,10 +46,41 @@ body {
 
 /* ---------- HUD ---------- */
 .hud {
-  position: fixed;
+  /* No stacking context: only the Inventory button rises above menus, not the crosshair/hotbar. */
+  position: absolute;
   inset: 0;
   pointer-events: none;
   user-select: none;
+}
+
+.hud-inventory {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 2; /* Above menu-overlay, below inventory (5). */
+  pointer-events: auto;
+  padding: 8px 12px;
+  border: 2px solid var(--panel-edge);
+  border-radius: var(--radius);
+  background: var(--panel);
+  color: var(--text);
+  font: 14px var(--font);
+  cursor: pointer;
+}
+
+.hud-inventory:hover:not(:disabled) {
+  border-color: var(--accent);
+}
+
+.hud-inventory:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.hud-inventory kbd {
+  margin-left: 6px;
+  color: var(--key);
+  font: inherit;
 }
 
 .crosshair {

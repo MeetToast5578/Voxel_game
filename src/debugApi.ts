@@ -83,7 +83,7 @@ export function installDebugApi(game: Game): void {
       return game.editsBusy;
     },
     setGameMode: (mode) => {
-      game.gameMode = mode;
+      game.setGameMode(mode); // through the game, so the menu picker stays in step and survival tops up the vitals
     },
     setHealth: (health) => {
       game.health = Math.max(0, Math.min(HEALTH_MAX, health));

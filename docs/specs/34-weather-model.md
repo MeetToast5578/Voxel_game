@@ -1,5 +1,10 @@
 # Spec 34: Weather model and rendering
 
+> **Note (task T-L11).** Specs 34 and 43 overlap and were both titled "Weather model". Split of record: spec **43**
+> (renumbered from 32) is the reference for the pure `WeatherModel` in `src/world/weather.ts`; this spec covers the
+> model *and* the rendering (`src/render/weather.ts`: particles, lightning, wet darkening, fog). Read 43 for the
+> model, 34 for the rendering.
+
 **Goal:** Deterministic weather that drifts across the world: pressure systems, cloud cover, precipitation type (rain/snow/sleet) chosen by temperature, and weather rendering (clouds matching coverage, rain/snow particles blocked by column tops, wet-surface darkening, morning fog). All pure functions of seed, position, and time — nothing to save.
 
 **Why:** Phase 4 item 3 of the roadmap. Builds on spec 29 (calendar/seasons) and spec 33 (sky rendering). Weather is the last major piece of phase 4 before seasonal visuals.

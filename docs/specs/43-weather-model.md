@@ -1,5 +1,9 @@
 # Spec 43: Weather model (Phase 4, item 3)
 
+> **Note (task T-L11).** This file is the reference for the pure `WeatherModel` only. The rendering half (clouds,
+> rain and snow particles, lightning, wet darkening, fog) is specced in `34-weather-model.md`, which overlaps this
+> file; where they disagree on the model, this one wins.
+
 **Goal:** A deterministic weather model that produces pressure systems, cloud cover, precipitation, and storms based on seed, position, and time — no state to save. Pure module, unit-tested in Node.
 
 **Why:** Phase 4 item 3 of the roadmap. Weather drives precipitation type (rain/snow/sleet by temperature), storm formation, and feeds weather rendering (clouds, particles, lightning).

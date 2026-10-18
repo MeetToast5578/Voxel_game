@@ -28,7 +28,7 @@ Also landed, not previously tracked: `abd4435` puts block updates on a fixed 20 
 
 ## A. Test and build health
 
-`npm run check` is **red on this machine**. CI (`ubuntu-latest`, Node 22) is probably green — unverified, see T-A2.
+**Historical baseline (2026-10-17):** the owner's suite timed out before T-A1. Current local `npm run check` and CI `check` pass. CI smoke status is tracked separately under T-A2a; see the latest verification notes below.
 
 - [x] **T-A1 — Annotate the slow tests, or raise the default `testTimeout`.** Closed 2026-10-17. `testTimeout: 30_000` added to `vite.config.ts`; no test file touched. Full suite green: 464 tests in 55 files.
   - Zero annotation in every file that fails: `tests/chunkManager.test.ts` (10 tests, 3 fail), `tests/chunkJobs.test.ts` (4, 1), `tests/batchEdit.test.ts` (5, 1), `tests/relight.test.ts` (2, 1), `tests/plants.test.ts` (5, 2). `tests/region.test.ts` (26 tests, 0 annotation) can also fail: its `is deterministic` case timed out on one run and passed on the next, which is the clearest evidence that these are timeouts rather than logic bugs.
@@ -36,11 +36,16 @@ Also landed, not previously tracked: `abd4435` puts block updates on a fixed 20 
   - Convention to follow: `tests/generator.test.ts:88` uses `{ timeout: 60000 }`; `tests/trees.test.ts:49` and `tests/spawn.test.ts:14` use the positional `}, 30_000)` form. **Both forms work** in Vitest 4.0.18 — verified with a throwaway probe, since the published `.d.ts` only advertises `(name, options?, fn?)`.
   - Done when: `npm run check` is green on the owner's machine, twice in a row.
 
-- [ ] **T-A2 — Confirm whether CI is actually green.** `HANDOFF.md:43` asserts `npm run check` passes. Nothing here proves it, and the assertion was never machine-checked. If CI is red too, T-A1 is urgent rather than cosmetic.
+- [x] **T-A2 — Confirm whether CI is actually green.** Closed 2026-10-17: **CI is not green.** The `check` job passes on CI (33 s at `aca8978`), so T-A1 was a local-only problem. The `smoke` job **fails on every run since `0a98002`** (region simulation); the last green smoke was `6a7aead` (14:21), and a docs-only commit (`5019faa`) also failed. This identifies when smoke went red, not the root cause; the later inventory repro isolated a GPU-backed icon readback stall. Failing smoke steps run 2m16s–3m21s vs 1m49s green, which suggests a late failure or timeout but does not establish which check failed. Raw CI logs and the screenshots artifact are not retrievable from the cloud session (the log and blob hosts are blocked), so the exact failing check could not be read from past runs — see T-A2a.
+- [x] **T-A2a — Fix the failing smoke job.** Closed 2026-10-18: CI on `615c101` is fully green ([run 39075601314](https://github.com/MeetToast5578/Voxel_game/actions/runs/39075601314)): `check` 55 s, `smoke` 6m30s. The inventory icon stall and later smoke timing races are fixed. Chromium was recovered from an npm-distributed binary outside the repository; the Playwright CDN remains blocked. Done so far:
+  - `scripts/smoke.mjs` now tracks the running check, reports `smoke failure during "<check>"`, and on GitHub Actions prints every collected error as an `::error title=smoke::` annotation, readable from the check-runs API and the run page even when the log zip is not retrievable. The next red run names its failure.
+  - The pick-block check waited a fixed 500 ms after teleporting `+4` blocks; the spawn area is a slope since region simulation, the landing is inside the rising ground, and the wait was fps-dependent. It now waits for `onGround || inWater` (20 s). This addresses a possible timing sensitivity; it is not the confirmed cause of the CI failure.
+  - `ROCKS` in the "deep and high chunks" check grew from spec 15's five rocks to include the spec 20 strata (limestone 22, slate 23, basalt 24) and the spec 26 ores that can host at that depth (28–34). The old list could fail on a legal column.
+  - A Node repro of the deterministic smoke assertions for seed 1 (spawn search, the pick-block column, the hardcoded swim spot, the deep rock) passes on current `main`, but that does not establish the CI failure's cause; the annotations subsequently identified the inventory check.
 
-- [ ] **T-A3 — Give spec 28 a real budget guard.** `tests/litMesher.test.ts:49` (`meshes 50 surface chunks of seed 42 fast enough`) is a 30 s timeout with **no millisecond assertion**. The 3 ms target in `docs/specs/28-mesh-performance.md` is checked by nothing. It is the only performance budget in the codebase with no automated guard.
+- [~] **T-A3 — Give spec 28 a real budget guard.** Regression guard tightened 2026-10-17; the required **3 ms guard remains open**, coupled to T-J1. Premise corrected: a millisecond assertion did exist (`expect(ms).toBeLessThan(50)`, since `cdff912`) — but 50 ms is 16× the target, so the point stood. Tightened to **15 ms**, about 3× the slowest documented measurement (4.1 ms alone, 5.20 ms best-of-2 in the cloud container): it catches a real regression (the spec 39 tree bug was ~100×) without flaking on a slow laptop under parallel load. A comment in the test records that the 3 ms target is still not met and that the guard tightens toward it when T-J1 lands.
 
-- [ ] **T-A4 — Make the timeouts consistent.** 21 annotations use three magnitudes (30 s, 60 s, 120 s) with no stated rule. A comment or shared helper would stop the next slow test from being missed.
+- [x] **T-A4 — Make the timeouts consistent.** Closed 2026-10-17. The rule is documented in a `vite.config.ts` comment: 30 s default; 60 s for mountain-column, strata and ore scans; 120 s for the region-simulation tests. The older positional `}, 30_000)` annotations (spawn, trees) are redundant with the default but harmless and were left alone. No test timing changed.
 
 **Evidence for T-A1** — the failure count is load-dependent, the signature of a timeout rather than a logic bug:
 
@@ -59,7 +64,7 @@ Also landed, not previously tracked: `abd4435` puts block updates on a fixed 20 
 ## B. Owner decisions — all four closed
 
 - [x] **T-B1 — Tree size.** Closed in `656c247`. Every species now sits inside 8–12 m (`src/config.ts:297`, `HANDOFF.md:61`).
-  - **Leftover:** `TREE_HEIGHT_MIN_M` / `TREE_HEIGHT_MAX_M` (`src/config.ts:89-90`) still hold 8 and 12 and are **still referenced nowhere**. The new table is hard-coded in blocks, so the orphaned metric constants remain dead. Delete them or make the table derive from them.
+  - **Leftover — closed 2026-10-17:** `TREE_HEIGHT_MIN_M` / `TREE_HEIGHT_MAX_M` (`src/config.ts:89-90`) were referenced nowhere; the species table is hard-coded in blocks. Kept as the band's source of truth: `tests/config.test.ts` now enforces that every species except the bush (small on purpose, owner decision 1) fits inside 8–12 m converted to blocks. The constants are no longer orphans, and the documented band cannot drift silently.
 
 - [x] **T-B2 — Spec numbering.** Closed in `fb17054`. 42 entity system, 43 weather model, 44 survival; specs 29 and 30 written.
 
@@ -114,22 +119,25 @@ Nothing below can be done headless (`HANDOFF.md:45-57`). **This is the real bloc
 Newly found while auditing:
 
 - [ ] **T-E10 — Biome resolution is per chunk column.** `HANDOFF.md:66` records the limit: biomes are picked per 16×16 chunk column, so borders land on 4.8 m grid lines and dithering only softens them. The doc says "the terrain work should fix the grid itself" — that work is not itemised anywhere.
-- [ ] **T-E11 — 8 of the 16 roadmap tree species do not exist.** `ROADMAP.md:179` names oak, birch, maple, spruce, pine, fir, larch, acacia, baobab, jungle giant, palm, willow, mangrove, saguaro, dead snag and bushes. `TREE_SPECIES` has 8. **Missing: maple, fir, larch, baobab, palm, willow, mangrove, saguaro.** The phase 3 "done when" is "every species looks different", which cannot hold at half the list.
-- [ ] **T-E12 — Two species are unreachable.** `pine` and `dead_snag` exist in `TREE_SPECIES` but no biome names either, so neither can ever generate. Either wire them to biomes or drop them.
-- [ ] **T-E13 — Type `treeSpecies` as `TreeSpecies | null`.** `src/world/biome.ts:23` declares `treeSpecies: string | null`, looser than the `TreeSpecies` union it feeds. No biome names a missing species today, so there is no live bug — but a future biome entry naming `maple` (see T-E11) would fail silently rather than at compile time.
+- [~] **T-E11 — Complete the 16 roadmap tree species.** Five of the missing eight are now implemented in the parametric table: maple, fir, larch, baobab and palm (13 species total). Host biomes mix secondaries deterministically on 30% of tree anchors: temperate deciduous → maple, taiga → larch, snowy taiga → fir, savanna → baobab, rainforest → palm. Tests cover distinct deterministic geometry, connected logs, bounds, height bands and biome wiring. **Still open:** willow, mangrove and saguaro; species-specific silhouettes and owner visual review. Parameter differences alone do not establish that every species looks different in play.
+- [x] **T-E12 — Two species are unreachable.** Closed 2026-10-17. `pine` wired to snowy taiga, `dead_snag` to tundra. The audit found the deeper bug: `treeSpeciesAt` grows a species only where the biome's surface block is GRASS, so **`spruce` was unreachable too** (taiga and snowy taiga had DIRT surfaces), and tundra's DIRT would have blocked the dead snag as well. Taiga, snowy taiga and tundra now have GRASS surfaces (soil unchanged). A new invariant test in `tests/biome.test.ts` asserts every species in the table is named by at least one grass-surface biome, so this bug class cannot return silently — including for T-E11's new species. Worldgen change: taiga and tundra columns now grow plants and trees; edits in existing saves may float.
+- [x] **T-E14 — Shrubland and steppe bushes.** Closed 2026-10-18: both biomes now have GRASS surfaces (DIRT soil unchanged), which the generator accepts for their named bush species. A stronger invariant checks every biome naming a primary or secondary tree, not merely that each species has one reachable home. Worldgen change: previously generated unedited shrubland/steppe now regenerates with grass and flora.
+- [x] **T-E15 — Dead snags must be leafless.** Discovered 2026-10-18: `treeBlocks` clamped the configured zero leaf radius to one and always built a canopy. Zero now disables branch-tip leaves and the main canopy, without changing leafy-species paths. Regressions cover four seeds and twelve anchors, deterministic connected logs, reach/height bounds and foliage on every leafy species. Worldgen change: unedited dead snags regenerate without foliage and with changed branch geometry; saved edits remain. Reviewed and verified: `npm run check` passes (487 tests/58 files, typecheck, build); all 25 full browser smoke checks pass.
+- [x] **T-E13 — Type `treeSpecies` as `TreeSpecies | null`.** Closed 2026-10-17. `BiomeDef.treeSpecies` is typed as the union and the `as` cast in `treeSpecies()` is gone; a biome naming a nonexistent species now fails typecheck.
 
 ---
 
 ## F. Phase 4 — Sky, seasons and weather
 
 - [ ] **T-F1 — Moon phases.** Spec 33 is partial without them.
-- [ ] **T-F2 — Stars that rotate.** Spec 33 is partial without them.
+- [x] **T-F2 — Stars that rotate.** Closed 2026-10-18: `Sky.update` sets an absolute quaternion from time of day around the celestial pole at the configured latitude. It does not accumulate frame deltas or rewrite star geometry. Node tests check a quarter-day turn, a full-day wrap, pole invariance, repeatable time jumps and camera recentering. Spec 33 remains partial for moon phases.
 - [ ] **T-F3 — Wet-surface darkening.** `weather.ts` computes `wetness` (`src/render/weather.ts:32-84`) and nothing outside that file reads it. Spec 43/34 is partial without it.
 - [ ] **T-F4 — Morning valley fog and humidity haze.** Only the static distance fog exists.
 - [ ] **T-F5 — Wind.** Foliage sway in the vertex shader, slanted particles, drifting clouds. Item 4.
 - [x] **T-F6 — F3 weather lines.** Closed in `656c247` with T-B4.
 - [ ] **T-F7 — Seasonal visuals.** Item 5. Foliage colours shift through the year; deciduous leaves render bare in winter through the shader with no block changes; grass browns in a dry summer.
 - [ ] **T-F8 — Smooth lighting.** Item 6, deferred since phase 1. Per-vertex light averaging in the mesher, done together with AO.
+- [x] **T-F9 — Advance the calendar in the game loop.** Discovered 2026-10-18: the calendar's unit-tested `advance` had no game caller, so seasons never progressed. `Game.fixedUpdate` now advances it with the same simulation delta as the day clock, after the ready guard. Nine game-lifecycle tests include four calendar cases: exact delta, loading guard, restored-year season boundary/year wrap, and the existing menu-time behaviour. Reviewed and verified: `npm run check` passes (487 tests/58 files, typecheck, build); all 25 full browser smoke checks pass. No change to save format or pause semantics.
 
 ---
 
@@ -172,7 +180,7 @@ All six sandbox-physics slices (spec 25) are built and tested. One known shortcu
 
 ## I. Phase 7 — Survival
 
-- [ ] **T-I1 — UI to pick the game mode.** `gameMode` exists, is saved and loaded (`src/game.ts:107`, `:184`), defaults to creative, and **nothing in the UI ever sets it** — `src/ui/menu.tsx` has no reference. The mode is unreachable by a player.
+- [x] **T-I1 — UI to pick the game mode.** Landed in `38c07f8` (committed after this list was drafted, checkbox missed): a Creative/Survival picker (radio group) in the start and pause menu; switching to survival tops health and hunger back up; the mode persists through the save meta. Reviewed 2026-10-17, one follow-up fixed: `debugApi.setGameMode` assigned `game.gameMode` directly, bypassing the menu sync and the vitals top-up; it now delegates to `Game.setGameMode`.
 - [ ] **T-I2 — Make hunger change.** Set, saved, loaded and shown (`src/game.ts:111`, `:186`, `:392`), but no rule anywhere writes it. No food, no starvation.
 - [ ] **T-I3 — Health regeneration.** Item 2.
 - [ ] **T-I4 — Body temperature.** Item 2. From biome, altitude, weather, season, wetness, shelter, fire and clothing; hypothermia and heatstroke. `ROADMAP.md:290` calls this where the whole simulation pays off.
@@ -216,7 +224,7 @@ All six sandbox-physics slices (spec 25) are built and tested. One known shortcu
   - Planned shortcut to accept or reject: slabs never cull neighbour faces and never block light.
   - Default materials: planks, cobblestone, stone, sandstone, limestone. Owner's choice.
 - [ ] **T-K2 — Slab items and icons**, drawn with `drawBlockIcon`, stacking normally. Note the plan cites `src/ui/hud.ts`, which is now `src/ui/hud.tsx`.
-- [ ] **T-K3 — Inventory access root cause.** Partly worked around (HUD key hints, a pause-menu button) but the cause was never confirmed: E only works while the pointer is captured, since `src/game.ts:399` reads the key and `:401` gates on `this.playing`. The refusal path is dead too: `src/input/input.ts:40-42` catches the rejected lock and calls `emitLockFailed`, but `onPointerLockFailed` (`input.ts:46`) has **zero callers** anywhere in the repo, so the listener list is always empty. The comment at `input.ts:34` promises "the menu can say" — nothing registers. The plan flags this as a strong hypothesis, not a confirmed bug.
+- [~] **T-K3 — Inventory access root cause.** Audit correction 2026-10-18: E already works in the pause menu and pointer-lock refusal already shows a message. T-A2a fixed the reproduced ~20 s uncached-icon GPU readback stall. **HUD button implemented:** a real Inventory button shares `toggleInventory`, works without mouse capture over start/pause menus, and uses the existing focus ring and native Tab/Enter/Space activation. It is disabled before ready and while inventory is open. Closing restores the originating menu without requesting capture; opening from play retains the existing capture-on-close behaviour. Five lifecycle regressions pass. All 25 full smoke checks pass, including pointer-free HUD clicks, pause-overlay clicks, Tab/focus-ring, Enter/Space and E/Escape/Close returns to the originating menu. **Still open:** owner verification of the original physical-browser complaint (not closed by headless testing).
 - [ ] **T-K4 — A proper GUI.** Planning only, per the plan doc.
 
 From `ROADMAP.md` "Later":
@@ -229,17 +237,18 @@ From `ROADMAP.md` "Later":
 
 ## L. Documentation hygiene
 
-- [ ] **T-L1 — Stale commit hash.** `HANDOFF.md:3` claims verification against `0322d20`. HEAD is `adf5aba`, eleven commits ahead. The header was not updated by `adf5aba` even though that commit fixed other lines in the same file.
-- [ ] **T-L2 — Contradictory test counts.** `HANDOFF.md:90` says "419 in 51 files"; the verification line says 464. The old number survives in Commands.
-- [ ] **T-L3 — Self-contradiction on physics.** `HANDOFF.md:198` says "Sandbox physics slices 2-6 are open", while `HANDOFF.md:26` says "all six slices are in code and tested". The line-26 list is correct — each slice is described with its implementation.
-- [ ] **T-L4 — Unqualified pass claim.** `HANDOFF.md:43` states `npm run check` passes. It does not on this machine. Qualify it as "passes on CI hardware; times out locally on a 1.6 GHz laptop".
-- [ ] **T-L7 — Missing test-case sections, restated accurately.** `docs/specs/README.md:71` claims "specs 28 and 31-41". A direct scan finds **19** files with no test-case section: 10, 25, 28, 29, 30, 31–44. The bullet omits 10, 25, 29, 30 and 42–44, and the two specs written this week (29, 30) have none.
-- [ ] **T-L8 — Mark `volumetric-tools.md` done.** The plan reads as future work but all three parts are implemented.
-- [ ] **T-L9 — Three stale rows in `docs/specs/README.md`**, left behind by `656c247`:
+- [x] **T-L1 — Stale commit hash.** Closed in `38c07f8` (work recorded in `log.txt`; the checkbox was missed there): `HANDOFF.md:3` now verifies against `adf5aba`.
+- [x] **T-L2 — Contradictory test counts.** Closed in `38c07f8`: the Commands section says 464 in 55 files. (This session's changes raise it to 467; the line is updated with the next handoff edit.)
+- [x] **T-L3 — Self-contradiction on physics.** Closed in `38c07f8`: the "Known gaps" line now lists the actually-open items (snow, saplings, crops, catch-up, lava) instead of contradicting the phase list.
+- [x] **T-L4 — Unqualified pass claim.** Closed in `38c07f8`: `HANDOFF.md:43` is qualified — CI `check` green, CI `smoke` red, see T-A2/T-A2a.
+- [x] **T-L7 — Missing test-case sections, restated accurately.** Closed 2026-10-17, with this task's own count corrected: a direct scan finds **16** files with no test-case section — 10, 28 and 31–44. Specs 25, 29 and 30 *do* have test-case lists (25's is per slice), so the "19 including 25, 29, 30" figure was wrong. The `docs/specs/README.md` bullet now states the 16-file list.
+- [x] **T-L8 — Mark `volumetric-tools.md` done.** Closed 2026-10-17: a status header on the plan names what landed; the file stays as the design record.
+- [x] **T-L11 — Specs 34 and 43 are both titled "Weather model".** Raised in `log.txt`, tracked here. Closed 2026-10-17: cross-reference notes at the top of both files split the record — 43 is the reference for the pure `WeatherModel`, 34 owns the rendering half and wins nothing about the model.
+- [x] **T-L9 — Three stale rows in `docs/specs/README.md`**, left behind by `656c247`. Closed in `38c07f8`:
   - `35-biome-integration.md` still says "Partial — Border blending is not wired". It is wired.
   - `37-tree-species.md` still says "Done, sizes open — trees are 4.8-7.2 m (oak)". Oak is now 8.1–12.0 m.
   - `34-weather-model.md` still says "the F3 weather lines are missing". They exist.
-- [ ] **T-L10 — Dangling cross-reference in `HANDOFF.md:190`.** It points the reader at the "Open decisions" section "above", which `adf5aba` renamed to "Decided (owner approved, 2026-10-17)" at line 59.
+- [x] **T-L10 — Dangling cross-reference in `HANDOFF.md:190`.** Closed in `38c07f8`: it now points at "Decided (owner approved, 2026-10-17)".
 - [x] **T-L5 — Duplicate spec numbers.** Closed in `fb17054`.
 - [x] **T-L6 — Missing spec files.** Closed in `fb17054`.
 
@@ -254,3 +263,26 @@ From `ROADMAP.md` "Later":
 5. **T-E11, T-E12, T-E13** — the species list is half-built and two entries are dead. The tree-size decision just landed; finishing the table is the natural follow-on.
 6. Then the phase work, in roadmap order: **T-D** → **T-E** → **T-F** → **T-G** → **T-H** → **T-I** → **T-J**.
 7. **T-K** (slabs) is independent of the phases and can run in parallel; it is the largest single piece of new work in the plans.
+
+## Latest verification notes
+
+- PR #30 CI on `a0456dc`: check passed; smoke failed during **“E opens the inventory and Escape closes it”**. The new annotations successfully exposed the failure. Earlier attribution to pick-block timing was a hypothesis, not the confirmed CI cause.
+- Local browser support was recovered using a Chromium binary distributed via npm, installed outside the repository (no dependency changes). Chromium 153 differs from CI's Playwright-pinned browser. Full smoke reproduced the same inventory failure; the inventory check alone passed. T-A2a remains open while the sequence-dependent failure is isolated.
+- The T-B1 test was reviewed again: it now compares actual metre heights directly rather than rounding the minimum down, which had incorrectly allowed a 7.8 m tree.
+
+
+### 2026-10-18 follow-up
+
+- **T-A2a root cause isolated:** a fully loaded seed-1 world with tall grass in non-hotbar slot 10 reproduced a `canvas.toDataURL()` call taking 20,175 ms. It blocks the JS thread after the inventory flag is set, explaining the timeout with `inventoryOpen: true` in the error state. Timer polling and page activation alone did not fix it.
+- Source atlas and icon canvases now request `{ willReadFrequently: true }`, keeping icon readback off the world renderer's GPU queue. The identical instrumented repro measured ~3 ms and passed E/Escape. Unit tests cover context options, tile selection, nearest-neighbour drawing and cached PNG reuse.
+- The E/Escape smoke check now waits for the loaded world and inserts an item outside the hotbar before opening, so it exercises this formerly missing regression path even when run alone. The 10 s open/close assertions remain unchanged.
+- Other smoke hardening: reactivate the main page after auxiliary windows close, wait for a target rather than sampling after 300 ms, and find Play by its accessible button name rather than the now-ambiguous primary style class.
+
+- After the icon fix, the full local run passed E/Escape and mining/pickup, then hit a 30 s glowstone screenshot timeout. That screenshot now has a bounded 60 s software-rendering allowance; no simulation or inventory assertion was relaxed.
+- CI at `eb90f0e` passed `check` and advanced past inventory, then failed the mining pickup assertion (7 dropped items). The test held mining through screenshot readback, allowing extra blocks to break. It now releases in the same browser task that observes the intended block disappearing, before any screenshot; it also waits for the downward target rather than accepting a stale non-null target. The focused mining/pickup run passes with the exact-one-item assertion retained.
+- `npm run check` on the current code passes: **476 tests in 57 files**, typecheck and production build. New tests: three icon/atlas cases, two star cases, one stronger biome invariant. Full local smoke and CI are being rechecked separately; T-A2a remains partial until their outcome is recorded.
+
+
+**Final CI verdict (2026-10-18, `615c101`):** both jobs passed in [run 39075601314](https://github.com/MeetToast5578/Voxel_game/actions/runs/39075601314). T-A2a is closed. Auxiliary menu/persistence windows use render distance 2 to avoid competing full-size software-rendering contexts; the primary world and final performance measurement remain at the default distance 8. Exact water-delay assertions now cover both tick five (first cell) and tick ten (second cell) in `tests/flow.test.ts`; smoke checks synchronous placement and eventual propagation, without assuming no game ticks can pass between separate browser RPCs. All smoke checks remain enabled.
+
+**Final local verdict:** full `npm run smoke` also passed with Chromium 153 and all 24 checks enabled. Final measurement: 4,012 chunks loaded, 2,063 meshed, 339 draw calls, 7 fps on SwiftShader (not owner hardware). No background test server remains running.

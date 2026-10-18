@@ -12,6 +12,15 @@ const PORT = 4173;
 const SEA_LEVEL = 0; // SEA_LEVEL in src/config.ts (y = 0, sea level in the roadmap), in blocks
 const URL_PATH = process.env.SMOKE_PATH || '/?seed=1&autostart=1&nosave=1';
 
+/** Auxiliary windows test menus and persistence, not draw distance. Keep their worlds small so multiple
+ * SwiftShader contexts do not starve startup; the primary world and its performance measurement stay at defaults. */
+async function configureAuxiliaryPage(page) {
+  await page.addInitScript(() => {
+    localStorage.setItem('voxel-game-settings-v1', JSON.stringify({ renderDistance: 2 }));
+  });
+}
+
+
 /** @type {{ name: string, run: (page: import('playwright').Page) => Promise<void> }[]} */
 const CHECKS = [
   {
@@ -97,6 +106,7 @@ const CHECKS = [
     name: 'start menu is shown without autostart',
     run: async (page) => {
       const menuPage = await page.context().browser().newPage({ viewport: { width: 1280, height: 720 } });
+      await configureAuxiliaryPage(menuPage);
       await menuPage.goto(new URL('/?seed=1&nosave=1', page.url()).href);
       await menuPage.waitForFunction(() => window.__game?.ready === true, null, { timeout: 60_000 });
       if (!(await menuPage.locator('.menu-overlay').isVisible())) throw new Error('menu not visible');
@@ -108,14 +118,16 @@ const CHECKS = [
       if (!sections.includes('Volume tools')) throw new Error(`controls sections: ${sections}`);
       await menuPage.screenshot({ path: 'screenshots/menu.png' });
       await menuPage.close();
+      await page.bringToFront(); // Closing a separate browser context does not reliably reactivate the game page.
     },
   },
   {
     name: 'saves the world and restores it after a reload',
     run: async (page) => {
-      // A fresh browser context has empty localStorage. No ?seed / ?nosave, so saving is on.
+      // A fresh browser context has no world save. No ?seed / ?nosave, so saving is on.
       const context = await page.context().browser().newContext({ viewport: { width: 1280, height: 720 } });
       const p = await context.newPage();
+      await configureAuxiliaryPage(p);
       const url = new URL('/?autostart=1', page.url()).href;
       await p.goto(url);
       await p.waitForFunction(() => window.__game?.ready === true, null, { timeout: 60_000 });
@@ -158,6 +170,7 @@ const CHECKS = [
         )
         .then(() => true, () => false);
       await context.close();
+      await page.bringToFront();
       if (after.seed !== before.seed) throw new Error(`seed changed: ${before.seed} -> ${after.seed}`);
       if (brick !== 12) throw new Error(`saved brick missing, found block ${brick}`);
       if (!deepAndHigh) throw new Error('the bricks 40 blocks below and above were not restored');
@@ -222,9 +235,16 @@ const CHECKS = [
       const p = await page.evaluate(() => window.__game.state().position);
       await page.evaluate(([x, y, z]) => window.__game.teleport(x + 4, y + 2, z), p);
       await page.waitForFunction(() => window.__game.state().areaMeshed, null, { timeout: 60_000 });
-      await page.waitForTimeout(500);
+      // Wait for the body to settle instead of a fixed delay: the terrain at +4 blocks can be higher or lower than the
+      // spawn ground (region simulation made the spawn area a slope), and a fixed 500 ms is fps-dependent (task T-A2a).
+      await page.waitForFunction(() => {
+        const s = window.__game.state();
+        return s.onGround || s.inWater;
+      }, null, { timeout: 20_000 });
+      await page.waitForTimeout(200);
       await page.evaluate(() => window.__game.look(0, -Math.PI / 2 + 0.01)); // straight down
-      await page.waitForTimeout(300);
+      await page.waitForFunction(() => window.__game.state().target !== null, null, { timeout: 10_000, polling: 100 })
+        .catch(() => {}); // Capture the useful position/ground diagnostic below if targeting still fails.
       const s = await page.evaluate(() => window.__game.state());
       if (!s.target) {
         const [px, py, pz] = s.position.map(Math.floor);
@@ -243,11 +263,21 @@ const CHECKS = [
     name: 'E opens the inventory and Escape closes it',
     run: async (page) => {
       await page.bringToFront(); // earlier checks opened other pages, which may have taken the keyboard
+      // Regress late icon readback: wait for the busy world, then put a not-yet-shown item outside the hotbar.
+      // The old GPU-backed toDataURL path blocked for ~20 s when this icon first appeared in the inventory.
+      await page.waitForFunction(() => {
+        const s = window.__game.state();
+        return s.pendingGen === 0 && s.pendingMesh === 0;
+      }, null, { timeout: 120_000, polling: 100 });
+      await page.evaluate(() => window.__game.setHotbarSlot(9, 18)); // slot 10: tall grass, not drawn by the HUD
       await page.keyboard.press('KeyE');
-      await page.waitForFunction(() => window.__game.state().inventoryOpen, null, { timeout: 10_000 });
+      // Timer polling also observes state when Chromium throttles RAF after the multi-page save checks.
+      await page.waitForFunction(() => window.__game.state().inventoryOpen, null, { timeout: 10_000, polling: 100 })
+        .catch(async () => { throw new Error(`E did not open inventory: ${JSON.stringify(await page.evaluate(() => window.__game.state()))}`); });
       await page.screenshot({ path: 'screenshots/inventory.png' });
       await page.keyboard.press('Escape');
-      await page.waitForFunction(() => !window.__game.state().inventoryOpen, null, { timeout: 10_000 });
+      await page.waitForFunction(() => !window.__game.state().inventoryOpen, null, { timeout: 10_000, polling: 100 })
+        .catch(async () => { throw new Error(`Escape did not close inventory: ${JSON.stringify(await page.evaluate(() => window.__game.state()))}`); });
     },
   },
   {
@@ -256,7 +286,11 @@ const CHECKS = [
       const PLANTS = ['Tall grass', 'Poppy', 'Fern', 'Dandelion', 'Brown mushroom', 'Red mushroom']; // break at once
       await page.waitForFunction(() => window.__game.state().areaMeshed, null, { timeout: 60_000 });
       await page.evaluate(() => window.__game.look(0, -Math.PI / 2 + 0.01));
-      await page.waitForFunction(() => window.__game.state().target !== null, null, { timeout: 10_000 });
+      await page.waitForFunction(() => {
+        const s = window.__game.state();
+        return s.target !== null && s.target[0] === Math.floor(s.position[0]) &&
+          s.target[2] === Math.floor(s.position[2]) && s.target[1] < s.position[1];
+      }, null, { timeout: 10_000, polling: 100 });
       const s = await page.evaluate(() => window.__game.state());
       const id = await page.evaluate(([x, y, z]) => window.__game.getBlock(x, y, z), s.target);
       const countOf = () =>
@@ -268,9 +302,17 @@ const CHECKS = [
         await page.waitForTimeout(50);
         sawStage = (await page.evaluate(() => window.__game.state().breakStage)) >= 0;
       }
-      if (sawStage) await page.screenshot({ path: 'screenshots/breaking.png' });
-      await page.waitForFunction(([x, y, z]) => window.__game.getBlock(x, y, z) === 0, s.target, { timeout: 8000 });
-      await page.evaluate(() => window.__game.holdButton(0, false));
+      // Do not leave mining held while screenshot readback runs: on slow software rendering it can mine several
+      // more blocks, drop the item into a deeper shaft and turn an exact-one-item assertion into a timing race.
+      try {
+        await page.waitForFunction(([x, y, z]) => {
+          if (window.__game.getBlock(x, y, z) !== 0) return false;
+          window.__game.holdButton(0, false); // release in the same browser task that observes the break
+          return true;
+        }, s.target, { timeout: 8000, polling: 50 });
+      } finally {
+        await page.evaluate(() => window.__game.holdButton(0, false));
+      }
       await page.screenshot({ path: 'screenshots/drop.png' }); // the dropped item, before anyone picks it up
       if (!sawStage && !PLANTS.includes(s.targetName)) throw new Error(`no crack stage shown while breaking ${s.targetName}`);
       // The item drops into the hole. Stand in the hole so the item is in pick-up reach, whether or not the player fell
@@ -317,7 +359,8 @@ const CHECKS = [
         g.look(Math.PI, -0.35); // face south (+Z), slightly down
       }, [x, z]);
       await page.waitForTimeout(1500); // the 8 neighbor chunks are relit over a few frames
-      await page.screenshot({ path: 'screenshots/glowstone.png' });
+      // A fully loaded night scene can make screenshot readback slow on SwiftShader; this is not a frame-time guard.
+      await page.screenshot({ path: 'screenshots/glowstone.png', timeout: 60_000 });
       await page.evaluate(() => window.__game.setTimeOfDay(0.3));
     },
   },
@@ -336,7 +379,8 @@ const CHECKS = [
       }, [x, z]);
       await waitMeshed();
       const below = await page.evaluate(([x, z]) => window.__game.getBlock(x, -205, z), [bx, bz]);
-      const ROCKS = [1, 14, 15, 16, 17]; // stone, granite, diorite, andesite, sandstone (spec 15)
+      // stone and the seven strata rocks (specs 15, 20), plus the ores that can host at this depth (spec 26).
+      const ROCKS = [1, 14, 15, 16, 17, 22, 23, 24, 28, 29, 30, 31, 32, 33, 34];
       if (!ROCKS.includes(below)) throw new Error(`expected rock 5 blocks below y = -200, found ${below}`);
 
       await page.evaluate(([x, z]) => window.__game.teleport(x, 8400, z), [x, z]); // above the highest terrain (2,450 m, 8,167 blocks)
@@ -455,14 +499,15 @@ const CHECKS = [
       await page.evaluate(([x, z, y]) => {
         for (let i = -6; i <= 6; i++) for (let j = -6; j <= 6; j++) window.__game.setBlock(x + i, y, z + j, 1);
         window.__game.setBlock(x - 2, y + 1, z - 2, 5); // a water source on the floor
+        // Check synchronously with placement, before the game can advance any ticks between browser RPCs.
+        if (window.__game.getBlock(x - 3, y + 1, z - 2) !== 0 || window.__game.getBlock(x - 4, y + 1, z - 2) !== 0)
+          throw new Error('water flowed synchronously when the source was placed');
       }, [x, z, y]);
-      // Water moves one block every five game ticks (a quarter of a second), so two blocks out is not there yet.
       const distOne = [x - 3, y + 1, z - 2];
       const distTwo = [x - 4, y + 1, z - 2];
-      const at = (c) => page.evaluate((c) => window.__game.getBlock(...c), c);
-      if (await at(distTwo) !== 0) throw new Error('water reached two blocks out in the same frame as the source was placed');
+      // Browser RPC/polling latency can span multiple game ticks: do not assert a transient empty second cell
+      // after observing the first. tests/flow.test.ts checks the exact delay for BOTH cells tick by tick.
       await page.waitForFunction((c) => window.__game.getBlock(...c) >= 36 && window.__game.getBlock(...c) < 52, distOne, { timeout: 5_000 });
-      if (await at(distTwo) !== 0) throw new Error('water reached two blocks out before the first block had a tick to pass it on');
       await page.waitForFunction((c) => window.__game.getBlock(...c) >= 36 && window.__game.getBlock(...c) < 52, distTwo, { timeout: 5_000 });
       await page.evaluate(([x, z, y, p]) => {
         for (let i = -6; i <= 6; i++) for (let j = -6; j <= 6; j++) for (let k = 0; k <= 12; k++) window.__game.setBlock(x + i, y + k, z + j, 0);
@@ -510,21 +555,75 @@ const CHECKS = [
     name: 'the pause menu opens the inventory from its button, and Escape goes back to the pause menu',
     run: async (page) => {
       const pausePage = await page.context().browser().newPage({ viewport: { width: 1280, height: 720 } });
+      await configureAuxiliaryPage(pausePage);
       await pausePage.goto(new URL('/?seed=1&nosave=1', page.url()).href);
       await pausePage.waitForFunction(() => window.__game?.ready === true, null, { timeout: 60_000 });
-      await pausePage.click('.menu-button.primary'); // Play: captures the mouse
-      await pausePage.waitForFunction(() => window.__game.state().playing, null, { timeout: 10_000 });
+      await pausePage.getByRole('button', { name: 'Play', exact: true }).click(); // The mode picker also has a primary-styled control.
+      await pausePage.waitForFunction(() => window.__game.state().playing, null, { timeout: 10_000, polling: 100 })
+        .catch(async () => { throw new Error(`Play did not capture the mouse: ${await pausePage.locator('.menu-overlay').innerText()}`); });
       await pausePage.evaluate(() => document.exitPointerLock());
-      await pausePage.waitForFunction(() => !window.__game.state().playing, null, { timeout: 10_000 });
+      await pausePage.waitForFunction(() => !window.__game.state().playing, null, { timeout: 10_000, polling: 100 })
+        .catch(() => { throw new Error('releasing pointer lock did not pause play'); });
       const title = await pausePage.locator('.menu-title').innerText();
       if (title !== 'Paused') throw new Error(`expected the pause menu, got "${title}"`);
       await pausePage.locator('.menu-button', { hasText: 'Inventory' }).click();
-      await pausePage.waitForFunction(() => window.__game.state().inventoryOpen, null, { timeout: 10_000 });
+      await pausePage.waitForFunction(() => window.__game.state().inventoryOpen, null, { timeout: 10_000, polling: 100 })
+        .catch(() => { throw new Error('pause-menu Inventory button did not open inventory'); });
       if (await pausePage.locator('.menu-overlay').isVisible()) throw new Error('the pause menu should be hidden with the inventory open');
       await pausePage.keyboard.press('Escape');
-      await pausePage.waitForFunction(() => !window.__game.state().inventoryOpen, null, { timeout: 10_000 });
+      await pausePage.waitForFunction(() => !window.__game.state().inventoryOpen, null, { timeout: 10_000, polling: 100 })
+        .catch(() => { throw new Error('Escape did not close pause-menu inventory'); });
       if (!(await pausePage.locator('.menu-overlay').isVisible())) throw new Error('Escape should return to the pause menu');
+      // Only the HUD button, not the whole HUD, must sit above the pause overlay.
+      await pausePage.locator('.hud-inventory').click();
+      await pausePage.waitForFunction(() => window.__game.state().inventoryOpen, null, { timeout: 5_000 });
+      await pausePage.keyboard.press('Escape');
+      await pausePage.waitForFunction(() => !window.__game.state().inventoryOpen, null, { timeout: 5_000 });
+      if ((await pausePage.locator('.menu-title').innerText()) !== 'Paused') throw new Error('HUD inventory must return to the pause menu');
+      if (await pausePage.evaluate(() => document.pointerLockElement !== null)) throw new Error('HUD inventory should leave the pause-menu pointer free');
       await pausePage.close();
+      await page.bringToFront();
+    },
+  },
+  {
+    name: 'HUD Inventory button works without pointer capture and with Tab, Enter and Space',
+    run: async (page) => {
+      const hudPage = await page.context().browser().newPage({ viewport: { width: 1280, height: 720 } });
+      await configureAuxiliaryPage(hudPage);
+      await hudPage.goto(new URL('/?seed=1&nosave=1', page.url()).href);
+      await hudPage.waitForFunction(() => window.__game?.ready === true, null, { timeout: 60_000 });
+      const button = hudPage.getByRole('button', { name: 'Inventory', exact: true });
+      const waitOpen = () => hudPage.waitForFunction(() => window.__game.state().inventoryOpen, null, { timeout: 5_000 });
+      const waitClosed = () => hudPage.waitForFunction(() => !window.__game.state().inventoryOpen, null, { timeout: 5_000 });
+      if (await hudPage.evaluate(() => document.pointerLockElement !== null)) throw new Error('test requires a free pointer');
+      await button.click(); // A real hit-test: must work above the start-menu overlay.
+      await waitOpen();
+      if (await hudPage.locator('.menu-overlay').isVisible()) throw new Error('inventory must hide the start menu');
+      await hudPage.waitForFunction(() => document.querySelector('.hud-inventory')?.disabled, null, { timeout: 5_000 });
+      await hudPage.keyboard.press('KeyE');
+      await waitClosed();
+      if ((await hudPage.locator('.menu-title').innerText()) !== 'Voxel Game') throw new Error('E must return to the originating start menu');
+
+      await button.focus();
+      await hudPage.keyboard.press('Tab');
+      await hudPage.keyboard.press('Shift+Tab');
+      if (!(await button.evaluate((el) => el === document.activeElement && el.matches(':focus-visible') && getComputedStyle(el).outlineStyle !== 'none')))
+        throw new Error('HUD Inventory button must be keyboard reachable with a visible focus ring');
+      await hudPage.screenshot({ path: 'screenshots/hud-inventory.png' });
+      await hudPage.keyboard.press('Enter');
+      await waitOpen();
+      await hudPage.keyboard.press('Escape');
+      await waitClosed();
+      await button.focus();
+      await hudPage.keyboard.press('Space');
+      await waitOpen();
+      await hudPage.getByRole('button', { name: 'Close (E)', exact: true }).click();
+      await waitClosed();
+      if ((await hudPage.locator('.menu-title').innerText()) !== 'Voxel Game') throw new Error('Close must restore the start menu');
+      if (await hudPage.evaluate(() => document.pointerLockElement !== null || window.__game.state().playing))
+        throw new Error('inventory access from a menu must not capture the pointer or start play');
+      await hudPage.close();
+      await page.bringToFront();
     },
   },
   {
@@ -540,6 +639,8 @@ const CHECKS = [
 mkdirSync('screenshots', { recursive: true });
 const server = await preview({ preview: { port: PORT, strictPort: true }, logLevel: 'warn' });
 const errors = [];
+/** The name of the check (or phase) currently running, so a failure says where it happened (task T-A2a). */
+let running = 'startup (goto and ready)';
 let browser;
 try {
   browser = await chromium.launch({
@@ -564,11 +665,13 @@ try {
   // SMOKE_ONLY=text runs only the checks whose name contains the text (for debugging one check).
   const only = process.env.SMOKE_ONLY;
   for (const check of CHECKS.filter((c) => !only || c.name.includes(only))) {
+    running = check.name;
     await check.run(page);
     console.log(`check passed: ${check.name}`);
   }
 
   // Measurement only (not a check): time until nothing is left to load or mesh, then the steady frame rate.
+  running = 'final measurement';
   const loadStart = Date.now();
   await page.evaluate(() => window.__game.look(0, -0.1));
   await page
@@ -582,7 +685,7 @@ try {
   const steady = await page.evaluate(() => window.__game.state());
   console.log(`fully loaded ${loadMs} ms after the checks; then ${steady.fps} fps, ${steady.loaded} chunks loaded, ${steady.meshed} meshed, ${steady.drawCalls} draw calls`);
 } catch (err) {
-  errors.push(`smoke failure: ${err instanceof Error ? err.message : String(err)}`);
+  errors.push(`smoke failure during "${running}": ${err instanceof Error ? err.message : String(err)}`);
 } finally {
   await browser?.close();
   await new Promise((resolve) => server.httpServer.close(resolve));
@@ -590,6 +693,12 @@ try {
 
 if (errors.length > 0) {
   console.error(`SMOKE TEST FAILED\n${errors.join('\n')}`);
+  // GitHub Actions annotations (task T-A2a): raw CI logs are not always retrievable, so failures are also published
+  // as run annotations, readable from the check-runs API and the run page. Escaping per the workflow-commands spec.
+  if (process.env.GITHUB_ACTIONS) {
+    const esc = (s) => String(s).replace(/%/g, '%25').replace(/\r/g, '%0D').replace(/\n/g, '%0A');
+    for (const e of errors) console.log(`::error title=smoke::${esc(e)}`);
+  }
   process.exit(1);
 }
 console.log('SMOKE TEST PASSED');

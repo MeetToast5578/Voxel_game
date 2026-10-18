@@ -7,11 +7,13 @@ The owner asked for three things:
 2. **An inventory that opens reliably**, with a visible button. Today it did not open for the owner, and there is no button to click.
 3. **A proper GUI** so the game starts to look like a finished interface. This is planning only.
 
-## What the code does today (read, not run)
+## Implementation audit (2026-10-18)
 
-- **E opens the inventory only while the pointer is captured.** `src/game.ts:230` checks `this.playing`, which is set by pointer lock (`game.ts:162-163`). If the browser doesn't capture the mouse, E does nothing. `src/input/input.ts:33-40` swallows the lock error, so the player gets no message.
-- **No on-screen button.** `src/ui/hud.ts` draws only the hotbar. The controls live in the README, not in the game.
-- **Not reproduced.** I can't run a browser in plan mode, so the cause is a strong hypothesis, not a confirmed bug. The fix below removes the dependency either way.
+- The original pointer-lock-only diagnosis was outdated: E already works in the pause menu, lock failures already show a message, and controls/key hints are in game.
+- The reproduced automated failure was an uncached-icon GPU readback stall (~20 s), fixed by CPU-backed atlas/icon canvases (T-A2a). The owner's physical-browser complaint still needs their playtest.
+- The HUD Inventory button is now implemented in `src/ui/hud.tsx`. It shares the game's toggle action, works over start/pause overlays without pointer capture, and remains below the inventory overlay. It is disabled before readiness and while inventory is open. Closing restores the originating menu, or requests capture when returning to play.
+- Native Tab/Enter/Space activation and the shared visible focus ring are retained. Five game-lifecycle regressions cover open/close state. The full browser suite passes all 25 checks, including pointer-free start/pause HUD clicks, keyboard focus/activation and return-to-menu behaviour. Owner playtest remains open.
+- This batch does not implement slabs or the remaining GUI pass.
 
 ## Slabs
 
@@ -26,7 +28,7 @@ The owner asked for three things:
 
 ## Inventory access
 
-- Keep E. Add an **Inventory button** to the HUD (`src/ui/hud.ts`) that calls the same `toggleInventory` (`src/game.ts:439`). A button click doesn't need pointer lock, so the screen opens even when the mouse isn't captured.
+- Keep E. Add an **Inventory button** to the HUD (`src/ui/hud.tsx`) that calls the same `toggleInventory` in `src/game.ts`. A button click doesn't need pointer lock, so the screen opens even when the mouse isn't captured.
 - When the pause menu is showing, the button still works. The pause menu shows the key hints: E for inventory, Esc to pause.
 - Drop the silent failure: when a lock attempt fails, the pause menu says "Click the game to capture the mouse", instead of showing nothing.
 
@@ -38,7 +40,7 @@ The owner asked for three things:
 - **HUD.** Crosshair, hotbar with stack counts and a selected-slot frame, the Inventory button, and the existing F3 overlay.
 - **Inventory.** Item name tooltip on hover. The existing click-to-pick-up behaviour stays.
 - **Accessibility.** Real `<button>` elements, visible focus rings, text contrast, and keyboard reach for every menu button. Accessibility is never cut.
-- **Components.** Reuse `el()` from `src/ui/dom.ts`. Add a shared button or panel helper only when three or more screens need it.
+- **Components.** Use the approved Preact components in `src/ui/*.tsx`. Add a shared button or panel helper only when three or more screens need it.
 
 ## Suggested order
 

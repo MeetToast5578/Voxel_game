@@ -10,7 +10,7 @@
 - `src/world/generator.ts`: When placing trees via the feature system, look up the species for the column's biome and pass it to tree generation.
 - Species: oak (temperate), spruce (taiga), birch (temperate), jungle giant (tropical), acacia (savanna), pine (cold), dead snag (rare), bush (small).
 - Trees only grow on soil columns (not bare rock, not beach), unchanged from spec 18.
-- Config: per-species height min/max, branch min/max, blob radius, trunk width.
+- Config: per-species height min/max, branch min/max, blob radius, trunk width. A zero blob radius means no foliage anywhere, including the main canopy (dead snag).
 - Tests: each species produces distinct shape, species maps to expected biome, trees only grow on soil columns.
 
 **Out of scope:**
@@ -28,3 +28,6 @@
 - Trees only grow on soil columns (not bare rock, not beach).
 - All existing tree tests still pass.
 - Determinism: same seed + anchor gives same tree.
+- Dead snags contain no leaves but retain connected logs within reach/height bounds. Leafy species still produce leaves. `tests/trees.test.ts` covers four seeds and twelve snag anchors (T-E15).
+
+**Worldgen compatibility (2026-10-18):** fixing zero-radius foliage removes leaves from regenerated unedited dead snags and changes their branch geometry, since leaf generation no longer consumes random numbers between branches. Leafy species are unchanged; saved edits still apply.

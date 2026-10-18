@@ -38,7 +38,7 @@ Requires Node.js 20+.
 | Right click | Place block (uses one from the stack; hold to repeat) |
 | Middle click | Pick the targeted block into the hotbar |
 | 1–9, mouse wheel | Select hotbar slot |
-| E | Open or close the inventory (also from the pause menu, where it has a button) |
+| E | Open or close the inventory; the HUD Inventory button also works without mouse capture |
 | F3 or ` | Debug overlay |
 | Esc | Pause menu, or close the inventory |
 

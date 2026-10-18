@@ -26,6 +26,12 @@ export class Sky {
   private readonly moon: THREE.Mesh;
   private readonly stars: THREE.Points;
   private readonly starPositions: Float32Array;
+  // North celestial pole: altitude equals latitude, with north along +Z (the sun's south is -Z).
+  private readonly starAxis = new THREE.Vector3(
+    0,
+    Math.sin(WORLD_LATITUDE_DEG * Math.PI / 180),
+    Math.cos(WORLD_LATITUDE_DEG * Math.PI / 180),
+  );
 
   constructor(scene: THREE.Scene) {
     this.uniforms = {
@@ -98,6 +104,8 @@ export class Sky {
     // Recenter the sky dome on the camera so it always surrounds the player.
     this.dome.position.copy(camera.position);
     this.stars.position.copy(camera.position);
+    // Set an absolute orientation, not an accumulated frame delta: save/reload and time jumps agree.
+    this.stars.quaternion.setFromAxisAngle(this.starAxis, timeOfDay * Math.PI * 2);
 
     // Solar declination: +AXIAL_TILT at summer solstice (season 0.25), -AXIAL_TILT at winter (0.75).
     const declination = AXIAL_TILT_DEG * Math.sin(2 * Math.PI * season);
