@@ -412,3 +412,44 @@ Rendering batch final validation and review:
 - T-F1, T-F3, T-F4 and discovered repairs T-F10..T-F13 checked DONE in tasks.md.
   T-F14 tracks unconnected lightning intensity/delayed thunder; not claimed done.
 - Updated README, handoff and spec index. git diff --check clean.
+
+2026-10-18 — Riverbed sediment and freshwater cave protection (T-D1/T-D5)
+- Added clay at state 53 with a procedural texture; all existing block IDs remain.
+  Riverbeds receive seeded 2.4 m patches of sand/gravel/clay through the soil depth.
+- Found cave roof protection only consulted sea level, leaving elevated freshwater
+  beds vulnerable. It now uses local river/lake water level; dry land caves remain.
+- Prevented terrestrial plants from replacing submerged water cells.
+- Targeted generation/atlas/registry/habitat tests: PASS, 52 tests in five files.
+- Review found an out-of-bounds lower cave assertion (the roof extends 17 blocks).
+  Replaced it with a real generated lower chunk. All five adversarial sediment/
+  roof tests pass, including forced open cave noise and preserved dry entrances.
+- Initial full typecheck caught a narrow numeric-union .includes argument in the
+  updated sediment test. Replaced it with equivalent .some equality membership.
+  Full check, GPU and gameplay validation restarted sequentially; results pending.
+- Added a reusable worker benchmark for region simulation, cold column tops,
+  spawn search, generation and meshing with mesh hash. Not yet run; browser/CPU
+  validation must be idle for interpretable performance evidence.
+Riverbed batch final result:
+- npm run check: PASS, 533 tests / 63 files, typecheck and production build.
+- Full gameplay smoke: PASS, all 25 checks; GPU rendering regressions PASS.
+- Focused Blocks-tab smoke: PASS, now explicitly selects clay and checks its icon.
+- Added a separate closed-cave-noise test at hash-selected plant-eligible cells;
+  the forced-open-cave fixture alone would suppress plants and miss that bug.
+- T-D1 and T-D5 checked DONE. Reviewed the sediment scope, old state IDs, wet/dry
+  cave guards, plant exclusion, negative patch coordinates and deeper roof test.
+- Rendering batch 17f8db6 pushed successfully to origin/main.
+- GitHub Actions status reads are blocked: api.github.com returns proxy Forbidden
+  via both native HTTPS and gh. Native Git read/push works. No CI success claimed.
+- No dependency declarations or lockfile changed. git diff --check clean.
+Performance follow-on:
+- The first benchmark sampled ground-height chunks (generation 1.51 ms, mesh
+  2.56 ms on Node 24). Review corrected it to the existing visible-top fixture,
+  including canopies. The earlier ground-only figure must not close T-J1.
+- Installed Node 22.23.3 through verified npm artifacts in the external workspace
+  npm cache, with no repository dependency changes, matching CI's Node major.
+- Corrected Node-22 worker fixture (50 seed-1 visible tops, three full passes):
+  generation mean 1.396 ms; mesh mean 4.011 ms. The explicit 3 ms mesh assertion
+  FAILS, proving the guard detects the known budget gap. T-J1/T-A3 stay open.
+- Mesh data hash before optimization: 803974a7770501157d9409fc8622d26838a45e03e5c06ed3661d8989843715ae.
+- Capturing a CPU profile before making a performance change; benchmark script
+  remains part of the next, uncommitted performance batch.

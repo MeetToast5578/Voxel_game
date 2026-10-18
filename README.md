@@ -5,7 +5,7 @@ A Minecraft-like voxel sandbox that runs in the browser, built with TypeScript, 
 - Endless procedural terrain: hills, mountains, beaches, rivers, lakes, trees and caves, with layers of granite, diorite, andesite, sandstone, limestone, slate and basalt underground, deepslate below 100 m underground, bare rock on steep ground, ore veins (coal, iron, gold, redstone, lapis, diamond, emerald) by depth band, grass blocks that are green on every side, and tall grass, ferns, poppies, dandelions and mushrooms on the grass
 - Walk, sprint, jump, fly and swim, with block collisions
 - Ledges up to 0.6 m are stepped up automatically, no jump needed
-- Break and place 35 block types, gravel included. Water flows: the source block spreads, and it levels out.
+- Break and place blocks including gravel, clay and cactus. Water flows: the source block spreads, and it levels out.
 - Physics: sand and gravel fall, water flows and levels out (flowing water is shown at its level), and a big enough collapse makes the broken blocks tumble, float or sink by their density, and settle back into blocks Breaking takes time and shows cracks; the block drops as an item that you pick up by walking over it
 - 36-slot inventory (E) with a 9-slot hotbar and stacks of 64; the selected block is shown in your hand
 - Day/night cycle with lunar phases, sky and block lighting (glowstone), clouds, simple sound effects
@@ -13,6 +13,7 @@ A Minecraft-like voxel sandbox that runs in the browser, built with TypeScript, 
 - Start/pause menu with render distance, field of view and mouse sensitivity
 - Automatic saving in the browser (IndexedDB), including the inventory, items on the ground and time of day
 - Saves from older versions, including the 0.6 m blocks, are not loaded.
+- Riverbeds contain patches of sand, gravel and clay; cave roofs protect rivers and lakes
 - Sixteen tree and shrub species, including willow curtains, mangrove prop roots, tapered conifers, palm fronds and branching desert cacti
 - Terrain generation and meshing run in Web Workers
 - 1 block = 0.3 m; the player is about 6 blocks tall. Trees are 8–12 m tall. A chunk is 4.8 m wide.
@@ -99,4 +100,4 @@ CI (GitHub Actions) runs `npm run check` and `npm run smoke` on every pull reque
 | `src/workers` | Web Worker pool for generation and meshing |
 | `tests` | Vitest unit tests for all logic modules |
 
-Tree generation updates apply to regenerated, unedited terrain. Saved edits remain in place. Worlds containing newly placed cactus blocks require this version or newer.
+Tree generation updates apply to regenerated, unedited terrain. Saved edits remain in place. Worlds containing newly placed cactus or clay blocks require this version or newer.

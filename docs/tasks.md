@@ -94,11 +94,11 @@ Nothing below can be done headless (`HANDOFF.md:45-57`). **This is the real bloc
 
 ## D. Phase 2 — Terrain
 
-- [ ] **T-D1 — Riverbed gravel and clay.** `ROADMAP.md` item 5 tail. Unblocked now that rivers exist (spec 41).
+- [x] **T-D1 — Riverbed gravel and clay.** Deterministic sand/gravel/clay patches, including subsurface sediment. Clay state 53 and a procedural texture are appended without renumbering old states. Negative-coordinate patch consistency, deterministic generation, water/bed placement, registry/atlas and actual seeded river tests pass. Full gameplay smoke passes; clay picker/icon covered.
 - [ ] **T-D2 — Caves beyond noise.** Item 6. Basic noise caves only. Needs cheese caverns, spaghetti tunnels, noodle tunnels and ravines.
 - [ ] **T-D3 — Aquifers.** Item 6. A local water table, so caves below sea level are not all flooded.
 - [ ] **T-D4 — Underground lakes and lava pools** at depth. Item 6.
-- [ ] **T-D5 — Cave openings that respect rivers and the sea.** Item 6.
+- [x] **T-D5 — Cave openings that respect rivers and the sea.** Cave roofs now use local freshwater levels as well as sea level, retaining the configured 5 m cover. Forced-open cave noise tests prove river/lake roofs remain intact while dry land retains openings. Separate closed-noise tests prove land plants cannot replace underwater cells.
 - [ ] **T-D6 — Coasts and oceans.** Item 7, not started. Beaches, cliffs, stony shores and sandbars decided by wave exposure; continental shelf dropping to deep ocean.
 - [ ] **T-D7 — Horizon LOD.** Item 8, not started, and the reason mountains are capped at 60 m (`HANDOFF.md:72`): taller peaks read as walls until this exists. Coarse heightfield rings out to kilometres, biome-coloured, fading into the chunk meshes.
 

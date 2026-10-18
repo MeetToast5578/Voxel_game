@@ -305,7 +305,7 @@ describe('Region simulation in the generated world (spec 41)', () => {
     return null;
   };
 
-  it('carves rivers with water in them, above a sand bed', { timeout: 120000 }, () => {
+  it('carves rivers with water above a sand, gravel or clay bed', { timeout: 120000 }, () => {
     const g = new TerrainGenerator(1337);
     const at = findColumn((x, z) => {
       const s = g.sampleColumn(x, z);
@@ -323,14 +323,14 @@ describe('Region simulation in the generated world (spec 41)', () => {
     const lz = z - Math.floor(z / 16) * 16;
 
     let water = 0;
-    let sand = 0;
+    let sediment = 0;
     for (let ly = 0; ly < 16; ly++) {
       const b = chunk.get(lx, ly, lz);
       if (b === BlockId.WATER) water++;
-      if (b === BlockId.SAND) sand++;
+      if ([BlockId.SAND, BlockId.GRAVEL, BlockId.CLAY].some((id) => id === b)) sediment++;
     }
     expect(water).toBeGreaterThan(0);
-    expect(sand).toBeGreaterThan(0);
+    expect(sediment).toBeGreaterThan(0);
   });
 
   it('runs a river downhill: its water level never rises along the drainage chain', { timeout: 120000 }, () => {

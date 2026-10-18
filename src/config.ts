@@ -272,6 +272,11 @@ export const RANDOM_TICK_BUDGET_MS = 1; // max time per frame spent on the rando
 export const GRASS_SPREAD_CHANCE = 0.02; // chance per tick that grass spreads to adjacent lit dirt
 export const GRASS_SPREAD_LIGHT_MIN = 8; // minimum sky light level for grass to spread
 
+// ---- Riverbed sediment (T-D1) ----
+export const RIVERBED_PATCH_M = 2.4;
+export const RIVERBED_CLAY_SHARE = 0.25;
+export const RIVERBED_GRAVEL_SHARE = 0.5;
+
 // ---- Biome borders (spec 35) ----
 export const BIOME_BLEND_BLOCKS = 3; // surface blocks dither into the next biome over this many blocks from its border
 

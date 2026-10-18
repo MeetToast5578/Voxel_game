@@ -562,6 +562,9 @@ const CHECKS = [
       if (cactus !== 'Cactus') throw new Error(`picking cactus should select it, got ${cactus}`);
       const cactusIcon = page.locator('.block-picker button[aria-label^="cactus,"] img');
       if (!(await cactusIcon.evaluate((img) => img.complete && img.naturalWidth > 0))) throw new Error('cactus icon did not render');
+      await page.click('.block-picker button[aria-label^="clay,"]');
+      if ((await page.evaluate(() => window.__game.state().selectedBlock)) !== 'Clay') throw new Error('clay picker did not select clay');
+      if (!(await page.locator('.block-picker button[aria-label^="clay,"] img').evaluate((img) => img.complete && img.naturalWidth > 0))) throw new Error('clay icon did not render');
       await page.keyboard.press('KeyE'); // close
       await page.waitForFunction(() => !window.__game.state().inventoryOpen, null, { timeout: 5_000 });
     },

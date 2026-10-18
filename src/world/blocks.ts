@@ -37,6 +37,7 @@ export const BlockId = {
   GRAVEL: 35,
   FLOWING_WATER: 36,
   CACTUS: 52,
+  CLAY: 53,
 } as const;
 
 export const Tile = {
@@ -89,6 +90,7 @@ export const Tile = {
   GRAVEL: 46,
   CACTUS_SIDE: 47,
   CACTUS_TOP: 48,
+  CLAY: 49,
 } as const;
 
 export type RenderLayer = 'none' | 'opaque' | 'cutout' | 'translucent';
@@ -337,6 +339,7 @@ export const BLOCK_REGISTRY = buildBlockRegistry([
     layer: 'translucent', flows: true,
   }),
   def('cactus', 'Cactus', { top: Tile.CACTUS_TOP, side: Tile.CACTUS_SIDE, bottom: Tile.CACTUS_TOP }, { hardness: 0.5, density: 700 }),
+  def('clay', 'Clay', all(Tile.CLAY), { hardness: 0.6, density: 1700 }),
 ]);
 
 // BlockId.X is variant 0 of the type whose key is x; keep the two lists in step.

@@ -40,6 +40,7 @@ import { blockPrecipitation, blockTemperature } from './climate';
 import { FeatureRegistry, type FeatureBlock } from './feature';
 import { anchorSpecies, biomeAt, biomeName, blendSurfaceBlocks, riparianTreeSpecies, secondarySpecies, soilBlock, surfaceBlock, treeSpecies } from './biome';
 import { climateHeightSource, RegionSampler, REGION_CELLS, type ColumnSample, type RegionData } from './region';
+import { riverbedMaterial } from './riverbed';
 import { MAX_TREE_RISE, treeBlocks } from './trees';
 
 const CAVE_THRESHOLD = 0.012;
@@ -110,6 +111,8 @@ interface Column {
   warp: Float64Array;
   /** Water surface height for each cell, in meters. Sea level where there is no lake or channel. */
   waterLevels: Float64Array;
+  /** 0 = ordinary terrain/ocean, 1 = river, 2 = lake. */
+  waterBodies: Uint8Array;
   /** Biome key for this column (computed once at column center). */
   biomeKey: string;
 }
@@ -274,28 +277,29 @@ export class TerrainGenerator {
         const inSlice = h + 1 >= y0 && h + 1 < y1; // the plant cell is in this range
         const surface = soil ? (beach ? BlockId.SAND : ditheredSurface(column.biomeKey, neighbours, lx, lz, wx, wz)) : BlockId.AIR;
         // Plants only grow on grass, so beaches, deserts and bare rock stay bare.
-        const plant = surface === BlockId.GRASS && inSlice ? this.plantAt(wx, wz, h) : BlockId.AIR;
         // Water level: the sea, or a lake or river surface from the region simulation. A riverbed
         // or lakebed is sand or gravel, not grass.
         const waterY = Math.max(SEA_LEVEL, Math.floor(metersToBlocks(column.waterLevels[i]!)));
         const submerged = h < waterY;
+        const bed = column.waterBodies[i] === 1 ? riverbedMaterial(this.seed, wx, wz) : BlockId.SAND;
+        const plant = !submerged && surface === BlockId.GRASS && inSlice ? this.plantAt(wx, wz, h) : BlockId.AIR;
         for (let y = y0; y < y1; y++) {
           let id: number;
           if (this.density.isSolid(wx, y, wz, offsetM, ampM)) {
             if (soil && y === h) {
-              // A riverbed or lakebed is sand; gravel and clay join it in a later geology slice.
-              id = submerged ? BlockId.SAND : surface;
+              // Rivers carry patches of clay, gravel and sand; lake/ocean beds retain sand.
+              id = submerged ? bed : surface;
               if (id === BlockId.GRASS && !beach) {
                 this.onGrassPlaced?.(wx, y, wz);
               }
             } else if (soil && y >= h - SOIL_DEPTH) {
-              id = submerged ? BlockId.SAND : beach ? BlockId.SAND : soilBlock(column.biomeKey);
+              id = submerged ? bed : beach ? BlockId.SAND : soilBlock(column.biomeKey);
             } else id = this.rockAt(y, warp);
           } else if (y === h + 1 && plant !== BlockId.AIR) id = plant;
           else id = y <= waterY ? BlockId.WATER : BlockId.AIR;
           out[localIndex(lx, y - y0, lz)] = id;
         }
-        const top = Math.min(this.caveTop(h), y1 - 1);
+        const top = Math.min(this.caveTop(h, column.waterBodies[i] ? waterY : SEA_LEVEL), y1 - 1);
         for (let y = Math.max(2, y0); y <= top; y++) {
           if (this.isCave(wx, y, wz)) out[localIndex(lx, y - y0, lz)] = BlockId.AIR;
         }
@@ -321,6 +325,7 @@ export class TerrainGenerator {
       amps: new Float64Array(CHUNK_SIZE * CHUNK_SIZE),
       warp: new Float64Array(CHUNK_SIZE * CHUNK_SIZE),
       waterLevels: new Float64Array(CHUNK_SIZE * CHUNK_SIZE),
+      waterBodies: new Uint8Array(CHUNK_SIZE * CHUNK_SIZE),
       biomeKey: '',
     };
     for (let lz = 0; lz < CHUNK_SIZE; lz++)
@@ -341,6 +346,7 @@ export class TerrainGenerator {
         column.amps[i] = detailAmpMeters(fields) * ampScale;
         column.warp[i] = this.rockNoise((wx * BLOCK_SIZE_M) / GEOLOGY_WARP_M, (wz * BLOCK_SIZE_M) / GEOLOGY_WARP_M);
         column.waterLevels[i] = sample.waterLevelM;
+        column.waterBodies[i] = sample.isRiver ? 1 : sample.isLake ? 2 : 0;
         column.solidTop[i] = this.solidTop(wx, wz, column.offsets[i]!, column.amps[i]!);
       }
     column.biomeKey = this.chunkBiome(cx, cz);
@@ -442,8 +448,8 @@ export class TerrainGenerator {
    * which happens along thin winding tubes. y = 0 and y = 1 are never carved. Under beaches, lakes and the sea
    * the top few blocks are never carved, so water never sits above a cave opening.
    */
-  private caveTop(h: number): number {
-    return h <= SEA_LEVEL + SHORE_CAVE_BAND ? h - SHORE_ROOF : h;
+  private caveTop(h: number, waterY = SEA_LEVEL): number {
+    return h <= waterY + SHORE_CAVE_BAND ? h - SHORE_ROOF : h;
   }
 
   private isCave(wx: number, y: number, wz: number): boolean {
@@ -497,7 +503,6 @@ export class TerrainGenerator {
     // Trees need intact soil; riparian species and desert cacti have explicit habitat exceptions.
     const amp = this.amplitudeAt(anchorX, anchorZ);
     if (amp >= BARE_ROCK_AMP_M) return null; // no trees on bare rock
-    if (h >= 2 && h <= this.caveTop(h) && this.isCave(anchorX, h, anchorZ)) return null;
 
     // Species comes from the column's biome, from real temperature and precipitation (height in
     // metres). Precipitation uses the region's advected moisture, matching the biome lookup.
@@ -507,6 +512,7 @@ export class TerrainGenerator {
     const temperature = blockTemperature(fields, heightM);
     const precipitation = blockPrecipitation(fields, amp, sample.moisture);
     const waterY = Math.max(SEA_LEVEL, Math.floor(metersToBlocks(sample.waterLevelM)));
+    if (h >= 2 && h <= this.caveTop(h, sample.isRiver || sample.isLake ? waterY : SEA_LEVEL) && this.isCave(anchorX, h, anchorZ)) return null;
     const riparian = riparianTreeSpecies(temperature, precipitation, waterY - h, sample.isRiver || sample.isLake);
     if (riparian) return riparian;
     // Ordinary trees and cacti cannot grow below the waterline or on the beach band.
