@@ -38,7 +38,7 @@ import { TerrainDensity } from './density';
 import { ClimateSampler, detailAmpMeters } from './shape';
 import { blockPrecipitation, blockTemperature } from './climate';
 import { FeatureRegistry, type FeatureBlock } from './feature';
-import { anchorSpecies, biomeAt, biomeName, blendSurfaceBlocks, secondarySpecies, soilBlock, surfaceBlock, treeSpecies } from './biome';
+import { anchorSpecies, biomeAt, biomeName, blendSurfaceBlocks, riparianTreeSpecies, secondarySpecies, soilBlock, surfaceBlock, treeSpecies } from './biome';
 import { climateHeightSource, RegionSampler, REGION_CELLS, type ColumnSample, type RegionData } from './region';
 import { MAX_TREE_RISE, treeBlocks } from './trees';
 
@@ -494,8 +494,7 @@ export class TerrainGenerator {
    */
   treeSpeciesAt(anchorX: number, anchorZ: number): TreeSpecies | null {
     const h = this.getHeight(anchorX, anchorZ);
-    // Trees grow on grass: not a beach or water, and the cave carver left the surface alone.
-    if (h <= SEA_LEVEL + BEACH_BAND) return null;
+    // Trees need intact soil; riparian species and desert cacti have explicit habitat exceptions.
     const amp = this.amplitudeAt(anchorX, anchorZ);
     if (amp >= BARE_ROCK_AMP_M) return null; // no trees on bare rock
     if (h >= 2 && h <= this.caveTop(h) && this.isCave(anchorX, h, anchorZ)) return null;
@@ -504,9 +503,17 @@ export class TerrainGenerator {
     // metres). Precipitation uses the region's advected moisture, matching the biome lookup.
     const fields = this.climate.fields(anchorX * BLOCK_SIZE_M, anchorZ * BLOCK_SIZE_M);
     const heightM = h * BLOCK_SIZE_M;
+    const sample = this.regions.sample(anchorX, anchorZ);
+    const temperature = blockTemperature(fields, heightM);
+    const precipitation = blockPrecipitation(fields, amp, sample.moisture);
+    const waterY = Math.max(SEA_LEVEL, Math.floor(metersToBlocks(sample.waterLevelM)));
+    const riparian = riparianTreeSpecies(temperature, precipitation, waterY - h, sample.isRiver || sample.isLake);
+    if (riparian) return riparian;
+    // Ordinary trees and cacti cannot grow below the waterline or on the beach band.
+    if (h < waterY || h <= SEA_LEVEL + BEACH_BAND) return null;
     const biome = biomeAt(
       blockTemperature(fields, heightM),
-      blockPrecipitation(fields, amp, this.regions.sample(anchorX, anchorZ).moisture),
+      precipitation,
       heightM,
       amp,
       false,
@@ -514,7 +521,7 @@ export class TerrainGenerator {
     );
     const species = treeSpecies(biome.key);
     // No tree where the biome grows none, and none on a surface that is not grass (sand, rock).
-    if (!species || surfaceBlock(biome.key, false) !== BlockId.GRASS) return null;
+    if (!species || (surfaceBlock(biome.key, false) !== BlockId.GRASS && species !== 'saguaro')) return null;
     // Biomes that name a secondary species mix it in on a share of the anchors (task T-E11), deterministically.
     return anchorSpecies(species, secondarySpecies(biome.key), this.seed, anchorX, anchorZ);
   }

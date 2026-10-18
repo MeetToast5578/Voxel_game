@@ -12,6 +12,7 @@ A Minecraft-like voxel sandbox that runs in the browser, built with TypeScript, 
 - Start/pause menu with render distance, field of view and mouse sensitivity
 - Automatic saving in the browser (IndexedDB), including the inventory, items on the ground and time of day
 - Saves from older versions, including the 0.6 m blocks, are not loaded.
+- Sixteen tree and shrub species, including willow curtains, mangrove prop roots, tapered conifers, palm fronds and branching desert cacti
 - Terrain generation and meshing run in Web Workers
 - 1 block = 0.3 m; the player is about 6 blocks tall. Trees are 8–12 m tall. A chunk is 4.8 m wide.
 - No height limit: the world is made of 16×16×16 chunks, so you can dig down or build up as far as you like
@@ -95,3 +96,5 @@ CI (GitHub Actions) runs `npm run check` and `npm run smoke` on every pull reque
 | `src/ui`, `src/input`, `src/audio`, `src/storage` | HUD, menu, debug overlay, input, sounds, saves and settings |
 | `src/workers` | Web Worker pool for generation and meshing |
 | `tests` | Vitest unit tests for all logic modules |
+
+Tree generation updates apply to regenerated, unedited terrain. Saved edits remain in place. Worlds containing newly placed cactus blocks require this version or newer.

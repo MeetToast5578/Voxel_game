@@ -547,6 +547,11 @@ const CHECKS = [
       await page.click('.block-picker button[aria-label^="basalt,"]');
       const selected = await page.evaluate(() => window.__game.state().selectedBlock);
       if (selected !== 'Basalt') throw new Error(`picking basalt should select it in the hotbar, got ${selected}`);
+      await page.click('.block-picker button[aria-label^="cactus,"]');
+      const cactus = await page.evaluate(() => window.__game.state().selectedBlock);
+      if (cactus !== 'Cactus') throw new Error(`picking cactus should select it, got ${cactus}`);
+      const cactusIcon = page.locator('.block-picker button[aria-label^="cactus,"] img');
+      if (!(await cactusIcon.evaluate((img) => img.complete && img.naturalWidth > 0))) throw new Error('cactus icon did not render');
       await page.keyboard.press('KeyE'); // close
       await page.waitForFunction(() => !window.__game.state().inventoryOpen, null, { timeout: 5_000 });
     },

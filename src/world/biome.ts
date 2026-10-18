@@ -1,6 +1,7 @@
 import { BlockId } from './blocks';
 import { hash2 } from '../core/random';
-import { SECONDARY_TREE_CHANCE, type TreeSpecies } from '../config';
+import { SECONDARY_TREE_CHANCE, RIPARIAN_MAX_DEPTH_BLOCKS, MANGROVE_MIN_TEMPERATURE_C,
+  RIPARIAN_MIN_PRECIPITATION_MM, WILLOW_MIN_TEMPERATURE_C, WILLOW_MAX_TEMPERATURE_C, type TreeSpecies } from '../config';
 
 export type BiomeKey = string;
 
@@ -41,8 +42,8 @@ const BIOMES: BiomeDef[] = [
   { key: 'stony_shore', name: 'Stony Shore', tempMin: -45, tempMax: 10, precipMin: 0, precipMax: 2000, waterOnly: true, surfaceBlock: BlockId.STONE, soilBlock: BlockId.STONE, treeSpecies: null },
   { key: 'river', name: 'River', tempMin: -45, tempMax: 45, precipMin: 0, precipMax: 2000, waterOnly: true, surfaceBlock: BlockId.WATER, soilBlock: BlockId.SAND, treeSpecies: null },
   { key: 'lake', name: 'Lake', tempMin: -45, tempMax: 45, precipMin: 0, precipMax: 2000, waterOnly: true, surfaceBlock: BlockId.WATER, soilBlock: BlockId.SAND, treeSpecies: null },
-  { key: 'swamp', name: 'Swamp', tempMin: 5, tempMax: 45, precipMin: 1000, precipMax: 2000, waterOnly: true, surfaceBlock: BlockId.WATER, soilBlock: BlockId.DIRT, treeSpecies: null },
-  { key: 'mangrove', name: 'Mangrove', tempMin: 20, tempMax: 45, precipMin: 1000, precipMax: 2000, waterOnly: true, surfaceBlock: BlockId.WATER, soilBlock: BlockId.SAND, treeSpecies: null },
+  { key: 'swamp', name: 'Swamp', tempMin: 5, tempMax: 45, precipMin: 1000, precipMax: 2000, waterOnly: true, surfaceBlock: BlockId.WATER, soilBlock: BlockId.DIRT, treeSpecies: 'willow' },
+  { key: 'mangrove', name: 'Mangrove', tempMin: 20, tempMax: 45, precipMin: 1000, precipMax: 2000, waterOnly: true, surfaceBlock: BlockId.WATER, soilBlock: BlockId.SAND, treeSpecies: 'mangrove' },
 
   // ---- Height overrides (land only) ----
   { key: 'glacier', name: 'Glacier', tempMin: -45, tempMax: -5, precipMin: 0, precipMax: 2000, surfaceBlock: BlockId.STONE, soilBlock: BlockId.STONE, treeSpecies: null },
@@ -53,7 +54,7 @@ const BIOMES: BiomeDef[] = [
   { key: 'volcanic', name: 'Volcanic', tempMin: -45, tempMax: 45, precipMin: 0, precipMax: 2000, surfaceBlock: BlockId.STONE, soilBlock: BlockId.STONE, treeSpecies: null },
 
   // ---- Whittaker diagram: open land ----
-  { key: 'desert', name: 'Desert', tempMin: 20, tempMax: 45, precipMin: 0, precipMax: 250, landOnly: true, surfaceBlock: BlockId.SAND, soilBlock: BlockId.SAND, treeSpecies: null },
+  { key: 'desert', name: 'Desert', tempMin: 20, tempMax: 45, precipMin: 0, precipMax: 250, landOnly: true, surfaceBlock: BlockId.SAND, soilBlock: BlockId.SAND, treeSpecies: 'saguaro' },
   { key: 'badlands', name: 'Badlands', tempMin: 20, tempMax: 45, precipMin: 250, precipMax: 500, landOnly: true, surfaceBlock: BlockId.SAND, soilBlock: BlockId.STONE, treeSpecies: null },
   { key: 'shrubland', name: 'Shrubland', tempMin: 15, tempMax: 30, precipMin: 250, precipMax: 500, landOnly: true, surfaceBlock: BlockId.GRASS, soilBlock: BlockId.DIRT, treeSpecies: 'bush' },
   { key: 'savanna', name: 'Savanna', tempMin: 20, tempMax: 45, precipMin: 500, precipMax: 1000, landOnly: true, surfaceBlock: BlockId.GRASS, soilBlock: BlockId.DIRT, treeSpecies: 'acacia', secondarySpecies: 'baobab' },
@@ -179,4 +180,12 @@ export function anchorSpecies(
 ): TreeSpecies {
   if (secondary !== null && hash2(seed + MIX_SALT, x, z) < SECONDARY_TREE_CHANCE) return secondary;
   return primary;
+}
+
+/** Wetland vegetation uses the actual river/lake depth, never ocean water or deep channels. */
+export function riparianTreeSpecies(temperatureC: number, precipitationMm: number, depth: number, freshWater: boolean): TreeSpecies | null {
+  if (!freshWater || depth < 0 || depth > RIPARIAN_MAX_DEPTH_BLOCKS || precipitationMm < RIPARIAN_MIN_PRECIPITATION_MM) return null;
+  if (temperatureC >= MANGROVE_MIN_TEMPERATURE_C) return 'mangrove';
+  if (temperatureC >= WILLOW_MIN_TEMPERATURE_C && temperatureC < WILLOW_MAX_TEMPERATURE_C) return 'willow';
+  return null;
 }

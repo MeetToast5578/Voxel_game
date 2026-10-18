@@ -332,3 +332,39 @@ FINAL FOLLOW-UP VERIFICATION (local, current branch):
 - Final re-run npm run check after documentation/review: PASS, 487 tests in
   58 files, typecheck and build. Output bundle hashes match the successful
   smoke build. Final git diff --check: clean. Generated outputs stay ignored.
+
+2026-10-18 — Autonomous implementation pass (user authorized review, tests and pushes to main)
+Baseline: clean checkout at 517de76; origin/main verified at the same commit.
+- Re-ran npm run check: PASS, 487 tests / 58 files, typecheck and build.
+- Re-ran full browser smoke with system Chromium 154 and SwiftShader: PASS,
+  all 25 checks enabled. Logs: /tmp/voxel-baseline-{check,smoke}.log.
+- Real mouse/audio/hardware FPS checks T-C1..C9 and original inventory complaint
+  remain owner checks. Headless success does not close these tasks.
+T-E11 implementation in progress:
+- Added willow hanging foliage, mangrove prop roots and branching saguaro cactus.
+- Appended cactus state 52 and procedural atlas tiles; preserved every old state ID.
+- Wetland anchor selection uses temperature, precipitation and actual shallow
+  river/lake depth; cacti grow on desert sand. Ordinary trees reject submersion.
+- Initial habitat tests failed because test climate fields were incorrectly mapped
+  from [-1,1] to Celsius. Corrected the fixtures; all four integration cases pass.
+- Initial aggregate bounds test exceeded 30 s under concurrent software rendering.
+  Split into one case per species, retaining every one of the 441 anchors and all
+  bounds assertions. No timeout increased and no assertions removed.
+- Species silhouettes and full regression review still pending; T-E11 stays partial.
+T-E11 review and final batch result:
+- Inspected the 16-species gallery. Found old round conifer/palm silhouettes;
+  implemented tapered conifer crowns, eight palm fronds on a clear trunk, flat
+  acacia/baobab crowns and a thicker baobab trunk. Added shape regressions.
+- Final npm run check: PASS, 515 tests / 59 files, typecheck and production build.
+- Full browser smoke: PASS, all 25 checks, including cactus picker and icon.
+  Final workload: 4012 loaded / 2063 meshed chunks, 340 draw calls, 4 FPS on
+  SwiftShader. This is a software-rendering measurement, not owner hardware FPS.
+- Reviewed state registration, save-name round trips, habitat selection, generated
+  trunk placement, stem connectivity, bounds and the source/test diff.
+- git diff --check: clean. No dependency changes, skipped tests or timeout increases.
+- T-E11a checked DONE; T-E11b stays OPEN for owner review, parent T-E11 PARTIAL.
+- T-I10 checked DONE from existing code + baseline tests. Added T-I11 for survival
+  acquisition rules; corrected stale GUI, redo and suggested-order descriptions.
+- Follow-on rendering review reproduced four failing regressions (in separate,
+  not-yet-committed tests): sun/daylight clock mismatch, precipitation altitude,
+  roof/coordinate errors and wetness overshoot. These are the next repair batch.

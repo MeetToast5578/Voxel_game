@@ -8,6 +8,7 @@ import {
   BIOME_KEYS,
   blendSurfaceBlocks,
   secondarySpecies,
+  riparianTreeSpecies,
   surfaceBlock,
   treeSpecies,
 } from '../src/world/biome';
@@ -123,7 +124,8 @@ describe('tree species wiring (tasks T-E12, T-E13)', () => {
       const home = BIOME_KEYS.find(
         (key) =>
           (treeSpecies(key) === species.key || secondarySpecies(key) === species.key) &&
-          surfaceBlock(key, false) === BlockId.GRASS,
+          (surfaceBlock(key, false) === BlockId.GRASS || (species.key === 'saguaro' && key === 'desert') ||
+            (species.key === 'willow' && key === 'swamp') || (species.key === 'mangrove' && key === 'mangrove')),
       );
       expect(home, `${species.key} is named by no grass-surface biome, so it can never generate`).toBeDefined();
     }
@@ -132,7 +134,8 @@ describe('tree species wiring (tasks T-E12, T-E13)', () => {
   it('every biome naming a tree has a surface the generator accepts, including shrubland and steppe (T-E14)', () => {
     for (const key of BIOME_KEYS) {
       if (treeSpecies(key) !== null || secondarySpecies(key) !== null) {
-        expect(surfaceBlock(key, false), `${key} must permit its named tree`).toBe(BlockId.GRASS);
+        const expected = key === 'desert' ? BlockId.SAND : key === 'swamp' || key === 'mangrove' ? BlockId.WATER : BlockId.GRASS;
+        expect(surfaceBlock(key, false), `${key} must permit its named tree`).toBe(expected);
       }
     }
     expect(biomeAt(16, 300, 100, 5, false, 0.1).key).toBe('shrubland');
@@ -183,5 +186,17 @@ describe('biome border blending (spec 35)', () => {
     expect(blendSurfaceBlocks(a, b, 3, 4, 0)).toBe(a);
     expect(blendSurfaceBlocks(a, b, 3, 4, 1)).toBe(b);
     expect(blendSurfaceBlocks(a, b, 3, 4, 0.25)).toBe(blendSurfaceBlocks(a, b, 3, 4, 0.25)); // deterministic
+  });
+});
+
+describe('riparian tree habitats (T-E11)', () => {
+  it('selects willow on mild wet banks and mangrove in warm shallow freshwater', () => {
+    expect(riparianTreeSpecies(12, 1500, 0, true)).toBe('willow');
+    expect(riparianTreeSpecies(25, 1500, 3, true)).toBe('mangrove');
+    expect(treeSpecies('desert')).toBe('saguaro');
+  });
+  it('rejects dry banks, deep channels, cold water and ocean water', () => {
+    for (const args of [[25,1500,4,true], [25,1500,-1,true], [25,1500,1,false], [0,1500,1,true], [25,500,1,true]] as const)
+      expect(riparianTreeSpecies(args[0], args[1], args[2], args[3])).toBeNull();
   });
 });

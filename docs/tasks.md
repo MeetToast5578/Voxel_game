@@ -119,7 +119,11 @@ Nothing below can be done headless (`HANDOFF.md:45-57`). **This is the real bloc
 Newly found while auditing:
 
 - [ ] **T-E10 — Biome resolution is per chunk column.** `HANDOFF.md:66` records the limit: biomes are picked per 16×16 chunk column, so borders land on 4.8 m grid lines and dithering only softens them. The doc says "the terrain work should fix the grid itself" — that work is not itemised anywhere.
-- [~] **T-E11 — Complete the 16 roadmap tree species.** Five of the missing eight are now implemented in the parametric table: maple, fir, larch, baobab and palm (13 species total). Host biomes mix secondaries deterministically on 30% of tree anchors: temperate deciduous → maple, taiga → larch, snowy taiga → fir, savanna → baobab, rainforest → palm. Tests cover distinct deterministic geometry, connected logs, bounds, height bands and biome wiring. **Still open:** willow, mangrove and saguaro; species-specific silhouettes and owner visual review. Parameter differences alone do not establish that every species looks different in play.
+- [~] **T-E11 — Complete the 16 roadmap tree species.** All 16 species are implemented. Willow has hanging curtains, mangrove has connected prop roots, and saguaro has cactus stems and upward arms. Spruce/fir/larch have tapered crowns, palm has long fronds, acacia/baobab have flat crowns, and baobab has a 3×3 trunk. Wetland anchors use actual shallow river/lake depth and climate; saguaro grows on dry desert sand. Existing block state IDs are preserved; cactus is appended at state 52.
+  - [x] **T-E11a — Implement the missing species and habitat wiring.** Deterministic geometry, connected stems, all 441 bounds anchors per species, height bands, silhouette traits and real generator placement covered. `npm run check`: 515 tests / 59 files, typecheck and build PASS. Rendered and inspected `screenshots/tree-species-review.png`; full browser smoke PASS (all 25 checks, including cactus picker/icon).
+  - [ ] **T-E11b — Owner visual review in the game.** Remains open alongside T-C7/T-C9. Automated shape tests and the review gallery do not replace the physical-browser playtest.
+  - Compatibility: unedited generated trees may change on reload; saved edits remain. Older builds cannot load newly saved cactus states. No save-version bump or deletion of existing saves.
+
 - [x] **T-E12 — Two species are unreachable.** Closed 2026-10-17. `pine` wired to snowy taiga, `dead_snag` to tundra. The audit found the deeper bug: `treeSpeciesAt` grows a species only where the biome's surface block is GRASS, so **`spruce` was unreachable too** (taiga and snowy taiga had DIRT surfaces), and tundra's DIRT would have blocked the dead snag as well. Taiga, snowy taiga and tundra now have GRASS surfaces (soil unchanged). A new invariant test in `tests/biome.test.ts` asserts every species in the table is named by at least one grass-surface biome, so this bug class cannot return silently — including for T-E11's new species. Worldgen change: taiga and tundra columns now grow plants and trees; edits in existing saves may float.
 - [x] **T-E14 — Shrubland and steppe bushes.** Closed 2026-10-18: both biomes now have GRASS surfaces (DIRT soil unchanged), which the generator accepts for their named bush species. A stronger invariant checks every biome naming a primary or secondary tree, not merely that each species has one reachable home. Worldgen change: previously generated unedited shrubland/steppe now regenerates with grass and flora.
 - [x] **T-E15 — Dead snags must be leafless.** Discovered 2026-10-18: `treeBlocks` clamped the configured zero leaf radius to one and always built a canopy. Zero now disables branch-tip leaves and the main canopy, without changing leafy-species paths. Regressions cover four seeds and twelve anchors, deterministic connected logs, reach/height bounds and foliage on every leafy species. Worldgen change: unedited dead snags regenerate without foliage and with changed branch geometry; saved edits remain. Reviewed and verified: `npm run check` passes (487 tests/58 files, typecheck, build); all 25 full browser smoke checks pass.
@@ -189,7 +193,8 @@ All six sandbox-physics slices (spec 25) are built and tested. One known shortcu
 - [ ] **T-I7 — Furnaces** that smelt, as a block entity with timers. Item 5.
 - [ ] **T-I8 — Food.** Hunting, farming, cooking. Item 6.
 - [ ] **T-I9 — Beds** to sleep through the night and set a spawn point. Item 7.
-- [ ] **T-I10 — Inventory-backed hotbar** in survival. Item 4.
+- [x] **T-I10 — Inventory-backed hotbar** in survival. Verified 2026-10-18: hotbar reads slots 0–8 of the same `Inventory`; placing consumes the selected stack and pickups refill inventory. Existing inventory tests and full baseline browser smoke pass. Survival-specific restrictions on the creative picker and pick-block are separate outstanding work (T-I11).
+- [ ] **T-I11 — Enforce survival acquisition rules.** The creative block tab and pick-block currently allow free stacks in survival; mode-specific gating and a survival starting-inventory policy are needed before claiming progression works.
 
 ---
 
@@ -211,25 +216,25 @@ All six sandbox-physics slices (spec 25) are built and tested. One known shortcu
 
 ---
 
-## K. Plans not started
+## K. Building and interface plans
 
 **`volumetric-tools.md` is fully built** — parts 1, 2 and 3 all landed (`World.setBlocks` at `src/world/world.ts:227`, `ToolKind` covering box/sphere/plane/wall/floor/roof/flatten at `src/player/buildTool.ts:23`, plus undo via `UNDO_LIMIT`). Nothing left from it. See T-L8.
 
-**`slabs-inventory-gui.md` is not started.** Biggest single gap between the plan and the code.
+**`slabs-inventory-gui.md` is partially implemented.** Inventory access, Preact screens, theme tokens, focus styles and tooltips exist. Slabs are the largest remaining core change.
 
 - [ ] **T-K1 — Slab shape.** `BlockShape` is `'cube' | 'cross'` (`src/world/blocks.ts:92`) and no `SLAB` constant exists in `src/config.ts`. Needs a `slab` with `bottom`/`top` halves at 0.15 m, via `metersToBlocks`.
   - **Largest core change:** `isSolidAt` returns one yes/no per cell (`src/game.ts:263`), so a slab would block the whole cell. The sweep in `src/player/physics.ts` (`moveAndCollide`) needs each cell's solid height range (0–0.5 or 0.5–1 of the cell).
   - A walker can already step onto a 0.15 m slab; the step-up limit is 0.6 m.
   - `src/player/placementTarget.ts` does not exist yet and the plan puts placement logic there.
   - Planned shortcut to accept or reject: slabs never cull neighbour faces and never block light.
-  - Default materials: planks, cobblestone, stone, sandstone, limestone. Owner's choice.
+  - Approved scope in the plan: slabs for every cube block type, reusing the existing textures.
 - [ ] **T-K2 — Slab items and icons**, drawn with `drawBlockIcon`, stacking normally. Note the plan cites `src/ui/hud.ts`, which is now `src/ui/hud.tsx`.
 - [~] **T-K3 — Inventory access root cause.** Audit correction 2026-10-18: E already works in the pause menu and pointer-lock refusal already shows a message. T-A2a fixed the reproduced ~20 s uncached-icon GPU readback stall. **HUD button implemented:** a real Inventory button shares `toggleInventory`, works without mouse capture over start/pause menus, and uses the existing focus ring and native Tab/Enter/Space activation. It is disabled before ready and while inventory is open. Closing restores the originating menu without requesting capture; opening from play retains the existing capture-on-close behaviour. Five lifecycle regressions pass. All 25 full smoke checks pass, including pointer-free HUD clicks, pause-overlay clicks, Tab/focus-ring, Enter/Space and E/Escape/Close returns to the originating menu. **Still open:** owner verification of the original physical-browser complaint (not closed by headless testing).
-- [ ] **T-K4 — A proper GUI.** Planning only, per the plan doc.
+- [~] **T-K4 — A proper GUI.** Preact menus/HUD/inventory, theme tokens, focus styles and item tooltips already exist. Audit the full plan against the UI before proposing more implementation; physical-browser acceptance remains open.
 
 From `ROADMAP.md` "Later":
 
-- [ ] **T-K5 — Building tools:** fill, copy and paste; stairs, doors; world export and import. Undo/redo and the volume tools are done.
+- [ ] **T-K5 — Building tools:** redo, copy and paste; stairs, doors; world export and import. Volume fill and undo are done; redo has no implementation.
 - [ ] **T-K6 — Input and platform:** gamepad, touch controls, PWA.
 - [ ] **T-K7 — Multiplayer.** Parked, no action.
 
@@ -256,13 +261,14 @@ From `ROADMAP.md` "Later":
 
 ## Suggested order
 
-1. **T-A1, T-A2** — a red suite hides every other defect. Nothing below can be trusted until this is settled.
-2. **T-C1** — the 10-minute playtest. Everything so far is headless-only, so this may surface bugs that outrank everything here. Pair it with **T-C9**, since none of the four approved fixes has been looked at by a human.
-3. **T-I1** — survival mode is unreachable by a player. Small, and it makes a whole phase testable.
-4. **T-L1 … T-L4, T-L9, T-L10** — cheap, and they stop the next handoff repeating these findings.
-5. **T-E11, T-E12, T-E13** — the species list is half-built and two entries are dead. The tree-size decision just landed; finishing the table is the natural follow-on.
-6. Then the phase work, in roadmap order: **T-D** → **T-E** → **T-F** → **T-G** → **T-H** → **T-I** → **T-J**.
-7. **T-K** (slabs) is independent of the phases and can run in parallel; it is the largest single piece of new work in the plans.
+Updated 2026-10-18: completed baseline fixes must not be repeated.
+
+1. **T-C1 + T-C9** — owner playtest and visual review; any discovered bugs take priority. This does not block independent coding.
+2. **T-E11** — finish tree species/habitats and review silhouettes; implementation complete, owner review open.
+3. **T-D** → **T-E** → **T-F** → **T-G** → **T-H** → **T-I** — phase work in dependency order. Resolve discovered correctness defects before adding dependent features.
+4. **T-A3 / T-J** — profile and address measured bottlenecks throughout the work.
+5. **T-K1–K2** — slabs can proceed independently. Audit the existing GUI before duplicating it.
+6. Per task: implement, review, run relevant tests and full regression checks, record evidence in `log.txt`, then check off only completed acceptance criteria.
 
 ## Latest verification notes
 

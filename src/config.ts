@@ -288,13 +288,16 @@ export type TreeSpecies =
   | 'palm'
   | 'acacia'
   | 'baobab'
+  | 'willow'
+  | 'mangrove'
+  | 'saguaro'
   | 'dead_snag'
   | 'bush';
 
 export interface TreeSpeciesDef {
   key: TreeSpecies;
   name: string;
-  trunkWidth: 1 | 2; // blocks wide
+  trunkWidth: 1 | 2 | 3; // blocks wide
   heightMinBlocks: number;
   heightMaxBlocks: number;
   branchMinBlocks: number;
@@ -428,7 +431,7 @@ export const TREE_SPECIES: TreeSpeciesDef[] = [
   {
     key: 'baobab',
     name: 'Baobab',
-    trunkWidth: 2,
+    trunkWidth: 3,
     heightMinBlocks: 27,
     heightMaxBlocks: 32,
     branchMinBlocks: 3,
@@ -436,6 +439,21 @@ export const TREE_SPECIES: TreeSpeciesDef[] = [
     blobRadiusBlocks: 5,
     crownBaseFraction: 0.6, // a thick bare trunk under a wide, flat crown
     crownRadiusFactor: 0.7,
+  },
+  {
+    key: 'willow', name: 'Willow', trunkWidth: 2,
+    heightMinBlocks: 27, heightMaxBlocks: 35, branchMinBlocks: 3, branchMaxBlocks: 5,
+    blobRadiusBlocks: 3, crownBaseFraction: 0.5, crownRadiusFactor: 0.4,
+  },
+  {
+    key: 'mangrove', name: 'Mangrove', trunkWidth: 2,
+    heightMinBlocks: 27, heightMaxBlocks: 33, branchMinBlocks: 3, branchMaxBlocks: 5,
+    blobRadiusBlocks: 3, crownBaseFraction: 0.55, crownRadiusFactor: 0.35,
+  },
+  {
+    key: 'saguaro', name: 'Saguaro', trunkWidth: 1,
+    heightMinBlocks: 27, heightMaxBlocks: 33, branchMinBlocks: 2, branchMaxBlocks: 4,
+    blobRadiusBlocks: 0, crownBaseFraction: 1, crownRadiusFactor: 0,
   },
   {
     key: 'dead_snag',
@@ -474,6 +492,18 @@ export const TREE_SPECIES_KEYS: TreeSpecies[] = TREE_SPECIES.map((s) => s.key);
 export function treeSpeciesDef(key: TreeSpecies): TreeSpeciesDef | undefined {
   return TREE_SPECIES.find((s) => s.key === key);
 }
+
+// Riparian trees grow on exposed banks or in at most 0.9 m of fresh water.
+export const RIPARIAN_MAX_DEPTH_BLOCKS = 3;
+export const MANGROVE_MIN_TEMPERATURE_C = 20;
+export const RIPARIAN_MIN_PRECIPITATION_MM = 1000;
+export const WILLOW_MIN_TEMPERATURE_C = 5;
+export const WILLOW_MAX_TEMPERATURE_C = 25;
+export const TREE_DROOP_FRACTION = 0.4;
+export const WILLOW_CURTAIN_DENSITY = 0.35;
+export const PALM_FROND_REACH_BLOCKS = 8;
+export const MANGROVE_ROOT_REACH_BLOCKS = 4;
+export const SAGUARO_ARM_REACH_BLOCKS = 4;
 
 // ---- Weather (spec 43) ----
 export const WEATHER_PRESSURE_WAVELENGTH_M = 6000; // feature size of pressure noise

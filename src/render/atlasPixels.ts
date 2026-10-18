@@ -33,6 +33,11 @@ function crackPainter(stage: number): PixelFn {
 }
 
 const PAINTERS: Record<number, PixelFn> = {
+  [Tile.CACTUS_SIDE]: (x, y, r) => {
+    if (x % 4 === 0 && y % 5 === 0) return shade([222, 209, 146], 1);
+    return shade([55, 122, 52], (x % 4 === 0 ? 0.65 : 1) + (r() - 0.5) * 0.15);
+  },
+  [Tile.CACTUS_TOP]: (x, y, r) => shade([88, 143, 65], Math.hypot(x - 7.5, y - 7.5) > 6 ? 0.65 : 1 + (r() - 0.5) * 0.15),
   [Tile.STONE]: noisy([125, 125, 125], 0.25),
   [Tile.DIRT]: noisy(DIRT, 0.3),
   [Tile.GRASS_TOP]: noisy(GRASS, 0.25),

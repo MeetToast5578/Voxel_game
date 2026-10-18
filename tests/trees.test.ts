@@ -56,14 +56,14 @@ describe('trees', () => {
     }
   });
   it('new species have distinct deterministic geometry at the same anchor (T-E11)', () => {
-    const keys = ['maple', 'fir', 'larch', 'baobab', 'palm'] as const;
+    const keys = ['maple', 'fir', 'larch', 'baobab', 'palm', 'willow', 'mangrove', 'saguaro'] as const;
     const signatures = new Set<string>();
     for (const key of keys) {
       const blocks = treeBlocks(SEED, 0, 20, 0, key);
       expect(blocks).toEqual(treeBlocks(SEED, 0, 20, 0, key));
       const signature = blocks.map((b) => `${b.x},${b.y},${b.z},${b.id}`).sort().join(';');
       signatures.add(signature);
-      const logs = new Set(blocks.filter((b) => b.id === BlockId.LOG).map((b) => `${b.x},${b.y},${b.z}`));
+      const logs = new Set(blocks.filter((b) => b.id === BlockId.LOG || b.id === BlockId.CACTUS).map((b) => `${b.x},${b.y},${b.z}`));
       const seen = new Set(['0,21,0']);
       const queue = ['0,21,0'];
       while (queue.length) {
@@ -89,8 +89,8 @@ describe('trees', () => {
       }
     }
   });
-  it('stay within reach of the trunk and within MAX_TREE_RISE of the ground, for every species', () => {
-    for (const def of TREE_SPECIES) {
+  // Keep all 441 anchors per species; separate cases identify failures and avoid one growing aggregate timeout.
+  it.each(TREE_SPECIES)('$key stays within TREE_REACH and MAX_TREE_RISE at every anchor', (def) => {
       const outside = ANCHORS.flatMap(([ax, az]) =>
         treeBlocks(SEED, ax, 20, az, def.key).filter(
           (b) =>
@@ -101,8 +101,7 @@ describe('trees', () => {
         ),
       );
       expect(outside).toEqual([]);
-    }
-  }, 30_000); // every species at every anchor: taller trees take longer to build
+  });
   it('every log is connected to the trunk through logs', () => {
     for (const [ax, az] of ANCHORS) {
       const blocks = tree(ax, az);
@@ -213,5 +212,49 @@ describe('trees', () => {
           }
         }
     }
+  });
+});
+
+describe('wetland and cactus silhouettes (T-E11)', () => {
+  it('saguaro has a full-height cactus stem and connected, raised arms without logs or leaves', () => {
+    for (const seed of [1, 42, 99]) {
+      const b = treeBlocks(seed, -16, 0, 15, 'saguaro');
+      expect(b.every((cell) => cell.y === 0 ? cell.id === BlockId.SAND : cell.id === BlockId.CACTUS)).toBe(true);
+      const stem = b.filter((cell) => cell.x === -16 && cell.z === 15 && cell.y > 0);
+      expect(stem.length).toBeGreaterThanOrEqual(27);
+      const arms = b.filter((cell) => Math.abs(cell.x + 16) === 4 || Math.abs(cell.z - 15) === 4);
+      expect(arms.some((cell) => arms.some((other) => other.x === cell.x && other.z === cell.z && other.y === cell.y + 1))).toBe(true);
+    }
+  });
+  it('mangrove has connected prop roots at all four sides of the trunk', () => {
+    const blocks = treeBlocks(42, 0, 0, 0, 'mangrove');
+    for (const [x, z] of [[4,0],[-4,0],[0,4],[0,-4]])
+      expect(blocks.some((b) => b.x === x && b.z === z && b.y === 1 && b.id === BlockId.LOG)).toBe(true);
+  });
+  it('willow grows hanging curtains below the main canopy edge', () => {
+    const b = treeBlocks(42, 0, 0, 0, 'willow');
+    const edge = b.filter((cell) => cell.id === BlockId.LEAVES && Math.hypot(cell.x, cell.z) >= 8);
+    expect(edge.length).toBeGreaterThan(0);
+    expect(Math.min(...edge.map((cell) => cell.y))).toBeLessThan(18);
+    expect(edge.some((cell) => edge.some((other) => other.x === cell.x && other.z === cell.z && other.y >= cell.y + 8))).toBe(true);
+  });
+});
+
+describe('species-specific crowns (T-E11)', () => {
+  it.each(['spruce', 'fir', 'larch'] as const)('%s has a tapered crown and a continuous trunk', (species) => {
+    const b = treeBlocks(42, 0, 0, 0, species);
+    const top = Math.max(...b.map((cell) => cell.y));
+    const leaves = b.filter((cell) => cell.id === BlockId.LEAVES);
+    const radius = (cells: TreeBlock[]) => Math.max(...cells.map((cell) => Math.hypot(cell.x, cell.z)));
+    expect(radius(leaves.filter((cell) => cell.y >= top - 3))).toBeLessThan(radius(leaves.filter((cell) => cell.y < top - 3)));
+    for (let y = 1; y < top; y++) expect(b.some((cell) => cell.x === 0 && cell.z === 0 && cell.y === y && cell.id === BlockId.LOG)).toBe(true);
+  });
+  it('palm has no low branches or low foliage and has long fronds in eight directions', () => {
+    const b = treeBlocks(42, 0, 0, 0, 'palm');
+    const top = Math.max(...b.map((cell) => cell.y));
+    expect(b.filter((cell) => cell.id === BlockId.LOG).every((cell) => cell.x === 0 && cell.z === 0)).toBe(true);
+    expect(b.filter((cell) => cell.id === BlockId.LEAVES).every((cell) => cell.y >= top - 5)).toBe(true);
+    for (const [dx,dz] of [[1,0],[-1,0],[0,1],[0,-1],[1,1],[-1,1],[1,-1],[-1,-1]])
+      expect(b.some((cell) => cell.x === dx! * 8 && cell.z === dz! * 8 && cell.id === BlockId.LEAVES)).toBe(true);
   });
 });
