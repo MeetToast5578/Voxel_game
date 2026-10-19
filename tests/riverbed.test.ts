@@ -9,6 +9,12 @@ import { ClimateSampler } from '../src/world/shape';
 import { hash2 } from '../src/core/random';
 import { SHORE_ROOF, DANDELION_CHANCE } from '../src/config';
 
+/** Cave fields that are always open (or always closed) for the four systems, so a test controls carving exactly. */
+function caveNoises(open: boolean) {
+  const open3 = () => (open ? 1 : -1);
+  const closed3 = () => (open ? 0 : 1);
+  return { cheese: open3, noodleA: closed3, noodleB: closed3, spaghettiA: closed3, spaghettiB: closed3, ravine: closed3 };
+}
 afterEach(()=>vi.restoreAllMocks());
 function fixture(river: boolean, lake = false) {
   vi.spyOn(ClimateSampler.prototype,'fields').mockReturnValue({continentalness:0.2,erosion:1,peaks:0,temperature:0,humidity:0,weirdness:0});
@@ -16,8 +22,8 @@ function fixture(river: boolean, lake = false) {
     flowX:river?1:0,flowZ:0,waterLevelM:river||lake?12:9,moisture:0,isRiver:river,isLake:lake});
   vi.spyOn(TerrainDensity.prototype,'isSolid').mockImplementation((_x,y)=>y<=32);
   const g=new TerrainGenerator(42);
-  // Force a cave everywhere below its permitted roof: this proves the roof guard, not luck in the noise.
-  Object.assign(g,{caveNoiseA:()=>0,caveNoiseB:()=>0});
+  // Force every cave system open below its permitted roof: this proves the roof guard, not luck in the noise.
+  Object.assign(g,{caves:caveNoises(true)});
   return g;
 }
 describe('river sediment (T-D1)',()=>{
@@ -45,7 +51,7 @@ describe('river sediment (T-D1)',()=>{
 });
 describe('submerged land plants',()=>{
   it('keeps water at actual plant-eligible grass columns when cave noise is closed',()=>{
-    const g=fixture(true);Object.assign(g,{caveNoiseA:()=>1,caveNoiseB:()=>1});
+    const g=fixture(true);Object.assign(g,{caves:caveNoises(false)});
     let eligible=0;
     for(let cx=0;cx<4;cx++)for(let cz=0;cz<4;cz++){
       const c=new Chunk(cx,2,cz);g.generateChunk(c);

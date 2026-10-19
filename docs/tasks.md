@@ -101,7 +101,7 @@ Nothing below can be done headless (`HANDOFF.md:45-57`). **This is the real bloc
 ## D. Phase 2 — Terrain
 
 - [x] **T-D1 — Riverbed gravel and clay.** Deterministic sand/gravel/clay patches, including subsurface sediment. Clay state 53 and a procedural texture are appended without renumbering old states. Negative-coordinate patch consistency, deterministic generation, water/bed placement, registry/atlas and actual seeded river tests pass. Full gameplay smoke passes; clay picker/icon covered.
-- [ ] **T-D2 — Caves beyond noise.** Item 6. Basic noise caves only. Needs cheese caverns, spaghetti tunnels, noodle tunnels and ravines.
+- [x] **T-D2 — Caves beyond noise.** Item 6. Four seeded systems now share the rock: cheese caverns (~6 % of the underground), spaghetti tubes (~3 %), noodle tunnels (~1 %) and depth-tapered ravines (~1 %). The surface is protected by a 4–24-block fading roof, only cheese caverns may open a mouth, and the spec 14 shore/river/lake roof still caps every system. `src/world/caves.ts`, spec `docs/specs/45-caves.md`; per-system share tests plus forced-open river/lake roof tests. Aquifers and lava stay in T-D3/T-D4.
 - [ ] **T-D3 — Aquifers.** Item 6. A local water table, so caves below sea level are not all flooded.
 - [ ] **T-D4 — Underground lakes and lava pools** at depth. Item 6.
 - [x] **T-D5 — Cave openings that respect rivers and the sea.** Cave roofs now use local freshwater levels as well as sea level, retaining the configured 5 m cover. Forced-open cave noise tests prove river/lake roofs remain intact while dry land retains openings. Separate closed-noise tests prove land plants cannot replace underwater cells.

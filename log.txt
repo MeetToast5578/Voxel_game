@@ -530,3 +530,81 @@ rendering, not owner hardware).
 Environment: the Playwright browser CDN is blocked. Smoke ran on Chromium 138 from the
 `@sparticuz/chromium` npm artifact with its AL2023 NSS libraries, both unpacked under /tmp and
 outside the repository; no dependency, lockfile or CI change.
+
+================================================================================
+2026-10-19 — T-D2: caves beyond noise (four systems)
+================================================================================
+Why: the underground was a single spaghetti-noise network (spec 5). T-D2 asks for cheese
+caverns, noodle tunnels and ravines alongside it, and the user's priority is terrain.
+
+Design: new src/world/caves.ts holds pure, seed-driven logic; tuning lives in src/config.ts.
+- cheese: 3D field at 96 m / 48 m scales, carved above 0.68 deep. Within 24 blocks of the
+  surface its threshold rises to 0.84 (CHEESE_SURFACE_PUSH = opening - threshold), so caverns
+  flatten out into a roof instead of pocking the ground.
+- spaghetti: unchanged field pair at 40 m / 24 m, d < 0.012.
+- noodle: two 3D fields, vertically stretched 2.5x, carved only where both are near zero and
+  at least 4 blocks of cover exist; thin level tunnels.
+- ravine: a 2D ridge zero set, band |r| < 0.012 under a 6-block roof, half-width shrinking to
+  zero over RAVINE_DEPTH_M (30 m = 100 blocks at 0.3 m/block), which reads as a sloping canyon.
+TerrainGenerator now owns `caves` and calls caveKind(); its own caveNoiseA/B and local
+CAVE_THRESHOLD are gone. caveTop() (spec 14 shore/river/lake roof) still caps every system,
+and y=0/1 remain uncarvable. The generator's isCave() is a thin wrapper over isCaveBlock().
+
+Calibration (seed 1, ~110 k real-world cells from y=2 to the surface, scripts/_cave-measure.mjs):
+cheese 6.28 %, noodle 1.02 %, spaghetti 2.84 %, ravine 0.87 %, total 11.0 % carved; 89.0 %
+solid. Surface-mouth rate at opening 0.84: 2.05 % of sampled columns (was 3.3 % at 0.80).
+Tuning changed twice during calibration: cheese 0.66->0.68 and ravine band 0.02->0.012 with
+depth 36->30 m, to keep each system inside its volume band; the test ceilings were NOT raised
+(the earlier combined 8 % ceiling is now 16 %, with each system bounded separately, and the
+reason is recorded in spec 45 and the test names).
+Generation cost: 1.70-1.88 ms/chunk in a focused 50-chunk warm run, benchmark later.
+
+Tests: tests/caves.test.ts grew from 3 to 9 cases (per-system share bands, total band, nothing
+above the surface, only cheese at the surface and under 6 % of columns, 4-block roof for the
+other systems, ravine taper measured per depth layer, determinism across seeds, isCaveBlock
+agreement, plus the original fraction/bottom/shore cases). tests/riverbed.test.ts previously
+forced carving by overwriting the old private noise fields; it now injects a four-field
+`caves` object (always-open and always-closed variants) through the same public shape.
+Docs: new docs/specs/45-caves.md; T-D2 marked done in docs/tasks.md.
+
+Smoke: the placement check hit a real sequence dependency. After the straight-down break, the
+wide player body (1.6 blocks) stands in a dip and a single fixed aim (-0.6 pitch) can target a
+cell whose neighbour overlaps the body or is not air, so placeTarget() correctly refuses. The
+check now tries six aim points around the player and fails with the full state if none can be
+placed. This is a test robustness fix, not a gameplay change; placing inside the player's body
+must keep being refused.
+
+Verification (final):
+- `npm run check`: PASS, 548 tests / 63 files, typecheck and production build.
+- `node scripts/benchmark.mjs --assert-generation-budget --assert-mesh-budget`: PASS.
+  Generation 2.002 ms (budget 3), meshing 1.566 ms (passes 1.605 / 1.665 / 1.427, budget 3),
+  mesh fixture hash unchanged (803974a777..., the benchmark fixture is synthetic, so terrain
+  changes do not move it), region simulation 100.96 ms, spawn search 189.81 ms.
+- Full gameplay smoke: PASS, all 25 checks, 4231 chunks loaded / 2139 meshed / 438 draw calls,
+  11 fps at the final measurement on SwiftShader (software rendering in this sandbox).
+- CI on 98706b2: `check` PASS (1m13s); `smoke` FAIL 4m19s at the place-brick check. The local
+  reproduction of 98706b2 failed at the same check, so the fix below is in this commit and a new
+  run must be observed before smoke is called green.
+
+Smoke chain fixes found while verifying the new terrain (all test-side; no gameplay change):
+- place-brick: six aim points instead of one fixed pitch, because the wide body in a post-break dip
+  can legitimately refuse a placement; the failure now prints the state.
+- save/reload: the primary game is idled with the existing setIdle hook while the fresh save page
+  loads, renders and reloads. Two software-rendered worlds on this runner starved each other and
+  the check timed out at 60 s. Waits are now labelled (`world ready after reload`, `area meshed at
+  y ...`), and area-mesh waits allow 90 s.
+- screenshots: the primary page's default Playwright timeout is 90 s. A 30 s screenshot timeout
+  fired while chunk meshes streamed in (clouds check); the frame was slow, not wrong.
+- crack stages: the check now mines a freshly placed grass block on the clean y = 8390 platform
+  instead of whatever the earlier checks left under the spawn player. After the new caves, that
+  cell could already be air, which ends the mining wait immediately and shows no stage; the
+  mechanics under test (0.5 s of stages, then the drop) are unchanged. The player is restored.
+- water-over-ticks: the platform air is cleared before the floor is rebuilt, and the previous
+  physics check cleans 9 blocks around its water instead of 4. With the faster idled frame rate
+  the old 4-block cleanup left flowing water outside it, which re-flooded the next check's cells
+  and made the "no synchronous flow" assertion fail.
+
+CI result: run 39259305015 on 58ae409 (PR #32) PASSED both jobs — `check` 1m5s with
+meshing mean 1.243 ms and generation mean 1.256 ms (both 3 ms budgets) and the same mesh
+fixture hash; `smoke` 6m58s, all 25 checks. PR #31 (98706b2) had already been merged to
+main as 697f926, so the T-D2 batch went out as a new PR rather than an update.

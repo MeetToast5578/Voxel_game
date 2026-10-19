@@ -45,6 +45,29 @@ async function withAuxiliaryPage(page, run) {
   }
 }
 
+/**
+ * Runs a self-contained check (one that opens its own pages) with the primary game idled, for the same reason as
+ * withAuxiliaryPage: two software-rendered worlds on one runner starve each other. The primary keeps its state.
+ */
+async function withPrimaryIdle(page, run) {
+  await page.evaluate(() => window.__game.setIdle(true));
+  try {
+    return await run();
+  } finally {
+    await page.evaluate(() => window.__game.setIdle(false)).catch(() => {});
+    await page.bringToFront();
+  }
+}
+
+/** Waits for a page condition and names the step in the error, so a timeout in a long check is identifiable. */
+async function waitForCondition(page, label, fn, timeout = 60_000) {
+  try {
+    await page.waitForFunction(fn, null, { timeout });
+  } catch {
+    throw new Error(`${label}: condition not met within ${timeout} ms`);
+  }
+}
+
 /** Include auxiliary menus and persistence windows in the same error contract as the primary game. */
 function watchPage(page) {
   page.on('console', (msg) => {
@@ -97,13 +120,24 @@ const CHECKS = [
     name: 'place a brick in front of the player',
     run: async (page) => {
       await page.evaluate(() => window.__game.selectSlot(8)); // slot 9 = brick
-      await page.evaluate(() => window.__game.look(0, -0.6));
-      await page.waitForTimeout(300);
       const s = await page.evaluate(() => window.__game.state());
       if (s.selectedBlock !== 'Brick') throw new Error(`expected Brick selected, got ${s.selectedBlock}`);
-      if (!s.target) throw new Error(`nothing targeted: ${JSON.stringify(s)}`);
-      const before = s.inventory[8]?.[1];
-      if (!(await page.evaluate(() => window.__game.placeTarget()))) throw new Error('placeTarget returned false');
+      // Which cell a downward look finds depends on the vegetation growing at this seed's spawn, and the
+      // frame rate decides how fresh the target is. Try a few nearby aim points before calling it a failure.
+      let before = null;
+      let placed = false;
+      for (const [yaw, pitch] of [[0, -0.6], [0, -0.9], [0, -1.2], [0.25, -0.7], [-0.25, -0.7], [0, -0.3]]) {
+        await page.evaluate(([y, p]) => window.__game.look(y, p), [yaw, pitch]);
+        await page.waitForTimeout(300);
+        const now = await page.evaluate(() => window.__game.state());
+        if (!now.target) continue;
+        before = now.inventory[8]?.[1] ?? null;
+        if (await page.evaluate(() => window.__game.placeTarget())) { placed = true; break; }
+      }
+      if (!placed) {
+        const now = await page.evaluate(() => window.__game.state());
+        throw new Error(`placeTarget returned false everywhere: ${JSON.stringify(now)}`);
+      }
       await page.waitForTimeout(300);
       const after = (await page.evaluate(() => window.__game.state())).inventory[8]?.[1];
       if (after !== before - 1) throw new Error(`placing should use one brick: ${before} -> ${after}`);
@@ -153,61 +187,63 @@ const CHECKS = [
     name: 'saves the world and restores it after a reload',
     run: async (page) => {
       // A fresh browser context has no world save. No ?seed / ?nosave, so saving is on.
-      const context = await page.context().browser().newContext({ viewport: { width: 1280, height: 720 } });
-      const p = await context.newPage();
-      watchPage(p);
-      await configureAuxiliaryPage(p);
-      const url = new URL('/?autostart=1', page.url()).href;
-      await p.goto(url);
-      await p.waitForFunction(() => window.__game?.ready === true, null, { timeout: 60_000 });
-      const before = await p.evaluate(() => window.__game.state());
-      const [x, y, z] = before.position.map(Math.floor);
-      await p.evaluate(([x, y, z]) => window.__game.setBlock(x + 2, y + 3, z, 12), [x, y, z]); // a floating brick
-      // Bricks 40 blocks below and above the player: teleport there first so their chunks are loaded.
-      const waitMeshed = () => p.waitForFunction(() => window.__game.state().areaMeshed, null, { timeout: 60_000 });
-      for (const dy of [-40, 40]) {
-        await p.evaluate(([x, y, z]) => {
-          window.__game.setFlying(true);
-          window.__game.teleport(x + 0.5, y, z + 0.5);
-        }, [x, y + dy, z]);
-        await waitMeshed();
-        const placed = await p.evaluate(([x, y, z]) => window.__game.setBlock(x + 2, y, z, 12), [x, y + dy, z]);
-        if (!placed) throw new Error(`could not place a brick at y ${y + dy}`);
-      }
-      await p.evaluate(([px, py, pz, flying]) => {
-        window.__game.teleport(px, py, pz);
-        window.__game.setFlying(flying);
-      }, [...before.position, before.flying]);
-      await waitMeshed();
-      const saved = await p.evaluate(() => {
-        window.__game.selectSlot(4);
-        window.__game.setHotbarSlot(0, 13); // glowstone
-        window.__game.setTimeOfDay(0.6);
-        return window.__game.save();
+      return withPrimaryIdle(page, async () => {
+        const context = await page.context().browser().newContext({ viewport: { width: 1280, height: 720 } });
+        const p = await context.newPage();
+        watchPage(p);
+        await configureAuxiliaryPage(p);
+        const url = new URL('/?autostart=1', page.url()).href;
+        await p.goto(url);
+        await waitForCondition(p, 'saved world ready', () => window.__game?.ready === true);
+        const before = await p.evaluate(() => window.__game.state());
+        const [x, y, z] = before.position.map(Math.floor);
+        await p.evaluate(([x, y, z]) => window.__game.setBlock(x + 2, y + 3, z, 12), [x, y, z]); // a floating brick
+        // Bricks 40 blocks below and above the player: teleport there first so their chunks are loaded.
+        const waitMeshed = (label) => waitForCondition(p, label, () => window.__game.state().areaMeshed, 90_000);
+        for (const dy of [-40, 40]) {
+          await p.evaluate(([x, y, z]) => {
+            window.__game.setFlying(true);
+            window.__game.teleport(x + 0.5, y, z + 0.5);
+          }, [x, y + dy, z]);
+          await waitMeshed(`area meshed at y ${y + dy}`);
+          const placed = await p.evaluate(([x, y, z]) => window.__game.setBlock(x + 2, y, z, 12), [x, y + dy, z]);
+          if (!placed) throw new Error(`could not place a brick at y ${y + dy}`);
+        }
+        await p.evaluate(([px, py, pz, flying]) => {
+          window.__game.teleport(px, py, pz);
+          window.__game.setFlying(flying);
+        }, [...before.position, before.flying]);
+        await waitMeshed('area meshed at the original position');
+        const saved = await p.evaluate(() => {
+          window.__game.selectSlot(4);
+          window.__game.setHotbarSlot(0, 13); // glowstone
+          window.__game.setTimeOfDay(0.6);
+          return window.__game.save();
+        });
+        if (!saved) throw new Error('save() resolved to false');
+        await p.reload();
+        await waitForCondition(p, 'world ready after reload', () => window.__game?.ready === true);
+        const after = await p.evaluate(() => window.__game.state());
+        const brick = await p.evaluate(([x, y, z]) => window.__game.getBlock(x + 2, y + 3, z), [x, y, z]);
+        // The chunks 40 blocks away load shortly after the player is placed.
+        const deepAndHigh = await p
+          .waitForFunction(
+            ([x, y, z]) => window.__game.getBlock(x + 2, y - 40, z) === 12 && window.__game.getBlock(x + 2, y + 40, z) === 12,
+            [x, y, z],
+            { timeout: 30_000 },
+          )
+          .then(() => true, () => false);
+        await context.close();
+        await page.bringToFront();
+        if (after.seed !== before.seed) throw new Error(`seed changed: ${before.seed} -> ${after.seed}`);
+        if (brick !== 12) throw new Error(`saved brick missing, found block ${brick}`);
+        if (!deepAndHigh) throw new Error('the bricks 40 blocks below and above were not restored');
+        if (after.selectedSlot !== 4) throw new Error(`selected slot not restored: ${after.selectedSlot}`);
+        if (after.hotbar[0] !== 13) throw new Error(`hotbar not restored: ${JSON.stringify(after.hotbar)}`);
+        if (Math.abs(after.timeOfDay - 0.6) > 0.01) throw new Error(`time of day not restored: ${after.timeOfDay}`);
+        const moved = Math.hypot(after.position[0] - before.position[0], after.position[2] - before.position[2]);
+        if (moved > 1) throw new Error(`player position not restored: ${before.position} -> ${after.position}`);
       });
-      if (!saved) throw new Error('save() resolved to false');
-      await p.reload();
-      await p.waitForFunction(() => window.__game?.ready === true, null, { timeout: 60_000 });
-      const after = await p.evaluate(() => window.__game.state());
-      const brick = await p.evaluate(([x, y, z]) => window.__game.getBlock(x + 2, y + 3, z), [x, y, z]);
-      // The chunks 40 blocks away load shortly after the player is placed.
-      const deepAndHigh = await p
-        .waitForFunction(
-          ([x, y, z]) => window.__game.getBlock(x + 2, y - 40, z) === 12 && window.__game.getBlock(x + 2, y + 40, z) === 12,
-          [x, y, z],
-          { timeout: 30_000 },
-        )
-        .then(() => true, () => false);
-      await context.close();
-      await page.bringToFront();
-      if (after.seed !== before.seed) throw new Error(`seed changed: ${before.seed} -> ${after.seed}`);
-      if (brick !== 12) throw new Error(`saved brick missing, found block ${brick}`);
-      if (!deepAndHigh) throw new Error('the bricks 40 blocks below and above were not restored');
-      if (after.selectedSlot !== 4) throw new Error(`selected slot not restored: ${after.selectedSlot}`);
-      if (after.hotbar[0] !== 13) throw new Error(`hotbar not restored: ${JSON.stringify(after.hotbar)}`);
-      if (Math.abs(after.timeOfDay - 0.6) > 0.01) throw new Error(`time of day not restored: ${after.timeOfDay}`);
-      const moved = Math.hypot(after.position[0] - before.position[0], after.position[2] - before.position[2]);
-      if (moved > 1) throw new Error(`player position not restored: ${before.position} -> ${after.position}`);
     },
   },
   {
@@ -313,7 +349,26 @@ const CHECKS = [
     name: 'holding the left button breaks a block over time, and the item is picked up',
     run: async (page) => {
       const PLANTS = ['Tall grass', 'Poppy', 'Fern', 'Dandelion', 'Brown mushroom', 'Red mushroom']; // break at once
-      await page.waitForFunction(() => window.__game.state().areaMeshed, null, { timeout: 60_000 });
+      const waitMeshed = () => page.waitForFunction(() => window.__game.state().areaMeshed, null, { timeout: 60_000 });
+      // Mine a freshly placed grass block on the clean platform instead of whatever the earlier checks left at spawn:
+      // the block under the player there can already be air or a different material, which made this check depend on
+      // history. The mechanics it tests (stages over 0.5 s, then the drop) are unchanged.
+      const spawn = await page.evaluate(() => window.__game.state());
+      const [px, pz] = [Math.floor(spawn.position[0]), Math.floor(spawn.position[2])];
+      const py = 8390; // the same clean platform the physics checks use
+      await page.evaluate(([x, z, y]) => {
+        window.__game.setFlying(true);
+        window.__game.teleport(x + 0.5, y + 10, z + 0.5);
+      }, [px, pz, py]);
+      await waitMeshed();
+      await page.evaluate(([x, z, y]) => {
+        for (let i = -2; i <= 2; i++) for (let j = -2; j <= 2; j++) for (let k = 0; k <= 4; k++) window.__game.setBlock(x + i, y + k, z + j, 0);
+        window.__game.setBlock(x, y, z, 1); // stone support
+        window.__game.setBlock(x, y + 1, z, 3); // the grass block to mine
+        window.__game.setFlying(false);
+        window.__game.teleport(x + 0.5, y + 2, z + 0.5);
+      }, [px, pz, py]);
+      await waitMeshed();
       await page.evaluate(() => window.__game.look(0, -Math.PI / 2 + 0.01));
       await page.waitForFunction(() => {
         const s = window.__game.state();
@@ -385,6 +440,11 @@ const CHECKS = [
           `expected one more ${s.targetName} in the inventory: ${before} -> ${after} (items on the ground ${st.items}, position ${JSON.stringify(st.position)}, target ${JSON.stringify(s.target)})`,
         );
       }
+      await page.evaluate(([x, y, z, flying]) => {
+        window.__game.setFlying(flying);
+        window.__game.teleport(x, y, z);
+      }, [...spawn.position, spawn.flying]);
+      await waitMeshed();
     },
   },
   {
@@ -528,7 +588,8 @@ const CHECKS = [
       await page.waitForFunction(() => window.__game.state().looseBodies > 0, null, { timeout: 5_000 });
       await page.waitForFunction(() => window.__game.state().looseBodies === 0, null, { timeout: 30_000 });
       await page.evaluate(([x, z, y, p]) => {
-        for (let i = -4; i <= 4; i++) for (let j = -4; j <= 4; j++) for (let k = 0; k <= 12; k++) window.__game.setBlock(x + i, y + k, z + j, 0);
+        // Wider than the water's 7-cell spread from its source, so nothing is left flowing when the next check starts.
+        for (let i = -9; i <= 9; i++) for (let j = -9; j <= 9; j++) for (let k = 0; k <= 12; k++) window.__game.setBlock(x + i, y + k, z + j, 0);
         window.__game.setTool({ mode: 'single' });
         window.__game.setFlying(false);
         window.__game.teleport(p[0], p[1], p[2]);
@@ -549,6 +610,9 @@ const CHECKS = [
       }, [x, z, y]);
       await waitMeshed();
       await page.evaluate(([x, z, y]) => {
+        // The previous check also used this platform. Clear the air above the floor first: a faster frame rate lets
+        // its water spread beyond that check's cleanup radius, and flowing water left there would re-flood these cells.
+        for (let i = -6; i <= 6; i++) for (let j = -6; j <= 6; j++) for (let k = 1; k <= 8; k++) window.__game.setBlock(x + i, y + k, z + j, 0);
         for (let i = -6; i <= 6; i++) for (let j = -6; j <= 6; j++) window.__game.setBlock(x + i, y, z + j, 1);
         window.__game.setBlock(x - 2, y + 1, z - 2, 5); // a water source on the floor
         // Check synchronously with placement, before the game can advance any ticks between browser RPCs.
@@ -729,6 +793,9 @@ try {
     ],
   });
   const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
+  // SwiftShader can take longer than Playwright's 30 s default to produce a frame while chunk meshes stream in;
+  // a timed-out screenshot says nothing about the game. Every assertion has its own explicit timeout.
+  page.setDefaultTimeout(90_000);
   watchPage(page);
 
   const t0 = Date.now();

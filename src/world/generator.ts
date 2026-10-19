@@ -1,10 +1,8 @@
-import { createNoise2D, createNoise3D, type NoiseFunction2D, type NoiseFunction3D } from 'simplex-noise';
+import { createNoise2D, type NoiseFunction2D } from 'simplex-noise';
 import {
   BARE_ROCK_AMP_M,
   BEACH_BAND,
   BLOCK_SIZE_M,
-  CAVE_SCALE_H_M,
-  CAVE_SCALE_V_M,
   BIOME_BLEND_BLOCKS,
   CHUNK_SIZE,
   GEOLOGY_LAYER_M,
@@ -32,6 +30,7 @@ import {
 import { columnIndex, columnKey, localIndex } from '../core/coords';
 import { floorDiv } from '../core/math';
 import { hash2, mulberry32 } from '../core/random';
+import { caveKind, createCaveNoises, type CaveNoises } from './caves';
 import { BlockId, blocksSky, parseBlockStateName } from './blocks';
 import { Chunk } from './chunk';
 import { TerrainDensity } from './density';
@@ -43,7 +42,6 @@ import { climateHeightSource, RegionSampler, REGION_CELLS, type ColumnSample, ty
 import { riverbedMaterial } from './riverbed';
 import { MAX_TREE_RISE, treeBlocks } from './trees';
 
-const CAVE_THRESHOLD = 0.012;
 /** The column cache is only a cache, so clearing it never changes a result. */
 const COLUMN_CACHE_LIMIT = 2048;
 
@@ -124,8 +122,8 @@ export class TerrainGenerator {
   /** Region simulation: rivers, lakes, erosion and moisture (spec 41). */
   private readonly regions: RegionSampler;
   private readonly rockNoise: NoiseFunction2D;
-  private readonly caveNoiseA: NoiseFunction3D;
-  private readonly caveNoiseB: NoiseFunction3D;
+  /** The four cave systems (spec 45). */
+  private readonly caves: CaveNoises;
   private readonly columnCache = new Map<string, Column>();
   /** The biome of each chunk column, from its centre. Cheaper than a whole column, so neighbours can be asked. */
   private readonly chunkBiomes = new Map<string, string>();
@@ -142,8 +140,7 @@ export class TerrainGenerator {
     // the sampler and the height source below read the same `ClimateSampler` instance.
     this.regions = new RegionSampler(climateHeightSource((xM, zM) => this.climate.fields(xM, zM)));
     this.rockNoise = createNoise2D(mulberry32(seed + 300));
-    this.caveNoiseA = createNoise3D(mulberry32(seed + 3));
-    this.caveNoiseB = createNoise3D(mulberry32(seed + 4));
+    this.caves = createCaveNoises(seed);
     this.featureRegistry.registerFeature({
       key: 'tree',
       densityPerChunk: TREE_CHANCE * CHUNK_SIZE * CHUNK_SIZE,
@@ -301,7 +298,7 @@ export class TerrainGenerator {
         }
         const top = Math.min(this.caveTop(h, column.waterBodies[i] ? waterY : SEA_LEVEL), y1 - 1);
         for (let y = Math.max(2, y0); y <= top; y++) {
-          if (this.isCave(wx, y, wz)) out[localIndex(lx, y - y0, lz)] = BlockId.AIR;
+          if (this.isCave(wx, y, wz, h)) out[localIndex(lx, y - y0, lz)] = BlockId.AIR;
         }
       }
     }
@@ -417,7 +414,7 @@ export class TerrainGenerator {
 
   /** The plant growing on the surface of column (wx, wz) at height h, or air. Caves that open the surface keep it bare. */
   private plantAt(wx: number, wz: number, h: number): number {
-    if (this.isCave(wx, h, wz)) return BlockId.AIR;
+    if (this.isCave(wx, h, wz, h)) return BlockId.AIR;
     const r = hash2(this.seed + 11, wx, wz);
     let edge = DANDELION_CHANCE;
     if (r < edge) return BlockId.DANDELION;
@@ -444,22 +441,17 @@ export class TerrainGenerator {
   }
 
   /**
-   * "Spaghetti" caves: a block becomes air where two independent 3D noise fields are both close to zero,
-   * which happens along thin winding tubes. y = 0 and y = 1 are never carved. Under beaches, lakes and the sea
-   * the top few blocks are never carved, so water never sits above a cave opening.
+   * The highest cell of a column that caves may carve. Cheese caverns, noodle tunnels, spaghetti tubes and ravines
+   * all stop here. Under beaches, lakes and the sea the top few blocks are never carved, so water never sits above a
+   * cave opening (specs 14, 45).
    */
   private caveTop(h: number, waterY = SEA_LEVEL): number {
     return h <= waterY + SHORE_CAVE_BAND ? h - SHORE_ROOF : h;
   }
 
-  private isCave(wx: number, y: number, wz: number): boolean {
-    const x = (wx * BLOCK_SIZE_M) / CAVE_SCALE_H_M;
-    const yy = (y * BLOCK_SIZE_M) / CAVE_SCALE_V_M;
-    const z = (wz * BLOCK_SIZE_M) / CAVE_SCALE_H_M;
-    const a = this.caveNoiseA(x, yy, z);
-    if (a * a >= CAVE_THRESHOLD) return false; // cheap early exit: skip the second noise most of the time
-    const c = this.caveNoiseB(x, yy, z);
-    return a * a + c * c < CAVE_THRESHOLD;
+  /** True when a cave system carves this cell (spec 45). `surfaceBlocks` is the column's highest solid block. */
+  private isCave(wx: number, y: number, wz: number, surfaceBlocks: number): boolean {
+    return caveKind(this.caves, wx, y, wz, surfaceBlocks) !== null;
   }
 
   /** Detail amplitude of the cell at (wx, wz). */
@@ -512,7 +504,7 @@ export class TerrainGenerator {
     const temperature = blockTemperature(fields, heightM);
     const precipitation = blockPrecipitation(fields, amp, sample.moisture);
     const waterY = Math.max(SEA_LEVEL, Math.floor(metersToBlocks(sample.waterLevelM)));
-    if (h >= 2 && h <= this.caveTop(h, sample.isRiver || sample.isLake ? waterY : SEA_LEVEL) && this.isCave(anchorX, h, anchorZ)) return null;
+    if (h >= 2 && h <= this.caveTop(h, sample.isRiver || sample.isLake ? waterY : SEA_LEVEL) && this.isCave(anchorX, h, anchorZ, h)) return null;
     const riparian = riparianTreeSpecies(temperature, precipitation, waterY - h, sample.isRiver || sample.isLake);
     if (riparian) return riparian;
     // Ordinary trees and cacti cannot grow below the waterline or on the beach band.
