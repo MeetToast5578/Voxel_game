@@ -34,8 +34,25 @@ export const LEGACY_HEIGHT = Math.ceil(roundBlocks(2600) / CHUNK_SIZE) * CHUNK_S
 export const LEGACY_CHUNKS = LEGACY_HEIGHT / CHUNK_SIZE;
 
 // Terrain shape comes from src/world/shape.ts, in meters. Caves and surface layers:
+// Caves (spec 45). Four systems share the rock: broad cheese caverns, thin noodle tunnels that run mostly
+// horizontally, medium spaghetti tubes (spec 5, unchanged), and rare ravines along a 2D ridge.
 export const CAVE_SCALE_H_M = 40; // horizontal size of cave noise features
 export const CAVE_SCALE_V_M = 24; // vertical size of cave noise features
+export const CAVE_THRESHOLD = 0.012; // squared distance between the two spaghetti noise fields, below which it is a tube
+export const CAVE_CHEESE_SCALE_H_M = 96; // cheese caverns are broad: one room is tens of blocks across
+export const CAVE_CHEESE_SCALE_V_M = 48;
+export const CAVE_CHEESE_THRESHOLD = 0.68; // noise value above which rock becomes a cavern (about 6% of the deep rock)
+export const CAVE_CHEESE_OPENING = 0.84; // the higher value a cavern needs to break through to the surface (a few mouths per chunk)
+export const CAVE_CHEESE_FADE = 24; // blocks of cover over which a cavern grows back to its full size
+export const CAVE_NOODLE_SCALE_H_M = 18; // thin tunnels: 1 to 3 blocks across
+export const CAVE_NOODLE_SCALE_V_M = 14;
+export const CAVE_NOODLE_STRETCH = 2.5; // stretches a noodle tunnel vertically, so the tunnels run mostly level
+export const CAVE_NOODLE_THRESHOLD = 0.004; // squared distance, below which it is a tunnel (about 0.9% of the rock)
+export const CAVE_NOODLE_ROOF = 4; // no tunnel comes closer than this to the surface; only cheese may break through
+export const RAVINE_SCALE_M = 160; // the 2D ridge whose zero set a ravine follows
+export const RAVINE_BAND = 0.012; // half-width of the ravine band at its widest (under the roof)
+export const RAVINE_ROOF = 6; // solid blocks kept above a ravine at its top
+export const RAVINE_DEPTH_M = 30; // how far below its roof a ravine cuts, tapering to nothing
 export const SOIL_DEPTH_M = 1.8; // dirt under the grass
 export const GEOLOGY_LAYER_M = 12; // thickness of one rock layer (seven strata rocks, spec 20), before the warp
 export const GEOLOGY_WARP_M = 400; // horizontal size of the noise that bends the rock layers
