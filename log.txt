@@ -603,3 +603,8 @@ Smoke chain fixes found while verifying the new terrain (all test-side; no gamep
   physics check cleans 9 blocks around its water instead of 4. With the faster idled frame rate
   the old 4-block cleanup left flowing water outside it, which re-flooded the next check's cells
   and made the "no synchronous flow" assertion fail.
+
+CI result: run 39259305015 on 58ae409 (PR #32) PASSED both jobs — `check` 1m5s with
+meshing mean 1.243 ms and generation mean 1.256 ms (both 3 ms budgets) and the same mesh
+fixture hash; `smoke` 6m58s, all 25 checks. PR #31 (98706b2) had already been merged to
+main as 697f926, so the T-D2 batch went out as a new PR rather than an update.

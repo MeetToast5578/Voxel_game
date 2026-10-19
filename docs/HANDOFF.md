@@ -4,7 +4,7 @@
 
 The user authorized autonomous implementation, testing, logging, task-list updates and pushes to `main`. This session is pinned to the branch `arena/f70f1800-voxel-game`, so work is committed there and offered to `main` through a pull request.
 
-**CI status: `check` is green; `smoke` is not yet green.** Run 39252772642 on `98706b2` passed `check` (1m13s) and failed `smoke` (4m19s). The local reproduction of the same commit failed at the same check, "place a brick in front of the player" (`placeTarget returned false`), after the straight-down break left the wide player body in a dip where the single fixed aim pointed at a cell that overlaps the body. The pending T-D2 commit hardens that check (six aim points, full state in the failure) and must be observed green before the smoke job is called repaired. The earlier analysis stands:
+**CI is green on the current batch.** PR #31 (`98706b2`, the CI repair) was merged into `main` as `697f926`. PR #32 carries `58ae409` (T-D2 plus the smoke-chain fixes); run 39259305015 on that commit passed both jobs — `check` 1m5s (meshing 1.243 ms, generation 1.256 ms, hash unchanged) and `smoke` 6m58s, all 25 checks. The earlier repair, kept for the record:
 
 The checkout was the one-commit snapshot `49bc873`. Both CI jobs were red at that commit, and both failures reproduced locally:
 
@@ -15,7 +15,7 @@ The checkout was the one-commit snapshot `49bc873`. Both CI jobs were red at tha
 
 **The slab work described in the previous handoff is not in this checkout.** There is no `stash@{0}` and no `/tmp/voxel-slab-before-ci.patch` here, and no slab code exists in `src/` (`BlockShape` is still `'cube' | 'cross'`, and `src/player/placementTarget.ts` does not exist). Treat `docs/plans/slabs-inventory-gui.md` as the source if that batch is restarted; the `?nosave=1` settings-persistence failure it mentions cannot be reproduced because the code is not present.
 
-**T-D2 (caves beyond noise) is implemented** in the working tree: four systems in `src/world/caves.ts` with tuning in `src/config.ts` (cheese caverns ~6 % of the underground, spaghetti ~3 %, noodles ~1 %, ravines ~1 %), a fading 4–24-block surface roof, cave mouths only from the cheese field, the spec 14 shore/river/lake roof still applied, and `TerrainGenerator` now delegating to `caveKind`. Spec 45 documents the rules; tests cover per-system volume bands, the roof, ravine taper, determinism and the forced-open river/lake roof. Not yet on CI when this line was written.
+**T-D2 (caves beyond noise) is done and verified on CI** in `58ae409`: four systems in `src/world/caves.ts` with tuning in `src/config.ts` (cheese caverns ~6 % of the underground, spaghetti ~3 %, noodles ~1 %, ravines ~1 %), a fading 4–24-block surface roof, cave mouths only from the cheese field, the spec 14 shore/river/lake roof still applied, and `TerrainGenerator` delegating to `caveKind`. Spec 45 documents the rules; tests cover per-system volume bands, the roof, ravine taper, determinism and the forced-open river/lake roof. The smoke suite also stopped depending on spawn history: see the T-D2 entry in `log.txt` for the five test-side fixes.
 
 The next intended work is engine-first, in this order: terrain generation (aquifers next, then lava pools), world physics, then gameplay. `docs/tasks.md` remains the live backlog and the recorded evidence of what is actually done.
 
