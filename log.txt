@@ -479,3 +479,54 @@ Performance follow-on:
   proxy-blocked, so CI success is not claimed. No dependency or lockfile changes.
 - Starting independent planned slab work in the working tree. This commit stages
   only the verified performance snapshot and its instructions/evidence.
+
+2026-10-19 — CI repair: mesh budget, crack-stage observation, auxiliary-page contention
+Baseline: single-commit snapshot 49bc873 (origin/main). Local check passed (533 tests), but the
+worker benchmark failed locally at mesh mean 3.555 ms against the 3 ms budget (passes 4.012 /
+3.231 / 3.423), reproducing the red `check` job. Smoke failed locally exactly as CI reported, and
+a second failure appeared in sequence at the mining pickup wait.
+Mesher and light performance (T-J1 / T-A3):
+- Profiled with an isolated fixture (50 seed-1 visible-top chunks): per chunk before changes,
+  region 0.73 ms, sky light 0.53 ms, block light 0.27 ms, face loop ~1.85 ms.
+- Face loop: per-state tables (shape, layer, cullSame, top height, tiles) built once from the block
+  registry; flat AO/corner/UV/shade tables; region and padded-index offsets precomputed per face;
+  quads written straight into growable typed arrays instead of number[] boxes plus a final copy.
+- Region and light: buildRegion/computeSkyLight/computeBlockLight accept an optional output array,
+  and the mesher reuses one region, two light volumes, one padded volume and two vertex builders
+  per thread. Measured allocation cost was ~0.28 ms for the 221 KB region alone.
+- buildRegion now copies each 16-cell row as eight 32-bit words (rows are contiguous and aligned),
+  with a 16-bit element fallback for arrays whose byte offset or length prevents a Uint32 view.
+  A first attempt using a plain 16-element loop was 2.7x SLOWER than subarray+set in real data
+  (1.86 vs 0.73 ms) despite winning an isolated micro-benchmark; it was reverted before commit.
+- Result on Node 22.22.3: mesh mean 1.715 ms (passes 2.114 / 1.502 / 1.529), generation 1.842 ms,
+  mesh SHA-256 unchanged at 803974a7770501157d9409fc8622d26838a45e03e5c06ed3661d8989843715ae,
+  so every mesh buffer byte is identical to the pre-change build.
+- The 3 ms assertion and both guarded budgets are unchanged; the benchmark now prints the measured
+  means, medians, pass means and mesh hash as a GitHub Actions notice, and on failure as an
+  `::error` annotation with the same numbers. CI job logs are not retrievable from this environment.
+Smoke failures:
+- "no crack stage shown while breaking Grass": at software-rendering frame rates a 0.5 s block can
+  go from stage 0 to broken between two Playwright polls. Game.renderFrame now records
+  `breakStageSeen` on every frame that shows cracks; `resetBreakStage()` clears it, and
+  `state()` exposes it. The smoke check still requires a stage (or the recorded flag) before the
+  break and does not relax the plant exception.
+- Auxiliary `page.goto` timeout: a second page loading while the primary world renders competes for
+  the CPU and the SwiftShader context. `setIdle(true/false)` (debug API, idempotent) pauses the
+  primary game's simulation and rendering only while an auxiliary page loads; every auxiliary check
+  still requires its own page to reach `ready`. Auxiliary loads now wait for DOMContentLoaded and
+  then for `ready` instead of the `load` event.
+- Sequence-dependent mining failure (block never broke within 8 s while the diagnostics showed
+  `breakStage: 5`, fps stale at 31-32 and no frame progress): Chromium throttles
+  requestAnimationFrame on the page that is no longer "visible" after the suite opens and closes
+  auxiliary tabs. smoke.mjs now launches with `--disable-background-timer-throttling`,
+  `--disable-backgrounding-occluded-windows` and `--disable-renderer-backgrounding`. No game
+  behaviour and no assertion depends on that; the check passed in the full suite afterwards.
+- Added `frames` to the debug state (frames rendered since page load) so a starved render loop is
+  visible in any failure message.
+Verification: `npm run check` PASS, 542 tests / 63 files, typecheck and production build.
+Node 22 benchmark PASS with the hash above. Full gameplay smoke PASS, all 25 checks, final
+measurement 4012 chunks loaded, 2063 meshed, 340 draw calls, 20 fps on SwiftShader (software
+rendering, not owner hardware).
+Environment: the Playwright browser CDN is blocked. Smoke ran on Chromium 138 from the
+`@sparticuz/chromium` npm artifact with its AL2023 NSS libraries, both unpacked under /tmp and
+outside the repository; no dependency, lockfile or CI change.

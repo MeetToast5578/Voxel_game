@@ -2,28 +2,18 @@
 
 ## Current handoff — 2026-10-19
 
-The user authorized autonomous implementation, testing, logging, task-list updates and pushes to `main`. Continue through the backlog without waiting for routine approval. The latest pushed commit is `307f5c2` (`main`); the local checkout is branch `work` at the same commit and was clean when this note was written.
+The user authorized autonomous implementation, testing, logging, task-list updates and pushes to `main`. This session is pinned to the branch `arena/f70f1800-voxel-game`, so work is committed there and offered to `main` through a pull request.
 
-**Immediate priority: repair GitHub Actions before continuing feature pushes.** Public Actions pages revealed that all four recent pushes have a failing smoke job, and the latest run also fails the mesh benchmark guard. The API at `api.github.com` is blocked in this environment, but the public HTML run pages and annotations are readable:
+**CI is repaired in the working tree but not yet observed green remotely.** The checkout is the one-commit snapshot `49bc873`. Both CI jobs were red at that commit, and both failures reproduced locally:
 
-- `bef031a`, run `39157785030`: smoke reports `no crack stage shown while breaking Grass`.
-- `17f8db6`, run `39158900934`: failed; inspect the saved HTML/annotations under `/tmp/voxel-ci-39158900934.*` to identify the reported check.
-- `b486eda`, run `39160075882`: failed; inspect `/tmp/voxel-ci-39160075882.*` for the reported check.
-- `307f5c2`, run `39160784501`: benchmark assertion fails in `check`; smoke's HUD inventory auxiliary page times out during `page.goto(... waitUntil: load)`.
+- `check`: `npm run check` passed (533 tests), but the worker benchmark failed at a **mesh mean of 3.555 ms** against the strict 3 ms guard. The 2.787 ms figure in the previous handoff had only ~7 % headroom, so a slower runner tipped it. Fixed by real optimisation rather than a looser budget: per-state tables, precomputed face/AO/UV/region offsets, growable typed-array vertex buffers, reusable region/light scratch, and 32-bit row copies in `buildRegion`. Node 22 now measures **1.715 ms** (passes 2.114 / 1.502 / 1.529) with the mesh hash byte-identical (`803974a7770501157d9409fc8622d26838a45e03e5c06ed3661d8989843715ae`). The benchmark step now publishes its numbers as Actions notices/annotations; the 3 ms assertion is unchanged.
+- `smoke`: "no crack stage shown while breaking Grass" was a polling race (a 0.5 s block leaves stage 0 between two Playwright round trips on software rendering). The render loop now records `breakStageSeen`, exposed in `state()`, and the check reads it. Two further sequence-dependent failures were fixed: auxiliary pages now load while the primary game is `setIdle(true)` (a debug hook that pauses simulation and rendering only), and the smoke browser disables Chromium's background-tab `requestAnimationFrame` throttling, which had starved the mining check after tab switches. Full smoke passes all 25 checks locally; see `log.txt` for the timeline evidence.
 
-CI run HTML/text snapshots are in `/tmp/voxel-ci-*.html` and `.txt`; the latest check job snapshot is `/tmp/voxel-ci-check-job.html`. Do not claim remote CI green until a passing run is observed. Preserve the strict 3 ms mesh assertion; expose measured benchmark values as GitHub Actions notices/errors to diagnose runner-specific timing. The local Node-22 mesh mean is 2.787 ms with the mesh hash unchanged (`803974a7770501157d9409fc8622d26838a45e03e5c06ed3661d8989843715ae`), so this local result does not explain the GitHub runner failure.
+**Verification after the repair batch:** `npm run check` PASS (542 tests / 63 files, typecheck, build); Node-22 benchmark PASS with the hash above; full gameplay smoke PASS, 25 checks, 4,012 chunks loaded / 2,063 meshed / 340 draw calls / 20 fps on SwiftShader (software rendering, not owner hardware). The Playwright CDN is blocked here; smoke ran on Chromium 138 from the `@sparticuz/chromium` npm artifact with its AL2023 NSS libraries, unpacked under `/tmp` outside the repository, so no dependency or lockfile changed.
 
-The checkout's `stash@{0}` is important: **“Slab implementation and GUI validation paused for CI repair.”** It contains the uncommitted slab implementation, its new tests, and slab/GUI smoke additions. Do not drop it. A tracked-file patch backup is `/tmp/voxel-slab-before-ci.patch`; use the stash to restore untracked files too. The slab work locally reached 563 tests / 64 files, all 26 smoke checks, GPU smoke, and a reviewed screenshot, but the GUI settings persistence check failed (`renderDistance` stayed 2 in localStorage after the UI changed the live value to 3). Investigate the `?nosave=1` settings store in `src/game.ts` before considering that batch complete. See the detailed running notes in `log.txt` and the user's requirement to check completed items in `docs/tasks.md`.
+**The slab work described in the previous handoff is not in this checkout.** There is no `stash@{0}` and no `/tmp/voxel-slab-before-ci.patch` here, and no slab code exists in `src/` (`BlockShape` is still `'cube' | 'cross'`, and `src/player/placementTarget.ts` does not exist). Treat `docs/plans/slabs-inventory-gui.md` as the source if that batch is restarted; the `?nosave=1` settings-persistence failure it mentions cannot be reproduced because the code is not present.
 
-Suggested sequence:
-
-1. Read CI annotations for the two uninspected runs. Make timed-mining smoke observe crack stages in the browser render loop, so a short visible stage is not missed by Node/Playwright polling.
-2. Reduce auxiliary smoke contention while preserving each assertion and the primary game's final performance measurement. The latest auxiliary navigation timeout occurred while the main render-distance-8 game was under load; use a small debug-only simulation pause/resume hook with an idempotent loop, or another measured fix. Keep the actual auxiliary game ready and tested.
-3. Instrument the benchmark guard to report generation/mesh timing in run annotations; retain the 3 ms budget. Optimize based on the observed GitHub measurement if it still fails.
-4. Run local checks, GPU render tests and full gameplay smoke sequentially; commit/push CI repairs and observe GitHub Actions until both jobs pass.
-5. Restore the slab stash without losing the CI fixes, diagnose/fix GUI settings persistence, rerun all checks and review diffs/screenshots. Then continue `docs/tasks.md`, recording evidence in `log.txt` and checking tasks only after they pass.
-
-Physical-owner checks in `docs/tasks.md` (mouse/keyboard playtest, owner-hardware FPS, terrain visual review) cannot be represented as completed by headless tests. The older phase summary below is historical and contains stale backlog statements; use `docs/tasks.md`, recent dated entries in `log.txt`, and this current section for the live status.
+The next intended work is engine-first, in this order: terrain generation (caves, aquifers), world physics, then gameplay. `docs/tasks.md` remains the live backlog and the recorded evidence of what is actually done.
 
 Baseline audited 2026-10-17 against `main` (`adf5aba`, eleven commits after `0322d20`); follow-up verification updated 2026-10-18 on the working branch. Baseline status below is supplemented by the dated task-batch results, checked in code, tests and smoke rather than only commit messages.
 
@@ -128,7 +118,7 @@ TypeScript 5.9.3, Vite 7.3.6, Vitest 4.0.18, three 0.186.0, simplex-noise 4.0.3,
 ## Commands
 
 - `npm run dev`: opens http://localhost:5173; click Play.
-- `npm run check`: typecheck, the unit tests (487 in 58 files; current follow-up verification), then the build.
+- `npm run check`: typecheck, the unit tests (542 in 63 files; 2026-10-19 verification), then the build.
 - `npm run smoke`:
   - Builds, then opens `/?seed=1&autostart=1&nosave=1` in headless Chromium (SwiftShader WebGL).
   - Runs 24 checks through `window.__game` and writes `screenshots/*.png`.

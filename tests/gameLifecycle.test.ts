@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { DAY_LENGTH_S, DAYS_PER_SEASON, FIXED_DT, GAME_MODE_CREATIVE, WORLD_LATITUDE_DEG } from '../src/config';
 import { Game } from '../src/game';
+import { BlockBreaking } from '../src/player/breaking';
 import { Calendar } from '../src/world/calendar';
 
 /** Exercise the real game methods without constructing WebGL, workers or browser UI in Node. */
@@ -120,5 +121,59 @@ describe('inventory open/close lifecycle (T-K3)', () => {
     screen.hide.mockImplementationOnce(() => { screen.isOpen = false; return { state: 1, count: 3 }; });
     call(game, 'toggleInventory');
     expect(dropStack).toHaveBeenCalledExactlyOnceWith({ state: 1, count: 3 });
+  });
+});
+
+describe('smoke-test debug hooks', () => {
+  it('records the first crack stage shown, and resetBreakStage clears it', () => {
+    const game = Object.create(Game.prototype) as Game;
+    const breaking = new BlockBreaking();
+    const input = { consumeClick: () => false, isMouseDown: () => true, consumeWheel: () => 0 };
+    Object.assign(game, {
+      breakStageSeen: false,
+      breaking,
+      input,
+      target: { x: 0, y: 4, z: 0 },
+      tool: { mode: 'single' },
+      actionCooldown: 0,
+      held: { swing: vi.fn() },
+      breakHardness: () => 0.5, // grass: 10 crack stages over half a second
+      breakCell: vi.fn(),
+      placeTarget: vi.fn(),
+      placeTargetCheck: vi.fn(),
+      setBlock: vi.fn(),
+    });
+    call(game, 'handleBlockActions', 0.01, { x: 0, y: 5, z: 0 }, { x: 0, y: -1, z: 0 });
+    expect(breaking.stage).toBe(0);
+    expect(game.breakStageSeen).toBe(true);
+    game.resetBreakStage();
+    expect(game.breakStageSeen).toBe(false);
+    // A stage that the smoke test never polls is still recorded, because the render loop sets the flag every frame.
+    call(game, 'handleBlockActions', 0.4, { x: 0, y: 5, z: 0 }, { x: 0, y: -1, z: 0 });
+    expect(breaking.stage).toBe(8);
+    expect(game.breakStageSeen).toBe(true);
+  });
+
+  it('idle skips simulation and rendering, and resuming keeps the game usable', () => {
+    const { game, player } = tickingGame();
+    game.setIdle(true);
+    expect(game['idle']).toBe(true);
+    call(game, 'fixedUpdate', FIXED_DT);
+    expect(player.update).not.toHaveBeenCalled();
+    expect(game.timeOfDay).toBe(0.2);
+    game.setIdle(false);
+    call(game, 'fixedUpdate', FIXED_DT);
+    expect(player.update).toHaveBeenCalledOnce();
+    expect(game.timeOfDay).toBeGreaterThan(0.2);
+  });
+
+  it('idle is idempotent and does not reset state when applied twice', () => {
+    const { game } = tickingGame();
+    game.timeOfDay = 0.42;
+    game.setIdle(true);
+    game.setIdle(true);
+    game.setIdle(false);
+    game.setIdle(false);
+    expect(game.timeOfDay).toBe(0.42);
   });
 });

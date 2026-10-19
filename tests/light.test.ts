@@ -104,4 +104,47 @@ describe('buildRegion', () => {
     expect(region[regionIndex(17, 2, 19)]).toBe(BlockId.BRICK);
     expect(region[regionIndex(17, 34, 19)]).toBe(BlockId.GLASS);
   });
+  it('fills a caller-provided array, so a hot loop can reuse one buffer', () => {
+    const neighbors = new TestWorld().neighbors(0);
+    neighbors[neighborIndex(0, 0, 1)]![localIndex(2, 5, 1)] = BlockId.BRICK;
+    const out = new Uint16Array(48 * 48 * 48);
+    expect(buildRegion(neighbors, out)).toBe(out);
+    expect(out[regionIndex(18, 21, 33)]).toBe(BlockId.BRICK);
+  });
+  it('rejects an output array of the wrong size instead of writing past it', () => {
+    const neighbors = new TestWorld().neighbors(0);
+    expect(() => buildRegion(neighbors, new Uint16Array(10))).toThrow(/110592/);
+  });
+  it('gives the same result when a chunk view cannot be copied as 32-bit words', () => {
+    // A view with an odd byte offset cannot back a Uint32Array, so the copy falls back to 16-bit element copies.
+    const backing = new Uint16Array(4097);
+    const neighbors = new TestWorld().neighbors(0);
+    const odd = backing.subarray(1, 1 + 16 * 16 * 16);
+    odd.set(neighbors[neighborIndex(1, 0, 0)]!);
+    odd[localIndex(0, 4, 3)] = 300;
+    neighbors[neighborIndex(1, 0, 0)] = odd;
+    expect(buildRegion(neighbors)[regionIndex(32, 16 + 4, 16 + 3)]).toBe(300);
+  });
+  it('places all 27 chunks at their own region offsets', () => {
+    const neighbors = new TestWorld().neighbors(0);
+    const states: number[] = [];
+    let state = 1;
+    for (let dy = -1; dy <= 1; dy++)
+      for (let dz = -1; dz <= 1; dz++)
+        for (let dx = -1; dx <= 1; dx++) {
+          neighbors[neighborIndex(dx, dy, dz)] = new Uint16Array(16 * 16 * 16).fill(state);
+          states.push(state++);
+        }
+    const region = buildRegion(neighbors);
+    let i = 0;
+    for (let dy = -1; dy <= 1; dy++)
+      for (let dz = -1; dz <= 1; dz++)
+        for (let dx = -1; dx <= 1; dx++) {
+          const x = 16 + dx * 16 + 3;
+          const y = 16 + dy * 16 + 4;
+          const z = 16 + dz * 16 + 5;
+          expect(region[regionIndex(x, y, z)]).toBe(states[i]!);
+          i++;
+        }
+  });
 });
