@@ -5,8 +5,10 @@ import {
 } from '../src/world/blocks';
 
 describe('blocks', () => {
-  it('BLOCKS[i].id === i for every block', () => {
-    BLOCKS.forEach((b, i) => expect(b.id).toBe(i));
+  it('block types occupy contiguous, non-overlapping state ranges', () => {
+    let next = 0;
+    BLOCKS.forEach((b) => { expect(b.id).toBe(next); next += b.variants; });
+    expect(next).toBe(BLOCK_STATE_COUNT);
     expect(BLOCKS.length).toBe(Object.keys(BlockId).length);
   });
   it('air, water and see-through blocks', () => {
@@ -40,7 +42,8 @@ describe('block states', () => {
     AIR: 0, STONE: 1, DIRT: 2, GRASS: 3, SAND: 4, WATER: 5, LOG: 6, LEAVES: 7, PLANKS: 8, GLASS: 9, BEDROCK: 10,
     COBBLESTONE: 11, BRICK: 12, GLOWSTONE: 13, GRANITE: 14, DIORITE: 15, ANDESITE: 16, SANDSTONE: 17,
     TALL_GRASS: 18, POPPY: 19, FERN: 20, DANDELION: 21, LIMESTONE: 22, SLATE: 23, BASALT: 24, DEEPSLATE: 25,
-    BROWN_MUSHROOM: 26, RED_MUSHROOM: 27,
+    BROWN_MUSHROOM: 26, RED_MUSHROOM: 27, COAL_ORE: 28, IRON_ORE: 29, GOLD_ORE: 30, REDSTONE_ORE: 31,
+    DIAMOND_ORE: 32, EMERALD_ORE: 33, LAPIS_ORE: 34, GRAVEL: 35, FLOWING_WATER: 36, CACTUS: 52, CLAY: 53,
   };
 
   it('keeps every BlockId number, named after its key', () => {
@@ -51,7 +54,19 @@ describe('block states', () => {
       expect(getBlockDef(state).key).toBe(name.toLowerCase());
       expect(blockVariant(state)).toBe(0);
     }
-    expect(BLOCK_STATE_COUNT).toBe(28);
+    expect(BLOCK_STATE_COUNT).toBe(54); // gravel (slice 3) and flowing water (slice 4, 16 states) come after lapis
+  });
+  it('ores are stone-like blocks: solid, opaque, breakable, with a painted tile', () => {
+    for (const id of [BlockId.COAL_ORE, BlockId.IRON_ORE, BlockId.GOLD_ORE, BlockId.REDSTONE_ORE, BlockId.DIAMOND_ORE, BlockId.EMERALD_ORE, BlockId.LAPIS_ORE]) {
+      expect(isSolid(id)).toBe(true);
+      expect(isOpaque(id)).toBe(true);
+      expect(getBlockDef(id).breakable).toBe(true);
+      expect(Number.isFinite(getBlockDef(id).hardness)).toBe(true);
+      expect(getBlockDef(id).hardness).toBeGreaterThanOrEqual(0);
+    }
+    expect(getBlockDef(BlockId.COAL_ORE).hardness).toBe(2);
+    expect(getBlockDef(BlockId.DIAMOND_ORE).hardness).toBe(4);
+    expect(getBlockDef(BlockId.EMERALD_ORE).hardness).toBe(4);
   });
   it('round-trips every state through its name', () => {
     for (let state = 0; state < BLOCK_STATE_COUNT; state++) {
@@ -110,5 +125,38 @@ describe('block states', () => {
       expect(buildBlockRegistry([type('a', 65535)]).stateCount).toBe(65535);
       expect(() => buildBlockRegistry([type('a', 65535), type('b')])).toThrow();
     });
+  });
+});
+
+describe('breaking (spec 24)', () => {
+  it('every breakable block has a finite hardness, and plants break at once', () => {
+    for (const b of BLOCKS) {
+      if (!b.breakable) continue;
+      expect(Number.isFinite(b.hardness)).toBe(true);
+      expect(b.hardness).toBeGreaterThanOrEqual(0);
+    }
+    for (const id of [BlockId.TALL_GRASS, BlockId.POPPY, BlockId.FERN, BlockId.DANDELION, BlockId.BROWN_MUSHROOM, BlockId.RED_MUSHROOM]) {
+      expect(getBlockDef(id).hardness).toBe(0);
+    }
+    expect(getBlockDef(BlockId.STONE).hardness).toBeGreaterThan(getBlockDef(BlockId.DIRT).hardness);
+  });
+});
+
+
+describe('physics rule fields (spec 25, slice 2)', () => {
+  it('default to no falling, flow only for flowing water, and support the solid blocks except leaves', () => {
+    for (const def of BLOCKS) {
+      expect(def.flows).toBe(def.key === 'flowing_water');
+      // Leaves are solid but hold nothing up (spec 25, slice 5): a canopy is not a support.
+      expect(def.supports).toBe(def.key === 'leaves' ? false : def.solid);
+      if (def.key !== 'sand' && def.key !== 'gravel') expect(def.falls).toBe(false);
+    }
+  });
+
+  it('marks sand as falling, and keeps its name and solidity', () => {
+    const sand = getBlockDef(BlockId.SAND);
+    expect(sand.falls).toBe(true);
+    expect(sand.solid).toBe(true);
+    expect(blockStateName(BlockId.SAND)).toBe('sand');
   });
 });

@@ -34,8 +34,25 @@ export const LEGACY_HEIGHT = Math.ceil(roundBlocks(2600) / CHUNK_SIZE) * CHUNK_S
 export const LEGACY_CHUNKS = LEGACY_HEIGHT / CHUNK_SIZE;
 
 // Terrain shape comes from src/world/shape.ts, in meters. Caves and surface layers:
+// Caves (spec 45). Four systems share the rock: broad cheese caverns, thin noodle tunnels that run mostly
+// horizontally, medium spaghetti tubes (spec 5, unchanged), and rare ravines along a 2D ridge.
 export const CAVE_SCALE_H_M = 40; // horizontal size of cave noise features
 export const CAVE_SCALE_V_M = 24; // vertical size of cave noise features
+export const CAVE_THRESHOLD = 0.012; // squared distance between the two spaghetti noise fields, below which it is a tube
+export const CAVE_CHEESE_SCALE_H_M = 96; // cheese caverns are broad: one room is tens of blocks across
+export const CAVE_CHEESE_SCALE_V_M = 48;
+export const CAVE_CHEESE_THRESHOLD = 0.68; // noise value above which rock becomes a cavern (about 6% of the deep rock)
+export const CAVE_CHEESE_OPENING = 0.84; // the higher value a cavern needs to break through to the surface (a few mouths per chunk)
+export const CAVE_CHEESE_FADE = 24; // blocks of cover over which a cavern grows back to its full size
+export const CAVE_NOODLE_SCALE_H_M = 18; // thin tunnels: 1 to 3 blocks across
+export const CAVE_NOODLE_SCALE_V_M = 14;
+export const CAVE_NOODLE_STRETCH = 2.5; // stretches a noodle tunnel vertically, so the tunnels run mostly level
+export const CAVE_NOODLE_THRESHOLD = 0.004; // squared distance, below which it is a tunnel (about 0.9% of the rock)
+export const CAVE_NOODLE_ROOF = 4; // no tunnel comes closer than this to the surface; only cheese may break through
+export const RAVINE_SCALE_M = 160; // the 2D ridge whose zero set a ravine follows
+export const RAVINE_BAND = 0.012; // half-width of the ravine band at its widest (under the roof)
+export const RAVINE_ROOF = 6; // solid blocks kept above a ravine at its top
+export const RAVINE_DEPTH_M = 30; // how far below its roof a ravine cuts, tapering to nothing
 export const SOIL_DEPTH_M = 1.8; // dirt under the grass
 export const GEOLOGY_LAYER_M = 12; // thickness of one rock layer (seven strata rocks, spec 20), before the warp
 export const GEOLOGY_WARP_M = 400; // horizontal size of the noise that bends the rock layers
@@ -47,6 +64,33 @@ export const FERN_CHANCE = 0.1; // chance a grass surface grows a fern, checked 
 export const BROWN_MUSHROOM_CHANCE = 0.005; // chance a grass surface grows a brown mushroom, checked after the fern (spec 21)
 export const RED_MUSHROOM_CHANCE = 0.005; // chance a grass surface grows a red mushroom, checked last (spec 21)
 export const BARE_ROCK_AMP_M = 12; // columns with at least this much detail amplitude have no soil: bare rock
+
+// ---- Ores (spec 26: ores by depth and rock type) ----
+/** One ore type's generation: the depth band it appears in, and how its veins are placed. */
+export interface OreGenDef {
+  /** Registry key, e.g. 'coal_ore'. Matches a block type in `src/world/blocks.ts`. */
+  readonly key: string;
+  /** Top of the depth band, in meters below sea level (negative). The shallowest it spawns. */
+  readonly topM: number;
+  /** Bottom of the depth band, in meters below sea level (negative). The deepest it spawns. */
+  readonly bottomM: number;
+  /** Chance each column gets a cluster of this ore. */
+  readonly chancePerColumn: number;
+  /** Attempted blocks per cluster. Some attempts miss (air, surface, wrong rock). */
+  readonly clusterTries: number;
+}
+
+/** Ores from shallow to deep. The bands do not overlap the surface; below -100 m the host rock is deepslate. */
+export const ORE_GEN: readonly OreGenDef[] = Object.freeze([
+  { key: 'coal_ore', topM: -4, bottomM: -40, chancePerColumn: 0.6, clusterTries: 10 },
+  { key: 'iron_ore', topM: -32, bottomM: -96, chancePerColumn: 0.5, clusterTries: 8 },
+  { key: 'gold_ore', topM: -64, bottomM: -160, chancePerColumn: 0.4, clusterTries: 6 },
+  { key: 'redstone_ore', topM: -96, bottomM: -224, chancePerColumn: 0.35, clusterTries: 6 },
+  { key: 'lapis_ore', topM: -128, bottomM: -320, chancePerColumn: 0.3, clusterTries: 8 },
+  { key: 'diamond_ore', topM: -160, bottomM: -480, chancePerColumn: 0.25, clusterTries: 5 },
+  { key: 'emerald_ore', topM: -160, bottomM: -480, chancePerColumn: 0.15, clusterTries: 4 },
+] as const);
+
 export const BEACH_BAND_M = 1; // land this close above sea level is beach
 export const SHORE_CAVE_BAND_M = 3; // no caves are carved this close above sea level
 export const SHORE_ROOF_M = 5; // the surface stays solid this far below a beach or shore
@@ -59,6 +103,8 @@ export const SOIL_DEPTH = roundBlocks(SOIL_DEPTH_M);
 export const TREE_DENSITY_PER_M2 = 0.012;
 /** Chance a 1-block column holds a tree anchor. */
 export const TREE_CHANCE = TREE_DENSITY_PER_M2 * BLOCK_SIZE_M * BLOCK_SIZE_M;
+/** The documented height band for tree species (owner decision 1, 2026-10-17). TREE_SPECIES is written in blocks;
+ * tests/config.test.ts enforces that every species except the bush fits inside this band. */
 export const TREE_HEIGHT_MIN_M = 8;
 export const TREE_HEIGHT_MAX_M = 12;
 /** The most a tree's blocks sit horizontally from its trunk. */
@@ -97,7 +143,8 @@ export const EYE_HEIGHT = metersToBlocks(1.62); // 2.7 blocks
 export const WALK_SPEED = metersToBlocks(4.3);
 export const SPRINT_SPEED = metersToBlocks(6.0);
 export const FLY_SPEED = metersToBlocks(12);
-export const GRAVITY = metersToBlocks(28);
+export const GRAVITY_M_S2 = 28; // m/s², also used for fall damage (spec 44)
+export const GRAVITY = metersToBlocks(GRAVITY_M_S2);
 export const JUMP_SPEED = metersToBlocks(8.7); // jump height ~1.35 m (~2.25 blocks)
 export const TERMINAL_VELOCITY = metersToBlocks(50);
 export const GROUND_ACCEL = 20; // how quickly velocity reaches the target speed (per second)
@@ -122,17 +169,6 @@ export const WADE_SLOWDOWN = 0.5; // walking speed lost per unit of submerged fr
 export const SPLASH_MIN_SPEED = metersToBlocks(4); // downward speed (m/s) that makes a splash on entering water
 export const SWIM_WAIST_HEIGHT = metersToBlocks(0.6); // "in water" is checked this far above the feet
 export const FEET_WATER_HEIGHT = metersToBlocks(0.1); // "feet in water" is checked this far above the feet
-
-// ---- Dropped items (spec 23) ----
-export const ITEM_SIZE_M = 0.15; // a dropped item is a cube this wide: half a block
-export const ITEM_HEIGHT = metersToBlocks(ITEM_SIZE_M); // blocks
-export const ITEM_HALF_WIDTH = ITEM_HEIGHT / 2; // the cube is as wide as it is tall, in blocks
-export const ITEM_TERMINAL_M_S = 20; // falling items stop accelerating at this speed
-export const ITEM_SPREAD_M_S = 0.5; // a dropped item starts with up to this much sideways speed, each way
-export const ITEM_SPIN_DEG_S = 90; // how fast a dropped item turns on the spot
-export const ITEM_PICKUP_RADIUS_M = 1.0; // the player picks up an item this close to its centre
-export const ITEM_PICKUP_DELAY_S = 0.5; // a new item can't be picked up for this long, so it doesn't snap back
-export const DROPPED_ITEM_MAX = 64; // the oldest item is removed when there are more than this
 
 // ---- Game loop ----
 export const FIXED_DT = 1 / 60; // physics step, seconds
@@ -162,8 +198,56 @@ export const DAY_LENGTH_S = 600; // seconds for a full day + night
 export const START_TIME_OF_DAY = 0.3; // 0 sunrise, 0.25 noon, 0.5 sunset, 0.75 midnight
 export const MIN_DAYLIGHT = 0.15;
 
+// ---- Calendar and seasons (spec 29) ----
+export const DAYS_PER_SEASON = 7; // days per season; a year is 4 * this
+export const WORLD_LATITUDE_DEG = 45; // world latitude, drives day length variation
+
+// ---- Climate at block resolution (spec 31) ----
+export const TEMPERATURE_MIN_C = -30; // coldest biome temperature
+export const TEMPERATURE_MAX_C = 30; // hottest biome temperature
+export const TEMPERATURE_LAPSE_C_PER_KM = 6.5; // degrees C lost per km of height
+export const PRECIPITATION_MIN_MM = 0; // driest biome precipitation, mm/year
+export const PRECIPITATION_MAX_MM = 2000; // wettest biome precipitation, mm/year
+export const OROGRAPHIC_LIFT = 0.3; // precipitation boost per unit of max detail amplitude
+/**
+ * How much of the biome table's precipitation comes from the region simulation's advected
+ * moisture rather than the raw humidity noise. Below 1 keeps some broad-scale humidity so biomes
+ * still vary over a whole region; the rest is the rain shadow the simulation actually resolves.
+ */
+export const REGION_MOISTURE_WEIGHT = 0.75;
+
 // ---- UI ----
 export const HOTBAR_SIZE = 9;
+
+// ---- Inventory, held block and dropped items (spec 24) ----
+export const INVENTORY_SIZE = 36; // 9 hotbar slots, then 27 in the grid
+export const MAX_STACK = 64;
+export const STARTING_STACK = 64; // each default hotbar block starts with this many
+export const ITEM_SIZE_M = 0.15; // edge of a dropped item (about half a block)
+export const ITEM_SIZE = metersToBlocks(ITEM_SIZE_M);
+export const ITEM_LIFETIME_S = 300; // a dropped item disappears after this long
+export const MAX_ITEMS = 256; // at most this many dropped items; a new one removes the oldest
+export const ITEM_POP_SPEED_M_S = 1.5; // upward speed when a block drops
+export const ITEM_SPREAD_M_S = 0.8; // sideways speed when a block drops (random, up to this)
+export const ITEM_FRICTION = 8; // per second: how fast an item slows down while it rests on the ground
+export const ITEM_PICKUP_RADIUS_M = 0.9; // walk within this distance (horizontally) to pick an item up
+export const ITEM_PICKUP_BELOW_M = 0.3; // and an item this far below the feet still counts, so one dug under you is reachable
+export const ITEM_PICKUP_DELAY_S = 0.6; // a new item cannot be picked up for this long
+export const HAND_BLOCK_SIZE = 0.3; // edge of the block in hand, in blocks (0.09 m)
+// Position in view space (right, up, forward of the eye, in blocks). Far enough forward and low enough that the block
+// stays on screen when the player looks straight down.
+export const HAND_X = 0.3;
+export const HAND_Y = -0.28;
+export const HAND_Z = -1;
+export const HAND_SWING_S = 0.25; // one swing of the hand when a block is broken or placed
+export const HAND_BOB = 0.025; // how far the block in hand bobs while the player walks, in blocks
+
+// ---- Volumetric tools (boxes, spheres, planes, walls, floors, flatten, undo) ----
+export const VOLUME_MAX_SIZE = 32; // blocks per side that one action can change (about 9.6 m)
+export const VOLUME_MAX_THICKNESS = 16; // blocks; 0 means solid for boxes and spheres
+export const VOLUME_DEFAULT_SIZE = 3;
+export const EDIT_CELLS_PER_STEP = 4096; // cells written per fixed step, so a large volume spans a few frames
+export const UNDO_LIMIT = 20; // actions kept for Ctrl+Z, in memory only
 
 // ---- Storage ----
 export const SAVE_DB_NAME = 'voxel-game'; // IndexedDB database holding the world save
@@ -172,3 +256,305 @@ export const SAVE_DB_NAME = 'voxel-game'; // IndexedDB database holding the worl
 export const INTERIM_SAVE_KEY = 'voxel-game-save-v2';
 export const SETTINGS_KEY = 'voxel-game-settings-v1';
 export const AUTOSAVE_INTERVAL_S = 10;
+
+// ---- Tick system (spec 25, slice 1) ----
+export const TICK_BUDGET_MS = 2; // max time per game tick spent running chunk ticks
+// Block updates run in game ticks, as in Minecraft, not once per frame. A change is applied after its delay in ticks.
+export const GAME_TICKS_PER_SECOND = 20;
+export const WATER_TICK_DELAY = 5; // ticks before water moves one block (Minecraft overworld: 5)
+export const GRAVITY_TICK_DELAY = 2; // ticks before a falling block moves one block (Minecraft: 2)
+
+// ---- Structural collapse (spec 25, slice 5) ----
+export const SUPPORT_RADIUS_BLOCKS = 4; // a support check looks this far from the removed block; a group reaching the edge is held up
+export const SUPPORT_NODE_LIMIT = 512; // a group larger than this is treated as supported, so a check stays bounded
+
+// ---- Loose rigid bodies (spec 25, slice 6) ----
+export const LOOSE_BODY_MIN_GROUP = 2; // a collapse of at least this many blocks makes tumbling bodies instead of items
+export const LOOSE_BODY_CAP = 48; // at most this many bodies at once; a block beyond that drops as an item
+export const LOOSE_BODY_MAX_S = 20; // a body still moving after this long settles where it is
+export const LOOSE_BODY_REST_S = 0.25; // a body this slow on the ground for this long settles
+export const LOOSE_BODY_REST_SPEED_M_S = 0.015; // slower than this on the ground counts as at rest
+export const LOOSE_BODY_WATER_DRAG = 3; // per second: how quickly a submerged body loses speed
+export const LOOSE_BODY_FRICTION = 1.5; // per second: a body on the ground slides a while (dropped items stop at once, ITEM_FRICTION)
+export const LOOSE_BODY_SPIN_RATE = 4; // radians per second: how fast a tumbling body spins after it breaks free
+
+// ---- Entity system (spec 42) ----
+export const ENTITY_FRICTION = 8; // per second: how fast an entity slows down on the ground
+
+// ---- Random ticks (spec 38) ----
+export const RANDOM_TICKS_PER_CHUNK = 3; // random cells drawn per loaded chunk per tick step
+export const RANDOM_TICK_BUDGET_MS = 1; // max time per frame spent on the random-tick pass
+
+// ---- Ecology (spec 36) ----
+export const GRASS_SPREAD_CHANCE = 0.02; // chance per tick that grass spreads to adjacent lit dirt
+export const GRASS_SPREAD_LIGHT_MIN = 8; // minimum sky light level for grass to spread
+
+// ---- Riverbed sediment (T-D1) ----
+export const RIVERBED_PATCH_M = 2.4;
+export const RIVERBED_CLAY_SHARE = 0.25;
+export const RIVERBED_GRAVEL_SHARE = 0.5;
+
+// ---- Biome borders (spec 35) ----
+export const BIOME_BLEND_BLOCKS = 3; // surface blocks dither into the next biome over this many blocks from its border
+
+// ---- Tree species (spec 37) ----
+export type TreeSpecies =
+  | 'oak'
+  | 'maple'
+  | 'spruce'
+  | 'fir'
+  | 'larch'
+  | 'pine'
+  | 'birch'
+  | 'jungle_giant'
+  | 'palm'
+  | 'acacia'
+  | 'baobab'
+  | 'willow'
+  | 'mangrove'
+  | 'saguaro'
+  | 'dead_snag'
+  | 'bush';
+
+export interface TreeSpeciesDef {
+  key: TreeSpecies;
+  name: string;
+  trunkWidth: 1 | 2 | 3; // blocks wide
+  heightMinBlocks: number;
+  heightMaxBlocks: number;
+  branchMinBlocks: number;
+  branchMaxBlocks: number;
+  blobRadiusBlocks: number; // leaf cluster radius at branch ends; 0 disables all foliage, including the canopy
+  crownBaseFraction: number; // fraction of height where bare trunk ends
+  crownRadiusFactor: number; // crown radius as fraction of height
+}
+
+export const TREE_SPECIES: TreeSpeciesDef[] = [
+  {
+    key: 'oak',
+    name: 'Oak',
+    trunkWidth: 2,
+    heightMinBlocks: 27,
+    heightMaxBlocks: 40,
+    branchMinBlocks: 2,
+    branchMaxBlocks: 4,
+    blobRadiusBlocks: 4,
+    crownBaseFraction: 0.45,
+    crownRadiusFactor: 0.5,
+  },
+  {
+    key: 'maple',
+    name: 'Maple',
+    trunkWidth: 1,
+    heightMinBlocks: 27,
+    heightMaxBlocks: 35,
+    branchMinBlocks: 2,
+    branchMaxBlocks: 4,
+    blobRadiusBlocks: 4,
+    crownBaseFraction: 0.4,
+    crownRadiusFactor: 0.55,
+  },
+  {
+    key: 'spruce',
+    name: 'Spruce',
+    trunkWidth: 1,
+    heightMinBlocks: 30,
+    heightMaxBlocks: 40,
+    branchMinBlocks: 1,
+    branchMaxBlocks: 3,
+    blobRadiusBlocks: 3,
+    crownBaseFraction: 0.55,
+    crownRadiusFactor: 0.3,
+  },
+  {
+    key: 'fir',
+    name: 'Fir',
+    trunkWidth: 1,
+    heightMinBlocks: 33,
+    heightMaxBlocks: 40,
+    branchMinBlocks: 1,
+    branchMaxBlocks: 2,
+    blobRadiusBlocks: 2,
+    crownBaseFraction: 0.5,
+    crownRadiusFactor: 0.18, // the narrowest conifer: a spire
+  },
+  {
+    key: 'larch',
+    name: 'Larch',
+    trunkWidth: 1,
+    heightMinBlocks: 27,
+    heightMaxBlocks: 35,
+    branchMinBlocks: 2,
+    branchMaxBlocks: 4,
+    blobRadiusBlocks: 3,
+    crownBaseFraction: 0.45,
+    crownRadiusFactor: 0.35, // an open, spreading conifer
+  },
+  {
+    key: 'birch',
+    name: 'Birch',
+    trunkWidth: 1,
+    heightMinBlocks: 27,
+    heightMaxBlocks: 35,
+    branchMinBlocks: 2,
+    branchMaxBlocks: 3,
+    blobRadiusBlocks: 3,
+    crownBaseFraction: 0.5,
+    crownRadiusFactor: 0.4,
+  },
+  {
+    key: 'pine',
+    name: 'Pine',
+    trunkWidth: 1,
+    heightMinBlocks: 30,
+    heightMaxBlocks: 40,
+    branchMinBlocks: 1,
+    branchMaxBlocks: 2,
+    blobRadiusBlocks: 2,
+    crownBaseFraction: 0.6,
+    crownRadiusFactor: 0.25,
+  },
+  {
+    key: 'jungle_giant',
+    name: 'Jungle Giant',
+    trunkWidth: 2,
+    heightMinBlocks: 36,
+    heightMaxBlocks: 40,
+    branchMinBlocks: 3,
+    branchMaxBlocks: 6,
+    blobRadiusBlocks: 5,
+    crownBaseFraction: 0.4,
+    crownRadiusFactor: 0.6,
+  },
+  {
+    key: 'palm',
+    name: 'Palm',
+    trunkWidth: 1,
+    heightMinBlocks: 30,
+    heightMaxBlocks: 40,
+    branchMinBlocks: 1,
+    branchMaxBlocks: 2,
+    blobRadiusBlocks: 3,
+    crownBaseFraction: 0.85, // a bare pole with a small tuft at the top
+    crownRadiusFactor: 0.15,
+  },
+  {
+    key: 'acacia',
+    name: 'Acacia',
+    trunkWidth: 1,
+    heightMinBlocks: 27,
+    heightMaxBlocks: 32,
+    branchMinBlocks: 2,
+    branchMaxBlocks: 4,
+    blobRadiusBlocks: 4,
+    crownBaseFraction: 0.5,
+    crownRadiusFactor: 0.45,
+  },
+  {
+    key: 'baobab',
+    name: 'Baobab',
+    trunkWidth: 3,
+    heightMinBlocks: 27,
+    heightMaxBlocks: 32,
+    branchMinBlocks: 3,
+    branchMaxBlocks: 6,
+    blobRadiusBlocks: 5,
+    crownBaseFraction: 0.6, // a thick bare trunk under a wide, flat crown
+    crownRadiusFactor: 0.7,
+  },
+  {
+    key: 'willow', name: 'Willow', trunkWidth: 2,
+    heightMinBlocks: 27, heightMaxBlocks: 35, branchMinBlocks: 3, branchMaxBlocks: 5,
+    blobRadiusBlocks: 3, crownBaseFraction: 0.5, crownRadiusFactor: 0.4,
+  },
+  {
+    key: 'mangrove', name: 'Mangrove', trunkWidth: 2,
+    heightMinBlocks: 27, heightMaxBlocks: 33, branchMinBlocks: 3, branchMaxBlocks: 5,
+    blobRadiusBlocks: 3, crownBaseFraction: 0.55, crownRadiusFactor: 0.35,
+  },
+  {
+    key: 'saguaro', name: 'Saguaro', trunkWidth: 1,
+    heightMinBlocks: 27, heightMaxBlocks: 33, branchMinBlocks: 2, branchMaxBlocks: 4,
+    blobRadiusBlocks: 0, crownBaseFraction: 1, crownRadiusFactor: 0,
+  },
+  {
+    key: 'dead_snag',
+    name: 'Dead Snag',
+    trunkWidth: 1,
+    heightMinBlocks: 27,
+    heightMaxBlocks: 33,
+    branchMinBlocks: 0,
+    branchMaxBlocks: 2,
+    blobRadiusBlocks: 0,
+    crownBaseFraction: 1.0,
+    crownRadiusFactor: 0,
+  },
+  {
+    key: 'bush',
+    name: 'Bush',
+    trunkWidth: 1,
+    heightMinBlocks: 3,
+    heightMaxBlocks: 6,
+    branchMinBlocks: 0,
+    branchMaxBlocks: 0,
+    blobRadiusBlocks: 2,
+    crownBaseFraction: 0.3,
+    crownRadiusFactor: 0.8,
+  },
+];
+
+/**
+ * The share of a biome's tree anchors that grow its secondary species, where the biome names one (task T-E11).
+ * The pick is a hash of the anchor, so it is deterministic and chunk-independent, like every tree decision.
+ */
+export const SECONDARY_TREE_CHANCE = 0.3;
+
+export const TREE_SPECIES_KEYS: TreeSpecies[] = TREE_SPECIES.map((s) => s.key);
+
+export function treeSpeciesDef(key: TreeSpecies): TreeSpeciesDef | undefined {
+  return TREE_SPECIES.find((s) => s.key === key);
+}
+
+// Riparian trees grow on exposed banks or in at most 0.9 m of fresh water.
+export const RIPARIAN_MAX_DEPTH_BLOCKS = 3;
+export const MANGROVE_MIN_TEMPERATURE_C = 20;
+export const RIPARIAN_MIN_PRECIPITATION_MM = 1000;
+export const WILLOW_MIN_TEMPERATURE_C = 5;
+export const WILLOW_MAX_TEMPERATURE_C = 25;
+export const TREE_DROOP_FRACTION = 0.4;
+export const WILLOW_CURTAIN_DENSITY = 0.35;
+export const PALM_FROND_REACH_BLOCKS = 8;
+export const MANGROVE_ROOT_REACH_BLOCKS = 4;
+export const SAGUARO_ARM_REACH_BLOCKS = 4;
+
+// ---- Weather (spec 43) ----
+export const WEATHER_WETNESS_RESPONSE_PER_S = 3;
+export const WEATHER_WET_DARKENING = 0.3;
+export const WEATHER_SEASONAL_AMPLITUDE_C = 10;
+export const MOON_CYCLES_PER_YEAR = 4;
+export const FOG_HUMIDITY_HAZE = 0.12;
+export const FOG_VALLEY_STRENGTH = 0.7;
+export const FOG_VALLEY_DEPTH_M = 12;
+export const FOG_GROUND_LAYER_M = 2;
+export const FOG_VALLEY_SAMPLE_M = 24;
+export const FOG_SAMPLE_INTERVAL_S = 2;
+
+export const WEATHER_PRESSURE_WAVELENGTH_M = 6000; // feature size of pressure noise
+export const WEATHER_WIND_SPEED_M_S = 3; // weather fronts drift eastward at this speed
+export const WEATHER_HUMIDITY_WAVELENGTH_M = 3000; // feature size of humidity noise
+export const WEATHER_STORM_PRESSURE = -0.5; // pressure below this = storm candidate
+export const WEATHER_STORM_HUMIDITY = 0.62; // humidity above this = storm candidate
+export const WEATHER_STORM_TEMP_C = 10; // temperature above this = storm candidate
+export const WEATHER_PRECIP_THRESHOLD = 0.1; // minimum cloud cover for precipitation
+export const WEATHER_TEMP_SNOW_C = -2; // below this temperature = snow
+export const WEATHER_TEMP_RAIN_C = 2; // above this temperature = rain
+
+// ---- Survival (spec 44) ----
+export const GAME_MODE_SURVIVAL = 'survival';
+export const GAME_MODE_CREATIVE = 'creative';
+export const HEALTH_MAX = 20; // 10 hearts
+export const HUNGER_MAX = 20;
+export const FALL_DAMAGE_THRESHOLD_M_S = 6; // impact speed above this causes damage
+export const FALL_DAMAGE_MULTIPLIER = 2; // damage per m/s above threshold
+export const DROWN_DAMAGE_PER_S = 2; // damage per second when out of air
+export const AIR_MAX_S = 15; // seconds the player can hold their breath

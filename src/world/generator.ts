@@ -1,16 +1,16 @@
-import { createNoise2D, createNoise3D, type NoiseFunction2D, type NoiseFunction3D } from 'simplex-noise';
+import { createNoise2D, type NoiseFunction2D } from 'simplex-noise';
 import {
   BARE_ROCK_AMP_M,
   BEACH_BAND,
   BLOCK_SIZE_M,
-  CAVE_SCALE_H_M,
-  CAVE_SCALE_V_M,
+  BIOME_BLEND_BLOCKS,
   CHUNK_SIZE,
   GEOLOGY_LAYER_M,
   GEOLOGY_WARP_M,
   LEGACY_CHUNKS,
   LEGACY_HEIGHT,
   metersToBlocks,
+  ORE_GEN,
   SEA_LEVEL,
   SHORE_CAVE_BAND,
   SHORE_ROOF,
@@ -25,52 +25,129 @@ import {
   TERRAIN_CHUNK_BOTTOM,
   TREE_CHANCE,
   TREE_REACH,
+  type TreeSpecies,
 } from '../config';
 import { columnIndex, columnKey, localIndex } from '../core/coords';
 import { floorDiv } from '../core/math';
 import { hash2, mulberry32 } from '../core/random';
-import { BlockId, blocksSky } from './blocks';
+import { caveKind, createCaveNoises, type CaveNoises } from './caves';
+import { BlockId, blocksSky, parseBlockStateName } from './blocks';
 import { Chunk } from './chunk';
 import { TerrainDensity } from './density';
-import { ClimateSampler, detailAmpMeters, heightMeters } from './shape';
+import { ClimateSampler, detailAmpMeters } from './shape';
+import { blockPrecipitation, blockTemperature } from './climate';
+import { FeatureRegistry, type FeatureBlock } from './feature';
+import { anchorSpecies, biomeAt, biomeName, blendSurfaceBlocks, riparianTreeSpecies, secondarySpecies, soilBlock, surfaceBlock, treeSpecies } from './biome';
+import { climateHeightSource, RegionSampler, REGION_CELLS, type ColumnSample, type RegionData } from './region';
+import { riverbedMaterial } from './riverbed';
 import { MAX_TREE_RISE, treeBlocks } from './trees';
 
-const CAVE_THRESHOLD = 0.012;
 /** The column cache is only a cache, so clearing it never changes a result. */
 const COLUMN_CACHE_LIMIT = 2048;
+
+/** A neighbouring chunk column (one step in x or z) and its biome. */
+interface BiomeNeighbour {
+  dx: number;
+  dz: number;
+  key: string;
+}
+
+/**
+ * The surface block of a column, dithered toward the nearest neighbouring biome within BIOME_BLEND_BLOCKS of its border.
+ * The weight is highest at the border and falls to nothing at BIOME_BLEND_BLOCKS in. Each cell's choice depends only on
+ * its own biome, its distance to the border, and a hash of the cell, so chunks agree across their borders.
+ */
+function ditheredSurface(own: string, neighbours: readonly BiomeNeighbour[], lx: number, lz: number, wx: number, wz: number): number {
+  const ownBlock = surfaceBlock(own, false);
+  let nearest: { dist: number; key: string } | null = null;
+  for (const n of neighbours) {
+    if (n.key === own) continue;
+    const dist = n.dx < 0 ? lx : n.dx > 0 ? CHUNK_SIZE - 1 - lx : n.dz < 0 ? lz : CHUNK_SIZE - 1 - lz;
+    if (dist < BIOME_BLEND_BLOCKS && (!nearest || dist < nearest.dist)) nearest = { dist, key: n.key };
+  }
+  if (!nearest) return ownBlock;
+  const weight = (BIOME_BLEND_BLOCKS - nearest.dist) / (2 * BIOME_BLEND_BLOCKS);
+  return blendSurfaceBlocks(ownBlock, surfaceBlock(nearest.key, false), wx, wz, weight);
+}
 /** Rock types of the strata, in layer order (the layer index wraps around this list). */
 const ROCKS = [
   BlockId.GRANITE, BlockId.DIORITE, BlockId.ANDESITE, BlockId.SANDSTONE, BlockId.LIMESTONE, BlockId.SLATE, BlockId.BASALT,
 ] as const;
 
+/** Ore generation: the block id, its depth band in blocks, and the placement odds, built from `src/config.ts`. */
+const ORE_DEFS: readonly {
+  readonly id: number;
+  /** Inclusive, blocks. */
+  readonly minY: number;
+  /** Inclusive, blocks. */
+  readonly maxY: number;
+  readonly chancePerColumn: number;
+  readonly clusterTries: number;
+}[] = ORE_GEN.map((d) => {
+  const id = parseBlockStateName(d.key);
+  if (id === null) throw new Error(`Ore '${d.key}' is not a registered block`);
+  const minY = Math.ceil(metersToBlocks(d.bottomM));
+  const maxY = Math.floor(metersToBlocks(d.topM));
+  return { id, minY, maxY, chancePerColumn: d.chancePerColumn, clusterTries: d.clusterTries };
+});
+
+/** The rock ores can replace: stone, the strata rocks and deepslate — never soil, plants or air. */
+const ORE_HOSTS = new Set<number>([BlockId.STONE, ...ROCKS, BlockId.DEEPSLATE]);
+
+/** One roll per column and ore type decides whether this column gets a cluster. */
+const ORE_SEED_OFFSET = 1000;
+
 /** Per-column terrain, indexed by columnIndex: the top solid block and the two inputs of the density. */
 interface Column {
   /** World y of the highest solid block (the surface, before water and trees). */
   solidTop: Int32Array;
-  /** Surface offset from the shape fields, in meters. */
+  /** Surface offset from the region simulation, in meters. */
   offsets: Float64Array;
   /** Detail amplitude, in meters. */
   amps: Float64Array;
   /** Rock-layer warp: 2D noise in [-1, 1]. */
   warp: Float64Array;
+  /** Water surface height for each cell, in meters. Sea level where there is no lake or channel. */
+  waterLevels: Float64Array;
+  /** 0 = ordinary terrain/ocean, 1 = river, 2 = lake. */
+  waterBodies: Uint8Array;
+  /** Biome key for this column (computed once at column center). */
+  biomeKey: string;
 }
 
 export class TerrainGenerator {
   readonly seed: number;
   private readonly climate: ClimateSampler;
   private readonly density: TerrainDensity;
+  /** Region simulation: rivers, lakes, erosion and moisture (spec 41). */
+  private readonly regions: RegionSampler;
   private readonly rockNoise: NoiseFunction2D;
-  private readonly caveNoiseA: NoiseFunction3D;
-  private readonly caveNoiseB: NoiseFunction3D;
+  /** The four cave systems (spec 45). */
+  private readonly caves: CaveNoises;
   private readonly columnCache = new Map<string, Column>();
+  /** The biome of each chunk column, from its centre. Cheaper than a whole column, so neighbours can be asked. */
+  private readonly chunkBiomes = new Map<string, string>();
+  /** Feature registry: trees and later biomes register here. */
+  private readonly featureRegistry = new FeatureRegistry();
+  /** Callback when a grass block is placed during generation. Used to schedule grass-spread ticks. */
+  onGrassPlaced?: (wx: number, wy: number, wz: number) => void;
 
   constructor(seed: number) {
     this.seed = seed;
     this.climate = new ClimateSampler(seed);
     this.density = new TerrainDensity(seed);
+    // The simulation starts from the plain climate surface and returns an eroded one, so both
+    // the sampler and the height source below read the same `ClimateSampler` instance.
+    this.regions = new RegionSampler(climateHeightSource((xM, zM) => this.climate.fields(xM, zM)));
     this.rockNoise = createNoise2D(mulberry32(seed + 300));
-    this.caveNoiseA = createNoise3D(mulberry32(seed + 3));
-    this.caveNoiseB = createNoise3D(mulberry32(seed + 4));
+    this.caves = createCaveNoises(seed);
+    this.featureRegistry.registerFeature({
+      key: 'tree',
+      densityPerChunk: TREE_CHANCE * CHUNK_SIZE * CHUNK_SIZE,
+      spacing: 1, // every block is a potential anchor, preserves the old per-block hash behavior
+      maxExtentBlocks: TREE_REACH,
+      place: this.placeTreeFromAnchor.bind(this),
+    });
   }
 
   /** Y of the highest solid block in this column, from the density. Water and trees are not counted. */
@@ -78,6 +155,23 @@ export class TerrainGenerator {
     const cx = floorDiv(wx, CHUNK_SIZE);
     const cz = floorDiv(wz, CHUNK_SIZE);
     return this.column(cx, cz).solidTop[columnIndex(wx - cx * CHUNK_SIZE, wz - cz * CHUNK_SIZE)]!;
+  }
+
+  /** Climate at a block, for the F3 overlay: temperature (°C), precipitation (mm a year) and the biome's name. */
+  climateAt(wx: number, wy: number, wz: number): { temperatureC: number; precipitationMm: number; biome: string } {
+    const fields = this.climate.fields(wx * BLOCK_SIZE_M, wz * BLOCK_SIZE_M);
+    const sample = this.regions.sample(wx, wz);
+    const amp = detailAmpMeters(fields) * (sample.isRiver ? 0.2 : sample.isLake ? 0.35 : 1);
+    return {
+      temperatureC: blockTemperature(fields, wy * BLOCK_SIZE_M),
+      precipitationMm: blockPrecipitation(fields, amp, sample.moisture),
+      biome: biomeName(this.biomeKeyAt(wx, wz)),
+    };
+  }
+
+  /** The biome key of the column that contains (wx, wz). */
+  biomeKeyAt(wx: number, wz: number): string {
+    return this.column(floorDiv(wx, CHUNK_SIZE), floorDiv(wz, CHUNK_SIZE)).biomeKey;
   }
 
   /** Fills chunk.blocks with the generated terrain of chunk (cx, cy, cz). */
@@ -158,6 +252,12 @@ export class TerrainGenerator {
       return;
     }
     const column = this.column(cx, cz);
+    const neighbours: BiomeNeighbour[] = [
+      { dx: -1, dz: 0, key: this.chunkBiome(cx - 1, cz) },
+      { dx: 1, dz: 0, key: this.chunkBiome(cx + 1, cz) },
+      { dx: 0, dz: -1, key: this.chunkBiome(cx, cz - 1) },
+      { dx: 0, dz: 1, key: this.chunkBiome(cx, cz + 1) },
+    ];
 
     for (let lz = 0; lz < CHUNK_SIZE; lz++) {
       for (let lx = 0; lx < CHUNK_SIZE; lx++) {
@@ -172,29 +272,44 @@ export class TerrainGenerator {
         const wx = cx * CHUNK_SIZE + lx;
         const wz = cz * CHUNK_SIZE + lz;
         const inSlice = h + 1 >= y0 && h + 1 < y1; // the plant cell is in this range
-        const plant = soil && !beach && inSlice ? this.plantAt(wx, wz, h) : BlockId.AIR;
+        const surface = soil ? (beach ? BlockId.SAND : ditheredSurface(column.biomeKey, neighbours, lx, lz, wx, wz)) : BlockId.AIR;
+        // Plants only grow on grass, so beaches, deserts and bare rock stay bare.
+        // Water level: the sea, or a lake or river surface from the region simulation. A riverbed
+        // or lakebed is sand or gravel, not grass.
+        const waterY = Math.max(SEA_LEVEL, Math.floor(metersToBlocks(column.waterLevels[i]!)));
+        const submerged = h < waterY;
+        const bed = column.waterBodies[i] === 1 ? riverbedMaterial(this.seed, wx, wz) : BlockId.SAND;
+        const plant = !submerged && surface === BlockId.GRASS && inSlice ? this.plantAt(wx, wz, h) : BlockId.AIR;
         for (let y = y0; y < y1; y++) {
           let id: number;
           if (this.density.isSolid(wx, y, wz, offsetM, ampM)) {
-            if (soil && y === h) id = beach ? BlockId.SAND : BlockId.GRASS;
-            else if (soil && y >= h - SOIL_DEPTH) id = beach ? BlockId.SAND : BlockId.DIRT;
-            else id = this.rockAt(y, warp);
+            if (soil && y === h) {
+              // Rivers carry patches of clay, gravel and sand; lake/ocean beds retain sand.
+              id = submerged ? bed : surface;
+              if (id === BlockId.GRASS && !beach) {
+                this.onGrassPlaced?.(wx, y, wz);
+              }
+            } else if (soil && y >= h - SOIL_DEPTH) {
+              id = submerged ? bed : beach ? BlockId.SAND : soilBlock(column.biomeKey);
+            } else id = this.rockAt(y, warp);
           } else if (y === h + 1 && plant !== BlockId.AIR) id = plant;
-          else id = y <= SEA_LEVEL ? BlockId.WATER : BlockId.AIR;
+          else id = y <= waterY ? BlockId.WATER : BlockId.AIR;
           out[localIndex(lx, y - y0, lz)] = id;
         }
-        const top = Math.min(this.caveTop(h), y1 - 1);
+        const top = Math.min(this.caveTop(h, column.waterBodies[i] ? waterY : SEA_LEVEL), y1 - 1);
         for (let y = Math.max(2, y0); y <= top; y++) {
-          if (this.isCave(wx, y, wz)) out[localIndex(lx, y - y0, lz)] = BlockId.AIR;
+          if (this.isCave(wx, y, wz, h)) out[localIndex(lx, y - y0, lz)] = BlockId.AIR;
         }
       }
     }
+    this.placeOres(column, cx, cz, y0, y1, out);
     this.placeTrees(cx, cz, y0, y1, out);
   }
 
   /**
-   * The column's cells: the shape fields, the density inputs and the highest solid block. Cached, because the
-   * fields cost six noises per cell and every chunk of a column reads them.
+   * The column's cells: the region simulation's surface, the density inputs and the highest solid
+   * block. Cached, because the region simulation and the fields cost real work per cell and every
+   * chunk of a column reads them.
    */
   private column(cx: number, cz: number): Column {
     const key = columnKey(cx, cz);
@@ -206,6 +321,9 @@ export class TerrainGenerator {
       offsets: new Float64Array(CHUNK_SIZE * CHUNK_SIZE),
       amps: new Float64Array(CHUNK_SIZE * CHUNK_SIZE),
       warp: new Float64Array(CHUNK_SIZE * CHUNK_SIZE),
+      waterLevels: new Float64Array(CHUNK_SIZE * CHUNK_SIZE),
+      waterBodies: new Uint8Array(CHUNK_SIZE * CHUNK_SIZE),
+      biomeKey: '',
     };
     for (let lz = 0; lz < CHUNK_SIZE; lz++)
       for (let lx = 0; lx < CHUNK_SIZE; lx++) {
@@ -213,13 +331,74 @@ export class TerrainGenerator {
         const wx = cx * CHUNK_SIZE + lx;
         const wz = cz * CHUNK_SIZE + lz;
         const fields = this.climate.fields(wx * BLOCK_SIZE_M, wz * BLOCK_SIZE_M);
-        column.offsets[i] = heightMeters(fields);
-        column.amps[i] = detailAmpMeters(fields);
+        // The region's surface replaces the raw shape height: it already carries erosion,
+        // river channels and lake basins.
+        const sample = this.regions.sample(wx, wz);
+        column.offsets[i] = sample.offsetM;
+        // The 3D detail noise has an amplitude of up to 22 m, which is far more than a river
+        // channel is deep, so left alone it fills every channel back in with rock and the river
+        // never appears. Damping it inside channels and lakes lets the water show while keeping
+        // some bumpiness.
+        const ampScale = sample.isRiver ? 0.2 : sample.isLake ? 0.35 : 1;
+        column.amps[i] = detailAmpMeters(fields) * ampScale;
         column.warp[i] = this.rockNoise((wx * BLOCK_SIZE_M) / GEOLOGY_WARP_M, (wz * BLOCK_SIZE_M) / GEOLOGY_WARP_M);
+        column.waterLevels[i] = sample.waterLevelM;
+        column.waterBodies[i] = sample.isRiver ? 1 : sample.isLake ? 2 : 0;
         column.solidTop[i] = this.solidTop(wx, wz, column.offsets[i]!, column.amps[i]!);
       }
+    column.biomeKey = this.chunkBiome(cx, cz);
     this.columnCache.set(key, column);
     return column;
+  }
+
+  /**
+   * The biome of chunk column (cx, cz), from real temperature and precipitation (not the raw [-1,1] fields). Precipitation
+   * comes from the region's advected moisture, so deserts sit in the rain shadow behind a range instead of wherever the
+   * humidity noise happens to be low. Only the centre is sampled, so a neighbour's biome is cheap to ask for.
+   */
+  private chunkBiome(cx: number, cz: number): string {
+    const key = columnKey(cx, cz);
+    const cached = this.chunkBiomes.get(key);
+    if (cached !== undefined) return cached;
+    if (this.chunkBiomes.size >= COLUMN_CACHE_LIMIT) this.chunkBiomes.clear();
+    const cxM = (cx * CHUNK_SIZE + 8) * BLOCK_SIZE_M;
+    const czM = (cz * CHUNK_SIZE + 8) * BLOCK_SIZE_M;
+    const fields = this.climate.fields(cxM, czM);
+    const sample = this.regions.sample(cx * CHUNK_SIZE + 8, cz * CHUNK_SIZE + 8);
+    const height = sample.offsetM;
+    // Rivers and lakes damp the detail noise, as in the column data (see column()).
+    const amp = detailAmpMeters(fields) * (sample.isRiver ? 0.2 : sample.isLake ? 0.35 : 1);
+    const moisture = sample.moisture;
+    const biome = biomeAt(
+      blockTemperature(fields, height),
+      blockPrecipitation(fields, amp, moisture),
+      height,
+      amp,
+      false,
+      fields.weirdness,
+    ).key;
+    this.chunkBiomes.set(key, biome);
+    return biome;
+  }
+
+  /** The region simulation's view of one column: rivers, lakes and moisture. */
+  sampleColumn(wx: number, wz: number): ColumnSample {
+    return this.regions.sample(wx, wz);
+  }
+
+  /** The simulated region containing a world column, for tests and the debug map. */
+  regionAt(wx: number, wz: number): RegionData {
+    return this.regions.regionAt(wx, wz);
+  }
+
+  /** Cells across one simulated region grid, including the margins. */
+  static get regionCells(): number {
+    return REGION_CELLS;
+  }
+
+  /** How many simulated regions are cached. Used by tests and the F3 overlay. */
+  get cachedRegions(): number {
+    return this.regions.cachedRegions;
   }
 
   /**
@@ -235,7 +414,7 @@ export class TerrainGenerator {
 
   /** The plant growing on the surface of column (wx, wz) at height h, or air. Caves that open the surface keep it bare. */
   private plantAt(wx: number, wz: number, h: number): number {
-    if (this.isCave(wx, h, wz)) return BlockId.AIR;
+    if (this.isCave(wx, h, wz, h)) return BlockId.AIR;
     const r = hash2(this.seed + 11, wx, wz);
     let edge = DANDELION_CHANCE;
     if (r < edge) return BlockId.DANDELION;
@@ -262,22 +441,17 @@ export class TerrainGenerator {
   }
 
   /**
-   * "Spaghetti" caves: a block becomes air where two independent 3D noise fields are both close to zero,
-   * which happens along thin winding tubes. y = 0 and y = 1 are never carved. Under beaches, lakes and the sea
-   * the top few blocks are never carved, so water never sits above a cave opening.
+   * The highest cell of a column that caves may carve. Cheese caverns, noodle tunnels, spaghetti tubes and ravines
+   * all stop here. Under beaches, lakes and the sea the top few blocks are never carved, so water never sits above a
+   * cave opening (specs 14, 45).
    */
-  private caveTop(h: number): number {
-    return h <= SEA_LEVEL + SHORE_CAVE_BAND ? h - SHORE_ROOF : h;
+  private caveTop(h: number, waterY = SEA_LEVEL): number {
+    return h <= waterY + SHORE_CAVE_BAND ? h - SHORE_ROOF : h;
   }
 
-  private isCave(wx: number, y: number, wz: number): boolean {
-    const x = (wx * BLOCK_SIZE_M) / CAVE_SCALE_H_M;
-    const yy = (y * BLOCK_SIZE_M) / CAVE_SCALE_V_M;
-    const z = (wz * BLOCK_SIZE_M) / CAVE_SCALE_H_M;
-    const a = this.caveNoiseA(x, yy, z);
-    if (a * a >= CAVE_THRESHOLD) return false; // cheap early exit: skip the second noise most of the time
-    const c = this.caveNoiseB(x, yy, z);
-    return a * a + c * c < CAVE_THRESHOLD;
+  /** True when a cave system carves this cell (spec 45). `surfaceBlocks` is the column's highest solid block. */
+  private isCave(wx: number, y: number, wz: number, surfaceBlocks: number): boolean {
+    return caveKind(this.caves, wx, y, wz, surfaceBlocks) !== null;
   }
 
   /** Detail amplitude of the cell at (wx, wz). */
@@ -287,31 +461,103 @@ export class TerrainGenerator {
     return this.column(cx, cz).amps[columnIndex(wx - cx * CHUNK_SIZE, wz - cz * CHUNK_SIZE)]!;
   }
 
+  /**
+   * Ore veins for one column. The clusters are a pure function of (seed, cx, cz), not of cy, so every chunk of the
+   * column writes the same blocks and a chunk equals the matching slice of the legacy column. A cluster replaces
+   * stone-like rock below the surface, never the surface block, soil, plants or air.
+   */
+  private placeOres(column: Column, cx: number, cz: number, y0: number, y1: number, out: Uint16Array): void {
+    for (let oi = 0; oi < ORE_DEFS.length; oi++) {
+      const ore = ORE_DEFS[oi]!;
+      // One roll per column and ore type: the column either has this ore or not.
+      if (hash2(this.seed + ORE_SEED_OFFSET + oi, cx, cz) >= ore.chancePerColumn) continue;
+      const rng = mulberry32((this.seed + ORE_SEED_OFFSET + 1000 + oi) * 1000003 + cx * 7919 + cz * 17);
+      for (let t = 0; t < ore.clusterTries; t++) {
+        const lx = Math.floor(rng() * CHUNK_SIZE);
+        const lz = Math.floor(rng() * CHUNK_SIZE);
+        const i = columnIndex(lx, lz);
+        const h = column.solidTop[i]!;
+        // Below the surface and inside this ore's depth band.
+        const y = ore.minY + Math.floor(rng() * (ore.maxY - ore.minY + 1));
+        if (y < y0 || y >= y1 || y >= h) continue;
+        const bi = localIndex(lx, y - y0, lz);
+        if (ORE_HOSTS.has(out[bi]!)) out[bi] = ore.id;
+      }
+    }
+  }
+
+  /**
+   * The tree species that grows at this anchor, or null when no tree does. Pure and
+   * side-effect free, so tests and tools can ask the generator the same question.
+   */
+  treeSpeciesAt(anchorX: number, anchorZ: number): TreeSpecies | null {
+    const h = this.getHeight(anchorX, anchorZ);
+    // Trees need intact soil; riparian species and desert cacti have explicit habitat exceptions.
+    const amp = this.amplitudeAt(anchorX, anchorZ);
+    if (amp >= BARE_ROCK_AMP_M) return null; // no trees on bare rock
+
+    // Species comes from the column's biome, from real temperature and precipitation (height in
+    // metres). Precipitation uses the region's advected moisture, matching the biome lookup.
+    const fields = this.climate.fields(anchorX * BLOCK_SIZE_M, anchorZ * BLOCK_SIZE_M);
+    const heightM = h * BLOCK_SIZE_M;
+    const sample = this.regions.sample(anchorX, anchorZ);
+    const temperature = blockTemperature(fields, heightM);
+    const precipitation = blockPrecipitation(fields, amp, sample.moisture);
+    const waterY = Math.max(SEA_LEVEL, Math.floor(metersToBlocks(sample.waterLevelM)));
+    if (h >= 2 && h <= this.caveTop(h, sample.isRiver || sample.isLake ? waterY : SEA_LEVEL) && this.isCave(anchorX, h, anchorZ, h)) return null;
+    const riparian = riparianTreeSpecies(temperature, precipitation, waterY - h, sample.isRiver || sample.isLake);
+    if (riparian) return riparian;
+    // Ordinary trees and cacti cannot grow below the waterline or on the beach band.
+    if (h < waterY || h <= SEA_LEVEL + BEACH_BAND) return null;
+    const biome = biomeAt(
+      blockTemperature(fields, heightM),
+      precipitation,
+      heightM,
+      amp,
+      false,
+      fields.weirdness,
+    );
+    const species = treeSpecies(biome.key);
+    // No tree where the biome grows none, and none on a surface that is not grass (sand, rock).
+    if (!species || (surfaceBlock(biome.key, false) !== BlockId.GRASS && species !== 'saguaro')) return null;
+    // Biomes that name a secondary species mix it in on a share of the anchors (task T-E11), deterministically.
+    return anchorSpecies(species, secondarySpecies(biome.key), this.seed, anchorX, anchorZ);
+  }
+
+  /**
+   * Place a tree rooted at anchor (anchorX, anchorZ). The hash check reproduces the
+   * old per-block anchor selection exactly. The species comes from the column's biome.
+   */
+  private placeTreeFromAnchor(seed: number, anchorX: number, anchorZ: number, emit: (block: FeatureBlock) => void): void {
+    if (hash2(seed, anchorX, anchorZ) >= TREE_CHANCE) return;
+    const species = this.treeSpeciesAt(anchorX, anchorZ);
+    if (!species) return;
+    const h = this.getHeight(anchorX, anchorZ);
+    for (const b of treeBlocks(seed, anchorX, h, anchorZ, species)) {
+      emit({ x: b.x, y: b.y, z: b.z, state: b.id });
+    }
+  }
+
   /** Trees whose anchor is in this column or within reach of it. Each tree is computed whole, then clipped. */
   private placeTrees(cx: number, cz: number, y0: number, y1: number, out: Uint16Array): void {
     const x0 = cx * CHUNK_SIZE;
     const z0 = cz * CHUNK_SIZE;
-    for (let wz = z0 - TREE_REACH; wz < z0 + CHUNK_SIZE + TREE_REACH; wz++) {
-      for (let wx = x0 - TREE_REACH; wx < x0 + CHUNK_SIZE + TREE_REACH; wx++) {
-        if (hash2(this.seed, wx, wz) >= TREE_CHANCE) continue;
-        const h = this.getHeight(wx, wz);
-        // Trees grow on grass: not a beach, and the cave carver left the surface block alone.
-        if (h <= SEA_LEVEL + BEACH_BAND) continue;
-        if (this.amplitudeAt(wx, wz) >= BARE_ROCK_AMP_M) continue; // no trees on bare rock
-        if (h >= 2 && h <= this.caveTop(h) && this.isCave(wx, h, wz)) continue;
-        if (h >= y1 || h + MAX_TREE_RISE < y0) continue; // this tree has no block in the range
-        for (const b of treeBlocks(this.seed, wx, h, wz)) {
-          const lx = b.x - x0;
-          const ly = b.y - y0;
-          const lz = b.z - z0;
-          if (lx < 0 || lx >= CHUNK_SIZE || lz < 0 || lz >= CHUNK_SIZE || ly < 0 || ly >= y1 - y0) continue;
-          const i = localIndex(lx, ly, lz);
-          // Leaves fill only air; logs and the ground block replace what is there.
-          if (b.id === BlockId.LEAVES) {
-            if (out[i] === BlockId.AIR) out[i] = BlockId.LEAVES;
-          } else out[i] = b.id;
-        }
+    this.featureRegistry.evaluateAnchors(
+      this.seed,
+      x0, x0 + CHUNK_SIZE,
+      z0, z0 + CHUNK_SIZE,
+      y0, y1,
+      (block) => {
+        const lx = block.x - x0;
+        const ly = block.y - y0;
+        const lz = block.z - z0;
+        if (lx < 0 || lx >= CHUNK_SIZE || lz < 0 || lz >= CHUNK_SIZE || ly < 0 || ly >= y1 - y0) return;
+        const i = localIndex(lx, ly, lz);
+        // Leaves fill only air; logs and the ground block replace what is there.
+        if (block.state === BlockId.LEAVES) {
+          if (out[i] === BlockId.AIR) out[i] = BlockId.LEAVES;
+        } else out[i] = block.state;
       }
-    }
+    );
   }
 }

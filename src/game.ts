@@ -1,24 +1,36 @@
+import { atmosphericFogStrength } from './world/atmosphere';
 import {
-  AUTOSAVE_INTERVAL_S, BREAK_REPEAT_S, DAY_LENGTH_S, DEFAULT_MOUSE_SENSITIVITY, EYE_HEIGHT, FIXED_DT, FOOTSTEP_DISTANCE,
-  FOOTSTEP_MIN_SPEED, GEN_BUDGET_MS, HOTBAR_SIZE, MAX_FRAME_DT, MESH_BUDGET_MS, REACH, SEA_LEVEL, SETTINGS_KEY,
-  SPAWN_READY_RADIUS, START_TIME_OF_DAY,
+  FOG_SAMPLE_INTERVAL_S, FOG_VALLEY_SAMPLE_M, FOG_GROUND_LAYER_M, metersToBlocks,
+  AUTOSAVE_INTERVAL_S, BLOCK_SIZE_M, BREAK_REPEAT_S, DAY_LENGTH_S, DAYS_PER_SEASON, DEFAULT_MOUSE_SENSITIVITY, EYE_HEIGHT, FIXED_DT,
+  FOOTSTEP_DISTANCE, FOOTSTEP_MIN_SPEED, GEN_BUDGET_MS, HOTBAR_SIZE, MAX_FRAME_DT, MESH_BUDGET_MS, REACH, SEA_LEVEL,
+  SETTINGS_KEY, SPAWN_READY_RADIUS, START_TIME_OF_DAY, WORLD_LATITUDE_DEG, ITEM_SIZE, PLAYER_HEIGHT, WALK_SPEED,
+  GAME_MODE_CREATIVE, GAME_MODE_SURVIVAL, HEALTH_MAX, HUNGER_MAX, FALL_DAMAGE_THRESHOLD_M_S, FALL_DAMAGE_MULTIPLIER,
+  DROWN_DAMAGE_PER_S, AIR_MAX_S, GRAVITY_M_S2, GAME_TICKS_PER_SECOND,
 } from './config';
 import { Sounds } from './audio/sounds';
 import { FixedStepLoop } from './core/loop';
 import { Input } from './input/input';
 import type { GameOptions } from './options';
-import { Hotbar } from './player/hotbar';
-import { canBreak, placementTarget } from './player/interaction';
+import { ItemEntities } from './items/itemEntities';
+import { LooseBodies } from './items/looseBodies';
+import { BlockBreaking } from './player/breaking';
+import { BuildTool, cornerFor, frameFor } from './player/buildTool';
+import { Inventory, type ItemStack } from './player/inventory';
+import { blockIntersectsBody, canBreak, placementTarget } from './player/interaction';
 import type { Vec3 } from './player/physics';
 import { NO_CONTROLS, PLAYER_SHAPE, Player, type PlayerControls } from './player/player';
 import { raycastVoxels, type RaycastHit } from './player/raycast';
-import { addDroppedItem, canPickUp, spawnDroppedItem, stepDroppedItem, type DroppedItem } from './items/droppedItems';
-import { HeldItems } from './items/heldItems';
+import { type Box, type Cell, boundsOf } from './player/volumes';
 import { ChunkMeshes } from './render/chunkMeshes';
 import { Clouds } from './render/clouds';
-import { BlockHighlight } from './render/highlight';
-import { ItemMeshes } from './render/itemMesh';
+import { HeldBlock } from './render/heldBlock';
+import { BlockHighlight, BreakOverlay } from './render/highlight';
+import { ItemMeshes } from './render/itemMeshes';
+import { BodyMeshes } from './render/bodyMeshes';
 import { Renderer } from './render/renderer';
+import { Sky } from './render/sky';
+import { WeatherRenderer } from './render/weather';
+import { WeatherModel } from './world/weather';
 import type { LoadedSave, SavedPlayer, WorldMeta } from './storage/save';
 import { WorldSaver } from './storage/saver';
 import { loadSettings, saveSettings, type Settings } from './storage/settings';
@@ -27,15 +39,23 @@ import type { WorldStore } from './storage/worldStore';
 import { DebugOverlay } from './ui/debugOverlay';
 import { formatDebugLines } from './ui/debugText';
 import { Hud } from './ui/hud';
-import { Menu } from './ui/menu';
-import { BlockId, getBlockDef, isSolid } from './world/blocks';
+import { InventoryScreen } from './ui/inventoryScreen';
+import { Menu, type MenuMode } from './ui/menu';
+import { BlockId, getBlockDef, isSolid, isWaterState } from './world/blocks';
+import { scheduleLeafDecay } from './world/ecology';
+import { scheduleFallChecks } from './world/falling';
+import { scheduleFlowChecks } from './world/flow';
+import type { LooseBody } from './items/looseBodies';
+import { collapsible, scheduleSupportChecks } from './world/collapse';
 import { Chunk } from './world/chunk';
 import { ChunkManager } from './world/chunkManager';
+import { type EditCell, EditQueue } from './world/editQueue';
 import { TerrainGenerator } from './world/generator';
 import { findSpawnColumn, surfaceY } from './world/spawn';
 import { daylightAt, skyColorAt } from './world/time';
 import { WorkerPool } from './workers/workerPool';
 import { World } from './world/world';
+import { Calendar } from './world/calendar';
 
 /** The world save the game starts with (opened and read by main.ts before the game is created). */
 export interface GameSave {
@@ -48,6 +68,11 @@ export interface GameSave {
   unavailable: boolean;
 }
 
+/** Blocks in a box of blocks (inclusive bounds). */
+function volumeOf(box: Box): number {
+  return (box.max.x - box.min.x + 1) * (box.max.y - box.min.y + 1) * (box.max.z - box.min.z + 1);
+}
+
 export class Game {
   readonly world: World;
   readonly generator: TerrainGenerator;
@@ -55,13 +80,22 @@ export class Game {
   readonly meshes: ChunkMeshes;
   readonly chunks: ChunkManager;
   readonly player = new Player();
-  readonly hotbar = new Hotbar();
+  inventory = new Inventory();
+  readonly items = new ItemEntities();
+  /** Seconds since the last game tick (see fixedUpdate). */
+  private tickTimer = 0;
+  /** Blocks that broke free of a big collapse and tumble until they settle (spec 25, slice 6). */
+  readonly bodies = new LooseBodies();
+  private readonly breaking = new BlockBreaking();
+  private readonly held: HeldBlock;
+  private readonly itemMeshes: ItemMeshes;
+  private readonly bodyMeshes: BodyMeshes;
+  private readonly breakOverlay: BreakOverlay;
+  private readonly inventoryScreen: InventoryScreen;
+  /** Seconds since the game started; drives the spin and bob of dropped items. */
+  private clockS = 0;
   readonly input: Input;
   readonly sounds = new Sounds();
-  /** Broken blocks lying on the ground, and what the player has picked up (spec 23). Not saved yet. */
-  readonly items: DroppedItem[] = [];
-  readonly held = new HeldItems();
-  private readonly itemMeshes: ItemMeshes;
   /** The block under the crosshair (updated every frame), or null. */
   target: RaycastHit | null = null;
   /** True once the area around spawn is meshed and the player has been placed. */
@@ -71,12 +105,48 @@ export class Game {
   fps = 0;
   /** 0 sunrise, 0.25 noon, 0.5 sunset, 0.75 midnight; wraps at 1. */
   timeOfDay = START_TIME_OF_DAY;
+  /** Game mode: 'creative' (current behaviour) or 'survival'. Defaults to creative for backwards compatibility. */
+  gameMode = GAME_MODE_CREATIVE;
+  /** Player health, 0..HEALTH_MAX. 0 = dead. */
+  health = HEALTH_MAX;
+  /** Player hunger, 0..HUNGER_MAX. */
+  hunger = HUNGER_MAX;
+
+  /**
+   * True when a crack stage has been shown for the current mining attempt. The render loop sets it, so the smoke test
+   * can observe a stage that is shorter than one of its polls: on software rendering a 0.5 s block can go from stage
+   * 0 to broken between two polls.
+   */
+  breakStageSeen = false;
+
+  /** Debug hook (smoke test only): while true, simulation and rendering are skipped so another page can load. */
+  private idle = false;
+
+  /** Frames rendered since the page opened; a frame-rate-independent way to see that the loop is running. */
+  private frameCount = 0;
+  /** Seconds of air remaining, 0..AIR_MAX_S. Decreases when submerged. */
+  air = AIR_MAX_S;
+  /** Calendar: tracks season and day of year. */
+  readonly calendar: Calendar;
   private readonly loop: FixedStepLoop;
   private readonly spawn: { x: number; z: number };
   /** Feet height at the spawn column, once its column top and the chunks below it are loaded. */
   private spawnFeetY: number | null = null;
   private readonly highlight: BlockHighlight;
   private actionCooldown = 0;
+  /** The menu to return to when inventory was opened without capturing the pointer. */
+  private inventoryReturnMenu: MenuMode | null = null;
+  /** Y where the current fall started (null when on ground). */
+  private fallStartY: number | null = null;
+  /** Was the player on the ground last frame? */
+  private wasOnGround = false;
+  /** The volumetric build tools (see src/player/buildTool.ts). */
+  readonly tool = new BuildTool();
+  private readonly edits: EditQueue;
+  /** What the tools would change now: the key it was computed for, its box and its size. */
+  private previewKey = '';
+  private previewBox: Box | null = null;
+  private previewCount = 0;
   private readonly store: KeyValueStore;
   private settings: Settings;
   private mouseSensitivity = DEFAULT_MOUSE_SENSITIVITY;
@@ -91,6 +161,14 @@ export class Game {
   /** Where the player was when the game was saved; used instead of the spawn search. */
   private readonly savedPlayer: SavedPlayer | null;
   private readonly clouds: Clouds;
+  /** The sky: dome, sun, moon, stars. */
+  readonly sky: Sky;
+  /** Weather model and renderer (spec 34). */
+  readonly weather: WeatherModel;
+  readonly weatherRenderer: WeatherRenderer;
+  private fogSampleTimer = 0;
+  private fogValleyDepthM = 0;
+  private fogGroundM = 0;
   private stepDistance = 0;
   private readonly usingWorkers: boolean;
 
@@ -110,37 +188,63 @@ export class Game {
       this.generator.generateChunk(chunk);
       return chunk.blocks;
     });
+    this.generator.onGrassPlaced = (wx, wy, wz) => {
+      this.world.scheduleTick(wx, wy, wz, this.world.currentTick + 1, 'grass-spread');
+    };
+    this.calendar = new Calendar(DAYS_PER_SEASON, WORLD_LATITUDE_DEG);
     if (save.loaded && loaded) {
       this.world.loadEdits(save.loaded.edits);
-      for (let i = 0; i < HOTBAR_SIZE; i++) this.hotbar.setSlot(i, loaded.hotbar[i]!);
-      this.hotbar.select(loaded.selectedSlot);
+      this.inventory = new Inventory(loaded.inventory);
+      this.inventory.select(loaded.selectedSlot);
+      this.items.restore(loaded.items);
       this.timeOfDay = loaded.timeOfDay;
+      this.calendar.timeOfYear = loaded.timeOfYear ?? 0;
+      this.gameMode = loaded.gameMode ?? GAME_MODE_CREATIVE;
+      this.health = loaded.health ?? HEALTH_MAX;
+      this.hunger = loaded.hunger ?? HUNGER_MAX;
+      this.air = loaded.air ?? AIR_MAX_S;
     }
     this.savedPlayer = loaded?.player ?? null;
     this.saver = new WorldSaver(this.worldStore, this.world, () => this.worldMeta());
     this.renderer = new Renderer(container);
     this.meshes = new ChunkMeshes(this.renderer.scene, this.renderer.solidMaterial, this.renderer.waterMaterial);
-    this.itemMeshes = new ItemMeshes(this.renderer.scene, this.renderer.solidMaterial);
+    this.held = new HeldBlock(this.renderer.camera, this.renderer.itemMaterial);
+    this.itemMeshes = new ItemMeshes(this.renderer.scene, this.renderer.itemMaterial);
+    this.bodyMeshes = new BodyMeshes(this.renderer.scene, this.renderer.itemMaterial);
     this.usingWorkers = options.workers && typeof Worker !== 'undefined';
     const workerCount = Math.max(1, Math.min(4, (navigator.hardwareConcurrency || 2) - 1));
     const jobs = this.usingWorkers ? new WorkerPool(seed, workerCount) : null;
     this.chunks = new ChunkManager(this.world, this.generator, this.meshes, this.settings.renderDistance, jobs);
+    this.edits = new EditQueue(this.world, this.chunks, (id) => canBreak(id));
     this.applySettings(this.settings);
     this.spawn = this.savedPlayer ? { x: this.savedPlayer.x, z: this.savedPlayer.z } : findSpawnColumn(this.generator);
 
     this.highlight = new BlockHighlight(this.renderer.scene);
+    this.breakOverlay = new BreakOverlay(this.renderer.scene, this.renderer.crackMaterial);
     this.clouds = new Clouds(this.renderer.scene, seed);
+    this.sky = new Sky(this.renderer.scene);
+    this.weather = new WeatherModel(seed);
+    this.weatherRenderer = new WeatherRenderer(this.renderer.scene);
     this.input = new Input(this.renderer.canvas);
-    this.hud = new Hud(container, this.renderer.atlasCanvas);
+    this.hud = new Hud(container, this.renderer.atlasCanvas, () => this.toggleInventory());
     this.debugOverlay = new DebugOverlay(container);
-    this.menu = new Menu(container, this.settings, save.unavailable ? 'Saving is unavailable in this browser.' : null, {
-      onPlay: () => {
-        this.sounds.unlock();
-        this.input.requestPointerLock();
+    this.inventoryScreen = new InventoryScreen(container, this.renderer.atlasCanvas, this.inventory, () => this.closeInventory());
+    this.menu = new Menu(
+      container,
+      this.settings,
+      this.gameMode,
+      save.unavailable ? 'Saving is unavailable in this browser.' : null,
+      {
+        onPlay: () => {
+          this.sounds.unlock();
+          this.input.requestPointerLock();
+        },
+        onSettingsChange: (s) => this.changeSettings(s),
+        onNewWorld: () => this.newWorld(),
+        onInventory: () => this.openInventory(),
+        onGameModeChange: (mode) => this.setGameMode(mode),
       },
-      onSettingsChange: (s) => this.changeSettings(s),
-      onNewWorld: () => this.newWorld(),
-    });
+    );
 
     this.playing = options.autostart;
     if (options.autostart) this.menu.hide();
@@ -151,9 +255,18 @@ export class Game {
     });
     this.input.onPointerLockChanged((locked) => {
       this.playing = locked || options.autostart;
-      if (locked) this.menu.hide();
-      else if (!options.autostart) this.menu.show('paused');
+      if (locked) {
+        this.menu.hide();
+        this.menu.setLockNote(null);
+      } else if (!options.autostart && !this.inventoryScreen.isOpen) {
+        // Esc releases the mouse and opens the pause menu, so it also cancels a wall, floor or roof in progress.
+        this.tool.cancelFrame();
+        this.menu.show('paused');
+      }
     });
+    this.input.onPointerLockFailed(() =>
+      this.menu.setLockNote('Your browser did not capture the mouse. Click Play, or click the game, to try again.'),
+    );
     document.addEventListener('visibilitychange', () => {
       if (document.hidden) void this.saveNow();
     });
@@ -171,24 +284,138 @@ export class Game {
     this.loop.start();
   }
 
+  /** Clears the "a crack stage was shown" flag; the smoke test calls this before holding the mining button. */
+  resetBreakStage(): void {
+    this.breakStageSeen = false;
+  }
+
+  /**
+   * Debug hook for the smoke test: while idle, the game runs neither simulation nor rendering. A second browser page
+   * then loads and becomes ready without competing for the CPU and for the software WebGL context. Idempotent.
+   */
+  setIdle(idle: boolean): void {
+    this.idle = idle;
+  }
+
   /** Solid test used by physics. Unloaded chunks count as solid so the player can never fall into one. */
   readonly isSolidAt = (x: number, y: number, z: number): boolean =>
     !this.world.isLoadedAt(x, y, z) || isSolid(this.world.getBlock(x, y, z));
 
-  readonly isWaterAt = (x: number, y: number, z: number): boolean => this.world.getBlock(x, y, z) === BlockId.WATER;
+  readonly isWaterAt = (x: number, y: number, z: number): boolean => isWaterState(this.world.getBlock(x, y, z));
 
   private fixedUpdate(dt: number): void {
-    if (!this.ready) return;
+    if (!this.ready || this.idle) return;
     this.timeOfDay = (this.timeOfDay + dt / DAY_LENGTH_S) % 1;
+    this.calendar.advance(dt); // Both clocks follow simulation time, including the existing menu-time behaviour.
     this.player.update(dt, this.playing ? this.readControls() : NO_CONTROLS, this.isSolidAt, this.isWaterAt);
+    this.items.step(dt, this.isSolidAt);
+    // Block updates run at a fixed rate of game ticks, so a flow or a fall takes several ticks, as in Minecraft.
+    this.tickTimer += dt;
+    while (this.tickTimer >= 1 / GAME_TICKS_PER_SECOND) {
+      this.tickTimer -= 1 / GAME_TICKS_PER_SECOND;
+      this.chunks.tick();
+    }
+    for (const body of this.bodies.step(dt, this.isSolidAt, this.isWaterAt, (state) => getBlockDef(state).density)) {
+      this.settleBody(body);
+    }
+    this.edits.step();
+    this.spawnBrokenBlocks();
+    this.collectItems();
     this.updateFootsteps(dt);
-    this.updateItems(dt);
     if (this.player.splashSpeed > 0) this.sounds.play('splash');
     this.saveTimer += dt;
     if (this.saveTimer >= AUTOSAVE_INTERVAL_S) {
       this.saveTimer = 0;
       void this.saveNow();
     }
+
+    // Survival mode: fall damage, drowning, death.
+    if (this.gameMode === GAME_MODE_SURVIVAL) {
+      this.updateSurvival(dt);
+    }
+  }
+
+  /** Fall damage, drowning, and death for survival mode. */
+  private updateSurvival(dt: number): void {
+    const p = this.player;
+
+    // Fall damage: track fall start when leaving ground.
+    if (this.wasOnGround && !p.onGround) {
+      this.fallStartY = p.position.y;
+    } else if (!this.wasOnGround && p.onGround && this.fallStartY !== null) {
+      const fallDistanceM = (this.fallStartY - p.position.y) * BLOCK_SIZE_M;
+      const impactSpeedM_S = Math.sqrt(2 * GRAVITY_M_S2 * fallDistanceM);
+      if (impactSpeedM_S > FALL_DAMAGE_THRESHOLD_M_S) {
+        const damage = (impactSpeedM_S - FALL_DAMAGE_THRESHOLD_M_S) * FALL_DAMAGE_MULTIPLIER;
+        this.damage(damage);
+      }
+      this.fallStartY = null;
+    }
+    this.wasOnGround = p.onGround;
+
+    // Drowning: lose air when submerged, take damage when air runs out.
+    if (p.inWater) {
+      this.air = Math.max(0, this.air - dt);
+      if (this.air <= 0) {
+        this.damage(DROWN_DAMAGE_PER_S * dt);
+      }
+    } else {
+      this.air = Math.min(AIR_MAX_S, this.air + dt * 2); // restore air twice as fast as it depletes
+    }
+
+    // Death: respawn at spawn point, drop inventory.
+    if (this.health <= 0) {
+      this.die();
+    }
+  }
+
+  /**
+   * Switch between Creative and Survival from the menu. Entering survival tops health and hunger back up, so opening
+   * the menu mid-fall cannot strand the player at the moment they switch.
+   */
+  setGameMode(mode: string): void {
+    if (mode !== GAME_MODE_CREATIVE && mode !== GAME_MODE_SURVIVAL) return;
+    if (mode === this.gameMode) return;
+    this.gameMode = mode;
+    if (mode === GAME_MODE_SURVIVAL) {
+      this.health = HEALTH_MAX;
+      this.hunger = HUNGER_MAX;
+    }
+    this.menu.setGameMode(mode);
+  }
+
+  /** Apply damage to the player. Clamps health at 0. */
+  damage(amount: number): void {
+    if (this.gameMode !== GAME_MODE_SURVIVAL) return;
+    this.health = Math.max(0, this.health - amount);
+  }
+
+  /** Heal the player. Clamps health at MAX. */
+  heal(amount: number): void {
+    this.health = Math.min(HEALTH_MAX, this.health + amount);
+  }
+
+  /** Die: drop inventory, reset health, respawn at spawn. */
+  private die(): void {
+    // Drop all inventory on the ground.
+    const p = this.player.position;
+    for (let i = 0; i < this.inventory.slots.length; i++) {
+      const stack = this.inventory.slots[i];
+      if (stack) {
+        this.items.spawn(stack.state, stack.count, p.x, p.y + 1, p.z, Math.random);
+      }
+    }
+    this.inventory = new Inventory();
+    this.inventory.select(0);
+
+    // Reset health and air.
+    this.health = HEALTH_MAX;
+    this.air = AIR_MAX_S;
+
+    // Respawn at spawn point.
+    const spawnY = this.spawnFeetY ?? this.world.topAt(Math.floor(this.spawn.x), Math.floor(this.spawn.z)) ?? SEA_LEVEL;
+    this.player.setPosition(this.spawn.x, spawnY, this.spawn.z);
+    this.ready = true;
   }
 
   /**
@@ -205,18 +432,38 @@ export class Game {
     return {
       seed: this.world.seed,
       player: { x: p.position.x, y: p.position.y, z: p.position.z, yaw: p.yaw, pitch: p.pitch, flying: p.flying },
-      selectedSlot: this.hotbar.selected,
-      hotbar: [...this.hotbar.slots],
+      selectedSlot: this.inventory.selected,
+      inventory: this.inventory.slots.map((s) => (s ? { ...s } : null)),
+      // Bodies are not saved: each one still tumbling is saved as a dropped item where it is, and the live body goes on.
+      items: [
+        ...this.items.snapshot(),
+        ...this.bodies.bodies.map((b) => ({ state: b.state, count: 1, x: b.x, y: b.y, z: b.z })),
+      ],
       timeOfDay: this.timeOfDay,
+      timeOfYear: this.calendar.timeOfYear,
+      gameMode: this.gameMode,
+      health: this.health,
+      hunger: this.hunger,
+      air: this.air,
     };
   }
 
   private renderFrame(alpha: number, frameDt: number): void {
-    if (this.playing) {
+    if (this.idle) return;
+    this.frameCount++;
+    this.clockS += frameDt;
+    const eKey = this.input.consumePressed('KeyE');
+    const escKey = this.input.consumePressed('Escape');
+    if (eKey && (this.playing || this.inventoryScreen.isOpen || (this.menu.visible && this.menu.currentMode === 'paused'))) {
+      this.toggleInventory();
+    }
+    else if (escKey && this.inventoryScreen.isOpen) this.closeInventory();
+    if (this.playing && !this.inventoryScreen.isOpen) {
       const { dx, dy } = this.input.consumeMouseDelta();
       this.player.addLook(dx, dy, this.mouseSensitivity);
       if (this.input.consumePressed('KeyF')) this.player.toggleFlying();
       this.handleHotbarInput();
+      this.handleToolKeys();
     }
     if (this.input.consumePressed('F3') || this.input.consumePressed('Backquote')) this.debugOverlay.toggle();
 
@@ -227,17 +474,58 @@ export class Game {
     const eye = this.player.eyePosition(alpha);
     this.renderer.setSurfaceDistance(this.chunks.surfaceDistance(eye.y));
     this.renderer.setCamera(eye.x, eye.y, eye.z, this.player.yaw, this.player.pitch);
-    this.renderer.setDaylight(daylightAt(this.timeOfDay));
-    this.renderer.setSkyColor(skyColorAt(this.timeOfDay));
+    this.updateAtmosphere(eye, frameDt);
     this.clouds.update(eye.x, eye.z, frameDt, daylightAt(this.timeOfDay));
     this.renderer.setUnderwater(this.isWaterAt(Math.floor(eye.x), Math.floor(eye.y), Math.floor(eye.z)));
-    this.updateTarget(eye);
-    if (this.playing && this.ready) this.handleBlockActions(frameDt);
+    const look = this.player.lookDirection();
+    this.updateTarget(eye, look);
+    if (this.playing && this.ready && !this.inventoryScreen.isOpen) this.handleBlockActions(frameDt, eye, look);
+    this.itemMeshes.sync(this.items.items, this.clockS);
+    this.bodyMeshes.sync(this.bodies.bodies);
+    this.breakOverlay.update(this.breaking.target, this.breaking.stage);
+    const walking = this.player.onGround ? Math.min(1, Math.hypot(this.player.velocity.x, this.player.velocity.z) / WALK_SPEED) : 0;
+    this.held.setState(this.inventory.selectedBlock);
+    this.held.update(frameDt, walking, this.breaking.target !== null);
     if (frameDt > 0) this.fps += (1 / frameDt - this.fps) * 0.05;
-    this.itemMeshes.sync(this.items);
     this.renderer.render();
-    this.hud.update(this.hotbar.slots, this.hotbar.selected, frameDt);
+    this.hud.update(this.inventory.slots, this.inventory.selected, frameDt, this.playing, this.ready && !this.inventoryScreen.isOpen);
     this.debugOverlay.update(frameDt, () => formatDebugLines(this.debugState()));
+  }
+
+  /** Keep atmospheric sampling and visual clocks together; positions here are in blocks. */
+  private updateAtmosphere(eye: { x: number; y: number; z: number }, frameDt: number): void {
+    this.renderer.setSkyColor(skyColorAt(this.timeOfDay));
+    this.renderer.setDaylight(daylightAt(this.timeOfDay));
+    this.sky.update(this.timeOfDay, this.calendar.timeOfYear, this.renderer.camera);
+    // Weather: sample at the player's position and update particles/lightning.
+    const weather = this.weather.sample(
+      eye.x * BLOCK_SIZE_M,
+      eye.z * BLOCK_SIZE_M,
+      this.timeOfDay,
+      this.calendar.timeOfYear,
+      eye.y * BLOCK_SIZE_M,
+    );
+    this.weatherRenderer.update(
+      eye.x,
+      eye.z,
+      weather,
+      frameDt,
+      (x, z) => this.world.topAt(x, z),
+      eye.y,
+    );
+    this.renderer.setWetness(this.weatherRenderer.wetness);
+    this.fogSampleTimer -= frameDt;
+    if (this.fogSampleTimer <= 0) {
+      this.fogSampleTimer = FOG_SAMPLE_INTERVAL_S;
+      const span = metersToBlocks(FOG_VALLEY_SAMPLE_M);
+      const local = this.generator.sampleColumn(eye.x, eye.z).offsetM;
+      this.fogGroundM = local;
+      const neighbours = [[span,0],[-span,0],[0,span],[0,-span]];
+      const surrounding = neighbours.reduce((sum, [dx,dz]) => sum + this.generator.sampleColumn(eye.x + dx!, eye.z + dz!).offsetM, 0) / neighbours.length;
+      this.fogValleyDepthM = Math.max(0, surrounding - local);
+    }
+    const aboveGround = Math.max(0, eye.y * BLOCK_SIZE_M - this.fogGroundM - FOG_GROUND_LAYER_M);
+    this.renderer.setAtmosphericFog(atmosphericFogStrength(this.timeOfDay, weather.humidity, Math.max(0, this.fogValleyDepthM - aboveGround)));
   }
 
   /** Where chunks are loaded around before the player is placed: the spawn point (or its column top). */
@@ -308,40 +596,83 @@ export class Game {
   /** Changes a block and remeshes the affected chunks. Returns false if the chunk is not loaded. */
   setBlock(x: number, y: number, z: number, id: number): boolean {
     const oldTop = this.world.topAt(x, z);
+    const prev = this.world.getBlock(x, y, z);
     if (!this.world.setBlock(x, y, z, id)) return false;
     this.chunks.onBlockChanged(x, y, z, oldTop, this.world.topAt(x, z));
+    // A log was chopped: the leaves it held up (if no other log holds them) fall a moment later.
+    if (prev === BlockId.LOG && id !== BlockId.LOG) scheduleLeafDecay(this.world, x, y, z);
+    // Sand or gravel above a removed block falls; a falling block placed in the air falls too.
+    if (prev !== id) scheduleFallChecks(this.world, x, y, z);
+    // A block that was holding others up is gone: its neighbours check their support (spec 25, slice 5).
+    if (collapsible(prev) && !collapsible(id)) scheduleSupportChecks(this.world, x, y, z);
+    // Water next to a changed cell may now flow into it, or drain.
+    if (prev !== id) scheduleFlowChecks(this.world, x, y, z);
     return true;
   }
 
-  /** Breaks the targeted block; it drops as an item (spec 23). Returns true if a block was removed. */
+  /** Breaks the targeted block at once, dropping it (the debug API; holding the button is timed). */
   breakTarget(): boolean {
     const t = this.target;
-    if (!t || !canBreak(this.world.getBlock(t.x, t.y, t.z))) return false;
-    const id = this.world.getBlock(t.x, t.y, t.z);
-    const ok = this.setBlock(t.x, t.y, t.z, BlockId.AIR);
+    return t !== null && this.breakCell(t.x, t.y, t.z);
+  }
+
+  /** Removes a block and drops it as an item. Returns false when the block cannot be broken. */
+  private breakCell(x: number, y: number, z: number): boolean {
+    const id = this.world.getBlock(x, y, z);
+    if (!canBreak(id)) return false;
+    const ok = this.setBlock(x, y, z, BlockId.AIR);
     if (ok) {
+      this.items.spawn(id, 1, x + 0.5, y + (1 - ITEM_SIZE) / 2, z + 0.5, Math.random);
       this.sounds.play('break');
-      addDroppedItem(this.items, spawnDroppedItem(id, t.x, t.y, t.z, Math.random));
     }
     return ok;
   }
 
-  /** Middle click: put the targeted block type into the hotbar. */
+  /**
+   * Blocks the physics broke: a big collapse makes them tumbling bodies, and anything else drops as an item, as a
+   * player's break does. Past the body cap, a block drops as an item.
+   */
+  private spawnBrokenBlocks(): void {
+    for (const d of this.world.takeDrops()) {
+      if (d.body && this.bodies.canAdd) this.bodies.spawn(d.id, d.x + 0.5, d.y, d.z + 0.5, Math.random);
+      else this.items.spawn(d.id, 1, d.x + 0.5, d.y + (1 - ITEM_SIZE) / 2, d.z + 0.5, Math.random);
+    }
+  }
+
+  /**
+   * A body that came to rest becomes its block in the cell it fills, when that cell is open and the player is not in it.
+   * Otherwise it drops as an item where it lies.
+   */
+  private settleBody(body: LooseBody): void {
+    const x = Math.floor(body.x);
+    const y = Math.floor(body.y + 0.5);
+    const z = Math.floor(body.z);
+    const cell = this.world.getBlock(x, y, z);
+    const open = (cell === BlockId.AIR || isWaterState(cell)) && !blockIntersectsBody(x, y, z, this.player.position, PLAYER_SHAPE);
+    if (open && this.setBlock(x, y, z, body.state)) return;
+    this.items.spawn(body.state, 1, body.x, body.y, body.z, Math.random);
+  }
+
+
+  /** Middle click: pick the targeted block type (see Inventory.pick). */
   pickTarget(): boolean {
     const t = this.target;
     if (!t) return false;
-    this.hotbar.pick(this.world.getBlock(t.x, t.y, t.z));
+    this.inventory.pick(this.world.getBlock(t.x, t.y, t.z));
     return true;
   }
 
-  /** Places the selected hotbar block against the targeted face. Returns true if a block was placed. */
+  /** Places the selected block against the targeted face, using one from its stack. Returns true if it was placed. */
   placeTarget(): boolean {
     const t = this.target;
-    if (!t) return false;
-    const block = this.hotbar.selectedBlock;
+    if (!t || this.inventory.selectedBlock === BlockId.AIR) return false;
+    const block = this.inventory.selectedBlock;
     const p = placementTarget(t, (x, y, z) => this.world.getBlock(x, y, z), block, this.player.position, PLAYER_SHAPE);
     const ok = p !== null && this.setBlock(p.x, p.y, p.z, block);
-    if (ok) this.sounds.play('place');
+    if (ok) {
+      this.inventory.consumeSelected();
+      this.sounds.play('place');
+    }
     return ok;
   }
 
@@ -357,49 +688,243 @@ export class Game {
     }
   }
 
-  /** Moves the dropped items and picks up the ones the player reaches. Items that get stuck in rock are removed. */
-  private updateItems(dt: number): void {
-    const feet = this.player.position;
-    for (let i = this.items.length - 1; i >= 0; i--) {
-      const item = this.items[i]!;
-      if (!stepDroppedItem(item, dt, this.isSolidAt)) {
-        this.items.splice(i, 1);
-      } else if (canPickUp(item, feet)) {
-        this.held.add(item.blockId);
-        this.items.splice(i, 1);
-      }
-    }
-  }
-
-  private updateTarget(eye: Vec3): void {
-    const d = this.player.lookDirection();
+  private updateTarget(eye: Vec3, look: Vec3): void {
     this.target = this.ready
-      ? raycastVoxels(eye.x, eye.y, eye.z, d.x, d.y, d.z, REACH, (x, y, z) => getBlockDef(this.world.getBlock(x, y, z)).targetable)
+      ? raycastVoxels(eye.x, eye.y, eye.z, look.x, look.y, look.z, REACH, (x, y, z) => getBlockDef(this.world.getBlock(x, y, z)).targetable)
       : null;
-    this.highlight.update(this.target);
+    this.updatePreview(eye, look);
   }
 
   private handleHotbarInput(): void {
     for (let i = 0; i < HOTBAR_SIZE; i++) {
-      if (this.input.consumePressed(`Digit${i + 1}`)) this.hotbar.select(i);
+      if (this.input.consumePressed(`Digit${i + 1}`)) this.inventory.select(i);
     }
     const wheel = this.input.consumeWheel();
-    if (wheel !== 0) this.hotbar.scroll(wheel);
+    if (wheel !== 0) this.inventory.scroll(wheel);
   }
 
-  /** Left button breaks, right button places; holding a button repeats every BREAK_REPEAT_S seconds. */
-  private handleBlockActions(frameDt: number): void {
+  /**
+   * Left button: hold to break the targeted block (spec 24). Right button places; holding repeats every BREAK_REPEAT_S
+   * seconds. Middle click picks the targeted block.
+   */
+  private handleBlockActions(frameDt: number, eye: Vec3, look: Vec3): void {
     this.actionCooldown = Math.max(0, this.actionCooldown - frameDt);
     if (this.input.consumeClick(1)) this.pickTarget();
+    if (this.tool.mode !== 'single') {
+      // Volume tools: right click adds (add mode), left click removes (remove mode). Holding does nothing. Flatten
+      // works on either button.
+      const addClick = this.input.consumeClick(2);
+      const removeClick = this.input.consumeClick(0);
+      if (this.tool.kind === 'flatten') {
+        if (addClick || removeClick) this.flattenAt();
+      } else if (this.tool.mode === 'add' && addClick) {
+        this.volumeClick(true, eye, look);
+      } else if (this.tool.mode === 'remove' && removeClick) {
+        this.volumeClick(false, eye, look);
+      }
+      return;
+    }
     const breakClicked = this.input.consumeClick(0);
+    const t = this.target;
+    const broken = this.breaking.update(
+      frameDt,
+      this.input.isMouseDown(0),
+      t ? { x: t.x, y: t.y, z: t.z } : null,
+      this.breakHardness(),
+    );
+    if (this.breaking.stage >= 0) this.breakStageSeen = true; // every frame that shows cracks, not only polled ones
+    if (broken) this.breakCell(broken.x, broken.y, broken.z);
+    if (breakClicked || broken) this.held.swing();
     const placeClicked = this.input.consumeClick(2);
-    if (breakClicked || (this.input.isMouseDown(0) && this.actionCooldown === 0)) {
-      this.breakTarget();
-      this.actionCooldown = BREAK_REPEAT_S;
-    } else if (placeClicked || (this.input.isMouseDown(2) && this.actionCooldown === 0)) {
+    if (placeClicked || (this.input.isMouseDown(2) && this.actionCooldown === 0)) {
       this.placeTarget();
       this.actionCooldown = BREAK_REPEAT_S;
+      this.held.swing();
     }
+  }
+
+  /** Seconds to break the targeted block by hand, or null when it cannot be broken. */
+  private breakHardness(): number | null {
+    const t = this.target;
+    if (!t) return null;
+    const id = this.world.getBlock(t.x, t.y, t.z);
+    return canBreak(id) ? getBlockDef(id).hardness : null;
+  }
+
+  /** Tool keys: R mode, Q shape, [ ] size, , . thickness, G solid or shell, C square or disc, X cancels a wall or floor. */
+  private handleToolKeys(): void {
+    const t = this.tool;
+    if (this.input.consumePressed('KeyR')) t.cycleMode();
+    if (this.input.consumePressed('KeyQ')) t.cycleKind();
+    if (this.input.consumePressed('BracketLeft')) t.adjustSize(-1);
+    if (this.input.consumePressed('BracketRight')) t.adjustSize(1);
+    if (this.input.consumePressed('Comma')) t.adjustThickness(-1);
+    if (this.input.consumePressed('Period')) t.adjustThickness(1);
+    if (this.input.consumePressed('KeyG')) t.toggleHollow();
+    if (this.input.consumePressed('KeyC')) t.toggleDisc();
+    if (this.input.consumePressed('KeyX')) t.cancelFrame();
+    if (this.input.consumePressed('KeyZ') && (this.input.isDown('ControlLeft') || this.input.isDown('ControlRight'))) this.undoEdit();
+  }
+
+  /** Ctrl+Z: undoes the last volume action (cells changed since then are left alone). */
+  undoEdit(): boolean {
+    return this.edits.undo();
+  }
+
+  /** True while a volume action is still being applied over several frames. */
+  get editsBusy(): boolean {
+    return this.edits.busy;
+  }
+
+  /** One volume click at the aimed block, as the mouse does it (the debug API). */
+  toolClick(add: boolean): void {
+    this.volumeClick(add, this.player.eyePosition(1), this.player.lookDirection());
+  }
+
+  /**
+   * One volume click. Box, sphere and plane change the volume at the aimed face. A wall or floor takes two clicks: the
+   * first sets its first corner, the second sets the far corner (where the look ray meets its plane) and changes the
+   * blocks between them.
+   */
+  private volumeClick(add: boolean, eye: Vec3, look: Vec3): void {
+    const tool = this.tool;
+    if (add && this.inventory.selectedBlock === BlockId.AIR) return;
+    if (tool.twoClick) {
+      if (!tool.frame) {
+        if (this.target) tool.frame = frameFor(tool.kind, this.target, look, add);
+        return;
+      }
+      const corner = cornerFor(tool.frame, eye, look);
+      if (corner && this.startEdit(this.editCells(tool.cellsBetween(corner), add))) tool.frame = null;
+      return;
+    }
+    if (this.target) this.startEdit(this.editCells(tool.cellsAt(this.target, add), add));
+  }
+
+  /** Flatten at the aimed block: the footprint is filled and cleared to the height of the aimed block. */
+  private flattenAt(): void {
+    const t = this.target;
+    if (!t) return;
+    this.startEdit(this.tool.cellsFlatten(t, (x, z) => this.world.topAt(x, z), this.inventory.selectedBlock));
+  }
+
+  /** Cells for an add (filled with the selected block) or a remove (cleared). */
+  private editCells(cells: Cell[], add: boolean): EditCell[] {
+    const id = add ? this.inventory.selectedBlock : BlockId.AIR;
+    return cells.map((c) => ({ x: c.x, y: c.y, z: c.z, id, clear: !add }));
+  }
+
+  /** Queues a volume action. Fills keep only the cells outside the player's body, so a volume never traps the player. */
+  private startEdit(cells: EditCell[]): boolean {
+    const wanted = cells.filter((c) => c.clear || !blockIntersectsBody(c.x, c.y, c.z, this.player.position, PLAYER_SHAPE));
+    const started = this.edits.start(wanted);
+    if (started) {
+      this.held.swing();
+      this.sounds.play(wanted.some((c) => !c.clear) ? 'place' : 'break');
+    }
+    return started;
+  }
+
+  /**
+   * Shows what the volume tools would change: the outline of the volume at the aimed face, or of the wall, floor or roof
+   * being drawn. Single-block mode shows the aimed block, as before. The build tool panel shows every setting either way.
+   */
+  private updatePreview(eye: Vec3, look: Vec3): void {
+    const tool = this.tool;
+    const t = this.target;
+    if (tool.mode === 'single') {
+      this.highlight.update(t);
+      this.showToolRows(t ? 1 : null);
+      return;
+    }
+    if (tool.twoClick) {
+      const corner = tool.frame ? cornerFor(tool.frame, eye, look) : null;
+      const box = corner ? tool.boxBetween(corner) : null;
+      if (box) {
+        this.highlight.showBox(box);
+        this.showToolRows(volumeOf(box));
+      } else {
+        this.highlight.update(t);
+        this.showToolRows(null);
+      }
+      return;
+    }
+    if (!t) {
+      this.highlight.update(null);
+      this.showToolRows(null);
+      return;
+    }
+    const key = `${tool.kind}|${tool.mode}|${tool.size}|${tool.thickness}|${tool.disc}|${t.x},${t.y},${t.z},${t.nx},${t.ny},${t.nz}`;
+    if (key !== this.previewKey) {
+      this.previewKey = key;
+      if (tool.kind === 'flatten') {
+        this.previewBox = boundsOf(tool.footprint(t));
+        this.previewCount = tool.cellsFlatten(t, (x, z) => this.world.topAt(x, z), this.inventory.selectedBlock).length;
+      } else {
+        const cells = tool.cellsAt(t, tool.mode === 'add');
+        this.previewBox = boundsOf(cells);
+        this.previewCount = cells.length;
+      }
+    }
+    this.highlight.showBox(this.previewBox);
+    this.showToolRows(this.previewCount);
+  }
+
+  /** Sends every tool setting to the HUD panel, with the live preview count (null when nothing is aimed). */
+  private showToolRows(preview: number | null): void {
+    const selected = this.inventory.selectedStack;
+    this.hud.setTool(
+      this.tool.rows({
+        preview,
+        block: selected ? getBlockDef(selected.state).name : 'empty',
+        undo: this.edits.undoCount,
+      }),
+    );
+  }
+
+  /** E or the HUD button: toggle the same inventory screen (spec 24). */
+  private toggleInventory(): void {
+    if (this.inventoryScreen.isOpen) this.closeInventory();
+    else this.openInventory();
+  }
+
+  /** Frees the pointer and shows the inventory, remembering the originating menu when not playing. */
+  private openInventory(): void {
+    this.inventoryReturnMenu = this.playing ? null : this.menu.currentMode;
+    this.menu.hide();
+    this.inventoryScreen.show();
+    this.input.releasePointerLock();
+  }
+
+  /** Closes the inventory. Restore its originating menu, or request pointer capture to return to play. */
+  private closeInventory(): void {
+    const leftover = this.inventoryScreen.hide();
+    if (leftover) this.dropStack(leftover);
+    if (this.inventoryReturnMenu !== null) {
+      const mode = this.inventoryReturnMenu;
+      this.inventoryReturnMenu = null;
+      this.menu.show(mode);
+    } else {
+      this.input.requestPointerLock();
+    }
+  }
+
+  /** Drops a stack in front of the player, for a stack that did not fit back into the inventory. */
+  private dropStack(stack: ItemStack): void {
+    const p = this.player.position;
+    this.items.spawn(stack.state, stack.count, p.x, p.y + 1, p.z, Math.random);
+  }
+
+  /** Walking over dropped items picks them up while they fit in the inventory. */
+  private collectItems(): void {
+    const p = this.player.position;
+    let changed = false;
+    this.items.collect(p.x, p.y, p.z, PLAYER_HEIGHT, (state, count) => {
+      const left = this.inventory.add(state, count);
+      if (left < count) changed = true;
+      return left;
+    });
+    if (changed && this.inventoryScreen.isOpen) this.inventoryScreen.refresh();
   }
 
   private readControls(): PlayerControls {
@@ -412,6 +937,21 @@ export class Game {
       jump: i.isDown('Space'),
       descend: i.isDown('ShiftLeft'),
       sprint: i.isDown('ShiftLeft') || i.isDown('ControlLeft'),
+    };
+  }
+
+  /** Biome, temperature, rain and weather at the player, for the F3 overlay. */
+  private climateDebug() {
+    const p = this.player;
+    const c = this.world.isLoadedAt(Math.floor(p.position.x), Math.floor(p.position.y), Math.floor(p.position.z))
+      ? this.generator.climateAt(Math.floor(p.position.x), Math.floor(p.position.y), Math.floor(p.position.z))
+      : null;
+    const w = this.weather.sample(p.position.x * BLOCK_SIZE_M, p.position.z * BLOCK_SIZE_M, this.timeOfDay, this.calendar.timeOfYear, p.position.y * BLOCK_SIZE_M);
+    return {
+      biome: c?.biome ?? 'unknown',
+      temperatureC: c ? Math.round(c.temperatureC * 10) / 10 : 0,
+      precipitationMm: c ? Math.round(c.precipitationMm) : 0,
+      weather: `${w.precipitation}${w.isStorm ? ', storm' : ''}`,
     };
   }
 
@@ -430,15 +970,31 @@ export class Game {
       flying: p.flying,
       inWater: p.inWater,
       timeOfDay: Math.round(this.timeOfDay * 1000) / 1000,
+      season: this.calendar.season,
+      dayOfSeason: this.calendar.day,
+      ...this.climateDebug(),
+      dayLengthMin: Math.round(this.calendar.dayLengthMin),
+      gameMode: this.gameMode,
+      health: this.health,
+      hunger: this.hunger,
+      air: Math.round(this.air * 100) / 100,
       target: this.target ? [this.target.x, this.target.y, this.target.z] : null,
       targetName: this.target ? getBlockDef(this.world.getBlock(this.target.x, this.target.y, this.target.z)).name : null,
-      selectedSlot: this.hotbar.selected,
-      selectedBlock: getBlockDef(this.hotbar.selectedBlock).name,
-      hotbar: [...this.hotbar.slots],
-      held: this.held.total,
+      selectedSlot: this.inventory.selected,
+      selectedBlock: getBlockDef(this.inventory.selectedBlock).name,
+      hotbar: this.inventory.slots.slice(0, HOTBAR_SIZE).map((s) => s?.state ?? 0),
+      hotbarCounts: this.inventory.slots.slice(0, HOTBAR_SIZE).map((s) => s?.count ?? 0),
+      /** [block state, count] per slot, or null: hotbar first. */
+      inventory: this.inventory.slots.map((s) => (s ? [s.state, s.count] : null)),
+      inventoryOpen: this.inventoryScreen.isOpen,
+      items: this.items.items.length,
+      looseBodies: this.bodies.bodies.length,
+      breakStage: this.breaking.stage,
+      breakStageSeen: this.breakStageSeen,
+      frames: this.frameCount,
       renderDistance: this.chunks.renderDistance,
       workers: this.usingWorkers,
-      drawCalls: this.renderer.webgl.info.render.calls,
+      drawCalls: this.renderer.drawCalls,
       /** True when the 3x3x3 chunks around the player's feet are meshed. */
       areaMeshed: this.chunks.isAreaMeshed(p.position.x, p.position.y, p.position.z, SPAWN_READY_RADIUS),
       ...this.chunks.stats,

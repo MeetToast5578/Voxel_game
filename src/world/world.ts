@@ -1,7 +1,10 @@
-import { CHUNK_SIZE, CHUNK_VOLUME } from '../config';
+import { CHUNK_SIZE, CHUNK_VOLUME, RANDOM_TICKS_PER_CHUNK } from '../config';
 import { chunkKey, columnIndex, columnKey, localIndex, worldToChunk, worldToLocal } from '../core/coords';
 import { BlockId, blocksSky } from './blocks';
 import { Chunk } from './chunk';
+import { type TickHandoff } from './tick';
+import { handleTick, handleRandomTick } from './ecology';
+import { forEachRandomCell } from './randomTick';
 
 /** Generates the blocks of a chunk synchronously (without player edits). */
 export type ChunkFallback = (cx: number, cy: number, cz: number) => Uint16Array;
@@ -13,11 +16,36 @@ const TOP_SCAN_CHUNKS = 64;
 
 const emptyFallback: ChunkFallback = () => new Uint16Array(CHUNK_VOLUME);
 
+/** One block to write in a batch edit. */
+export interface CellWrite {
+  x: number;
+  y: number;
+  z: number;
+  id: number;
+}
+
+/** What a batch edit changed: each touched chunk once, and each column whose top moved (lo and hi are its old and new tops). */
+export interface BatchEffect {
+  chunks: { cx: number; cy: number; cz: number }[];
+  tops: { cx: number; cz: number; lo: number; hi: number }[];
+}
+
+/** A block broken by the physics, at its cell. */
+export interface DroppedBlock {
+  id: number;
+  x: number;
+  y: number;
+  z: number;
+  /** True when the block was part of a big enough collapse to tumble as a loose body (spec 25, slice 6). */
+  body: boolean;
+}
+
 export class World {
   readonly seed: number;
   private readonly chunkMap = new Map<string, Chunk>();
   /** Player edits: chunkKey -> (localIndex -> block state). Survives chunk unloading. */
   private readonly editMap = new Map<string, Map<number, number>>();
+  private readonly droppedBlocks: DroppedBlock[] = [];
   /** Chunk keys whose edits changed since the last takeDirtyEdits (what the next save must write). */
   private readonly dirtyEdits = new Set<string>();
   /** columnKey -> chunk keys in that column that have edits. */
@@ -26,6 +54,8 @@ export class World {
   private readonly tops = new Map<string, Int32Array>();
   /** columnKey -> number of loaded chunks in that column. */
   private readonly loadedPerColumn = new Map<string, number>();
+  /** Global tick counter, incremented once per tickStep. */
+  private tickCounter = 0;
 
   constructor(
     seed: number,
@@ -190,6 +220,50 @@ export class World {
     return true;
   }
 
+  /**
+   * Changes many blocks at once. Records only the cells whose value changes. All or nothing: returns null and changes
+   * nothing when any cell's chunk is not loaded or its column has no tops. Otherwise returns what changed.
+   */
+  setBlocks(writes: readonly CellWrite[]): BatchEffect | null {
+    for (const w of writes) {
+      if (!this.isLoadedAt(w.x, w.y, w.z) || !this.getColumnTops(worldToChunk(w.x), worldToChunk(w.z))) return null;
+    }
+    const chunks = new Map<string, { cx: number; cy: number; cz: number }>();
+    const spans = new Map<string, { cx: number; cz: number; lo: number; hi: number }>();
+    for (const w of writes) {
+      const cx = worldToChunk(w.x);
+      const cy = worldToChunk(w.y);
+      const cz = worldToChunk(w.z);
+      const chunk = this.getChunk(cx, cy, cz)!;
+      const lx = worldToLocal(w.x);
+      const lz = worldToLocal(w.z);
+      const index = localIndex(lx, worldToLocal(w.y), lz);
+      if (chunk.blocks[index] === w.id) continue;
+      chunk.blocks[index] = w.id;
+      const key = chunkKey(cx, cy, cz);
+      this.recordEdit(key, index, w.id);
+      chunks.set(key, { cx, cy, cz });
+
+      const tops = this.getColumnTops(cx, cz)!;
+      const cell = columnIndex(lx, lz);
+      const oldTop = tops[cell]!;
+      if (blocksSky(w.id)) {
+        if (w.y > oldTop) tops[cell] = w.y;
+      } else if (w.y === oldTop) {
+        tops[cell] = this.scanDown(cx, cz, lx, lz, w.y - 1);
+      }
+      const newTop = tops[cell]!;
+      if (newTop !== oldTop) {
+        const colKey = columnKey(cx, cz);
+        const span = spans.get(colKey) ?? { cx, cz, lo: Infinity, hi: -Infinity };
+        span.lo = Math.min(span.lo, oldTop, newTop);
+        span.hi = Math.max(span.hi, oldTop, newTop);
+        spans.set(colKey, span);
+      }
+    }
+    return { chunks: [...chunks.values()], tops: [...spans.values()] };
+  }
+
   /** Re-applies stored player edits to a freshly generated chunk. */
   applyEdits(chunk: Chunk): void {
     this.applyEditsTo(chunkKey(chunk.cx, chunk.cy, chunk.cz), chunk.blocks);
@@ -235,5 +309,84 @@ export class World {
       for (; ly >= 0; ly--) if (blocksSky(blocks[localIndex(lx, ly, lz)]!)) return cy * CHUNK_SIZE + ly;
     }
     return NO_TOP;
+  }
+
+  /** Schedule a tick at world coordinates (wx, wy, wz) due at `dueTick`. Returns any handoff to a neighbour chunk. */
+  scheduleTick(wx: number, wy: number, wz: number, dueTick: number, reason: string): TickHandoff | null {
+    const cx = worldToChunk(wx);
+    const cy = worldToChunk(wy);
+    const cz = worldToChunk(wz);
+    const chunk = this.getChunk(cx, cy, cz);
+    if (!chunk) return null;
+    return chunk.ticks.schedule({ x: wx, y: wy, z: wz, dueTick, reason }, cx, cy, cz);
+  }
+
+  /**
+   * Run one tick step over all loaded chunks. Each chunk's queue runs up to `budgetMs`; ticks past the
+   * budget wait for the next step. Handoff ticks (cells at a chunk border) are re-scheduled in the
+   * neighbour's queue. Returns { ran, pending } stats.
+   */
+  tickStep(budgetMs: number): { ran: number; pending: number } {
+    this.tickCounter++;
+    let ran = 0;
+    let pending = 0;
+
+    for (const chunk of this.chunks()) {
+      const { handedOff, ran: r } = chunk.ticks.run(this.tickCounter, budgetMs, (tick, world) => handleTick(world as World, tick), this);
+      ran += r;
+      pending += chunk.ticks.size;
+      // Re-schedule border handoffs in the neighbour chunk's queue.
+      for (const t of handedOff) {
+        const tcx = worldToChunk(t.x);
+        const tcy = worldToChunk(t.y);
+        const tcz = worldToChunk(t.z);
+        const target = this.getChunk(tcx, tcy, tcz);
+        if (target) {
+          target.ticks.schedule(t, tcx, tcy, tcz);
+          pending += 1;
+        }
+        // If the neighbour isn't loaded, the handoff is dropped.
+      }
+    }
+
+    return { ran, pending };
+  }
+
+  /** Queues a block the physics broke (a collapse), for the game to spawn as an item. */
+  queueDrop(id: number, x: number, y: number, z: number, body = false): void {
+    this.droppedBlocks.push({ id, x, y, z, body });
+  }
+
+  /** Returns and clears the blocks the physics broke since the last call. */
+  takeDrops(): DroppedBlock[] {
+    return this.droppedBlocks.splice(0);
+  }
+
+  /** Current global tick number. */
+  get currentTick(): number { return this.tickCounter; }
+
+  /**
+   * Run one random-tick pass over all loaded chunks within `budgetMs`. Each chunk draws
+   * RANDOM_TICKS_PER_CHUNK cells (deterministically, from seed + tick + chunk) and the
+   * ecology handler runs on each. Returns how many cells were visited and how long it took.
+   */
+  randomTickStep(budgetMs: number, handler: typeof handleRandomTick = handleRandomTick): { ran: number; ms: number } {
+    const start = performance.now();
+    let ran = 0;
+    for (const chunk of this.chunkMap.values()) {
+      if (performance.now() - start >= budgetMs) break;
+      forEachRandomCell(this.seed, this.tickCounter, chunk.cx, chunk.cy, chunk.cz, RANDOM_TICKS_PER_CHUNK, (wx, wy, wz, rng) => {
+        handler(this, wx, wy, wz, rng);
+        ran++;
+      });
+    }
+    return { ran, ms: performance.now() - start };
+  }
+
+  /** Total number of pending ticks across all loaded chunks. */
+  get pendingTickCount(): number {
+    let n = 0;
+    for (const chunk of this.chunks()) n += chunk.ticks.size;
+    return n;
   }
 }

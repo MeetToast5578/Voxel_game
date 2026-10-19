@@ -132,10 +132,16 @@ describe('buildChunkMesh', () => {
     const tops: Int32Array[] = [];
     for (let dz = -1; dz <= 1; dz++) for (let dx = -1; dx <= 1; dx++) tops.push(g.columnTops(dx, dz));
     buildChunkMesh(chunks, tops, cy); // warm up
-    const t0 = performance.now();
+    // Take the fastest of several runs: the suite runs files in parallel, so a single
+    // wall-clock sample measures machine load as much as the mesher. The minimum is
+    // robust to preemption and still catches a real slowdown.
+    let ms = Infinity;
     let m = buildChunkMesh(chunks, tops, cy);
-    for (let i = 0; i < 9; i++) m = buildChunkMesh(chunks, tops, cy);
-    const ms = (performance.now() - t0) / 10;
+    for (let i = 0; i < 10; i++) {
+      const t0 = performance.now();
+      m = buildChunkMesh(chunks, tops, cy);
+      ms = Math.min(ms, performance.now() - t0);
+    }
     console.log(`buildChunkMesh: ${ms.toFixed(2)} ms, ${quads(m.solid)} solid quads`);
     expect(quads(m.solid)).toBeGreaterThan(100);
     expect(ms).toBeLessThan(50);
@@ -180,5 +186,35 @@ describe('buildPaddedVolume', () => {
     const vol = buildPaddedVolume(neighbors);
     expect(vol[padIndex(17, 6, 4)]).toBe(300);
     expect(vol[padIndex(3, 17, 4)]).toBe(301);
+  });
+});
+
+describe('mesh output is independent of the reusable scratch buffers', () => {
+  it('keeps the first mesh intact after a second chunk is meshed', () => {
+    // Meshing reuses one region, two light volumes and two vertex buffers per worker. `build` must copy out exact
+    // arrays, or the second call would silently rewrite the first mesh's data.
+    const w = new TestWorld((_x, y) => (y <= 50 ? BlockId.STONE : BlockId.AIR));
+    w.set(4, 51, 4, BlockId.BRICK);
+    const first = buildChunkMesh(w.neighbors(3), w.tops(), 3);
+    const positions = Array.from(first.solid.positions);
+    const indices = Array.from(first.solid.indices);
+    const light = Array.from(first.solid.light);
+    const w2 = new TestWorld((_x, y) => (y <= 20 ? BlockId.DIRT : BlockId.AIR));
+    for (let i = 0; i < 32; i++) w2.set(i % 16, 21, i % 16, BlockId.GLOWSTONE);
+    buildChunkMesh(w2.neighbors(1), w2.tops(), 1);
+    expect(Array.from(first.solid.positions)).toEqual(positions);
+    expect(Array.from(first.solid.indices)).toEqual(indices);
+    expect(Array.from(first.solid.light)).toEqual(light);
+  });
+
+  it('returns arrays that own their buffers, so a mesh can be transferred between threads', () => {
+    const w = new TestWorld((_x, y) => (y <= 50 ? BlockId.STONE : BlockId.AIR));
+    const mesh = buildChunkMesh(w.neighbors(3), w.tops(), 3).solid;
+    const buffers = [mesh.positions, mesh.uvs, mesh.colors, mesh.light, mesh.indices].map((a) => a.buffer);
+    expect(new Set(buffers).size).toBe(5);
+    for (const array of [mesh.positions, mesh.uvs, mesh.colors, mesh.light, mesh.indices]) {
+      expect(array.byteOffset).toBe(0);
+      expect(array.byteLength).toBe(array.buffer.byteLength);
+    }
   });
 });

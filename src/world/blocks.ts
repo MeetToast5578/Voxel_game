@@ -27,6 +27,17 @@ export const BlockId = {
   DEEPSLATE: 25,
   BROWN_MUSHROOM: 26,
   RED_MUSHROOM: 27,
+  COAL_ORE: 28,
+  IRON_ORE: 29,
+  GOLD_ORE: 30,
+  REDSTONE_ORE: 31,
+  DIAMOND_ORE: 32,
+  EMERALD_ORE: 33,
+  LAPIS_ORE: 34,
+  GRAVEL: 35,
+  FLOWING_WATER: 36,
+  CACTUS: 52,
+  CLAY: 53,
 } as const;
 
 export const Tile = {
@@ -59,6 +70,27 @@ export const Tile = {
   DEEPSLATE: 26,
   BROWN_MUSHROOM: 27,
   RED_MUSHROOM: 28,
+  CRACK_0: 29,
+  CRACK_1: 30,
+  CRACK_2: 31,
+  CRACK_3: 32,
+  CRACK_4: 33,
+  CRACK_5: 34,
+  CRACK_6: 35,
+  CRACK_7: 36,
+  CRACK_8: 37,
+  CRACK_9: 38,
+  COAL_ORE: 39,
+  IRON_ORE: 40,
+  GOLD_ORE: 41,
+  REDSTONE_ORE: 42,
+  DIAMOND_ORE: 43,
+  EMERALD_ORE: 44,
+  LAPIS_ORE: 45,
+  GRAVEL: 46,
+  CACTUS_SIDE: 47,
+  CACTUS_TOP: 48,
+  CLAY: 49,
 } as const;
 
 export type RenderLayer = 'none' | 'opaque' | 'cutout' | 'translucent';
@@ -83,6 +115,8 @@ export interface BlockDef {
   cullSame: boolean;
   /** Block light this block emits, 0..15. */
   lightEmission: number;
+  /** Seconds to break the block by hand, held down (0 breaks at once). Spec 24. */
+  hardness: number;
   layer: RenderLayer;
   /** 'cross' blocks are two crossed quads (plants), not cubes. Spec 18. */
   shape: BlockShape;
@@ -92,10 +126,30 @@ export interface BlockDef {
    * (water and leaves included); column tops are the highest such block.
    */
   blocksSky: boolean;
+  /** Physics rule (spec 25): the block drops one cell per tick while the cell below is air, water or a plant. */
+  falls: boolean;
+  /** Physics rule (spec 25): the block is a fluid that spreads to lower neighbours. */
+  flows: boolean;
+  /** Physics rule (spec 25): the block holds up the block above it. Defaults to solid. */
+  supports: boolean;
+  /** Mass per cubic metre, in kg, for a loose body of this block (spec 25, slice 6). */
+  density: number;
 }
 
 /** What a registry is built from: a type without its assigned first state or derived flags. */
-export type BlockTypeDef = Omit<BlockDef, 'id' | 'blocksSky' | 'shape'> & { shape?: BlockShape };
+export type BlockTypeDef = Omit<BlockDef, 'id' | 'blocksSky' | 'shape' | 'hardness' | 'falls' | 'flows' | 'supports' | 'density'> & {
+  shape?: BlockShape;
+  hardness?: number;
+  falls?: boolean;
+  flows?: boolean;
+  supports?: boolean;
+  density?: number;
+};
+
+/** Seconds to break a block by hand when its type does not say otherwise: stone-like. */
+export const DEFAULT_HARDNESS = 1.5;
+/** Mass per cubic metre, in kg, when a block type does not say otherwise. */
+export const DEFAULT_DENSITY = 2000;
 
 /** Block states are stored in 16-bit arrays. */
 export const MAX_BLOCK_STATES = 0xffff;
@@ -149,7 +203,17 @@ export function buildBlockRegistry(defs: readonly BlockTypeDef[]): BlockRegistry
     if (byKey.has(d.key)) throw new Error(`Duplicate block key '${d.key}'`);
     if (!Number.isInteger(d.variants) || d.variants < 1) throw new Error(`Block '${d.key}' needs at least 1 variant`);
     if (next + d.variants > MAX_BLOCK_STATES) throw new Error(`Too many block states (more than ${MAX_BLOCK_STATES})`);
-    const type: BlockDef = { ...d, id: next, shape: d.shape ?? 'cube', blocksSky: derivedBlocksSky(d) };
+    const type: BlockDef = {
+      ...d,
+      id: next,
+      shape: d.shape ?? 'cube',
+      hardness: d.hardness ?? DEFAULT_HARDNESS,
+      blocksSky: derivedBlocksSky(d),
+      falls: d.falls ?? false,
+      flows: d.flows ?? false,
+      supports: d.supports ?? d.solid,
+      density: d.density ?? DEFAULT_DENSITY,
+    };
     const index = types.length;
     types.push(type);
     byKey.set(type.key, type);
@@ -225,38 +289,57 @@ function def(
 
 const all = (t: number) => ({ top: t, side: t, bottom: t });
 
+/** Flowing water has 8 levels, and each level comes in a falling and a non-falling variant. Variant v: level v % 8 + 1. */
+export const WATER_LEVELS = 8;
+export const FLOWING_WATER_VARIANTS = 2 * WATER_LEVELS;
+
 /** The game's block registry. Registration order fixes the state numbers: append new types at the end. */
 export const BLOCK_REGISTRY = buildBlockRegistry([
   def('air', 'Air', all(0), { solid: false, opaque: false, targetable: false, breakable: false, layer: 'none' }),
-  def('stone', 'Stone', all(Tile.STONE)),
-  def('dirt', 'Dirt', all(Tile.DIRT)),
-  def('grass', 'Grass', { top: Tile.GRASS_TOP, side: Tile.GRASS_SIDE, bottom: Tile.DIRT }),
-  def('sand', 'Sand', all(Tile.SAND)),
+  def('stone', 'Stone', all(Tile.STONE), { density: 2600 }),
+  def('dirt', 'Dirt', all(Tile.DIRT), { hardness: 0.5, density: 1300 }),
+  def('grass', 'Grass', { top: Tile.GRASS_TOP, side: Tile.GRASS_SIDE, bottom: Tile.DIRT }, { hardness: 0.5, density: 1300 }),
+  def('sand', 'Sand', all(Tile.SAND), { hardness: 0.5, falls: true, density: 1600 }),
   def('water', 'Water', all(Tile.WATER), {
     solid: false, opaque: false, targetable: false, breakable: false, cullSame: true, layer: 'translucent',
   }),
-  def('log', 'Log', { top: Tile.LOG_TOP, side: Tile.LOG_SIDE, bottom: Tile.LOG_TOP }),
-  def('leaves', 'Leaves', all(Tile.LEAVES), { opaque: false, layer: 'cutout' }),
-  def('planks', 'Planks', all(Tile.PLANKS)),
-  def('glass', 'Glass', all(Tile.GLASS), { opaque: false, cullSame: true, layer: 'cutout' }),
+  def('log', 'Log', { top: Tile.LOG_TOP, side: Tile.LOG_SIDE, bottom: Tile.LOG_TOP }, { hardness: 2, density: 600 }),
+  def('leaves', 'Leaves', all(Tile.LEAVES), { opaque: false, layer: 'cutout', hardness: 0.3, supports: false, density: 300 }),
+  def('planks', 'Planks', all(Tile.PLANKS), { hardness: 2, density: 600 }),
+  def('glass', 'Glass', all(Tile.GLASS), { opaque: false, cullSame: true, layer: 'cutout', hardness: 0.3 }),
   def('bedrock', 'Bedrock', all(Tile.BEDROCK), { breakable: false }),
   def('cobblestone', 'Cobblestone', all(Tile.COBBLESTONE)),
   def('brick', 'Brick', all(Tile.BRICK)),
-  def('glowstone', 'Glowstone', all(Tile.GLOWSTONE), { lightEmission: 15 }),
+  def('glowstone', 'Glowstone', all(Tile.GLOWSTONE), { lightEmission: 15, hardness: 0.3 }),
   def('granite', 'Granite', all(Tile.GRANITE)),
   def('diorite', 'Diorite', all(Tile.DIORITE)),
   def('andesite', 'Andesite', all(Tile.ANDESITE)),
   def('sandstone', 'Sandstone', all(Tile.SANDSTONE)),
-  def('tall_grass', 'Tall grass', all(Tile.TALL_GRASS), { solid: false, opaque: false, layer: 'cutout', shape: 'cross' }),
-  def('poppy', 'Poppy', all(Tile.POPPY), { solid: false, opaque: false, layer: 'cutout', shape: 'cross' }),
-  def('fern', 'Fern', all(Tile.FERN), { solid: false, opaque: false, layer: 'cutout', shape: 'cross' }),
-  def('dandelion', 'Dandelion', all(Tile.DANDELION), { solid: false, opaque: false, layer: 'cutout', shape: 'cross' }),
+  def('tall_grass', 'Tall grass', all(Tile.TALL_GRASS), { solid: false, opaque: false, layer: 'cutout', shape: 'cross', hardness: 0 }),
+  def('poppy', 'Poppy', all(Tile.POPPY), { solid: false, opaque: false, layer: 'cutout', shape: 'cross', hardness: 0 }),
+  def('fern', 'Fern', all(Tile.FERN), { solid: false, opaque: false, layer: 'cutout', shape: 'cross', hardness: 0 }),
+  def('dandelion', 'Dandelion', all(Tile.DANDELION), { solid: false, opaque: false, layer: 'cutout', shape: 'cross', hardness: 0 }),
   def('limestone', 'Limestone', all(Tile.LIMESTONE)),
   def('slate', 'Slate', all(Tile.SLATE)),
   def('basalt', 'Basalt', all(Tile.BASALT)),
   def('deepslate', 'Deepslate', all(Tile.DEEPSLATE)),
-  def('brown_mushroom', 'Brown mushroom', all(Tile.BROWN_MUSHROOM), { solid: false, opaque: false, layer: 'cutout', shape: 'cross' }),
-  def('red_mushroom', 'Red mushroom', all(Tile.RED_MUSHROOM), { solid: false, opaque: false, layer: 'cutout', shape: 'cross' }),
+  def('brown_mushroom', 'Brown mushroom', all(Tile.BROWN_MUSHROOM), { solid: false, opaque: false, layer: 'cutout', shape: 'cross', hardness: 0 }),
+  def('red_mushroom', 'Red mushroom', all(Tile.RED_MUSHROOM), { solid: false, opaque: false, layer: 'cutout', shape: 'cross', hardness: 0 }),
+  def('coal_ore', 'Coal ore', all(Tile.COAL_ORE), { hardness: 2 }),
+  def('iron_ore', 'Iron ore', all(Tile.IRON_ORE), { hardness: 3 }),
+  def('gold_ore', 'Gold ore', all(Tile.GOLD_ORE), { hardness: 3 }),
+  def('redstone_ore', 'Redstone ore', all(Tile.REDSTONE_ORE), { hardness: 3 }),
+  def('diamond_ore', 'Diamond ore', all(Tile.DIAMOND_ORE), { hardness: 4 }),
+  def('emerald_ore', 'Emerald ore', all(Tile.EMERALD_ORE), { hardness: 4 }),
+  def('lapis_ore', 'Lapis ore', all(Tile.LAPIS_ORE), { hardness: 3 }),
+  def('gravel', 'Gravel', all(Tile.GRAVEL), { hardness: 0.6, falls: true, density: 1900 }),
+  // Water that flows (spec 25, slice 4): 8 levels, each with a falling flag. The source block is 'water'.
+  def('flowing_water', 'Flowing water', all(Tile.WATER), {
+    variants: FLOWING_WATER_VARIANTS, solid: false, opaque: false, targetable: false, breakable: false, cullSame: true,
+    layer: 'translucent', flows: true,
+  }),
+  def('cactus', 'Cactus', { top: Tile.CACTUS_TOP, side: Tile.CACTUS_SIDE, bottom: Tile.CACTUS_TOP }, { hardness: 0.5, density: 700 }),
+  def('clay', 'Clay', all(Tile.CLAY), { hardness: 0.6, density: 1700 }),
 ]);
 
 // BlockId.X is variant 0 of the type whose key is x; keep the two lists in step.
@@ -283,3 +366,37 @@ export const blocksSky = BLOCK_REGISTRY.blocksSky;
 export const OPAQUE_TABLE = BLOCK_REGISTRY.opaqueTable;
 /** Light emitted by each state (all 65,536 states). For hot loops; do not modify. */
 export const EMISSION_TABLE = BLOCK_REGISTRY.emissionTable;
+
+/** The source block: full, never thins, and never falls. */
+export const SOURCE_WATER_LEVEL = WATER_LEVELS;
+
+/** True for the source block and for every flowing water state. */
+export function isWaterState(state: number): boolean {
+  return state === BlockId.WATER || isFlowingWaterState(state);
+}
+
+/** True for each flowing water state (not the source block). */
+export function isFlowingWaterState(state: number): boolean {
+  return state >= BlockId.FLOWING_WATER && state < BlockId.FLOWING_WATER + FLOWING_WATER_VARIANTS;
+}
+
+/** The level of a water state, 1 (thinnest) to 8 (full). The source block is level 8. */
+export function waterLevel(state: number): number {
+  return isFlowingWaterState(state) ? ((state - BlockId.FLOWING_WATER) % WATER_LEVELS) + 1 : SOURCE_WATER_LEVEL;
+}
+
+/** True for a flowing water state that falls (it came down from above, and is not spreading sideways). */
+export function isFallingWater(state: number): boolean {
+  return isFlowingWaterState(state) && state - BlockId.FLOWING_WATER >= WATER_LEVELS;
+}
+
+/** How high a block's top face stands, in blocks: flowing water stands at its level, everything else a full block. */
+export function blockTopHeight(state: number): number {
+  return isFlowingWaterState(state) ? waterLevel(state) / WATER_LEVELS : 1;
+}
+
+/** The flowing water state for a level (1..8), falling or not. */
+export function flowingWaterState(level: number, falling: boolean): number {
+  return BlockId.FLOWING_WATER + (level - 1) + (falling ? WATER_LEVELS : 0);
+}
+

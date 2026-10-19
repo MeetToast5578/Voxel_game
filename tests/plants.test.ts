@@ -40,11 +40,13 @@ describe('ground cover (spec 18)', () => {
         for (let lx = 0; lx < 16; lx++) {
           const h = g.getHeight(cx * 16 + lx, cz * 16 + lz);
           const above = c.get(lx, h + 1, lz);
+          const surface = c.get(lx, h, lz);
+          const plantSurface = surface === BlockId.GRASS || surface === BlockId.DIRT;
           if (PLANTS.includes(above)) {
             plants++;
             seen.add(above);
-            expect(c.get(lx, h, lz)).toBe(BlockId.GRASS);
-          } else if (c.get(lx, h, lz) === BlockId.GRASS) bareGrass++;
+            expect(plantSurface).toBe(true);
+          } else if (surface === BlockId.GRASS || surface === BlockId.DIRT) bareGrass++;
         }
     }
     expect(plants).toBeGreaterThan(0);

@@ -78,10 +78,19 @@ describe('buildChunkMesh lighting', () => {
         jobs.push({ n, t, cy });
       }
     for (const j of jobs.slice(0, 5)) buildChunkMesh(j.n, j.t, j.cy); // warm up
-    const t0 = performance.now();
-    for (const j of jobs) buildChunkMesh(j.n, j.t, j.cy);
-    const ms = (performance.now() - t0) / jobs.length;
+    // Best of two passes: the suite runs files in parallel, so a single pass measures machine
+    // load as much as the mesher. The minimum still catches a real slowdown.
+    let ms = Infinity;
+    for (let pass = 0; pass < 2; pass++) {
+      const t0 = performance.now();
+      for (const j of jobs) buildChunkMesh(j.n, j.t, j.cy);
+      ms = Math.min(ms, (performance.now() - t0) / jobs.length);
+    }
     console.log(`buildChunkMesh, 50 surface chunks of seed 42: ${ms.toFixed(2)} ms average`);
-    expect(ms).toBeLessThan(50);
+    // Interim regression guard for spec 28 (task T-A3 remains partial). The 3 ms target is NOT met (T-J1: measured
+    // 4.1 ms alone, ~5.2 ms here). 15 ms is ~3x the slowest documented measurement: it catches a real regression
+    // (the tree-size bug of spec 39 was ~100x) without flaking on a slow laptop under parallel load. Tighten this
+    // toward 3 ms when T-J1 lands.
+    expect(ms).toBeLessThan(15);
   });
 });

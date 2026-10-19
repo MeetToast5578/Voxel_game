@@ -6,6 +6,14 @@ type RGB = readonly [number, number, number];
 /** Returns [r, g, b, a] (0-255) for pixel (x, y) of a tile; y = 0 is the TOP row of the tile. */
 type PixelFn = (x: number, y: number, rand: () => number) => readonly [number, number, number, number];
 
+/** Stone with flecks of the ore colour. */
+function orePainter(colour: RGB): PixelFn {
+  return (_x, _y, r) => {
+    const base = shade([125, 125, 125], 1 + (r() - 0.5) * 0.25);
+    return r() < 0.12 ? shade(colour, 1) : base;
+  };
+}
+
 const shade = (c: RGB, f: number, a = 255) => [c[0] * f, c[1] * f, c[2] * f, a] as const;
 const noisy = (c: RGB, amount: number): PixelFn => (_x, _y, r) => shade(c, 1 + (r() - 0.5) * amount);
 
@@ -13,15 +21,30 @@ const DIRT: RGB = [134, 96, 67];
 const GRASS: RGB = [95, 159, 53];
 const BARK: RGB = [102, 81, 51];
 
+/** A fixed random rank for each pixel of a tile, so each crack stage keeps the one before it (spec 24). */
+const crackRandom = mulberry32(77);
+const CRACK_RANK = Array.from({ length: TILE_SIZE * TILE_SIZE }, () => crackRandom());
+const CRACK_SHADE: RGB = [25, 22, 20];
+
+/** Stage 0 has a few cracks; each later stage adds more, up to about a third of the pixels at stage 9. */
+function crackPainter(stage: number): PixelFn {
+  const limit = ((stage + 1) / 10) * 0.35;
+  return (x, y) => (CRACK_RANK[y * TILE_SIZE + x]! < limit ? shade(CRACK_SHADE, 1, 255) : [0, 0, 0, 0]);
+}
+
 const PAINTERS: Record<number, PixelFn> = {
+  [Tile.CACTUS_SIDE]: (x, y, r) => {
+    if (x % 4 === 0 && y % 5 === 0) return shade([222, 209, 146], 1);
+    return shade([55, 122, 52], (x % 4 === 0 ? 0.65 : 1) + (r() - 0.5) * 0.15);
+  },
+  [Tile.CACTUS_TOP]: (x, y, r) => shade([88, 143, 65], Math.hypot(x - 7.5, y - 7.5) > 6 ? 0.65 : 1 + (r() - 0.5) * 0.15),
   [Tile.STONE]: noisy([125, 125, 125], 0.25),
   [Tile.DIRT]: noisy(DIRT, 0.3),
   [Tile.GRASS_TOP]: noisy(GRASS, 0.25),
-  [Tile.GRASS_SIDE]: (x, y, r) => {
-    const depth = 3 + ((x * 7) % 3); // jagged grass edge, 3-5 px
-    return y < depth ? shade(GRASS, 1 + (r() - 0.5) * 0.25) : shade(DIRT, 1 + (r() - 0.5) * 0.3);
-  },
+  [Tile.GRASS_SIDE]: noisy(GRASS, 0.25), // grass all the way down, not a dirt side with a green edge
   [Tile.SAND]: noisy([219, 207, 163], 0.12),
+  [Tile.CLAY]: noisy([151, 162, 170], 0.12),
+  [Tile.GRAVEL]: noisy([128, 122, 116], 0.5),
   [Tile.WATER]: noisy([48, 96, 200], 0.1),
   [Tile.LOG_SIDE]: (x, _y, r) => shade(BARK, (x % 4 === 0 ? 0.75 : 1) + (r() - 0.5) * 0.15),
   [Tile.LOG_TOP]: (x, y, r) => {
@@ -103,10 +126,28 @@ const PAINTERS: Record<number, PixelFn> = {
     if ((x === 7 || x === 8) && y >= 9) return shade([60, 130, 40], 1 + (r() - 0.5) * 0.2);
     return [0, 0, 0, 0];
   },
+  [Tile.CRACK_0]: crackPainter(0),
+  [Tile.CRACK_1]: crackPainter(1),
+  [Tile.CRACK_2]: crackPainter(2),
+  [Tile.CRACK_3]: crackPainter(3),
+  [Tile.CRACK_4]: crackPainter(4),
+  [Tile.CRACK_5]: crackPainter(5),
+  [Tile.CRACK_6]: crackPainter(6),
+  [Tile.CRACK_7]: crackPainter(7),
+  [Tile.CRACK_8]: crackPainter(8),
+  [Tile.CRACK_9]: crackPainter(9),
   [Tile.BRICK]: (x, y, r) => {
     const mortar = y % 4 === 3 || (x + (Math.floor(y / 4) % 2) * 4) % 8 === 0;
     return mortar ? shade([200, 200, 190], 1) : shade([150, 60, 50], 1 + (r() - 0.5) * 0.2);
   },
+  /** Stone with flecks of the ore colour. */
+  [Tile.COAL_ORE]: orePainter([30, 30, 30]),
+  [Tile.IRON_ORE]: orePainter([190, 170, 140]),
+  [Tile.GOLD_ORE]: orePainter([230, 210, 70]),
+  [Tile.REDSTONE_ORE]: orePainter([210, 50, 50]),
+  [Tile.DIAMOND_ORE]: orePainter([110, 180, 230]),
+  [Tile.EMERALD_ORE]: orePainter([70, 190, 130]),
+  [Tile.LAPIS_ORE]: orePainter([50, 90, 180]),
 };
 
 /** RGBA pixels for the whole atlas, row-major, row 0 = top of the image. */

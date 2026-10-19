@@ -12,6 +12,7 @@ export class Input {
   private mouseDy = 0;
   private wheelSteps = 0;
   private readonly lockListeners: ((locked: boolean) => void)[] = [];
+  private readonly lockFailedListeners: (() => void)[] = [];
 
   constructor(private readonly canvas: HTMLCanvasElement) {
     window.addEventListener('keydown', this.onKeyDown);
@@ -29,13 +30,39 @@ export class Input {
     return document.pointerLockElement === this.canvas;
   }
 
-  /** Must be called from a user gesture (click). Failures are ignored (the user can click again). */
+  /**
+   * Must be called from a user gesture (click). A refusal goes to the onPointerLockFailed listeners, so the menu can say
+   * why nothing happened.
+   */
   requestPointerLock(): void {
     try {
       const result: Promise<void> | undefined = this.canvas.requestPointerLock();
-      result?.catch(() => {});
+      result?.catch(() => this.emitLockFailed());
     } catch {
-      // Older browsers throw instead of rejecting.
+      this.emitLockFailed(); // older browsers throw instead of rejecting
+    }
+  }
+
+  onPointerLockFailed(listener: () => void): void {
+    this.lockFailedListeners.push(listener);
+  }
+
+  private emitLockFailed(): void {
+    for (const listener of this.lockFailedListeners) listener();
+  }
+
+  /** Frees the pointer, e.g. to use the inventory screen. The pause menu does not show for this (spec 24). */
+  releasePointerLock(): void {
+    if (this.pointerLocked) document.exitPointerLock();
+  }
+
+  /** Test hook (debug API): presses or releases a mouse button as if the pointer were locked. */
+  simulateButton(button: number, down: boolean): void {
+    if (down) {
+      this.buttonsDown.add(button);
+      this.buttonsClicked.add(button);
+    } else {
+      this.buttonsDown.delete(button);
     }
   }
 

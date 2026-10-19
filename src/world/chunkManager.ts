@@ -1,9 +1,11 @@
-import { CHUNK_SIZE, MAX_JOBS_IN_FLIGHT, roundBlocks, SURFACE_BAND, SURFACE_MAX_DISTANCE_M, VERTICAL_RENDER_DISTANCE } from '../config';
+import { CHUNK_SIZE, MAX_JOBS_IN_FLIGHT, RANDOM_TICK_BUDGET_MS, roundBlocks, SURFACE_BAND, SURFACE_MAX_DISTANCE_M, TICK_BUDGET_MS, VERTICAL_RENDER_DISTANCE } from '../config';
 import { chunkKey, columnKey, worldToChunk } from '../core/coords';
 import { buildChunkMesh, type ChunkMeshData } from '../render/mesher';
 import { Chunk } from './chunk';
 import { neighborIndex } from './light';
-import type { World } from './world';
+import { scheduleFallingBlocks } from './falling';
+import { scheduleFlowingWater } from './flow';
+import type { BatchEffect, World } from './world';
 
 /** Receives finished meshes. Implemented by render/chunkMeshes.ts (and by fakes in tests). */
 export interface MeshSink {
@@ -33,6 +35,12 @@ export interface ChunkStats {
   /** Columns whose tops are installed. */
   columns: number;
   jobsInFlight: number;
+  /** Ticks run in the last step and pending ticks across all loaded chunks. */
+  tickRan: number;
+  tickPending: number;
+  /** Random ticks run in the last step, and how long the pass took, for the F3 overlay. */
+  randomTickRan: number;
+  randomTickMs: number;
 }
 
 interface ColumnPos {
@@ -99,6 +107,16 @@ export class ChunkManager {
   private eye = { x: 0, y: 0, z: 0 };
   /** Set when column tops change: the surface bands, and so the sets, must be recomputed. */
   private setsStale = false;
+  /** One game tick: the scheduled block updates (falling blocks, fluid flow, ...), then the random-tick pass. */
+  tick(): void {
+    this.lastTickStats = this.world.tickStep(TICK_BUDGET_MS);
+    this.lastRandomTickStats = this.world.randomTickStep(RANDOM_TICK_BUDGET_MS);
+  }
+
+  /** Result of the last tickStep, for the F3 overlay. */
+  private lastTickStats = { ran: 0, pending: 0 };
+  /** Result of the last randomTickStep, for the F3 overlay. */
+  private lastRandomTickStats = { ran: 0, ms: 0 };
   /**
    * Everything in loadList before loadCursor is loaded, and everything in meshList before meshCursor is meshed
    * and clean, so each frame starts scanning there. Reset whenever the lists change or a chunk becomes dirty.
@@ -211,6 +229,43 @@ export class ChunkManager {
     }
   }
 
+  /**
+   * Batch version of onBlockChanged, for a volume edit. Nothing is remeshed here: each affected chunk is marked dirty
+   * once (same rules as onBlockChanged), and update() rebuilds them under the mesh budget, so a large edit never stalls
+   * one frame.
+   */
+  onBlocksChanged(effect: BatchEffect): void {
+    const done = new Set<string>();
+    const mark = (key: string): void => {
+      if (done.has(key)) return;
+      done.add(key);
+      this.bumpVersion(key);
+      if (this.meshed.has(key)) this.dirty.add(key);
+    };
+    for (const c of effect.chunks)
+      for (let dy = -1; dy <= 1; dy++)
+        for (let dz = -1; dz <= 1; dz++)
+          for (let dx = -1; dx <= 1; dx++) mark(chunkKey(c.cx + dx, c.cy + dy, c.cz + dz));
+
+    if (effect.tops.length > 0) {
+      const spans = new Map<string, { lo: number; hi: number }>();
+      for (const s of effect.tops) {
+        spans.set(columnKey(s.cx, s.cz), s);
+        this.refreshColumn(s.cx, s.cz);
+      }
+      for (const p of this.meshed.values()) {
+        let affected = false;
+        for (let dz = -1; dz <= 1 && !affected; dz++)
+          for (let dx = -1; dx <= 1 && !affected; dx++) {
+            const s = spans.get(columnKey(p.cx + dx, p.cz + dz));
+            if (s && p.cy * CHUNK_SIZE + CHUNK_SIZE - 1 >= s.lo - (CHUNK_SIZE - 1) && p.cy * CHUNK_SIZE <= s.hi + 1) affected = true;
+          }
+        if (affected) mark(p.key);
+      }
+    }
+    this.meshCursor = 0;
+  }
+
   /** True when every chunk of the (2 radius + 1)³ cube around the chunk containing (x, y, z) has a mesh. */
   isAreaMeshed(x: number, y: number, z: number, radius: number): boolean {
     const cx = worldToChunk(Math.floor(x));
@@ -259,6 +314,10 @@ export class ChunkManager {
       pendingMesh,
       columns: this.world.columnCount,
       jobsInFlight: this.jobsInFlight(),
+      tickRan: this.lastTickStats.ran,
+      tickPending: this.lastTickStats.pending,
+      randomTickRan: this.lastRandomTickStats.ran,
+      randomTickMs: Math.round(this.lastRandomTickStats.ms * 100) / 100,
     };
   }
 
@@ -350,6 +409,9 @@ export class ChunkManager {
   private addChunk(chunk: Chunk): void {
     this.world.applyEdits(chunk);
     this.world.addChunk(chunk);
+    // A falling block saved mid-fall resumes its fall once its chunk is loaded (see falling.ts).
+    scheduleFallingBlocks(this.world, chunk);
+    scheduleFlowingWater(this.world, chunk);
   }
 
   /**

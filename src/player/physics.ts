@@ -25,6 +25,9 @@ type Axis = 'x' | 'y' | 'z';
 
 const SKIN = 1e-4;
 const HORIZONTAL_AXES = ['x', 'z'] as const;
+/** How far depenetration looks for free space, in blocks, and the size of each probe. */
+const DEPENETRATE_REACH = 64;
+const DEPENETRATE_STEP = 0.5;
 
 /**
  * Moves an axis-aligned box (pos = center of the feet) by vel * dt, one axis at a time (Y, X, Z).
@@ -35,6 +38,10 @@ const HORIZONTAL_AXES = ['x', 'z'] as const;
  * With stepHeight > 0, a horizontal move that is blocked right after landing in this move's Y phase is retried
  * up to stepHeight higher: if the body fits there, it moves on and settles onto the ledge (result.stepped > 0).
  * With stepHeight 0 (the default) nothing ever steps.
+ *
+ * If the body somehow ends a move still inside solid, it is pushed out to the nearest free space.
+ * Callers are supposed to prevent that (nothing may be placed in the player's body), but a solver
+ * that silently drops the player out of the world when they are wrong is not worth trusting.
  */
 export function moveAndCollide(
   pos: Vec3, vel: Vec3, dt: number, shape: BodyShape, isSolid: SolidFn, stepHeight = 0,
@@ -64,7 +71,45 @@ export function moveAndCollide(
     else result.hitZ = true;
   }
 
+  // Resolution pushes a body back against whatever it hit, which is the wrong direction entirely
+  // when it starts *inside* solid: rising pushes it further down and it ratchets through the floor.
+  // Callers keep this out of reach in normal play, so this only runs after a real collision.
+  if (result.hitX || result.hitY || result.hitZ) depenetrate(pos, shape, isSolid);
+
   return result;
+}
+
+/**
+ * Pushes a body that is inside solid out to the nearest free space, along whichever of the six
+ * axis directions frees it soonest. Mutates pos only if the body is actually stuck.
+ */
+function depenetrate(pos: Vec3, shape: BodyShape, isSolid: SolidFn): void {
+  if (!overlapsSolid(pos, shape, isSolid)) return;
+  const dirs: ReadonlyArray<readonly [number, number, number]> = [
+    [0, 1, 0], [0, -1, 0], [1, 0, 0], [-1, 0, 0], [0, 0, 1], [0, 0, -1],
+  ];
+  let bestX = 0;
+  let bestY = 0;
+  let bestZ = 0;
+  let bestDist = Infinity;
+  for (const [dx, dy, dz] of dirs) {
+    for (let step = DEPENETRATE_STEP; step <= DEPENETRATE_REACH; step += DEPENETRATE_STEP) {
+      if (step >= bestDist) break; // this direction cannot beat the best escape found so far
+      if (!overlapsSolid({ x: pos.x + dx * step, y: pos.y + dy * step, z: pos.z + dz * step }, shape, isSolid)) {
+        bestX = dx * step;
+        bestY = dy * step;
+        bestZ = dz * step;
+        bestDist = step;
+        break;
+      }
+    }
+  }
+  // Nothing within the reach (a body walled in on every side): leave it alone rather than teleport
+  // it somewhere arbitrary.
+  if (bestDist === Infinity) return;
+  pos.x += bestX;
+  pos.y += bestY;
+  pos.z += bestZ;
 }
 
 /**

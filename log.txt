@@ -1,0 +1,610 @@
+﻿================================================================================
+LOG - Voxel_game task work
+Started: 2026-10-17 22:37:12
+Base: main @ 08314af -> adf5aba
+Task list: docs/tasks.md (110 tasks, 102 open, 8 done)
+================================================================================
+
+ORDER (from docs/tasks.md "Suggested order"):
+  1. T-A1, T-A2   test suite health
+  2. T-C1, T-C9   owner playtest (NOT DOABLE headless - skip, owner only)
+  3. T-I1         survival mode unreachable
+  4. T-L1..L4, L9, L10  doc hygiene
+  5. T-E11, T-E12, T-E13  tree species
+  6. phases D->E->F->G->H->I->J
+  7. T-K (slabs) parallel
+
+NOTE: T-C* are owner-only manual checks. Marked as such, not silently skipped.
+
+--------------------------------------------------------------------------------
+T-A1  [DONE]  Annotate the slow tests, or raise the default testTimeout
+--------------------------------------------------------------------------------
+Change: vite.config.ts - added testTimeout: 30_000 to the test block.
+Chose the config default over annotating 12 individual tests: one line, and it
+covers tests added later too. No test file was touched.
+
+Before: 5-8 files failed / 9-14 tests failed, all "Test timed out in 5000ms".
+After:  Test Files 55 passed (55), Tests 464 passed (464), 57.88s.
+        typecheck + test + build all green.
+
+--------------------------------------------------------------------------------
+T-A2  [DONE - CI IS RED]  Confirm whether CI is actually green
+--------------------------------------------------------------------------------
+No gh CLI installed, so queried the GitHub API directly for adf5aba.
+
+  check  job : SUCCESS   (17:58:05 -> 17:59:02, ~57s)
+  smoke  job : FAILURE   (17:58:04 -> 18:01:14, ~3m10s), exit code 1
+
+VERDICT: tasks.md's "CI is probably green" is WRONG. The check job is green
+(including the 5s timeouts, on faster CI hardware - so T-A1 was a local-only
+problem). The SMOKE job is RED on main.
+
+Also flagged by Actions annotations:
+  - warning: actions/checkout@v4, setup-node@v4, upload-artifact@v4 target
+    deprecated Node.js 20, forced onto Node.js 24.
+  - notice: ubuntu-latest migrates to Ubuntu 26 on 2026-10-19.
+
+NEW TASK RAISED: T-A2a - fix the failing smoke job. Not in the original list.
+Local repro blocked: playwright 1.56.1 wants chromium_headless_shell-1194,
+only 1248 was present. Reinstalling.
+
+--------------------------------------------------------------------------------
+T-L1 T-L2 T-L3 T-L4 T-L9 T-L10  [ALL DONE]  Documentation hygiene
+--------------------------------------------------------------------------------
+docs/HANDOFF.md
+  L1  :3    stale hash 0322d20 -> adf5aba, "eleven commits after 0322d20"
+  L4  :43   test count 461 -> 464; added that the CI check job is green but the
+            CI smoke job FAILS (the assertion was previously unqualified)
+  L2  :90   "419 in 51 files" -> "464 in 55 files"
+  L10 :190  "Open decisions" above -> "Decided (owner approved)" (the section
+            was renamed by adf5aba; the cross-reference was dangling)
+  L3  :198  "Sandbox physics slices 2-6 are open" CONTRADICTED :26 ("all six
+            slices are in code and tested"). Rewrote to: snow layers, saplings,
+            crops, catch-up and lava are open; fluid levels and currents exist
+            but are not wired to bodies; spec 25 is complete.
+
+docs/specs/README.md
+  L9  :59  34-weather-model   "F3 weather lines are missing" -> they exist now
+      :60  35-biome-integration "Border blending is not wired" -> wired, 3-block
+                              dither; open items are per-vertex tints and the
+                              per-chunk-column biome resolution
+      :62  37-tree-species    "Done, sizes open, 4.8-7.2 m" -> Partial; oak is
+                              27-40 blocks (8.1-12.0 m); open items are the 8
+                              missing species and the 2 unreachable ones
+
+ENCODING: HANDOFF.md is UTF-8 without BOM. PowerShell's Get-Content mangles the
+en dash, so line 198 was rewritten with .NET File.ReadAllLines/WriteAllLines
+using a BOM-less UTF8Encoding. Verified round-trip.
+
+NEW TASK RAISED: T-L11 - specs 34 and 43 are BOTH titled "Weather model"
+(34 = "Weather model and rendering", 43 = "Weather model (Phase 4, item 3)",
+renumbered from 32). Different files, overlapping scope, confusing titles.
+
+
+================================================================================
+SESSION 2 - 2026-10-17 (cloud agent, Arena sandbox)
+Base: main @ aca8978, branch arena/22bcf3fa-voxel-game (fast-forwarded to it)
+Arrival check: npm run check GREEN here - 464 tests / 55 files, typecheck, build.
+================================================================================
+
+T-A2  [CLOSED - recorded in tasks.md]
+  gh CLI is available here (session 1 had none). CI on aca8978:
+    check job : SUCCESS (33 s)  -> T-A1 was a local-only problem, CI never needed it
+    smoke job : FAILURE (npm run smoke step ran 3 m 21 s)
+  Smoke has been red on EVERY run since 0a98002 (region simulation); last green
+  6a7aead (14:21). A docs-only commit (5019faa) also failed, so the breakage is
+  0a98002 or the environment at that time. Failing smoke steps run 2 m 16 s -
+  3 m 21 s vs 1 m 49 s when green: the script dies late in the checks, with one
+  or two 60 s waits timing out.
+  Raw logs (results-receiver.actions.githubusercontent.com) and the screenshots
+  artifact (productionresultssa9.blob.core.windows.net) are OUTSIDE this
+  sandbox's network allowlist, so past failure text is unretrievable. Playwright
+  browser CDNs are blocked too: no local smoke possible. CI is the only runner.
+
+Node repro of the deterministic smoke assertions (seed 1, throwaway vitest file,
+deleted afterwards; generator/spawn are pure so they run in Node):
+  spawn (-26.5, -26.5), feet y=114, on a gentle slope (110 -> 117 over 14
+  blocks - region simulation moved/reshaped the spawn area).
+  pick-block teleport column (+4 x): solidTop=115, no water -> the teleport at
+  feet y=115 lands the player INSIDE the rising ground; settling is fps-dependent
+  against a fixed 500 ms wait.
+  swim hardcoded spot (-39, 84): deep water present at the exact cell. PASS.
+  deep rock (spawn column, y=-205): diorite (15), inside the smoke ROCKS list. PASS.
+  => all deterministic terrain assertions hold on current main; the CI failure is
+  timing/load-related or a page/console error, not a terrain fact.
+
+T-A2a [PARTIAL - awaiting the CI verdict on the PR]
+  scripts/smoke.mjs:
+    - tracks the running check; failures now read: smoke failure during "<check>"
+    - on GitHub Actions, prints every collected error as an
+      ::error title=smoke:: annotation (workflow command, escaped). Readable via
+      the check-runs API and the run page even when the log zip is blocked. The
+      next red run names its own failure.
+    - pick-block check: replaced the fixed 500 ms wait with
+      waitForFunction(onGround || inWater, 20 s) - matches the documented
+      intermittent failure ("standing above a cell that reads as air" = still
+      falling when sampled) and is fps-independent.
+    - deep-chunks ROCKS list: added the spec 20 strata (22, 23, 24) and the
+      spec 26 ores that can host at -61 m depth (28-34). The old 5-rock list
+      could fail on a legal column (ore vein or newer strata).
+
+T-I1  [CLOSED - landed in 38c07f8; reviewed + one follow-up fix]
+  Picker reviewed: radiogroup in both menus, vitals topped up when entering
+  survival, mode persists via the save meta, Menu.setGameMode keeps the picker
+  in step. Follow-up: debugApi.setGameMode assigned game.gameMode directly,
+  bypassing both; now delegates to Game.setGameMode.
+
+T-B1 leftover [CLOSED]
+  TREE_HEIGHT_MIN_M/MAX_M kept as the band's source of truth: tests/config.test.ts
+  now enforces that every species except the bush (small on purpose) fits 8-12 m.
+
+T-E12 [CLOSED] pine -> snowy_taiga, dead_snag -> tundra.
+  Deeper bug found while wiring: treeSpeciesAt grows species only on GRASS
+  surfaces, so spruce was ALSO unreachable (taiga and snowy_taiga had DIRT
+  surfaces), and tundra's DIRT would have blocked the dead snag as well.
+  taiga / snowy_taiga / tundra surfaces are now GRASS (soil unchanged: DIRT).
+  New invariant test (tests/biome.test.ts): every species in the table is named
+  by at least one grass-surface biome - guards T-E11's new species too.
+  Worldgen change: taiga and tundra now grow plants and trees.
+  NEW TASK: T-E14 shrubland/steppe name 'bush' on DIRT surfaces (bush stays
+  reachable via meadow, so the invariant holds; the naming is still dead there).
+
+T-E13 [CLOSED] BiomeDef.treeSpecies: TreeSpecies | null; the cast in
+  treeSpecies() removed. Unknown species in the table now fails typecheck.
+
+T-A3  [CLOSED] Premise was stale: expect(ms).toBeLessThan(50) existed since
+  cdff912, but 50 ms is 16x the target. Tightened to 15 ms (~3x the slowest
+  documented measurement; 5.20 ms best-of-2 measured here). Comment records the
+  3 ms target as still open (T-J1) and says to tighten when it lands.
+
+T-A4  [CLOSED] Timeout tiers documented in vite.config.ts: 30 s default;
+  60 s mountain-column/strata/ore scans; 120 s region-simulation tests.
+  Positional 30_000 annotations (spawn, trees) are redundant, left alone.
+
+T-L7  [CLOSED] This task's own count corrected: 16 specs lack a test-case
+  section (10, 28, 31-44), not 19 - specs 25, 29, 30 have test-case lists.
+  docs/specs/README.md bullet restated.
+T-L8  [CLOSED] docs/plans/volumetric-tools.md got a "Status: built" header.
+T-L11 [CLOSED, now tracked in tasks.md] Cross-reference notes added at the top
+  of specs 34 and 43: 43 is the pure-model reference, 34 owns the rendering.
+T-L1..L4, L9, L10: verified landed in 38c07f8 (files checked, not just the
+  log); tasks.md checkboxes were stale, now [x].
+  Also refreshed the specs/README row for 37 (pine/dead snag now wired).
+
+Verification: npm run check GREEN after all changes - typecheck + 467 tests /
+55 files (3 new: 2 biome wiring, 1 tree band) + build.
+
+Next: push, open a PR so CI runs the annotated smoke; read the annotations via
+gh api; fix whatever it names. Then T-E11 (the 8 missing tree species).
+
+SESSION 2 FOLLOW-UP (same task batch)
+------------------------------------
+CI on PR #30/a0456dc: check passed; smoke annotation successfully reported:
+  smoke failure during "E opens the inventory and Escape closes it": Timeout 10000ms.
+This is the confirmed failing check, NOT proof of a pick-block/terrain root cause.
+Earlier timing/root-cause language above was speculative.
+
+Local smoke recovered without changing project dependencies: @sparticuz/chromium
+installed under /home/user/browser-tools via the allowed npm registry; its bundled
+Chromium 153 and libraries extracted under /tmp. CI uses an older pinned browser.
+Full local smoke reproduced the inventory failure after all preceding checks passed.
+The inventory check ALONE passed, including a separate run that opened/closed another
+browser context first. A second full run and a save/reload+inventory-only run timed
+out during page readiness (60 s), so performance/load variability is also present.
+Smoke diagnostics now distinguish E-open from Escape-close and print game state.
+T-A2a remains PARTIAL; neither full smoke nor CI is claimed green.
+
+T-E11 PARTIAL: added maple, fir, larch, baobab and palm parameters (13 species total),
+with deterministic 30% secondary-species mixing in deciduous forest, taiga, snowy
+taiga, savanna and rainforest. Added pure mixing tests, updated the reachability
+invariant, and tested new species' deterministic, distinct geometry and connected
+logs. Existing bounds/height tests exercise all species. Remaining: willow,
+mangrove, saguaro, species-specific silhouette work and owner visual confirmation.
+No claim that the entire 16-species task is complete.
+
+Review corrections:
+- T-A3 remains partial: a 15 ms regression guard is NOT the requested 3 ms guard.
+- Tree height-band test compared rounded block limits, which allowed 7.8 m at its
+  minimum. It now compares actual metres directly against 8 and 12.
+- HANDOFF/spec index/tasks updated to reflect 470 tests and partial statuses.
+
+Verification of latest code: npm run check exited 0; 470 tests / 55 files pass,
+typecheck and production build pass. git diff --check passes. Local full smoke
+remains RED as above; targeted inventory check passes. Owner-only T-C tasks were
+not performed or marked complete. Temporary repro files removed.
+
+================================================================================
+SESSION 3 - 2026-10-18 (continued on arena/22bcf3fa-voxel-game)
+================================================================================
+T-A2a root cause isolated, not merely a timeout increase:
+- CI at 3e0ae5b showed inventoryOpen:true AFTER the E-open assertion timed out.
+- Timer polling, focus restoration and a target-state wait alone did NOT fix it.
+- Instrumented the key event, poll times and HTMLCanvasElement.toDataURL. With a
+  fully loaded seed-1 world and tall grass in non-hotbar slot 10, opening the
+  inventory entered toDataURL at 21304.8 ms and returned at 41479.7 ms: 20174.9 ms
+  blocked on one new item icon. This reproduced without save/reload or focus loss.
+- Source atlas and icon canvases now request willReadFrequently:true (CPU-backed).
+  Same loaded-world repro: 21478.9 -> 21481.7 ms, 2.8 ms, and E/Escape passed.
+- Added three Node tests: readback-friendly context creation, same nearest-neighbour
+  tile draw, one PNG encoding per cached state, and source-atlas context/pixels.
+- E/Escape smoke now explicitly loads the world and adds an item outside the HUD
+  hotbar before opening, so SMOKE_ONLY exercises the uncached-icon regression too.
+- Kept the 10 s open/close assertions. No dependency changes.
+
+Other smoke findings uncovered once inventory worked:
+- Full local run passed inventory and mining, then screenshotting glowstone timed
+  out at 30 s. Its screenshot gets a bounded 60 s software-rendering allowance;
+  it is diagnostic imagery, not a frame-time assertion.
+- CI at eb90f0e passed check and inventory, but mining pickup saw 7 dropped items
+  and no +1 grass. The test left mining HELD during screenshot readback, so extra
+  blocks could break before it released the button. Removed that mid-mining
+  screenshot, and release the button atomically in the poll observing target AIR.
+  A finally block releases on timeout too. Exact-one-item and crack-stage checks
+  remain. Isolated test initially exposed another stale target: after looking
+  down, non-null could still be the old forward target. Now waits for the target
+  below the player's feet. Focused mining/pickup smoke passes.
+- Play was selected by .menu-button.primary, now shared with the mode picker;
+  uses role=button, exact name Play instead. Main page reactivated after each
+  auxiliary context closes, and pick-block waits for targeting rather than 300 ms.
+
+T-F2 DONE: absolute star quaternion from timeOfDay around celestial north at the
+configured latitude. No accumulated frame delta; no geometry rewrite. Two tests
+check quarter/full-day turns, pole invariance, repeatable time jumps and recentering.
+
+T-E14 DONE: shrubland and steppe surfaces GRASS, soil unchanged DIRT. New invariant
+checks EVERY biome naming a tree is generator-eligible, not just each species having
+one valid home. Both real climate lookup fixtures are checked. Worldgen change.
+
+T-K3 audit corrected, remains PARTIAL: Game already has the pointer-lock failure
+listener and E access from the pause menu. The automated failure's cause was icon
+readback; the planned HUD Inventory button and owner playtest still remain.
+
+Reviewed diffs and ran npm run check: exit 0, 476 tests / 57 files, typecheck, build.
+Full smoke and CI results for the latest changes are recorded below when complete.
+Temporary trace/repro scripts removed; browser installation remains outside repo.
+
+Final follow-up smoke hardening:
+- A later full local run passed through inventory, mining, glowstone, deep/high
+  chunks, volumes and physics. Water's transient second-cell absence assertion
+  raced two browser RPCs against live game ticks. Same-frame non-flow is now checked
+  inside the placement evaluate; smoke checks eventual adjacent/two-cell flow.
+  Exact delay is covered in flow.test.ts using the config WATER_TICK_DELAY: first
+  cell tick five, second empty through nine, second flowing on ten. Focused flow
+  test (9 cases) and focused browser water check pass.
+- Auxiliary menu/persistence pages use render distance 2 so their GPU contexts don't
+  compete at full distance with the main world. Primary world, final FPS workload
+  and its default render distance 8 are unchanged. No checks skipped.
+- Pause inventory checks use timer polling and phase-specific errors. Focused
+  Play -> pointer-lock release -> Inventory -> Escape check passes.
+
+FINAL CI at 615c101, run 39075601314:
+  https://github.com/MeetToast5578/Voxel_game/actions/runs/39075601314
+  check SUCCESS, 55 seconds (476 tests / 57 files, typecheck, production build)
+  smoke SUCCESS, 6m30s (full suite, all checks enabled)
+T-A2a CLOSED. T-F2 and T-E14 CLOSED. T-K3 stays partial (HUD button + owner check).
+The separate final local full smoke run's outcome is recorded next.
+FINAL LOCAL FULL SMOKE: SUCCESS, Chromium 153, all 24 checks enabled.
+  fully loaded 814 ms after checks; 7 fps (SwiftShader), 4012 chunks loaded,
+  2063 meshed, 339 draw calls. Performance is not the owner's hardware result.
+All one-shot test processes exited; no preview/test server left running.
+Reviewed git diff --check: clean. No generated browser/artifact files tracked.
+
+2026-10-18 — Follow-up batch: T-F9 / T-E15 / T-K3 HUD button
+Scope: the three tasks recommended in the discovery pass; no biome flowers,
+wet-surface rendering, slabs or unrelated backlog expansion.
+- Preserved the existing dirty checkout. Saved touched-file review baselines in
+  /tmp/voxel-next-task-baseline; no reset, blanket commit, branch change or push.
+- T-F9: reproduced three failing game-clock regressions before the fix (loading
+  guard already passed). Advance Calendar beside the day clock after ready.
+  Season boundary/year wrap, restored time and existing menu behaviour covered.
+- T-E15: reproduced leaves on dead_snag despite radius zero. Guard both branch
+  blobs and canopy. Four seeds x twelve anchors cover no leaves, deterministic
+  connected logs and bounds; all leafy species retain deterministic foliage.
+  Worldgen caveat: unedited snags regenerate with changed branches/no leaves;
+  edits remain. Leafy paths and RNG consumption are unchanged.
+- T-K3: added native HUD Inventory button, shared toggle, E hint, focus ring and
+  disabled/loading/open state. Only its stacking rises above menu overlays;
+  inventory remains above it. Store originating menu mode so start-menu access
+  returns to start (not pause), pause returns to pause, and play still requests
+  capture on close. Five state/lifecycle tests pass, including cursor overflow.
+- Reviewed production/test diffs against the saved pre-batch baseline. No new
+  dependencies in the game, no test skips/timeouts raised, no save format changes.
+- npm run check: PASS, 487 tests in 58 files + typecheck + production build.
+- Browser setup is external to the repo (@sparticuz/chromium 153). Initial smoke
+  could not launch because its AL2023 shared libraries were not extracted; fixed
+  environment by extracting the package's bundled libraries, not changing tests.
+  Full smoke restarted with all checks enabled; result pending.
+FINAL FOLLOW-UP VERIFICATION (local, current branch):
+- Full npm run smoke: PASS, exit 0, all 25 checks enabled on Chromium 153.
+  Includes HUD start-menu pointer-free click, pause-overlay HUD click,
+  Tab/Shift+Tab visible focus, Enter and Space activation, E/Escape/Close,
+  originating-menu restoration, disabled HUD while open, no capture on return.
+  Existing keyboard inventory, saves/reload, mining/drops, building, physics,
+  water, lighting and worker checks all retained and passed.
+- Final measurement: fully loaded 725 ms after checks; 6 fps on SwiftShader,
+  3967 chunks loaded, 2048 meshed, 340 draw calls (not owner hardware).
+- Inspected screenshots/hud-inventory.png: button is legible at top right with
+  its visible focus ring, above the menu; other HUD elements remain dimmed.
+- T-F9 and T-E15 CLOSED. T-K3 HUD implementation/automation complete, but task
+  remains PARTIAL for the owner's original physical-browser verification.
+- No new CI run, commit or push is claimed. The previous CI evidence remains
+  historical. Browser process and preview server exited successfully.
+- Final re-run npm run check after documentation/review: PASS, 487 tests in
+  58 files, typecheck and build. Output bundle hashes match the successful
+  smoke build. Final git diff --check: clean. Generated outputs stay ignored.
+
+2026-10-18 — Autonomous implementation pass (user authorized review, tests and pushes to main)
+Baseline: clean checkout at 517de76; origin/main verified at the same commit.
+- Re-ran npm run check: PASS, 487 tests / 58 files, typecheck and build.
+- Re-ran full browser smoke with system Chromium 154 and SwiftShader: PASS,
+  all 25 checks enabled. Logs: /tmp/voxel-baseline-{check,smoke}.log.
+- Real mouse/audio/hardware FPS checks T-C1..C9 and original inventory complaint
+  remain owner checks. Headless success does not close these tasks.
+T-E11 implementation in progress:
+- Added willow hanging foliage, mangrove prop roots and branching saguaro cactus.
+- Appended cactus state 52 and procedural atlas tiles; preserved every old state ID.
+- Wetland anchor selection uses temperature, precipitation and actual shallow
+  river/lake depth; cacti grow on desert sand. Ordinary trees reject submersion.
+- Initial habitat tests failed because test climate fields were incorrectly mapped
+  from [-1,1] to Celsius. Corrected the fixtures; all four integration cases pass.
+- Initial aggregate bounds test exceeded 30 s under concurrent software rendering.
+  Split into one case per species, retaining every one of the 441 anchors and all
+  bounds assertions. No timeout increased and no assertions removed.
+- Species silhouettes and full regression review still pending; T-E11 stays partial.
+T-E11 review and final batch result:
+- Inspected the 16-species gallery. Found old round conifer/palm silhouettes;
+  implemented tapered conifer crowns, eight palm fronds on a clear trunk, flat
+  acacia/baobab crowns and a thicker baobab trunk. Added shape regressions.
+- Final npm run check: PASS, 515 tests / 59 files, typecheck and production build.
+- Full browser smoke: PASS, all 25 checks, including cactus picker and icon.
+  Final workload: 4012 loaded / 2063 meshed chunks, 340 draw calls, 4 FPS on
+  SwiftShader. This is a software-rendering measurement, not owner hardware FPS.
+- Reviewed state registration, save-name round trips, habitat selection, generated
+  trunk placement, stem connectivity, bounds and the source/test diff.
+- git diff --check: clean. No dependency changes, skipped tests or timeout increases.
+- T-E11a checked DONE; T-E11b stays OPEN for owner review, parent T-E11 PARTIAL.
+- T-I10 checked DONE from existing code + baseline tests. Added T-I11 for survival
+  acquisition rules; corrected stale GUI, redo and suggested-order descriptions.
+- Follow-on rendering review reproduced four failing regressions (in separate,
+  not-yet-committed tests): sun/daylight clock mismatch, precipitation altitude,
+  roof/coordinate errors and wetness overshoot. These are the next repair batch.
+
+2026-10-18 — Rendering correctness and phase-4 features (in progress)
+- Tree batch bef031a pushed successfully to origin/main after review and passing
+  full check + smoke. Owner-only acceptance tasks remain open.
+- Reproduced four rendering regressions before fixes: sun was at the wrong clock
+  phase, precipitation ignored camera altitude and used wrong block/metre units,
+  roof culling was reversed, and wetness overshot 1 on a long frame.
+- Fixed those failures and the weather model's seasonal phase. Replaced two
+  vacuous weather tests with a grid that must actually observe rain/snow.
+- Fixed sky clipping when view distance updates reduce the far plane; restored
+  day/night fog colour, removed non-rotating screen-space pseudo-stars, and made
+  the sky shader independent of camera distance from the world origin.
+- Added lunar phases from the saved year clock, exposed wet-top darkening, and
+  cached humidity/dawn valley fog which fades above the valley walls.
+- Review caught missing normals on chunk meshes: replaced normal-attribute wet
+  exposure with shader derivatives. GPU regression geometry now omits normals.
+- GPU checks passed: dry/wet exposed pixels 255 -> 178; sheltered 128 -> 128;
+  day/night sky means 154.53 -> 4.21; translated sky mean unchanged; new/quarter/
+  full/last-quarter lit pixel counts 0 / 2614 / 5228 / 2614. Cold Vite cache passes.
+- First full rendering smoke failed in the HUD Inventory accessibility case at
+  a 5-second state wait, after all preceding checks passed. Not accepted as a
+  passing batch. Added phase/focus/visibility diagnostics without weakening
+  assertions or increasing timeouts. Final full-code smoke and diagnosis pending.
+Rendering batch final validation and review:
+- npm run check: PASS, 527 tests / 62 files, typecheck and production build.
+- Full final-code gameplay smoke: PASS, all 25 checks; 3967 loaded / 2048 meshed
+  chunks, 340 draw calls, 4 FPS on SwiftShader. No physical hardware claim.
+- Focused HUD accessibility retest: interaction check PASS with phase/focus/
+  visibility diagnostics and auxiliary-page error collection. First full failure
+  overlapped other CPU/GPU validation; subsequent full run was isolated. The
+  intermittent failure is retained in this log; no timeout or assertion weakened.
+- GPU script passes with both warm and cold Vite caches. Inspected the resulting
+  screenshots/render-regressions.png: dry/wet tops, day/night sky, lunar discs.
+- Initial GPU harness run hit only a missing favicon after pixel assertions had
+  succeeded. The isolated fixture now serves an empty favicon; application errors
+  are still collected. A Vite virtual module avoids duplicate Three.js instances
+  and assumptions about optimizer cache paths.
+- Added render-smoke.mjs to CI before full gameplay smoke; dependencies unchanged.
+- Reviewed weather units, altitude/roof conditions, bounded wetness, shader cache
+  separation, missing-normal geometry, lunar time jumps, fog altitude/cache and
+  underwater priority. Preserved mesh output and save format.
+- T-F1, T-F3, T-F4 and discovered repairs T-F10..T-F13 checked DONE in tasks.md.
+  T-F14 tracks unconnected lightning intensity/delayed thunder; not claimed done.
+- Updated README, handoff and spec index. git diff --check clean.
+
+2026-10-18 — Riverbed sediment and freshwater cave protection (T-D1/T-D5)
+- Added clay at state 53 with a procedural texture; all existing block IDs remain.
+  Riverbeds receive seeded 2.4 m patches of sand/gravel/clay through the soil depth.
+- Found cave roof protection only consulted sea level, leaving elevated freshwater
+  beds vulnerable. It now uses local river/lake water level; dry land caves remain.
+- Prevented terrestrial plants from replacing submerged water cells.
+- Targeted generation/atlas/registry/habitat tests: PASS, 52 tests in five files.
+- Review found an out-of-bounds lower cave assertion (the roof extends 17 blocks).
+  Replaced it with a real generated lower chunk. All five adversarial sediment/
+  roof tests pass, including forced open cave noise and preserved dry entrances.
+- Initial full typecheck caught a narrow numeric-union .includes argument in the
+  updated sediment test. Replaced it with equivalent .some equality membership.
+  Full check, GPU and gameplay validation restarted sequentially; results pending.
+- Added a reusable worker benchmark for region simulation, cold column tops,
+  spawn search, generation and meshing with mesh hash. Not yet run; browser/CPU
+  validation must be idle for interpretable performance evidence.
+Riverbed batch final result:
+- npm run check: PASS, 533 tests / 63 files, typecheck and production build.
+- Full gameplay smoke: PASS, all 25 checks; GPU rendering regressions PASS.
+- Focused Blocks-tab smoke: PASS, now explicitly selects clay and checks its icon.
+- Added a separate closed-cave-noise test at hash-selected plant-eligible cells;
+  the forced-open-cave fixture alone would suppress plants and miss that bug.
+- T-D1 and T-D5 checked DONE. Reviewed the sediment scope, old state IDs, wet/dry
+  cave guards, plant exclusion, negative patch coordinates and deeper roof test.
+- Rendering batch 17f8db6 pushed successfully to origin/main.
+- GitHub Actions status reads are blocked: api.github.com returns proxy Forbidden
+  via both native HTTPS and gh. Native Git read/push works. No CI success claimed.
+- No dependency declarations or lockfile changed. git diff --check clean.
+Performance follow-on:
+- The first benchmark sampled ground-height chunks (generation 1.51 ms, mesh
+  2.56 ms on Node 24). Review corrected it to the existing visible-top fixture,
+  including canopies. The earlier ground-only figure must not close T-J1.
+- Installed Node 22.23.3 through verified npm artifacts in the external workspace
+  npm cache, with no repository dependency changes, matching CI's Node major.
+- Corrected Node-22 worker fixture (50 seed-1 visible tops, three full passes):
+  generation mean 1.396 ms; mesh mean 4.011 ms. The explicit 3 ms mesh assertion
+  FAILS, proving the guard detects the known budget gap. T-J1/T-A3 stay open.
+- Mesh data hash before optimization: 803974a7770501157d9409fc8622d26838a45e03e5c06ed3661d8989843715ae.
+- Capturing a CPU profile before making a performance change; benchmark script
+  remains part of the next, uncommitted performance batch.
+
+2026-10-18 — T-J1/T-A3 mesh budget and T-J10..T-J12 measurements
+- CPU profile (30 visible-surface passes, Node 22) identified buildChunkMesh and
+  buildRegion as dominant meshing costs. Baseline profile files in
+  /tmp/voxel-mesh-profile; baseline mesh hash recorded above.
+- Replaced scalar 16-cell lighting-region row copies with Uint16Array.set of a
+  subarray. No public API, light algorithm, face output or allocation lifetime
+  changed. Candidate mean 2.598 ms; repeated final mean 2.787 ms (all three pass
+  means <=2.887 ms), versus failing pre-change 4.011 ms.
+- Automatically compared mesh hash before/after: EXACT MATCH,
+  803974a7770501157d9409fc8622d26838a45e03e5c06ed3661d8989843715ae.
+- npm run check: PASS, 533 tests / 63 files, typecheck and build. Existing
+  light/mesher tests unchanged. GPU script PASS. Full gameplay smoke PASS,
+  all 25 checks including auxiliary-page error collection; 4012 loaded / 2063
+  meshed chunks, 340 draw calls, 4 FPS on SwiftShader.
+- CI now includes isolated worker generation/mesh 3 ms guards after check;
+  the separate parallel seed-42 test retains its 15 ms broader regression guard.
+- Final Node-22 measurements: warm generation mean 1.365 ms; cold column tops
+  (12 fresh generators, surrounding regions pre-warmed) mean 44.031 ms / median
+  44.625; spawn seeds 1..30 mean 140.215 / median 115.793 ms; region seed 1337,
+  three regions mean 77.037 / median 65.866 ms. Cold preparation is NOT <=3 ms.
+- T-A3/T-J1/T-J10/T-J11/T-J12 checked DONE; T-J9 stays PARTIAL for cold streaming.
+- Riverbed batch b486eda pushed successfully to origin/main. GitHub API remains
+  proxy-blocked, so CI success is not claimed. No dependency or lockfile changes.
+- Starting independent planned slab work in the working tree. This commit stages
+  only the verified performance snapshot and its instructions/evidence.
+
+2026-10-19 — CI repair: mesh budget, crack-stage observation, auxiliary-page contention
+Baseline: single-commit snapshot 49bc873 (origin/main). Local check passed (533 tests), but the
+worker benchmark failed locally at mesh mean 3.555 ms against the 3 ms budget (passes 4.012 /
+3.231 / 3.423), reproducing the red `check` job. Smoke failed locally exactly as CI reported, and
+a second failure appeared in sequence at the mining pickup wait.
+Mesher and light performance (T-J1 / T-A3):
+- Profiled with an isolated fixture (50 seed-1 visible-top chunks): per chunk before changes,
+  region 0.73 ms, sky light 0.53 ms, block light 0.27 ms, face loop ~1.85 ms.
+- Face loop: per-state tables (shape, layer, cullSame, top height, tiles) built once from the block
+  registry; flat AO/corner/UV/shade tables; region and padded-index offsets precomputed per face;
+  quads written straight into growable typed arrays instead of number[] boxes plus a final copy.
+- Region and light: buildRegion/computeSkyLight/computeBlockLight accept an optional output array,
+  and the mesher reuses one region, two light volumes, one padded volume and two vertex builders
+  per thread. Measured allocation cost was ~0.28 ms for the 221 KB region alone.
+- buildRegion now copies each 16-cell row as eight 32-bit words (rows are contiguous and aligned),
+  with a 16-bit element fallback for arrays whose byte offset or length prevents a Uint32 view.
+  A first attempt using a plain 16-element loop was 2.7x SLOWER than subarray+set in real data
+  (1.86 vs 0.73 ms) despite winning an isolated micro-benchmark; it was reverted before commit.
+- Result on Node 22.22.3: mesh mean 1.715 ms (passes 2.114 / 1.502 / 1.529), generation 1.842 ms,
+  mesh SHA-256 unchanged at 803974a7770501157d9409fc8622d26838a45e03e5c06ed3661d8989843715ae,
+  so every mesh buffer byte is identical to the pre-change build.
+- The 3 ms assertion and both guarded budgets are unchanged; the benchmark now prints the measured
+  means, medians, pass means and mesh hash as a GitHub Actions notice, and on failure as an
+  `::error` annotation with the same numbers. CI job logs are not retrievable from this environment.
+Smoke failures:
+- "no crack stage shown while breaking Grass": at software-rendering frame rates a 0.5 s block can
+  go from stage 0 to broken between two Playwright polls. Game.renderFrame now records
+  `breakStageSeen` on every frame that shows cracks; `resetBreakStage()` clears it, and
+  `state()` exposes it. The smoke check still requires a stage (or the recorded flag) before the
+  break and does not relax the plant exception.
+- Auxiliary `page.goto` timeout: a second page loading while the primary world renders competes for
+  the CPU and the SwiftShader context. `setIdle(true/false)` (debug API, idempotent) pauses the
+  primary game's simulation and rendering only while an auxiliary page loads; every auxiliary check
+  still requires its own page to reach `ready`. Auxiliary loads now wait for DOMContentLoaded and
+  then for `ready` instead of the `load` event.
+- Sequence-dependent mining failure (block never broke within 8 s while the diagnostics showed
+  `breakStage: 5`, fps stale at 31-32 and no frame progress): Chromium throttles
+  requestAnimationFrame on the page that is no longer "visible" after the suite opens and closes
+  auxiliary tabs. smoke.mjs now launches with `--disable-background-timer-throttling`,
+  `--disable-backgrounding-occluded-windows` and `--disable-renderer-backgrounding`. No game
+  behaviour and no assertion depends on that; the check passed in the full suite afterwards.
+- Added `frames` to the debug state (frames rendered since page load) so a starved render loop is
+  visible in any failure message.
+Verification: `npm run check` PASS, 542 tests / 63 files, typecheck and production build.
+Node 22 benchmark PASS with the hash above. Full gameplay smoke PASS, all 25 checks, final
+measurement 4012 chunks loaded, 2063 meshed, 340 draw calls, 20 fps on SwiftShader (software
+rendering, not owner hardware).
+Environment: the Playwright browser CDN is blocked. Smoke ran on Chromium 138 from the
+`@sparticuz/chromium` npm artifact with its AL2023 NSS libraries, both unpacked under /tmp and
+outside the repository; no dependency, lockfile or CI change.
+
+================================================================================
+2026-10-19 — T-D2: caves beyond noise (four systems)
+================================================================================
+Why: the underground was a single spaghetti-noise network (spec 5). T-D2 asks for cheese
+caverns, noodle tunnels and ravines alongside it, and the user's priority is terrain.
+
+Design: new src/world/caves.ts holds pure, seed-driven logic; tuning lives in src/config.ts.
+- cheese: 3D field at 96 m / 48 m scales, carved above 0.68 deep. Within 24 blocks of the
+  surface its threshold rises to 0.84 (CHEESE_SURFACE_PUSH = opening - threshold), so caverns
+  flatten out into a roof instead of pocking the ground.
+- spaghetti: unchanged field pair at 40 m / 24 m, d < 0.012.
+- noodle: two 3D fields, vertically stretched 2.5x, carved only where both are near zero and
+  at least 4 blocks of cover exist; thin level tunnels.
+- ravine: a 2D ridge zero set, band |r| < 0.012 under a 6-block roof, half-width shrinking to
+  zero over RAVINE_DEPTH_M (30 m = 100 blocks at 0.3 m/block), which reads as a sloping canyon.
+TerrainGenerator now owns `caves` and calls caveKind(); its own caveNoiseA/B and local
+CAVE_THRESHOLD are gone. caveTop() (spec 14 shore/river/lake roof) still caps every system,
+and y=0/1 remain uncarvable. The generator's isCave() is a thin wrapper over isCaveBlock().
+
+Calibration (seed 1, ~110 k real-world cells from y=2 to the surface, scripts/_cave-measure.mjs):
+cheese 6.28 %, noodle 1.02 %, spaghetti 2.84 %, ravine 0.87 %, total 11.0 % carved; 89.0 %
+solid. Surface-mouth rate at opening 0.84: 2.05 % of sampled columns (was 3.3 % at 0.80).
+Tuning changed twice during calibration: cheese 0.66->0.68 and ravine band 0.02->0.012 with
+depth 36->30 m, to keep each system inside its volume band; the test ceilings were NOT raised
+(the earlier combined 8 % ceiling is now 16 %, with each system bounded separately, and the
+reason is recorded in spec 45 and the test names).
+Generation cost: 1.70-1.88 ms/chunk in a focused 50-chunk warm run, benchmark later.
+
+Tests: tests/caves.test.ts grew from 3 to 9 cases (per-system share bands, total band, nothing
+above the surface, only cheese at the surface and under 6 % of columns, 4-block roof for the
+other systems, ravine taper measured per depth layer, determinism across seeds, isCaveBlock
+agreement, plus the original fraction/bottom/shore cases). tests/riverbed.test.ts previously
+forced carving by overwriting the old private noise fields; it now injects a four-field
+`caves` object (always-open and always-closed variants) through the same public shape.
+Docs: new docs/specs/45-caves.md; T-D2 marked done in docs/tasks.md.
+
+Smoke: the placement check hit a real sequence dependency. After the straight-down break, the
+wide player body (1.6 blocks) stands in a dip and a single fixed aim (-0.6 pitch) can target a
+cell whose neighbour overlaps the body or is not air, so placeTarget() correctly refuses. The
+check now tries six aim points around the player and fails with the full state if none can be
+placed. This is a test robustness fix, not a gameplay change; placing inside the player's body
+must keep being refused.
+
+Verification (final):
+- `npm run check`: PASS, 548 tests / 63 files, typecheck and production build.
+- `node scripts/benchmark.mjs --assert-generation-budget --assert-mesh-budget`: PASS.
+  Generation 2.002 ms (budget 3), meshing 1.566 ms (passes 1.605 / 1.665 / 1.427, budget 3),
+  mesh fixture hash unchanged (803974a777..., the benchmark fixture is synthetic, so terrain
+  changes do not move it), region simulation 100.96 ms, spawn search 189.81 ms.
+- Full gameplay smoke: PASS, all 25 checks, 4231 chunks loaded / 2139 meshed / 438 draw calls,
+  11 fps at the final measurement on SwiftShader (software rendering in this sandbox).
+- CI on 98706b2: `check` PASS (1m13s); `smoke` FAIL 4m19s at the place-brick check. The local
+  reproduction of 98706b2 failed at the same check, so the fix below is in this commit and a new
+  run must be observed before smoke is called green.
+
+Smoke chain fixes found while verifying the new terrain (all test-side; no gameplay change):
+- place-brick: six aim points instead of one fixed pitch, because the wide body in a post-break dip
+  can legitimately refuse a placement; the failure now prints the state.
+- save/reload: the primary game is idled with the existing setIdle hook while the fresh save page
+  loads, renders and reloads. Two software-rendered worlds on this runner starved each other and
+  the check timed out at 60 s. Waits are now labelled (`world ready after reload`, `area meshed at
+  y ...`), and area-mesh waits allow 90 s.
+- screenshots: the primary page's default Playwright timeout is 90 s. A 30 s screenshot timeout
+  fired while chunk meshes streamed in (clouds check); the frame was slow, not wrong.
+- crack stages: the check now mines a freshly placed grass block on the clean y = 8390 platform
+  instead of whatever the earlier checks left under the spawn player. After the new caves, that
+  cell could already be air, which ends the mining wait immediately and shows no stage; the
+  mechanics under test (0.5 s of stages, then the drop) are unchanged. The player is restored.
+- water-over-ticks: the platform air is cleared before the floor is rebuilt, and the previous
+  physics check cleans 9 blocks around its water instead of 4. With the faster idled frame rate
+  the old 4-block cleanup left flowing water outside it, which re-flooded the next check's cells
+  and made the "no synchronous flow" assertion fail.
+
+CI result: run 39259305015 on 58ae409 (PR #32) PASSED both jobs — `check` 1m5s with
+meshing mean 1.243 ms and generation mean 1.256 ms (both 3 ms budgets) and the same mesh
+fixture hash; `smoke` 6m58s, all 25 checks. PR #31 (98706b2) had already been merged to
+main as 697f926, so the T-D2 batch went out as a new PR rather than an update.

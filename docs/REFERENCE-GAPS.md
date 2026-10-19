@@ -50,7 +50,7 @@ Game status comes from `docs/ROADMAP.md` and `docs/HANDOFF.md`. Reference status
 | 7 | 1 Game modes | partial (flight toggle) | partial (flight ignores collision) | `EulerCamera.java` `toggleFlight` |
 | 7 | 2 Vitals (health, fall damage, drowning, hunger, body temperature) | open | absent | n/a |
 | 7 | 3 Mining time and crack overlay | partial (drops only) | absent (instant break) | `ChunkManager.java` `castRay` |
-| 7 | 4 Items and inventory | partial (dropped items in game) | partial (falling items, no pickup, no inventory) | `ItemHandler.java` `processItemPhysics` |
+| 7 | 4 Items and inventory | done on main (spec 24: stacks, drops, pick-up, held block) | partial (falling items, no pickup, no inventory) | `ItemHandler.java` `processItemPhysics` |
 | 7 | 5 Crafting and furnaces | open | absent | n/a |
 | 7 | 6 Food | open | absent | n/a |
 | 7 | 7 Beds and spawn | open | absent | n/a |
@@ -97,10 +97,10 @@ Game status comes from `docs/ROADMAP.md` and `docs/HANDOFF.md`. Reference status
 ### 4. Dropped items and inventory (phase 7 items 3–4)
 
 - **Reference:** `ItemHandler.processItemPhysics` makes broken blocks fall and spin. Nothing picks them up, and there is no inventory.
-- **Ours (updated):** broken blocks now drop as items that fall, land, and can be picked up, and the F3 overlay counts pickups. Spec 23 builds the design in TypeScript (`src/items/droppedItems.ts`). Items are not saved, and there are no stacks or inventory screen yet. The hotbar still holds block ids (`src/player/hotbar.ts`).
-- **Roadmap:** stacks, an inventory grid and saving the items remain. Survival mode (phase 7 item 1) is listed first.
-- **Our note:** items are a plain list in `Game`, not the entity system, so the entity system (phase 6 item 1) is still needed for mobs.
-- **Haiku-sized?** No, not yet. Survival mode and the inventory design come first.
+- **Ours (on `main`):** broken blocks drop as items, with pick-up, a 36-slot inventory and a held block. Spec 24 (`docs/specs/24-inventory-and-items.md`) describes it, and `src/items/itemEntities.ts` and `src/items/looseBodies.ts` implement it. A parallel dropped-items version from this branch was dropped in favour of it.
+- **Roadmap:** phase 7 items 3–4 are covered by spec 24. Crafting, tools and food remain. Survival mode (phase 7 item 1) is listed first.
+- **Our note:** `main`'s items are not on the entity system (phase 6 item 1), so mobs still need that system.
+- **Haiku-sized?** No, not yet. Survival mode and the crafting design come first.
 
 ## Corrections to the earlier version of this doc
 

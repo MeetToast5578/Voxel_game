@@ -1,6 +1,6 @@
 # Roadmap: Voxel World Simulator
 
-Last updated 2026-10-15. This replaces the backlog in `HANDOFF.md`. Phase 1, 1b and the first items of phase 2 are merged (specs 1–14).
+Last updated 2026-10-17, checked against the code. This replaces the backlog in `HANDOFF.md`. Phase 1 and 1b are merged (specs 1–10). Phases 2–7 are partly merged; each phase below says what is done, partial or not started. The owner's open choices are in `HANDOFF.md`, "Open decisions".
 
 ## Vision
 
@@ -102,11 +102,17 @@ Goal: the same land in meters, filled with finer blocks, so the world gets more 
 
 **Done when:** a forest at 0.6 m blocks looks more detailed than before at the same world size, trees measure 8–12 m in the F3 overlay, and CI is green.
 
+**Status (2026-10-17):** done in code (specs 9–10). Not met: the trees are 4.8–7.2 m (oak), because the species table (spec 37) is in blocks and the sizes were never scaled to 0.3 m. This is open for the owner to decide (`HANDOFF.md`, Open decisions 1).
+
 ### Phase 2: Terrain
 
 Goal: geography that looks real from the ground and from a mountaintop.
 
-**Status (2026-10-15):** items 1 and 2 are done (specs 11–12). Spec 13 switched the generator to those fields, and spec 14 added the 3D density (part of item 4). Geology slice 1 (spec 15: strata and bare rock) and slice 2 (spec 20: limestone, slate, basalt, deepslate) are done. Next: ores, gravel and clay in the rest of item 5. Item 3 needs a larger model to plan it first.
+**Status (2026-10-17):**
+- Done: items 1 and 2 (specs 11–12), item 3 region simulation (spec 41: drainage, lakes, rivers and moisture feed the terrain), item 4 (specs 13–14 and the strata part of item 5, specs 15 and 20), ores (spec 26), and the 60 m mountain cap (spec 22).
+- Partial: item 5, gravel and clay in riverbeds (not yet built, but rivers now exist); item 6, caves are basic noise caves without aquifers, lava pools or ravines.
+- Not started: item 7 (coasts beyond the beach band) and item 8 (horizon LOD).
+- Not yet checked by eye: that rivers run without breaks at region seams.
 
 1. **Debug map** (`?map=1`). A top-down 2D render of the generator: height, biomes, rivers, moisture, region seams. It's the main tuning tool for this phase, so it comes first.
 2. **Climate and shape fields.** Large-scale noise for:
@@ -133,8 +139,8 @@ Goal: geography that looks real from the ground and from a mountaintop.
 5. **Geology.**
    - Strata that follow large-scale noise: granite, diorite, andesite, limestone, sandstone, slate, basalt, plus a deep "deepslate" layer.
    - Soil depth set by slope (bare rock on steep slopes).
-   - Gravel and clay in riverbeds.
-   - Ores by depth and rock type.
+   - Ores by depth and rock type — done (spec 26).
+   - Gravel and clay in riverbeds — wait for rivers (item 3).
 6. **Caves.**
    - "Cheese" caverns, spaghetti and noodle tunnels, ravines.
    - Aquifers: local water tables, so caves below sea level aren't all flooded.
@@ -148,6 +154,8 @@ Goal: geography that looks real from the ground and from a mountaintop.
 ### Phase 3: Biomes and flora
 
 Goal: every place has a recognisable character.
+
+**Status (2026-10-17):** items 1, 2, 4 and 5 are partly or fully in code: climate at block resolution (spec 31), the biome table (spec 32), the feature registry (spec 30, with trees as its only feature), and tree species (spec 37, whose sizes are open, see `HANDOFF.md`). Item 3, blending across borders, is **not wired**: `blendSurfaceBlocks` exists but nothing calls it. Item 6 is partly done (tall grass, ferns, poppies, dandelions, mushrooms). Item 7 is open.
 
 1. **Climate model at block resolution.**
    - Temperature = base field − altitude lapse (6.5 °C per km) ± seasonal amplitude, which comes in phase 4.
@@ -180,6 +188,8 @@ Goal: every place has a recognisable character.
 
 Goal: time and climate are visible and felt.
 
+**Status (2026-10-17):** items 1–4 are partly done. Done: the calendar with seasons and seasonal day length (spec 29), the sky dome with sun, moon and stars (spec 33), the weather model (spec 32), and rain or snow particles with lightning (spec 34). Rotating stars are now implemented (T-F2, 2026-10-18). Missing: moon phases, wet darkening (the wetness value is computed but nothing uses it), morning valley fog (only the static distance fog), the F3 weather lines, seasonal foliage (item 5), and smooth lighting (item 6).
+
 1. **Calendar.**
    - A year of 4 seasons × N days (config; default 7).
    - Day length changes with the season, for a configured world latitude (default 45°).
@@ -207,6 +217,8 @@ Goal: time and climate are visible and felt.
 ### Phase 5: Living world
 
 Goal: the world changes without the player.
+
+**Status (2026-10-17):** item 1 is done (the tick queue, spec 25 slice 1, and random ticks, spec 38, both budgeted and shown in F3). Item 2 is partly done: grass spreading (spec 36) and leaf decay (spec 40). Snow, crops and saplings are open. Item 3 (catch-up) is open. Item 4 (fluids) is done for water: 8 levels with a falling flag, spreading and draining, and the mesh at its level (spec 25 slice 4). Lava is not in the game. Item 5 is partly done: player buoyancy and drag (spec 16), wading and splash (spec 17), loose bodies that float or sink by density (spec 25 slice 6). Currents, and the player pushed by a river, are open. Item 6 is open. The sandbox physics program (spec 25) is built through slice 6: rule fields, falling sand and gravel, flowing water, structural collapse and loose bodies.
 
 1. **Tick system.**
    - Random ticks: K random cells per loaded chunk per tick.
@@ -247,6 +259,8 @@ Goal: the world changes without the player.
 
 Goal: animals that live believably, and danger at night.
 
+**Status (2026-10-17):** item 1 is partly done: `src/world/entity.ts` (spec 42) is a pure entity system with gravity and collision, and the game does not use it yet. Everything else in this phase is open.
+
 1. **Entity system.** Components, per-chunk persistence, and despawn and respawn rules.
 2. **Shared physics.** Reuse the player's AABB physics, including step-up. Bodies come in sizes of 1, 2 and 3 blocks tall.
 3. **Models.** Built procedurally from textured cuboids, with walk, idle and eat animations.
@@ -266,7 +280,7 @@ Goal: animals that live believably, and danger at night.
 
 Goal: a reason to engage with every system above.
 
-**Status (2026-10-15):** item 3 is partly done and item 4 is partly done, by spec 23. Broken blocks drop as items that fall, land and can be picked up, and the F3 overlay counts pickups. Items are not saved, have no stacks and no inventory screen; those are still open.
+**Status (2026-10-17):** items 1 and 2 are done (spec 34): survival and creative modes, health, fall damage, drowning, and death with respawn. Hunger is stored and shown but never changes. Item 3 mining is partly done: hardness and crack stages (spec 24), but no tools yet. Item 4 is partly done (spec 24). Items 5–7 are open.
 
 1. **Game modes.** Survival, and creative (today's sandbox with flight and instant breaking).
 2. **Vitals.**
@@ -274,8 +288,8 @@ Goal: a reason to engage with every system above.
    - Fall damage from impact speed in m/s.
    - Drowning (air meter), hunger and saturation.
    - **Body temperature** from biome, altitude, weather, season, wetness, shelter, fire and clothing. Hypothermia and heatstroke. This is where the simulation pays off.
-3. **Mining.** Mining time comes from block hardness and tool. A crack overlay shows progress, and broken blocks drop items.
-4. **Items and inventory.** Stacks and an inventory grid UI. The hotbar becomes inventory-backed in survival.
+3. **Mining.** Mining time comes from block hardness and tool. A crack overlay shows progress, and broken blocks drop items. *Status: hardness and the crack overlay are done (spec 24). Tools are still open.*
+4. **Items and inventory.** Stacks and an inventory grid UI. The hotbar becomes inventory-backed in survival. *Status: a 36-slot inventory with stacks, the grid screen (E), the held block, dropped items and pick-up are done (spec 24). Placing uses up the stack. Survival modes and tools are still open.*
 5. **Crafting.** A 2×2 grid in the inventory and a 3×3 crafting table, with recipes as a data table. Tools have tiers and durability. Furnaces smelt (a block entity with timers).
 6. **Food.** Hunting, farming and cooking.
 7. **Beds** to sleep through the night and set a spawn point.
