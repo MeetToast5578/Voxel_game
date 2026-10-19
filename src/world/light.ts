@@ -30,10 +30,44 @@ export function neighborIndex(dx: number, dy: number, dz: number): number {
   return (dy + 1) * 9 + (dz + 1) * 3 + (dx + 1);
 }
 
-/** Copies 27 chunks (index (dy + 1) * 9 + (dz + 1) * 3 + (dx + 1)) into one 48 x 48 x 48 array. */
-export function buildRegion(neighbors: readonly Uint16Array[]): Uint16Array {
+/** Reusable 32-bit views of chunk arrays, so the row copy below creates no views per call. */
+const WORD_VIEWS = new WeakMap<Uint16Array, Uint32Array>();
+/** The 27 source views of the current call; reused so the copy allocates no array. */
+const sourceWordsScratch: (Uint32Array | null)[] = new Array(27).fill(null);
+
+/** A Uint32Array over the same bytes, or null when the array cannot be viewed that way (odd offset or length). */
+function wordView(array: Uint16Array): Uint32Array | null {
+  if ((array.byteOffset & 3) !== 0 || (array.length & 1) !== 0) return null;
+  let view = WORD_VIEWS.get(array);
+  if (!view) {
+    view = new Uint32Array(array.buffer, array.byteOffset, array.length >> 1);
+    WORD_VIEWS.set(array, view);
+  }
+  return view;
+}
+
+/**
+ * Copies 27 chunks (index (dy + 1) * 9 + (dz + 1) * 3 + (dx + 1)) into one 48 x 48 x 48 array.
+ * `out` lets a hot loop reuse one array instead of allocating 221 KB per call; a fresh array is returned by default.
+ *
+ * Every region row is a contiguous run of 16 cells taken from one chunk row, so the fast path copies it as eight
+ * 32-bit words instead of allocating a `subarray` view and calling `set` 6,912 times. Both halves of each word move
+ * together, so the result is identical on either endianness; arrays that cannot be viewed as 32-bit words (an odd
+ * byte offset or length) take the element-wise path.
+ */
+export function buildRegion(neighbors: readonly Uint16Array[], out?: Uint16Array): Uint16Array {
   if (neighbors.length !== 27) throw new Error('buildRegion needs 27 chunks');
-  const region = new Uint16Array(REGION_VOLUME);
+  const region = out ?? new Uint16Array(REGION_VOLUME);
+  if (region.length !== REGION_VOLUME) throw new Error(`buildRegion needs a ${REGION_VOLUME}-cell output array`);
+  const words = (region.byteOffset & 3) === 0 ? (new Uint32Array(region.buffer, region.byteOffset, region.length >> 1)) : null;
+  let fast = words !== null;
+  if (fast) {
+    for (let i = 0; i < 27; i++) {
+      const view = wordView(neighbors[i]!);
+      sourceWordsScratch[i] = view;
+      if (view === null) fast = false;
+    }
+  }
   // Fill the region in its own order: each region row (fixed y and z) is 3 contiguous 16-block chunk rows.
   let to = 0;
   for (let ry = 0; ry < R; ry++) {
@@ -43,8 +77,23 @@ export function buildRegion(neighbors: readonly Uint16Array[]): Uint16Array {
       const dz = Math.floor(rz / CHUNK_SIZE);
       const from = localIndex(0, ly, rz % CHUNK_SIZE);
       for (let dx = 0; dx < 3; dx++) {
-        const src = neighbors[dy * 9 + dz * 3 + dx]!;
-        region.set(src.subarray(from, from + CHUNK_SIZE), to);
+        const index = dy * 9 + dz * 3 + dx;
+        if (fast && words) {
+          const src = sourceWordsScratch[index]!;
+          const fromWord = from >> 1;
+          const toWord = to >> 1;
+          words[toWord] = src[fromWord]!;
+          words[toWord + 1] = src[fromWord + 1]!;
+          words[toWord + 2] = src[fromWord + 2]!;
+          words[toWord + 3] = src[fromWord + 3]!;
+          words[toWord + 4] = src[fromWord + 4]!;
+          words[toWord + 5] = src[fromWord + 5]!;
+          words[toWord + 6] = src[fromWord + 6]!;
+          words[toWord + 7] = src[fromWord + 7]!;
+        } else {
+          const src = neighbors[index]!;
+          for (let k = 0; k < CHUNK_SIZE; k++) region[to + k] = src[from + k]!;
+        }
         to += CHUNK_SIZE;
       }
     }
@@ -57,6 +106,13 @@ let sharedQueue: Int32Array | null = null;
 function queueBuffer(): Int32Array {
   sharedQueue ??= new Int32Array(REGION_VOLUME);
   return sharedQueue;
+}
+
+/** Per-column sky-top row, reused between calls; recomputed in full by computeSkyLight. */
+let sharedSkyTop: Int32Array | null = null;
+function skyTopBuffer(): Int32Array {
+  sharedSkyTop ??= new Int32Array(R * R);
+  return sharedSkyTop;
 }
 
 /** Breadth-first flood fill: every queued cell spreads (its light - 1) to non-opaque neighbors inside the region. */
@@ -104,9 +160,16 @@ function propagate(region: Uint16Array, light: Uint8Array, queue: Int32Array, ta
  * tops: the 9 column-top arrays around the centre column, index (dz + 1) * 3 + (dx + 1).
  * regionY0: world y of region row 0, which is (cy - 1) * 16 for the chunk cy being meshed.
  */
-export function computeSkyLight(region: Uint16Array, tops: readonly Int32Array[], regionY0: number): Uint8Array {
-  const light = new Uint8Array(REGION_VOLUME);
-  const skyTop = new Int32Array(R * R); // per region column: lowest region y in direct sunlight (R = none)
+export function computeSkyLight(
+  region: Uint16Array,
+  tops: readonly Int32Array[],
+  regionY0: number,
+  out?: Uint8Array,
+): Uint8Array {
+  const light = out ?? new Uint8Array(REGION_VOLUME);
+  if (light.length !== REGION_VOLUME) throw new Error(`computeSkyLight needs a ${REGION_VOLUME}-cell output array`);
+  else light.fill(0);
+  const skyTop = skyTopBuffer(); // per region column: lowest region y in direct sunlight (R = none)
   for (let z = 0; z < R; z++)
     for (let x = 0; x < R; x++) {
       const columnTops = tops[Math.floor(z / CHUNK_SIZE) * 3 + Math.floor(x / CHUNK_SIZE)];
@@ -137,8 +200,10 @@ export function computeSkyLight(region: Uint16Array, tops: readonly Int32Array[]
 }
 
 /** Block light (0..15) from light-emitting blocks such as glowstone. */
-export function computeBlockLight(region: Uint16Array): Uint8Array {
-  const light = new Uint8Array(REGION_VOLUME);
+export function computeBlockLight(region: Uint16Array, out?: Uint8Array): Uint8Array {
+  const light = out ?? new Uint8Array(REGION_VOLUME);
+  if (light.length !== REGION_VOLUME) throw new Error(`computeBlockLight needs a ${REGION_VOLUME}-cell output array`);
+  else light.fill(0);
   const emission = EMISSION_TABLE;
   const queue = queueBuffer();
   let tail = 0;

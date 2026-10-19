@@ -21,6 +21,30 @@ async function configureAuxiliaryPage(page) {
 }
 
 
+/**
+ * Runs an auxiliary page against the primary game's URL while the primary game is idle. Software WebGL and chunk
+ * streaming on the primary page compete with the new page for the CPU, which has timed out a plain `page.goto`
+ * on a loaded CI runner. Idling pauses only simulation and rendering -- the primary game keeps its state and
+ * resumes in the finally block, and the auxiliary page must still reach `ready` on its own.
+ */
+async function withAuxiliaryPage(page, run) {
+  await page.evaluate(() => window.__game.setIdle(true));
+  let auxiliary = null;
+  try {
+    auxiliary = await page.context().browser().newPage({ viewport: { width: 1280, height: 720 } });
+    watchPage(auxiliary);
+    await configureAuxiliaryPage(auxiliary);
+    // DOMContentLoaded is enough: module scripts have run by then, and the ready wait below is the real gate.
+    await auxiliary.goto(new URL('/?seed=1&nosave=1', page.url()).href, { waitUntil: 'domcontentloaded' });
+    await auxiliary.waitForFunction(() => window.__game?.ready === true, null, { timeout: 60_000 });
+    return await run(auxiliary);
+  } finally {
+    if (auxiliary) await auxiliary.close().catch(() => {});
+    await page.evaluate(() => window.__game.setIdle(false)).catch(() => {});
+    await page.bringToFront(); // Closing a separate browser context does not reliably reactivate the game page.
+  }
+}
+
 /** Include auxiliary menus and persistence windows in the same error contract as the primary game. */
 function watchPage(page) {
   page.on('console', (msg) => {
@@ -113,21 +137,16 @@ const CHECKS = [
   {
     name: 'start menu is shown without autostart',
     run: async (page) => {
-      const menuPage = await page.context().browser().newPage({ viewport: { width: 1280, height: 720 } });
-      watchPage(menuPage);
-      await configureAuxiliaryPage(menuPage);
-      await menuPage.goto(new URL('/?seed=1&nosave=1', page.url()).href);
-      await menuPage.waitForFunction(() => window.__game?.ready === true, null, { timeout: 60_000 });
-      if (!(await menuPage.locator('.menu-overlay').isVisible())) throw new Error('menu not visible');
-      const title = await menuPage.locator('.menu-title').innerText();
-      if (title !== 'Voxel Game') throw new Error(`menu title: ${title}`);
-      const inventoryButtons = await menuPage.locator('.menu-button', { hasText: 'Inventory' }).count();
-      if (inventoryButtons !== 0) throw new Error('the start menu should not have an inventory button');
-      const sections = await menuPage.locator('.controls-title').allInnerTexts();
-      if (!sections.includes('Volume tools')) throw new Error(`controls sections: ${sections}`);
-      await menuPage.screenshot({ path: 'screenshots/menu.png' });
-      await menuPage.close();
-      await page.bringToFront(); // Closing a separate browser context does not reliably reactivate the game page.
+      await withAuxiliaryPage(page, async (menuPage) => {
+        if (!(await menuPage.locator('.menu-overlay').isVisible())) throw new Error('menu not visible');
+        const title = await menuPage.locator('.menu-title').innerText();
+        if (title !== 'Voxel Game') throw new Error(`menu title: ${title}`);
+        const inventoryButtons = await menuPage.locator('.menu-button', { hasText: 'Inventory' }).count();
+        if (inventoryButtons !== 0) throw new Error('the start menu should not have an inventory button');
+        const sections = await menuPage.locator('.controls-title').allInnerTexts();
+        if (!sections.includes('Volume tools')) throw new Error(`controls sections: ${sections}`);
+        await menuPage.screenshot({ path: 'screenshots/menu.png' });
+      });
     },
   },
   {
@@ -306,11 +325,17 @@ const CHECKS = [
       const countOf = () =>
         page.evaluate((state) => window.__game.state().inventory.reduce((n, slot) => n + (slot && slot[0] === state ? slot[1] : 0), 0), id);
       const before = await countOf();
+      // The render loop records whether any crack stage was shown, so a stage shorter than one poll cannot be missed
+      // (at software-rendering frame rates a 0.5 s block goes from stage 0 to broken between two round trips).
+      await page.evaluate(() => window.__game.resetBreakStage());
       await page.evaluate(() => window.__game.holdButton(0, true));
       let sawStage = false;
       for (let i = 0; i < 20 && !sawStage; i++) {
         await page.waitForTimeout(50);
-        sawStage = (await page.evaluate(() => window.__game.state().breakStage)) >= 0;
+        sawStage = await page.evaluate(() => {
+          const s = window.__game.state();
+          return s.breakStageSeen || s.breakStage >= 0;
+        });
       }
       // Do not leave mining held while screenshot readback runs: on slow software rendering it can mine several
       // more blocks, drop the item into a deeper shaft and turn an exact-one-item assertion into a timing race.
@@ -320,6 +345,23 @@ const CHECKS = [
           window.__game.holdButton(0, false); // release in the same browser task that observes the break
           return true;
         }, s.target, { timeout: 8000, polling: 50 });
+      } catch (error) {
+        const now = await page.evaluate(([x, y, z]) => {
+          const state = window.__game.state();
+          return {
+            block: window.__game.getBlock(x, y, z),
+            breakStage: state.breakStage,
+            breakStageSeen: state.breakStageSeen,
+            target: state.target,
+            targetName: state.targetName,
+            playing: state.playing,
+            inventoryOpen: state.inventoryOpen,
+            fps: state.fps,
+            pendingGen: state.pendingGen,
+            pendingMesh: state.pendingMesh,
+          };
+        }, s.target);
+        throw new Error(`the held block did not break in 8 s: ${JSON.stringify(now)}; ${error}`);
       } finally {
         await page.evaluate(() => window.__game.holdButton(0, false));
       }
@@ -572,11 +614,7 @@ const CHECKS = [
   {
     name: 'the pause menu opens the inventory from its button, and Escape goes back to the pause menu',
     run: async (page) => {
-      const pausePage = await page.context().browser().newPage({ viewport: { width: 1280, height: 720 } });
-      watchPage(pausePage);
-      await configureAuxiliaryPage(pausePage);
-      await pausePage.goto(new URL('/?seed=1&nosave=1', page.url()).href);
-      await pausePage.waitForFunction(() => window.__game?.ready === true, null, { timeout: 60_000 });
+      await withAuxiliaryPage(page, async (pausePage) => {
       await pausePage.getByRole('button', { name: 'Play', exact: true }).click(); // The mode picker also has a primary-styled control.
       await pausePage.waitForFunction(() => window.__game.state().playing, null, { timeout: 10_000, polling: 100 })
         .catch(async () => { throw new Error(`Play did not capture the mouse: ${await pausePage.locator('.menu-overlay').innerText()}`); });
@@ -600,18 +638,13 @@ const CHECKS = [
       await pausePage.waitForFunction(() => !window.__game.state().inventoryOpen, null, { timeout: 5_000 });
       if ((await pausePage.locator('.menu-title').innerText()) !== 'Paused') throw new Error('HUD inventory must return to the pause menu');
       if (await pausePage.evaluate(() => document.pointerLockElement !== null)) throw new Error('HUD inventory should leave the pause-menu pointer free');
-      await pausePage.close();
-      await page.bringToFront();
+      });
     },
   },
   {
     name: 'HUD Inventory button works without pointer capture and with Tab, Enter and Space',
     run: async (page) => {
-      const hudPage = await page.context().browser().newPage({ viewport: { width: 1280, height: 720 } });
-      watchPage(hudPage);
-      await configureAuxiliaryPage(hudPage);
-      await hudPage.goto(new URL('/?seed=1&nosave=1', page.url()).href);
-      await hudPage.waitForFunction(() => window.__game?.ready === true, null, { timeout: 60_000 });
+      await withAuxiliaryPage(page, async (hudPage) => {
       const button = hudPage.getByRole('button', { name: 'Inventory', exact: true });
       let phase = 'initial HUD click';
       const waitState = async (open) => {
@@ -662,8 +695,7 @@ const CHECKS = [
       if ((await hudPage.locator('.menu-title').innerText()) !== 'Voxel Game') throw new Error('Close must restore the start menu');
       if (await hudPage.evaluate(() => document.pointerLockElement !== null || window.__game.state().playing))
         throw new Error('inventory access from a menu must not capture the pointer or start play');
-      await hudPage.close();
-      await page.bringToFront();
+      });
     },
   },
   {
@@ -685,7 +717,16 @@ let browser;
 try {
   browser = await chromium.launch({
     executablePath: process.env.CHROMIUM_PATH || undefined,
-    args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'],
+    // The suite opens auxiliary pages; without these flags Chromium throttles requestAnimationFrame on the page
+    // that is no longer "visible", which starves the main game's render loop (~1 frame/s) between checks.
+    args: [
+      '--use-angle=swiftshader',
+      '--enable-unsafe-swiftshader',
+      '--ignore-gpu-blocklist',
+      '--disable-background-timer-throttling',
+      '--disable-backgrounding-occluded-windows',
+      '--disable-renderer-backgrounding',
+    ],
   });
   const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
   watchPage(page);

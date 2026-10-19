@@ -111,6 +111,19 @@ export class Game {
   health = HEALTH_MAX;
   /** Player hunger, 0..HUNGER_MAX. */
   hunger = HUNGER_MAX;
+
+  /**
+   * True when a crack stage has been shown for the current mining attempt. The render loop sets it, so the smoke test
+   * can observe a stage that is shorter than one of its polls: on software rendering a 0.5 s block can go from stage
+   * 0 to broken between two polls.
+   */
+  breakStageSeen = false;
+
+  /** Debug hook (smoke test only): while true, simulation and rendering are skipped so another page can load. */
+  private idle = false;
+
+  /** Frames rendered since the page opened; a frame-rate-independent way to see that the loop is running. */
+  private frameCount = 0;
   /** Seconds of air remaining, 0..AIR_MAX_S. Decreases when submerged. */
   air = AIR_MAX_S;
   /** Calendar: tracks season and day of year. */
@@ -271,6 +284,19 @@ export class Game {
     this.loop.start();
   }
 
+  /** Clears the "a crack stage was shown" flag; the smoke test calls this before holding the mining button. */
+  resetBreakStage(): void {
+    this.breakStageSeen = false;
+  }
+
+  /**
+   * Debug hook for the smoke test: while idle, the game runs neither simulation nor rendering. A second browser page
+   * then loads and becomes ready without competing for the CPU and for the software WebGL context. Idempotent.
+   */
+  setIdle(idle: boolean): void {
+    this.idle = idle;
+  }
+
   /** Solid test used by physics. Unloaded chunks count as solid so the player can never fall into one. */
   readonly isSolidAt = (x: number, y: number, z: number): boolean =>
     !this.world.isLoadedAt(x, y, z) || isSolid(this.world.getBlock(x, y, z));
@@ -278,7 +304,7 @@ export class Game {
   readonly isWaterAt = (x: number, y: number, z: number): boolean => isWaterState(this.world.getBlock(x, y, z));
 
   private fixedUpdate(dt: number): void {
-    if (!this.ready) return;
+    if (!this.ready || this.idle) return;
     this.timeOfDay = (this.timeOfDay + dt / DAY_LENGTH_S) % 1;
     this.calendar.advance(dt); // Both clocks follow simulation time, including the existing menu-time behaviour.
     this.player.update(dt, this.playing ? this.readControls() : NO_CONTROLS, this.isSolidAt, this.isWaterAt);
@@ -423,6 +449,8 @@ export class Game {
   }
 
   private renderFrame(alpha: number, frameDt: number): void {
+    if (this.idle) return;
+    this.frameCount++;
     this.clockS += frameDt;
     const eKey = this.input.consumePressed('KeyE');
     const escKey = this.input.consumePressed('Escape');
@@ -704,6 +732,7 @@ export class Game {
       t ? { x: t.x, y: t.y, z: t.z } : null,
       this.breakHardness(),
     );
+    if (this.breaking.stage >= 0) this.breakStageSeen = true; // every frame that shows cracks, not only polled ones
     if (broken) this.breakCell(broken.x, broken.y, broken.z);
     if (breakClicked || broken) this.held.swing();
     const placeClicked = this.input.consumeClick(2);
@@ -961,6 +990,8 @@ export class Game {
       items: this.items.items.length,
       looseBodies: this.bodies.bodies.length,
       breakStage: this.breaking.stage,
+      breakStageSeen: this.breakStageSeen,
+      frames: this.frameCount,
       renderDistance: this.chunks.renderDistance,
       workers: this.usingWorkers,
       drawCalls: this.renderer.drawCalls,

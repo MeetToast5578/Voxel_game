@@ -19,10 +19,26 @@ if (isMainThread) {
     });
   });
   console.log(JSON.stringify(result,null,2));
-  if (process.argv.includes('--assert-generation-budget') && (!Number.isFinite(result.generation.meanMs) || result.generation.meanMs > 3))
-    throw new Error(`warm surface chunk generation exceeds 3 ms: ${result.generation.meanMs}`);
-  if (process.argv.includes('--assert-mesh-budget') && (!Number.isFinite(result.meshing.meanMs) || result.meshing.meanMs > 3))
-    throw new Error(`surface chunk meshing exceeds 3 ms: ${result.meshing.meanMs}`);
+  // On GitHub Actions the job log is not always retrievable; annotations are readable from the run page and the API,
+  // so a red budget names its measured numbers instead of only "exit code 1".
+  const onActions = process.env.GITHUB_ACTIONS === 'true';
+  const annotate = (level, title, message) => {
+    if (onActions) console.log(`::${level} title=${title}::${String(message).replace(/%/g, '%25').replace(/\r/g, '%0D').replace(/\n/g, '%0A')}`);
+  };
+  const ms = value => (Number.isFinite(value) ? value.toFixed(3) : String(value));
+  const passes = summary => `pass means [${summary.passMeansMs.map(ms).join(', ')}] ms, median ${ms(summary.medianMs)} ms, max ${ms(summary.maxMs)} ms`;
+  const summary = `${result.runtime}, ${result.surfaceChunks} chunks: meshing mean ${ms(result.meshing.meanMs)} ms (${passes(result.meshing)}); `
+    + `generation mean ${ms(result.generation.meanMs)} ms (${passes(result.generation)}); mesh sha256 ${result.meshSha256}`;
+  annotate('notice', 'benchmark', summary);
+  const overBudget = (summary, budget) => !Number.isFinite(summary.meanMs) || summary.meanMs > budget;
+  if (process.argv.includes('--assert-generation-budget') && overBudget(result.generation, 3)) {
+    annotate('error', 'generation budget', `${summary}; budget 3 ms`);
+    throw new Error(`warm surface chunk generation exceeds 3 ms: mean ${ms(result.generation.meanMs)} ms; ${passes(result.generation)}`);
+  }
+  if (process.argv.includes('--assert-mesh-budget') && overBudget(result.meshing, 3)) {
+    annotate('error', 'mesh budget', `${summary}; budget 3 ms`);
+    throw new Error(`surface chunk meshing exceeds 3 ms: mean ${ms(result.meshing.meanMs)} ms; ${passes(result.meshing)}`);
+  }
 } else {
   const root=fileURLToPath(new URL('../',import.meta.url));
   const vite=await createServer({root,configFile:false,server:{middlewareMode:true},optimizeDeps:{noDiscovery:true}});

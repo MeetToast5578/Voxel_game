@@ -40,6 +40,10 @@ export interface DebugApi {
   setHunger(hunger: number): void;
   /** Set player air (0..15 seconds). */
   setAir(air: number): void;
+  /** Clears the flag that records whether a crack stage was shown for the current mining attempt. */
+  resetBreakStage(): void;
+  /** Debug hook: pauses or resumes simulation and rendering so an auxiliary page can load without contention. */
+  setIdle(idle: boolean): void;
 }
 
 declare global {
@@ -70,6 +74,8 @@ export function installDebugApi(game: Game): void {
     selectSlot: (index) => game.inventory.select(index),
     setHotbarSlot: (index, state) => game.inventory.setSlot(index, state),
     holdButton: (button, down) => game.input.simulateButton(button, down),
+    resetBreakStage: () => game.resetBreakStage(),
+    setIdle: (idle) => game.setIdle(idle),
     save: () => game.saveNow(),
     setTimeOfDay: (t) => {
       game.timeOfDay = ((t % 1) + 1) % 1;

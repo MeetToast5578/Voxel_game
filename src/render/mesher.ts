@@ -1,9 +1,17 @@
 import { CHUNK_SIZE } from '../config';
 import { localIndex } from '../core/coords';
-import { BlockId, EMISSION_TABLE, OPAQUE_TABLE, blockTopHeight, getBlockDef, isOpaque } from '../world/blocks';
-import { LIGHT_CURVE, buildRegion, computeBlockLight, computeSkyLight, neighborIndex, regionIndex } from '../world/light';
-import { FACES, FACE_UVS } from './faces';
-import { tileUV } from './tiles';
+import { BLOCK_REGISTRY, BlockId, EMISSION_TABLE, OPAQUE_TABLE, blockTopHeight } from '../world/blocks';
+import {
+  LIGHT_CURVE,
+  REGION_SIZE,
+  buildRegion,
+  computeBlockLight,
+  computeSkyLight,
+  neighborIndex,
+  regionIndex,
+} from '../world/light';
+import { FACES } from './faces';
+import { ATLAS_TILES, tileUV } from './tiles';
 
 export interface MeshData {
   positions: Float32Array;
@@ -24,13 +32,92 @@ const STRIDE_X = 1;
 const STRIDE_Z = P;
 const STRIDE_Y = P * P;
 const AXIS_STRIDE = [STRIDE_X, STRIDE_Y, STRIDE_Z] as const;
-const AO_LEVELS = [0.5, 0.7, 0.85, 1.0] as const;
 const CENTER = 13; // neighborIndex(0, 0, 0)
 /** The two diagonal quads of a cross block (plants). Corners as in FACES: counter-clockwise from the front. */
 const CROSS_QUADS: readonly (readonly (readonly [number, number, number])[])[] = [
   [[0, 0, 0], [1, 0, 1], [1, 1, 1], [0, 1, 0]],
   [[1, 0, 0], [0, 0, 1], [0, 1, 1], [1, 1, 0]],
 ];
+
+/*
+ * Everything that depends only on the block state is resolved once, into flat typed arrays, so the inner loop does
+ * no object lookups, no string comparisons and no allocation. These tables are derived from the registry, so a new
+ * block type is picked up automatically.
+ */
+const CROSS_SHAPE = 1;
+const TRANSLUCENT_LAYER = 1;
+const STATE_COUNT = BLOCK_REGISTRY.stateCount;
+const CROSS_TABLE = new Uint8Array(STATE_COUNT);
+const TRANSLUCENT_TABLE = new Uint8Array(STATE_COUNT);
+const CULL_SAME_TABLE = new Uint8Array(STATE_COUNT);
+const TOP_HEIGHT_TABLE = new Float64Array(STATE_COUNT);
+/** Tile index per state and axis: [top, side, bottom]. */
+const TILE_TABLE = new Uint8Array(STATE_COUNT * 3);
+for (let state = 0; state < STATE_COUNT; state++) {
+  const def = BLOCK_REGISTRY.getBlockDef(state);
+  CROSS_TABLE[state] = def.shape === 'cross' ? CROSS_SHAPE : 0;
+  TRANSLUCENT_TABLE[state] = def.layer === 'translucent' ? TRANSLUCENT_LAYER : 0;
+  CULL_SAME_TABLE[state] = def.cullSame ? 1 : 0;
+  TOP_HEIGHT_TABLE[state] = blockTopHeight(state);
+  TILE_TABLE[state * 3] = def.tiles.top;
+  TILE_TABLE[state * 3 + 1] = def.tiles.side;
+  TILE_TABLE[state * 3 + 2] = def.tiles.bottom;
+}
+/** UV rectangle per atlas tile: [u0, v0, u1, v1]. */
+const TILE_COUNT = ATLAS_TILES * ATLAS_TILES;
+const UV_TABLE = new Float32Array(TILE_COUNT * 4);
+for (let tile = 0; tile < TILE_COUNT; tile++) {
+  const uv = tileUV(tile);
+  UV_TABLE[tile * 4] = uv.u0;
+  UV_TABLE[tile * 4 + 1] = uv.v0;
+  UV_TABLE[tile * 4 + 2] = uv.u1;
+  UV_TABLE[tile * 4 + 3] = uv.v1;
+}
+
+/** Per face: which tile axis it uses, as an index into TILE_TABLE's three slots. */
+const FACE_TILE_SLOT = new Uint8Array(6);
+/** Per face: the region-array index offset of the cell the face looks at. */
+const FACE_REGION_OFFSET = new Int32Array(6);
+/** Per face: the padded-volume index offset of the cell the face looks at. */
+const FACE_NEIGHBOR = new Int32Array(6);
+/** Per face: shade multiplier from the face normal. */
+const FACE_SHADE = new Float64Array(6);
+/** Per face and vertex: the [side1, side2, corner] AO sample offsets, flat: ((face * 4) + vertex) * 3. */
+const FACE_AO = new Int32Array(6 * 4 * 3);
+/** Per face and vertex: corner position, flat: ((face * 4) + vertex) * 3. */
+const FACE_CORNERS = new Float64Array(6 * 4 * 3);
+/** Per face and vertex: which UV edge that corner takes (0 = u0/v0, 1 = u1/v1). */
+const FACE_UV_U = new Uint8Array(6 * 4);
+const FACE_UV_V = new Uint8Array(6 * 4);
+/** Per face and vertex: AO falloff for AO levels 0..3. */
+const AO_LEVELS = new Float64Array([0.5, 0.7, 0.85, 1.0]);
+const TILE_SLOT = { top: 0, side: 1, bottom: 2 } as const;
+
+for (let f = 0; f < 6; f++) {
+  const face = FACES[f]!;
+  FACE_TILE_SLOT[f] = TILE_SLOT[face.tile];
+  FACE_NEIGHBOR[f] = face.dir[0] * STRIDE_X + face.dir[1] * STRIDE_Y + face.dir[2] * STRIDE_Z;
+  FACE_REGION_OFFSET[f] = face.dir[0] + face.dir[1] * REGION_SIZE * REGION_SIZE + face.dir[2] * REGION_SIZE;
+  FACE_SHADE[f] = face.shade;
+  const normalAxis = face.dir[0] !== 0 ? 0 : face.dir[1] !== 0 ? 1 : 2;
+  const [ua, va] = [0, 1, 2].filter((a) => a !== normalAxis) as [number, number];
+  for (let k = 0; k < 4; k++) {
+    const corner = face.corners[k]!;
+    const at = f * 4 + k;
+    FACE_CORNERS[at * 3] = corner[0];
+    FACE_CORNERS[at * 3 + 1] = corner[1];
+    FACE_CORNERS[at * 3 + 2] = corner[2];
+    const uSel = k === 0 || k === 3 ? 0 : 1;
+    const vSel = k < 2 ? 0 : 1;
+    FACE_UV_U[at] = uSel;
+    FACE_UV_V[at] = vSel;
+    const su = (corner[ua]! * 2 - 1) * AXIS_STRIDE[ua as 0 | 1 | 2];
+    const sv = (corner[va]! * 2 - 1) * AXIS_STRIDE[va as 0 | 1 | 2];
+    FACE_AO[at * 3] = su;
+    FACE_AO[at * 3 + 1] = sv;
+    FACE_AO[at * 3 + 2] = su + sv;
+  }
+}
 
 export function padIndex(px: number, py: number, pz: number): number {
   return (py * P + pz) * P + px;
@@ -64,8 +151,7 @@ export function buildPaddedVolume(neighbors: readonly Uint16Array[]): Uint16Arra
 }
 
 /** The padded volume cut out of a light region (which already holds the 27 chunks). */
-function paddedFromRegion(region: Uint16Array): Uint16Array {
-  const vol = new Uint16Array(P * P * P);
+function paddedFromRegion(region: Uint16Array, vol: Uint16Array): Uint16Array {
   for (let py = 0; py < P; py++)
     for (let pz = 0; pz < P; pz++) {
       const to = padIndex(0, py, pz);
@@ -78,56 +164,164 @@ function paddedFromRegion(region: Uint16Array): Uint16Array {
 /** True if no face of the centre chunk can be visible: it is all opaque and so is every cell touching it. */
 function fullyHidden(neighbors: readonly Uint16Array[]): boolean {
   const center = neighbors[CENTER]!;
-  for (let i = 0; i < center.length; i++) if (!isOpaque(center[i]!)) return false;
+  const opaque = OPAQUE_TABLE;
+  let allOpaque = true;
+  for (let i = 0; i < center.length; i++) {
+    if (opaque[center[i]!] === 0) {
+      allOpaque = false;
+      break;
+    }
+  }
+  if (!allOpaque) return false;
   const last = CHUNK_SIZE - 1;
   for (let a = 0; a < CHUNK_SIZE; a++)
     for (let b = 0; b < CHUNK_SIZE; b++) {
       if (
-        !isOpaque(neighbors[neighborIndex(-1, 0, 0)]![localIndex(last, a, b)]!) ||
-        !isOpaque(neighbors[neighborIndex(1, 0, 0)]![localIndex(0, a, b)]!) ||
-        !isOpaque(neighbors[neighborIndex(0, -1, 0)]![localIndex(a, last, b)]!) ||
-        !isOpaque(neighbors[neighborIndex(0, 1, 0)]![localIndex(a, 0, b)]!) ||
-        !isOpaque(neighbors[neighborIndex(0, 0, -1)]![localIndex(a, b, last)]!) ||
-        !isOpaque(neighbors[neighborIndex(0, 0, 1)]![localIndex(a, b, 0)]!)
+        opaque[neighbors[neighborIndex(-1, 0, 0)]![localIndex(last, a, b)]!] === 0 ||
+        opaque[neighbors[neighborIndex(1, 0, 0)]![localIndex(0, a, b)]!] === 0 ||
+        opaque[neighbors[neighborIndex(0, -1, 0)]![localIndex(a, last, b)]!] === 0 ||
+        opaque[neighbors[neighborIndex(0, 1, 0)]![localIndex(a, 0, b)]!] === 0 ||
+        opaque[neighbors[neighborIndex(0, 0, -1)]![localIndex(a, b, last)]!] === 0 ||
+        opaque[neighbors[neighborIndex(0, 0, 1)]![localIndex(a, b, 0)]!] === 0
       )
         return false;
     }
   return true;
 }
 
-// Precomputed per face: neighbor offset and, per vertex, the [side1, side2, corner] AO sample offsets.
-const FACE_NEIGHBOR = FACES.map((f) => f.dir[0] * STRIDE_X + f.dir[1] * STRIDE_Y + f.dir[2] * STRIDE_Z);
-const FACE_AO = FACES.map((f) => {
-  const normalAxis = f.dir[0] !== 0 ? 0 : f.dir[1] !== 0 ? 1 : 2;
-  const [ua, va] = [0, 1, 2].filter((a) => a !== normalAxis) as [number, number];
-  return f.corners.map((c) => {
-    const su = (c[ua]! * 2 - 1) * AXIS_STRIDE[ua as 0 | 1 | 2];
-    const sv = (c[va]! * 2 - 1) * AXIS_STRIDE[va as 0 | 1 | 2];
-    return [su, sv, su + sv] as const;
-  });
-});
+/** A chunk centre is empty only if every state in it is air. */
+function allAir(blocks: Uint16Array): boolean {
+  for (let i = 0; i < blocks.length; i++) if (blocks[i] !== BlockId.AIR) return false;
+  return true;
+}
 
+const INITIAL_VERTICES = 512;
+
+/**
+ * Writes quads straight into growable typed arrays. Building into typed arrays instead of number[] boxes avoids
+ * per-value boxing, array growth and a final conversion copy; `build` slices each buffer down to its exact size.
+ */
 class MeshBuilder {
-  positions: number[] = [];
-  uvs: number[] = [];
-  colors: number[] = [];
-  light: number[] = [];
-  indices: number[] = [];
   vertexCount = 0;
+  indexCount = 0;
+  private capacity = 0;
+  private positions = new Float32Array(0);
+  private uvs = new Float32Array(0);
+  private colors = new Float32Array(0);
+  private light = new Float32Array(0);
+  private indices = new Uint32Array(0);
+
+  reset(): void {
+    this.vertexCount = 0;
+    this.indexCount = 0;
+  }
+
+  /** Makes room for `vertices` more vertices and `indices` more indices. */
+  reserve(vertices: number, indices: number): void {
+    const neededVertices = this.vertexCount + vertices;
+    if (neededVertices > this.capacity) {
+      let capacity = Math.max(INITIAL_VERTICES, this.capacity * 2);
+      while (capacity < neededVertices) capacity *= 2;
+      this.positions = grow(this.positions, capacity * 3);
+      this.uvs = grow(this.uvs, capacity * 2);
+      this.colors = grow(this.colors, capacity * 3);
+      this.light = grow(this.light, capacity * 2);
+      this.indices = growIndices(this.indices, Math.max(capacity * 6, this.indexCount + indices));
+      this.capacity = capacity;
+    } else if (this.indexCount + indices > this.indices.length) {
+      this.indices = growIndices(this.indices, Math.max(this.capacity * 6, this.indexCount + indices));
+    }
+  }
+
+  /** Position offset in floats for the next vertex. */
+  get positionOffset(): number {
+    return this.vertexCount * 3;
+  }
+
+  /** UV offset in floats for the next vertex. */
+  get uvOffset(): number {
+    return this.vertexCount * 2;
+  }
+
+  get indexOffset(): number {
+    return this.indexCount;
+  }
+
+  writePosition(offset: number, x: number, y: number, z: number): void {
+    const p = this.positions;
+    p[offset] = x;
+    p[offset + 1] = y;
+    p[offset + 2] = z;
+  }
+
+  writeUV(offset: number, u: number, v: number): void {
+    const p = this.uvs;
+    p[offset] = u;
+    p[offset + 1] = v;
+  }
+
+  writeColor(offset: number, r: number, g: number, b: number): void {
+    const p = this.colors;
+    p[offset] = r;
+    p[offset + 1] = g;
+    p[offset + 2] = b;
+  }
+
+  writeLight(offset: number, sky: number, block: number): void {
+    const p = this.light;
+    p[offset] = sky;
+    p[offset + 1] = block;
+  }
+
+  writeIndices(offset: number, i0: number, i1: number, i2: number, i3: number, i4: number, i5: number): void {
+    const p = this.indices;
+    p[offset] = i0;
+    p[offset + 1] = i1;
+    p[offset + 2] = i2;
+    p[offset + 3] = i3;
+    p[offset + 4] = i4;
+    p[offset + 5] = i5;
+  }
 
   build(): MeshData {
     return {
-      positions: new Float32Array(this.positions),
-      uvs: new Float32Array(this.uvs),
-      colors: new Float32Array(this.colors),
-      light: new Float32Array(this.light),
-      indices: new Uint32Array(this.indices),
+      positions: this.positions.slice(0, this.vertexCount * 3),
+      uvs: this.uvs.slice(0, this.vertexCount * 2),
+      colors: this.colors.slice(0, this.vertexCount * 3),
+      light: this.light.slice(0, this.vertexCount * 2),
+      indices: this.indices.slice(0, this.indexCount),
     };
   }
 }
 
+function grow(source: Float32Array, size: number): Float32Array<ArrayBuffer> {
+  const next = new Float32Array(size);
+  next.set(source);
+  return next;
+}
+
+function growIndices(source: Uint32Array, size: number): Uint32Array<ArrayBuffer> {
+  const next = new Uint32Array(size);
+  next.set(source);
+  return next;
+}
+
+/*
+ * Scratch buffers reused by every mesh call. Meshing is synchronous and single-threaded per worker, so one set per
+ * module is safe; `build()` copies out exact-size arrays, so no caller can observe the reuse. This removes roughly
+ * 460 KB of allocation and zeroing per chunk (region 221 KB, two light volumes 110 KB each) and their GC pressure.
+ */
+const scratchRegion = new Uint16Array(REGION_SIZE * REGION_SIZE * REGION_SIZE);
+const scratchSkyLight = new Uint8Array(REGION_SIZE * REGION_SIZE * REGION_SIZE);
+const scratchBlockLight = new Uint8Array(REGION_SIZE * REGION_SIZE * REGION_SIZE);
+const scratchVolume = new Uint16Array(P * P * P);
+const pooledSolid = new MeshBuilder();
+const pooledTranslucent = new MeshBuilder();
+
 function emptyMesh(): ChunkMeshData {
-  return { solid: new MeshBuilder().build(), translucent: new MeshBuilder().build() };
+  pooledSolid.reset();
+  pooledTranslucent.reset();
+  return { solid: pooledSolid.build(), translucent: pooledTranslucent.build() };
 }
 
 /**
@@ -138,96 +332,141 @@ export function buildChunkMesh(neighbors: readonly Uint16Array[], tops: readonly
   if (neighbors.length !== 27) throw new Error('buildChunkMesh needs 27 chunks');
   if (tops.length !== 9) throw new Error('buildChunkMesh needs 9 column-top arrays');
   // Quick exits; both give exactly what full meshing would (no faces), without computing light.
-  if (neighbors[CENTER]!.every((b) => b === BlockId.AIR)) return emptyMesh();
+  if (allAir(neighbors[CENTER]!)) return emptyMesh();
   if (fullyHidden(neighbors)) return emptyMesh();
 
-  const region = buildRegion(neighbors);
-  const vol = paddedFromRegion(region);
+  const region = buildRegion(neighbors, scratchRegion);
+  const vol = paddedFromRegion(region, scratchVolume);
   const opaque = OPAQUE_TABLE;
-  const skyLight = computeSkyLight(region, tops, (cy - 1) * CHUNK_SIZE);
-  const blockLight = computeBlockLight(region);
-  const solid = new MeshBuilder();
-  const translucent = new MeshBuilder();
+  const skyLight = computeSkyLight(region, tops, (cy - 1) * CHUNK_SIZE, scratchSkyLight);
+  const blockLight = computeBlockLight(region, scratchBlockLight);
+  pooledSolid.reset();
+  pooledTranslucent.reset();
+  const solid = pooledSolid;
+  const translucent = pooledTranslucent;
   const ao = [0, 0, 0, 0];
 
   for (let y = 0; y < CHUNK_SIZE; y++) {
     for (let lz = 0; lz < CHUNK_SIZE; lz++) {
-      for (let lx = 0; lx < CHUNK_SIZE; lx++) {
-        const i = padIndex(lx + 1, y + 1, lz + 1);
+      let i = padIndex(1, y + 1, lz + 1);
+      let r = regionIndex(CHUNK_SIZE, y + CHUNK_SIZE, lz + CHUNK_SIZE);
+      for (let lx = 0; lx < CHUNK_SIZE; lx++, i++, r++) {
         const id = vol[i]!;
         if (id === BlockId.AIR) continue;
-        const def = getBlockDef(id);
-        if (def.shape === 'cross') {
+        if (CROSS_TABLE[id] === CROSS_SHAPE) {
           // Plants: two diagonal quads, each drawn from both sides, lit by their own cell. No neighbour culling.
-          const r = regionIndex(lx + CHUNK_SIZE, y + CHUNK_SIZE, lz + CHUNK_SIZE);
           const skyB = LIGHT_CURVE[skyLight[r]!]!;
-          const blkB = LIGHT_CURVE[Math.max(blockLight[r]!, EMISSION_TABLE[id]!)]!;
-          const uv = tileUV(def.tiles.side);
-          const base = solid.vertexCount;
+          const blkB = LIGHT_CURVE[blockLight[r]! > EMISSION_TABLE[id]! ? blockLight[r]! : EMISSION_TABLE[id]!]!;
+          const uvAt = TILE_TABLE[id * 3 + 1]! * 4;
+          const u0 = UV_TABLE[uvAt]!;
+          const v0 = UV_TABLE[uvAt + 1]!;
+          const u1 = UV_TABLE[uvAt + 2]!;
+          const v1 = UV_TABLE[uvAt + 3]!;
+          solid.reserve(8, 24);
+          const start = solid.vertexCount;
           for (const quad of CROSS_QUADS) {
+            let positionOffset = solid.positionOffset;
+            let uvOffset = solid.uvOffset;
+            let lightOffset = solid.vertexCount * 2;
             for (let k = 0; k < 4; k++) {
               const c = quad[k]!;
-              solid.positions.push(lx + c[0], y + c[1], lz + c[2]);
-              const fu = FACE_UVS[k]!;
-              solid.uvs.push(fu[0] === 0 ? uv.u0 : uv.u1, fu[1] === 0 ? uv.v0 : uv.v1);
-              solid.colors.push(1, 1, 1);
-              solid.light.push(skyB, blkB);
+              solid.writePosition(positionOffset, lx + c[0], y + c[1], lz + c[2]);
+              const at = k;
+              solid.writeUV(uvOffset, FACE_UV_U[at] === 0 ? u0 : u1, FACE_UV_V[at] === 0 ? v0 : v1);
+              solid.writeColor(positionOffset, 1, 1, 1);
+              solid.writeLight(lightOffset, skyB, blkB);
+              solid.vertexCount++;
+              positionOffset += 3;
+              uvOffset += 2;
+              lightOffset += 2;
             }
           }
           // Both windings, so each quad is visible from either side.
-          const [a, b] = [base, base + 4];
-          solid.indices.push(
-            a, a + 1, a + 2, a, a + 2, a + 3, a, a + 2, a + 1, a, a + 3, a + 2,
-            b, b + 1, b + 2, b, b + 2, b + 3, b, b + 2, b + 1, b, b + 3, b + 2,
-          );
-          solid.vertexCount += 8;
+          const second = start + 4;
+          let io = solid.indexOffset;
+          solid.writeIndices(io, start, start + 1, start + 2, start, start + 2, start + 3);
+          io += 6;
+          solid.writeIndices(io, start, start + 2, start + 1, start, start + 3, start + 2);
+          io += 6;
+          solid.writeIndices(io, second, second + 1, second + 2, second, second + 2, second + 3);
+          io += 6;
+          solid.writeIndices(io, second, second + 2, second + 1, second, second + 3, second + 2);
+          solid.indexCount += 24;
           continue;
         }
-        const out = def.layer === 'translucent' ? translucent : solid;
+        const out = TRANSLUCENT_TABLE[id] === TRANSLUCENT_LAYER ? translucent : solid;
+        const cullSame = CULL_SAME_TABLE[id] === 1;
+        const emission = EMISSION_TABLE[id]!;
+        const top = TOP_HEIGHT_TABLE[id]!;
 
         for (let f = 0; f < 6; f++) {
           const n = i + FACE_NEIGHBOR[f]!;
           const nid = vol[n]!;
-          if (opaque[nid]) continue;
-          if (nid === id && def.cullSame) continue;
+          if (opaque[nid] === 1) continue;
+          if (cullSame && nid === id) continue;
 
-          const face = FACES[f]!;
-          const aoOffsets = FACE_AO[f]!;
-          for (let k = 0; k < 4; k++) {
-            const [s1, s2, c] = aoOffsets[k]!;
-            const side1 = opaque[vol[n + s1]!]!;
-            const side2 = opaque[vol[n + s2]!]!;
-            const corner = opaque[vol[n + c]!]!;
-            ao[k] = side1 && side2 ? 0 : 3 - (side1 + side2 + corner);
-          }
+          const aoAt = f * 4 * 3;
+          const side1 = opaque[vol[n + FACE_AO[aoAt]!]!]!;
+          const side2 = opaque[vol[n + FACE_AO[aoAt + 1]!]!]!;
+          const corner = opaque[vol[n + FACE_AO[aoAt + 2]!]!]!;
+          ao[0] = side1 && side2 ? 0 : 3 - (side1 + side2 + corner);
+          const side1b = opaque[vol[n + FACE_AO[aoAt + 3]!]!]!;
+          const side2b = opaque[vol[n + FACE_AO[aoAt + 4]!]!]!;
+          const cornerb = opaque[vol[n + FACE_AO[aoAt + 5]!]!]!;
+          ao[1] = side1b && side2b ? 0 : 3 - (side1b + side2b + cornerb);
+          const side1c = opaque[vol[n + FACE_AO[aoAt + 6]!]!]!;
+          const side2c = opaque[vol[n + FACE_AO[aoAt + 7]!]!]!;
+          const cornerc = opaque[vol[n + FACE_AO[aoAt + 8]!]!]!;
+          ao[2] = side1c && side2c ? 0 : 3 - (side1c + side2c + cornerc);
+          const side1d = opaque[vol[n + FACE_AO[aoAt + 9]!]!]!;
+          const side2d = opaque[vol[n + FACE_AO[aoAt + 10]!]!]!;
+          const cornerd = opaque[vol[n + FACE_AO[aoAt + 11]!]!]!;
+          ao[3] = side1d && side2d ? 0 : 3 - (side1d + side2d + cornerd);
 
           // Flat lighting: the whole face uses the light of the cell it faces (always inside the region).
-          const r = regionIndex(lx + CHUNK_SIZE + face.dir[0], y + CHUNK_SIZE + face.dir[1], lz + CHUNK_SIZE + face.dir[2]);
-          const sky = skyLight[r]!;
-          const blk = Math.max(blockLight[r]!, EMISSION_TABLE[id]!); // glowing blocks are always fully lit
-          const top = blockTopHeight(id);
-          const skyB = LIGHT_CURVE[sky]!;
+          const rf = r + FACE_REGION_OFFSET[f]!;
+          const blk = blockLight[rf]! > emission ? blockLight[rf]! : emission; // glowing blocks are always fully lit
+          const skyB = LIGHT_CURVE[skyLight[rf]!]!;
           const blkB = LIGHT_CURVE[blk]!;
 
-          const uv = tileUV(def.tiles[face.tile]);
+          const tile = TILE_TABLE[id * 3 + FACE_TILE_SLOT[f]!]!;
+          const u0 = UV_TABLE[tile * 4]!;
+          const v0 = UV_TABLE[tile * 4 + 1]!;
+          const u1 = UV_TABLE[tile * 4 + 2]!;
+          const v1 = UV_TABLE[tile * 4 + 3]!;
+          const shade = FACE_SHADE[f]!;
+
+          out.reserve(4, 6);
           const base = out.vertexCount;
+          let positionOffset = out.positionOffset;
+          let uvOffset = out.uvOffset;
+          let lightOffset = out.vertexCount * 2;
           for (let k = 0; k < 4; k++) {
-            const corner = face.corners[k]!;
+            const at = f * 4 + k;
             // Flowing water stands lower than a full block: its top corners sit at its level (spec 25, slice 4).
-            out.positions.push(lx + corner[0], y + (corner[1] === 1 ? top : corner[1]), lz + corner[2]);
-            const fu = FACE_UVS[k]!;
-            out.uvs.push(fu[0] === 0 ? uv.u0 : uv.u1, fu[1] === 0 ? uv.v0 : uv.v1);
-            const brightness = face.shade * AO_LEVELS[ao[k]! as 0 | 1 | 2 | 3];
-            out.colors.push(brightness, brightness, brightness);
-            out.light.push(skyB, blkB);
+            const cyCorner = FACE_CORNERS[at * 3 + 1]!;
+            out.writePosition(
+              positionOffset,
+              lx + FACE_CORNERS[at * 3]!,
+              y + (cyCorner === 1 ? top : cyCorner),
+              lz + FACE_CORNERS[at * 3 + 2]!,
+            );
+            out.writeUV(uvOffset, FACE_UV_U[at] === 0 ? u0 : u1, FACE_UV_V[at] === 0 ? v0 : v1);
+            const brightness = shade * AO_LEVELS[ao[k]!]!;
+            out.writeColor(positionOffset, brightness, brightness, brightness);
+            out.writeLight(lightOffset, skyB, blkB);
+            out.vertexCount++;
+            positionOffset += 3;
+            uvOffset += 2;
+            lightOffset += 2;
           }
           // Split the quad along the brighter diagonal to avoid AO artifacts.
           if (ao[0]! + ao[2]! >= ao[1]! + ao[3]!) {
-            out.indices.push(base, base + 1, base + 2, base, base + 2, base + 3);
+            out.writeIndices(out.indexOffset, base, base + 1, base + 2, base, base + 2, base + 3);
           } else {
-            out.indices.push(base + 1, base + 2, base + 3, base + 1, base + 3, base);
+            out.writeIndices(out.indexOffset, base + 1, base + 2, base + 3, base + 1, base + 3, base);
           }
-          out.vertexCount += 4;
+          out.indexCount += 6;
         }
       }
     }
