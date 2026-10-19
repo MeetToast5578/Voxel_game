@@ -1,5 +1,16 @@
 # Handoff: Voxel Game (MeetToast5578/Voxel_game)
 
+## Session note — 2026-10-19 (reference gap map, PR #25)
+
+Worked on branch `claude/zealous-allen-odrdj5`. Merged into `main` as `d8bd22d`.
+
+- **Added `docs/REFERENCE-GAPS.md`.** Every open roadmap item is mapped against `nrz/Voxels`, a Java sandbox from 2016–17, with citations to its files. Three earlier claims in the doc were corrected: the reference's water flow is dormant, its dropped items are never picked up, and its jump and impact sounds are not played.
+- **Ideas only.** The reference is GPL. The repo has no licence file, and no reference code is copied. Copying code would need a licence decision first.
+- **Licence added, then removed.** `LICENSE` (GPL-3), the `package.json` licence field and a README section were added, then removed on the owner's request (`5833712`). Their commits remain in history, since the branch is not force-pushed.
+- **Dropped items were not kept.** A spec 23 dropped-items feature was built on this branch. `main` already had the same feature as spec 24 (`docs/specs/24-inventory-and-items.md`, `src/items/itemEntities.ts`), so the branch's copy was removed. Spec 23 on `main` is grass blocks.
+- **Local smoke is unreliable here.** On the merged tree, `npm run smoke` failed at different checks on two runs, at about 33 fps, while the code matched `main`. Treat local smoke results in this sandbox as weak evidence. GitHub CI is the real check.
+- **Open question for the owner.** Which of the remaining gaps should get a spec first: water levels, greedy meshing, or mobs. Dropped items are done on `main` (spec 24). The gap doc notes that greedy meshing needs measuring first, because per-vertex AO and light limit how many quads can merge.
+
 ## Current handoff — 2026-10-19
 
 The user authorized autonomous implementation, testing, logging, task-list updates and pushes to `main`. This session is pinned to the branch `arena/f70f1800-voxel-game`, so work is committed there and offered to `main` through a pull request.
