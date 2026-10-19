@@ -1,5 +1,30 @@
 # Handoff: Voxel Game (MeetToast5578/Voxel_game)
 
+## Current handoff — 2026-10-19
+
+The user authorized autonomous implementation, testing, logging, task-list updates and pushes to `main`. Continue through the backlog without waiting for routine approval. The latest pushed commit is `307f5c2` (`main`); the local checkout is branch `work` at the same commit and was clean when this note was written.
+
+**Immediate priority: repair GitHub Actions before continuing feature pushes.** Public Actions pages revealed that all four recent pushes have a failing smoke job, and the latest run also fails the mesh benchmark guard. The API at `api.github.com` is blocked in this environment, but the public HTML run pages and annotations are readable:
+
+- `bef031a`, run `39157785030`: smoke reports `no crack stage shown while breaking Grass`.
+- `17f8db6`, run `39158900934`: failed; inspect the saved HTML/annotations under `/tmp/voxel-ci-39158900934.*` to identify the reported check.
+- `b486eda`, run `39160075882`: failed; inspect `/tmp/voxel-ci-39160075882.*` for the reported check.
+- `307f5c2`, run `39160784501`: benchmark assertion fails in `check`; smoke's HUD inventory auxiliary page times out during `page.goto(... waitUntil: load)`.
+
+CI run HTML/text snapshots are in `/tmp/voxel-ci-*.html` and `.txt`; the latest check job snapshot is `/tmp/voxel-ci-check-job.html`. Do not claim remote CI green until a passing run is observed. Preserve the strict 3 ms mesh assertion; expose measured benchmark values as GitHub Actions notices/errors to diagnose runner-specific timing. The local Node-22 mesh mean is 2.787 ms with the mesh hash unchanged (`803974a7770501157d9409fc8622d26838a45e03e5c06ed3661d8989843715ae`), so this local result does not explain the GitHub runner failure.
+
+The checkout's `stash@{0}` is important: **“Slab implementation and GUI validation paused for CI repair.”** It contains the uncommitted slab implementation, its new tests, and slab/GUI smoke additions. Do not drop it. A tracked-file patch backup is `/tmp/voxel-slab-before-ci.patch`; use the stash to restore untracked files too. The slab work locally reached 563 tests / 64 files, all 26 smoke checks, GPU smoke, and a reviewed screenshot, but the GUI settings persistence check failed (`renderDistance` stayed 2 in localStorage after the UI changed the live value to 3). Investigate the `?nosave=1` settings store in `src/game.ts` before considering that batch complete. See the detailed running notes in `log.txt` and the user's requirement to check completed items in `docs/tasks.md`.
+
+Suggested sequence:
+
+1. Read CI annotations for the two uninspected runs. Make timed-mining smoke observe crack stages in the browser render loop, so a short visible stage is not missed by Node/Playwright polling.
+2. Reduce auxiliary smoke contention while preserving each assertion and the primary game's final performance measurement. The latest auxiliary navigation timeout occurred while the main render-distance-8 game was under load; use a small debug-only simulation pause/resume hook with an idempotent loop, or another measured fix. Keep the actual auxiliary game ready and tested.
+3. Instrument the benchmark guard to report generation/mesh timing in run annotations; retain the 3 ms budget. Optimize based on the observed GitHub measurement if it still fails.
+4. Run local checks, GPU render tests and full gameplay smoke sequentially; commit/push CI repairs and observe GitHub Actions until both jobs pass.
+5. Restore the slab stash without losing the CI fixes, diagnose/fix GUI settings persistence, rerun all checks and review diffs/screenshots. Then continue `docs/tasks.md`, recording evidence in `log.txt` and checking tasks only after they pass.
+
+Physical-owner checks in `docs/tasks.md` (mouse/keyboard playtest, owner-hardware FPS, terrain visual review) cannot be represented as completed by headless tests. The older phase summary below is historical and contains stale backlog statements; use `docs/tasks.md`, recent dated entries in `log.txt`, and this current section for the live status.
+
 Baseline audited 2026-10-17 against `main` (`adf5aba`, eleven commits after `0322d20`); follow-up verification updated 2026-10-18 on the working branch. Baseline status below is supplemented by the dated task-batch results, checked in code, tests and smoke rather than only commit messages.
 
 ## Latest autonomous batch (2026-10-18)
