@@ -859,3 +859,9 @@ Spec 49 extra forest performance check and correction
 - Inspected all four surface screenshots: rounded granite outcrop, horizontal bark-textured forest trunk, thin moss patches on rock and notched pads on lake water. Held block/HUD remain in shots; owner visual/seam acceptance remains open.
 - Dependency manifests and lockfile unchanged. Appended named states, saved edits and old block IDs preserved; no save-version bump. Dynamic plant ecology stays separate. Current GitHub CI not run or claimed.
 - Updated task completion/next five priorities, README, handoff, roadmap status and spec index. Final diff/syntax checks precede commit and normal non-force push to existing feature branch.
+
+2026-10-21 — Spec 49 commit/push confirmed
+Commit 0cd1097c550e9e0bd9dcdd664b90d9e0360d924f contains the completed, verified batch.
+Normal push advanced origin/codex/coasts-horizon-flora from ca93f63 to 0cd1097.
+git ls-remote matched local HEAD exactly; working tree was clean. No force push, merge or PR.
+This documentation-only push record follows in a separate commit; no functional changes after acceptance.

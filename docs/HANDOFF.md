@@ -18,7 +18,7 @@ Next five: T-G1 pending falls, T-F5 wind, T-F7 seasonal visuals, T-F8 smooth lig
 T-F14 lightning/thunder. Owner playtests/river seam acceptance and current CI remain
 unrun. Dynamic plant ecology stays separate. Horizon LOD still omits distant saved
 structures and workers=0; mountain heights remain capped. The owner authorized
-commits/pushes; prior verified checkpoints are on codex/coasts-horizon-flora. See tasks.md
+commits/pushes; spec 49 commit 0cd1097 is pushed on codex/coasts-horizon-flora and verified against origin. See tasks.md
 and log.txt for the latest commit/push record; historical notes below predate this batch.
 
 ## Current local batch — 2026-10-21

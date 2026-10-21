@@ -25,7 +25,7 @@ Next priorities:
 2. **T-C / T-E11b — Owner playtest and visual acceptance.** Remain open; do not block independent coding or claim physical-browser acceptance from headless tests. River-seam review (T-C6) still gates overall terrain-phase acceptance.
 3. Continue T-F → T-G → T-H → T-I in dependency order, including pending-fall persistence, snow/ice and currents. Address measured T-J bottlenecks throughout. Slabs and Pixel Aero remain separate tracks.
 
-For every batch: log decisions, changes, failures and results in `log.txt`; run focused tests and relevant regression checks sequentially; mark done only after acceptance passes. The owner authorized committing and pushing completed work. Checkpoints 2396e91 and dd1d991 are pushed on `codex/coasts-horizon-flora`; no merge or PR was created. Historical CI entries below do not establish the status of new commits.
+For every batch: log decisions, changes, failures and results in `log.txt`; run focused tests and relevant regression checks sequentially; mark done only after acceptance passes. The owner authorized committing and pushing completed work. Checkpoints 2396e91, dd1d991 and spec 49 commit 0cd1097 are pushed on `codex/coasts-horizon-flora`; no merge or PR was created. Historical CI entries below do not establish the status of new commits.
 
 ---
 
