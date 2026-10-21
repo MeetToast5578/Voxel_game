@@ -1,5 +1,46 @@
 # Handoff: Voxel Game (MeetToast5578/Voxel_game)
 
+## Stop checkpoint — 2026-10-21: CONTINUE TERRAIN BUG FIRST
+
+Owner stopped this audit due to remaining session usage. Opened actual game in Chromium.
+**Terrain is NOT visually fixed:** fully loaded seed 1 at (101.5,245,-26.5), yaw -0.8,
+pitch -0.35 still shows giant flat green horizon surfaces, rectangular water strips and
+floating-looking tree silhouettes. Screenshot: `screenshots/terrain-audit.png` (local ignored).
+No pending generation/meshing/jobs remained, so this is not merely startup streaming.
+First follow-up: fix/replace inaccurate horizon sampling and near/far integration; compare
+this exact view before/after and add a visual regression. Avoid claiming geometry-ready
+smoke means visually correct terrain. A partial correction now uses circular camera fade
+at the voxel radius and fills the old snapped geometry hole, but is insufficient.
+
+Validation: full check PASS **622 tests / 74 files**, build, all **31 gameplay smoke checks**
+for physics/render-invalidation fixes. Subsequent horizon-only change: typecheck/build,
+**5 horizon tests**, focused distant-terrain browser smoke PASS, plus direct fully loaded
+visual inspection revealing the remaining defect above. No full-suite rerun after that
+small horizon change. Logs: `/tmp/voxel-bug-audit-{check-final,smoke-final,horizon,horizon-smoke,visual}.log`.
+Then complete T-G1 durable pending tick persistence; do not resume decorative features yet.
+
+## Latest bug audit — 2026-10-21
+
+Owner reported broken-looking terrain and physics and asked for a quick audit.
+Fixed missing remesh notifications for scheduled/random world writes, independently
+of save dirtiness. ChunkManager drains/coalesces changed chunks and top spans after
+each block tick and invalidates padded neighbours/lighting through the existing batch path.
+Fixed world-wide tick budgeting, rotating scheduled/random chunk fairness, duplicate
+cell/reason updates (earliest due wins), complete-volume collision sweeps at high speed,
+and retrying falls/flows at unloaded streaming interfaces. Falls also wake adjacent fluids.
+The existing 20 Hz block clock / 60 Hz body loop remain; this is not a new clock implementation.
+
+Regression coverage: high-speed floor and both-direction X/Z wall collisions; tick-driven
+remeshing independent of save dirty flags; shared budget/fairness; duplicate coalescing;
+fall/fluid continuation when neighbours arrive. Final results are in log.txt.
+
+**Still open:** pending ticks are not serialized (T-G1); chunk-load scans only recover
+some physics. This audit does not establish full Minecraft parity or resolve every
+terrain artifact in the owner's save. Reproduce the owner's exact scene, review LOD/near
+terrain overlap and startup streaming, and finish durable updates before more visual features.
+Keep this priority override above the older spec 49 queue below. No dependencies or
+save format changed. Commit/push is authorized. Use the existing checkout/branch.
+
 ## Latest local batch — 2026-10-21 (spec 49)
 
 Completed T-E5/T-E6/T-E7/T-E8/T-E10 and procedural art T-E9: fully supported

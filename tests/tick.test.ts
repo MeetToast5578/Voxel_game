@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { TickQueue, type Tick } from '../src/world/tick';
 import { Chunk } from '../src/world/chunk';
 import { World } from '../src/world/world';
@@ -186,4 +186,45 @@ describe('TickQueue scheduling during a run', () => {
     expect(seen).toEqual(['later']);
     expect(q.size).toBe(0);
   });
+});
+
+it('coalesces duplicate cell/reason updates at the earliest due time', () => {
+  const q = new TickQueue();
+  for (const due of [9, 5, 7, 5]) q.schedule(tick(1, 1, 1, due, 'flow'), 0, 0, 0);
+  q.schedule(tick(1, 1, 1, 5, 'fall'), 0, 0, 0);
+  expect(q.size).toBe(2);
+  expect(q.run(5, 100, () => 'handled', undefined).ran).toBe(2);
+  expect(q.size).toBe(0);
+});
+
+it('shares the world tick budget across chunks and resumes fairly', () => {
+  const world = new World(1), chunks = [new Chunk(0, 0, 0), new Chunk(1, 0, 0)];
+  let now = 0;
+  const clock = vi.spyOn(performance, 'now').mockImplementation(() => now);
+  const calls: number[] = [];
+  try {
+    for (const c of chunks) {
+      world.addChunk(c);
+      world.scheduleTick(c.cx * 16, 0, 0, 1, 'test');
+      vi.spyOn(c.ticks, 'run').mockImplementation(() => { calls.push(c.cx); now += 3; return { handedOff: [], ran: 1 }; });
+    }
+    world.tickStep(2);
+    expect(calls).toEqual([0]);
+    world.tickStep(2);
+    expect(calls).toEqual([0, 1]);
+  } finally { clock.mockRestore(); }
+});
+
+it('rotates random ticks rather than starving later chunks under a budget', () => {
+  const world = new World(1);
+  world.addChunk(new Chunk(0, 0, 0)); world.addChunk(new Chunk(1, 0, 0));
+  let now = 0;
+  const clock = vi.spyOn(performance, 'now').mockImplementation(() => now);
+  const cells: number[] = [];
+  try {
+    const visit = (_world: World, x: number) => { cells.push(Math.floor(x / 16)); now++; };
+    world.randomTickStep(.5, visit);
+    world.randomTickStep(.5, visit);
+    expect(new Set(cells)).toEqual(new Set([0, 1]));
+  } finally { clock.mockRestore(); }
 });

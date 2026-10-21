@@ -3,6 +3,7 @@ import { BlockId, getBlockDef, isFluidState } from './blocks';
 import type { Chunk } from './chunk';
 import type { Tick, TickResult } from './tick';
 import type { World } from './world';
+import { scheduleFlowChecks } from './flow';
 
 /** The tick reason for a fall check: "does the block at this cell fall, and where does it land". */
 export const FALL_REASON = 'fall';
@@ -55,10 +56,15 @@ export function handleFall(world: World, tick: Tick): TickResult {
   const id = world.getBlock(x, y, z);
   if (id === BlockId.AIR || !getBlockDef(id).falls) return 'handled';
   if (!canFallInto(world.getBlock(x, y - 1, z))) return 'handled';
-  if (!world.setBlock(x, y - 1, z, id)) return 'handled';
+  if (!world.isLoadedAt(x, y - 1, z) || !world.setBlock(x, y - 1, z, id)) {
+    world.scheduleTick(x, y, z, world.currentTick + GRAVITY_TICK_DELAY, FALL_REASON);
+    return 'handled';
+  }
   world.setBlock(x, y, z, BlockId.AIR);
   // The block keeps falling from its new cell, and the cell it left may have freed the block above.
   world.scheduleTick(x, y - 1, z, world.currentTick + GRAVITY_TICK_DELAY, FALL_REASON);
   scheduleFallChecks(world, x, y, z);
+  scheduleFlowChecks(world, x, y, z);
+  scheduleFlowChecks(world, x, y - 1, z);
   return 'handled';
 }

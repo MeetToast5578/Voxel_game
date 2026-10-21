@@ -56,6 +56,26 @@ export class World {
   private readonly loadedPerColumn = new Map<string, number>();
   /** Global tick counter, incremented once per tickStep. */
   private tickCounter = 0;
+  private tickCursor = 0;
+  private randomCursor = 0;
+  private readonly changedChunks = new Map<string, { cx: number; cy: number; cz: number }>();
+  private readonly changedTops = new Map<string, { cx: number; cz: number; lo: number; hi: number }>();
+
+  /** Render invalidation is independent of save dirtiness: saving must never consume mesh updates. */
+  takeBlockChanges(): BatchEffect {
+    const effect = { chunks: [...this.changedChunks.values()], tops: [...this.changedTops.values()] };
+    this.changedChunks.clear();
+    this.changedTops.clear();
+    return effect;
+  }
+
+  private trackChanges(effect: BatchEffect): void {
+    for (const c of effect.chunks) this.changedChunks.set(chunkKey(c.cx, c.cy, c.cz), c);
+    for (const t of effect.tops) {
+      const key = columnKey(t.cx, t.cz), old = this.changedTops.get(key);
+      this.changedTops.set(key, { ...t, lo: Math.min(t.lo, old?.lo ?? t.lo), hi: Math.max(t.hi, old?.hi ?? t.hi) });
+    }
+  }
 
   constructor(
     seed: number,
@@ -207,6 +227,7 @@ export class World {
     const lx = worldToLocal(wx);
     const lz = worldToLocal(wz);
     const index = localIndex(lx, worldToLocal(wy), lz);
+    if (chunk.blocks[index] === id) return true;
     chunk.blocks[index] = id;
     this.recordEdit(chunkKey(cx, cy, cz), index, id);
 
@@ -217,6 +238,8 @@ export class World {
     } else if (wy === top) {
       tops[cell] = this.scanDown(cx, cz, lx, lz, wy - 1);
     }
+    const newTop = tops[cell]!;
+    this.trackChanges({ chunks: [{ cx, cy, cz }], tops: newTop === top ? [] : [{ cx, cz, lo: Math.min(top, newTop), hi: Math.max(top, newTop) }] });
     return true;
   }
 
@@ -261,7 +284,9 @@ export class World {
         spans.set(colKey, span);
       }
     }
-    return { chunks: [...chunks.values()], tops: [...spans.values()] };
+    const effect = { chunks: [...chunks.values()], tops: [...spans.values()] };
+    this.trackChanges(effect);
+    return effect;
   }
 
   /** Re-applies stored player edits to a freshly generated chunk. */
@@ -322,19 +347,23 @@ export class World {
   }
 
   /**
-   * Run one tick step over all loaded chunks. Each chunk's queue runs up to `budgetMs`; ticks past the
+   * Run one tick step with a shared world budget and rotating chunk fairness; ticks past the
    * budget wait for the next step. Handoff ticks (cells at a chunk border) are re-scheduled in the
    * neighbour's queue. Returns { ran, pending } stats.
    */
   tickStep(budgetMs: number): { ran: number; pending: number } {
     this.tickCounter++;
     let ran = 0;
-    let pending = 0;
-
-    for (const chunk of this.chunks()) {
-      const { handedOff, ran: r } = chunk.ticks.run(this.tickCounter, budgetMs, (tick, world) => handleTick(world as World, tick), this);
+    const start = performance.now();
+    const chunks = this.chunks().sort((a, b) => a.cx - b.cx || a.cy - b.cy || a.cz - b.cz);
+    let visited = 0;
+    while (visited < chunks.length && performance.now() - start < budgetMs) {
+      const chunk = chunks[this.tickCursor % chunks.length]!;
+      this.tickCursor = (this.tickCursor + 1) % chunks.length;
+      visited++;
+      if (chunk.ticks.isEmpty) continue;
+      const { handedOff, ran: r } = chunk.ticks.run(this.tickCounter, Math.max(0, budgetMs - (performance.now() - start)), (tick, world) => handleTick(world as World, tick), this);
       ran += r;
-      pending += chunk.ticks.size;
       // Re-schedule border handoffs in the neighbour chunk's queue.
       for (const t of handedOff) {
         const tcx = worldToChunk(t.x);
@@ -343,13 +372,12 @@ export class World {
         const target = this.getChunk(tcx, tcy, tcz);
         if (target) {
           target.ticks.schedule(t, tcx, tcy, tcz);
-          pending += 1;
         }
         // If the neighbour isn't loaded, the handoff is dropped.
       }
     }
 
-    return { ran, pending };
+    return { ran, pending: this.pendingTickCount };
   }
 
   /** Queues a block the physics broke (a collapse), for the game to spawn as an item. */
@@ -373,8 +401,11 @@ export class World {
   randomTickStep(budgetMs: number, handler: typeof handleRandomTick = handleRandomTick): { ran: number; ms: number } {
     const start = performance.now();
     let ran = 0;
-    for (const chunk of this.chunkMap.values()) {
+    const chunks = this.chunks().sort((a, b) => a.cx - b.cx || a.cy - b.cy || a.cz - b.cz);
+    for (let visited = 0; visited < chunks.length; visited++) {
       if (performance.now() - start >= budgetMs) break;
+      const chunk = chunks[this.randomCursor % chunks.length]!;
+      this.randomCursor = (this.randomCursor + 1) % chunks.length;
       forEachRandomCell(this.seed, this.tickCounter, chunk.cx, chunk.cy, chunk.cz, RANDOM_TICKS_PER_CHUNK, (wx, wy, wz, rng) => {
         handler(this, wx, wy, wz, rng);
         ran++;

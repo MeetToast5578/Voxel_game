@@ -32,6 +32,8 @@ export class TickQueue {
   private ticks: Tick[] = [];
   /** True when ticks were added since the queue was last sorted. Sorting once per run keeps inserts cheap. */
   private dirty = false;
+  private readonly scheduled = new Map<string, Tick>();
+  private key(t: Tick): string { return `${t.x},${t.y},${t.z}:${t.reason}`; }
 
   /** Schedule a tick in this chunk. Returns a handoff when the cell lies outside this chunk. */
   schedule(tick: Tick, cx: number, cy: number, cz: number): TickHandoff | null {
@@ -50,6 +52,12 @@ export class TickQueue {
         tick,
       };
     }
+    const key = this.key(tick), existing = this.scheduled.get(key);
+    if (existing) {
+      if (tick.dueTick < existing.dueTick) { existing.dueTick = tick.dueTick; this.dirty = true; }
+      return null;
+    }
+    this.scheduled.set(key, tick);
     this.ticks.push(tick);
     this.dirty = true;
     return null;
@@ -86,6 +94,7 @@ export class TickQueue {
           kept.push(tick);
           continue;
         }
+        this.scheduled.delete(this.key(tick));
         const result = handle(tick, ctx);
         ran++;
         if (result === 'handoff') {

@@ -3,7 +3,7 @@ import { buildHorizon, HorizonSampler, type HorizonSample } from '../src/world/h
 import { HORIZON_RECENTER_BLOCKS, HORIZON_RING_CELLS, HORIZON_STEPS_BLOCKS } from '../src/config';
 const field = (x: number, z: number): HorizonSample => [Math.sin(x / 100) * 10 + z / 100, 0.2, 0.4, 0.1];
 describe('distant terrain rings (T-D7)', () => {
-  it('builds bounded finite geometry to kilometres with an empty near hole and upward triangles', () => {
+  it('builds bounded finite geometry to kilometres with upward triangles and coverage under the moving shader hole', () => {
     const d = buildHorizon(-64, -128, 128, field);
     expect(d.radius * 0.3).toBeGreaterThan(2000); expect(d.indices.length).toBeGreaterThan(0);
     expect(Array.from(d.positions).every(Number.isFinite)).toBe(true);
@@ -12,8 +12,15 @@ describe('distant terrain rings (T-D7)', () => {
       const a = d.indices[i]! * 3, b = d.indices[i + 1]! * 3, c = d.indices[i + 2]! * 3;
       const nx = (d.positions[b + 2]! - d.positions[a + 2]!) * (d.positions[c]! - d.positions[a]!) - (d.positions[b]! - d.positions[a]!) * (d.positions[c + 2]! - d.positions[a + 2]!);
       expect(nx).toBeGreaterThan(0);
-      expect(Math.max(...[a, b, c].map(v => Math.max(Math.abs(d.positions[v]!), Math.abs(d.positions[v + 2]!))))).toBeGreaterThan(d.inner);
+      expect(Math.max(...[a, b, c].map(v => Math.max(Math.abs(d.positions[v]!), Math.abs(d.positions[v + 2]!))))).toBeGreaterThan(0);
     }
+  });
+  it('covers the snapped centre so camera movement cannot expose an unmeshed square hole', () => {
+    const d = buildHorizon(64, 64, 128, field);
+    const used = new Set(d.indices);
+    const centre = Array.from({ length: d.positions.length / 3 }, (_, i) => i)
+      .find(i => d.positions[i * 3] === 0 && d.positions[i * 3 + 2] === 0)!;
+    expect(used.has(centre)).toBe(true);
   });
   it('snaps fine outer vertices to linear coarse edges, avoiding cracks', () => {
     const d = buildHorizon(0, 0, 128, field), side = HORIZON_RING_CELLS * 2 + 1;

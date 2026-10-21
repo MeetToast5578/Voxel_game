@@ -873,3 +873,42 @@ Replaced the stale "Current local batch" section with an archived specs 46–47 
 so the next session does not mistake old uncommitted status for the current branch state.
 Documentation-only change; git diff --check passed. Prior functional acceptance remains
 613 tests / 74 files, both worker fixtures, GPU checks and all 31 gameplay smoke checks.
+
+2026-10-21 — Owner-requested urgent terrain/physics audit
+Prioritized actual update/render/collision failures under the owner's session budget.
+Confirmed 20 Hz block clock already exists alongside 60 Hz body integration.
+Found and fixed:
+- Scheduled/random handlers called World.setBlock directly without notifying ChunkManager;
+  world state/collision changed while old terrain meshes remained visible. Added separate
+  coalesced mesh-change tracking and tick-end batch invalidation, preserving save dirty flags.
+- World.tickStep gave every chunk the entire 2 ms budget. It now shares one deadline,
+  skips empty queues and rotates through a stable coordinate order; random passes rotate too.
+- Repeated notifications appended duplicate cell/reason ticks. Coalesce at earliest due time,
+  removing the identity before dispatch so the handler can schedule its next update.
+- Collision tested only the endpoint AABB; fast bodies could skip thin floors/walls entirely.
+  Sweep the complete axis volume and resolve against the first crossed solid.
+- Sand at an unloaded lower chunk lost its only update; fluid interfaces could lose work or
+  treat missing feed as air. Retry until adjacent chunks are available; falls wake nearby fluid.
+Added regression tests for these failures. Initial full check passed 621 tests / 74 files;
+final neighbour retry regression passed focused tick/flow suite (29 tests).
+An initial browser run was deliberately stopped after noticing its build predated the last
+flow change. Restarted using npm run smoke, which rebuilds first; only final run counts.
+Full final check and browser verification running; results follow below.
+Not claiming every bug fixed: T-G1 pending update serialization remains open, owner scene
+has not been reproduced, physical-browser/river seam/LOD acceptance still needs review.
+Updated HANDOFF and task priority override. Dependencies, block IDs and save schema unchanged.
+Final audit checkpoint — user requested immediate wrap-up at 4% session usage:
+- Full final check PASS: 622 tests / 74 files, typecheck and build.
+- Full rebuilt browser smoke PASS all 31 checks (physics, survival, flow delays, worker terrain).
+- Visual inspection found major LOD defects despite smoke passing. Partially corrected circular
+  fade at the voxel radius and filled snapped geometry hole; added centre-coverage regression.
+- After horizon change: 5 horizon tests PASS, typecheck/build PASS, focused distant-terrain
+  browser smoke PASS. Full suite not repeated after this small isolated horizon change.
+- Independently loaded Chromium at seed1 (101.5,245,-26.5), yaw-.8/pitch-.35 and waited until
+  pending generation/meshing/jobs were all zero. screenshots/terrain-audit.png STILL SHOWS
+  giant flat green LOD sheets/rectangular water strips and floating-looking tree silhouettes.
+  This is NOT resolved; inspect horizon approximation/integration first next session.
+- Existing terrain-at-spawn looked coherent. Pending tick serialization remains open.
+- Final logs: /tmp/voxel-bug-audit-check-final.log, smoke-final.log, horizon.log,
+  horizon-smoke.log and visual.log with the same voxel-bug-audit- prefix.
+- Updated handoff/task priorities with exact reproduction and honest remaining limitations.

@@ -32,8 +32,7 @@ const DEPENETRATE_STEP = 0.5;
 /**
  * Moves an axis-aligned box (pos = center of the feet) by vel * dt, one axis at a time (Y, X, Z).
  * Mutates pos, and zeroes the velocity component on each axis that collides.
- * Precondition: the box does not overlap a solid block before the move, and per call each axis moves less than
- * the body's width (X, Z) or height (Y).
+ * Sweeps the complete movement volume, including every crossed block at high speeds.
  *
  * With stepHeight > 0, a horizontal move that is blocked right after landing in this move's Y phase is retried
  * up to stepHeight higher: if the body fits there, it moves on and settles onto the ledge (result.stepped > 0).
@@ -138,11 +137,15 @@ function tryStep(
  * it entered and true is returned.
  */
 function sweepAxis(pos: Vec3, axis: Axis, d: number, shape: BodyShape, isSolid: SolidFn): boolean {
+  const start = pos[axis];
   pos[axis] += d;
   const hw = shape.halfWidth;
-  const minX = Math.floor(pos.x - hw), maxX = Math.ceil(pos.x + hw) - 1;
-  const minZ = Math.floor(pos.z - hw), maxZ = Math.ceil(pos.z + hw) - 1;
-  const minY = Math.floor(pos.y), maxY = Math.ceil(pos.y + shape.height) - 1;
+  const minX = Math.floor(Math.min(pos.x, axis === 'x' ? start : pos.x) - hw);
+  const maxX = Math.ceil(Math.max(pos.x, axis === 'x' ? start : pos.x) + hw) - 1;
+  const minZ = Math.floor(Math.min(pos.z, axis === 'z' ? start : pos.z) - hw);
+  const maxZ = Math.ceil(Math.max(pos.z, axis === 'z' ? start : pos.z) + hw) - 1;
+  const minY = Math.floor(Math.min(pos.y, axis === 'y' ? start : pos.y));
+  const maxY = Math.ceil(Math.max(pos.y, axis === 'y' ? start : pos.y) + shape.height) - 1;
   let hitCell: number | null = null;
   for (let y = minY; y <= maxY; y++)
     for (let z = minZ; z <= maxZ; z++)

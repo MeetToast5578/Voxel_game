@@ -70,7 +70,9 @@ export function buildHorizon(centerX: number, centerZ: number, viewBlocks: numbe
   ];
   for (let level = 0; level < HORIZON_STEPS_BLOCKS.length; level++) {
     const step = HORIZON_STEPS_BLOCKS[level]!, extent = step * HORIZON_RING_CELLS;
-    const previous = level === 0 ? inner : HORIZON_STEPS_BLOCKS[level - 1]! * HORIZON_RING_CELLS;
+    // The shader cuts a camera-centred circular hole. A snapped square geometry hole
+    // shifts with worker recentering and can expose sky inside the loaded radius.
+    const previous = level === 0 ? 0 : HORIZON_STEPS_BLOCKS[level - 1]! * HORIZON_RING_CELLS;
     const nextStep = HORIZON_STEPS_BLOCKS[level + 1];
     const side = HORIZON_RING_CELLS * 2 + 1, base = positions.length / 3;
     for (let z = -extent; z <= extent; z += step) for (let x = -extent; x <= extent; x += step) {

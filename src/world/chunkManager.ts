@@ -111,6 +111,8 @@ export class ChunkManager {
   tick(): void {
     this.lastTickStats = this.world.tickStep(TICK_BUDGET_MS);
     this.lastRandomTickStats = this.world.randomTickStep(RANDOM_TICK_BUDGET_MS);
+    const changes = this.world.takeBlockChanges();
+    if (changes.chunks.length) this.onBlocksChanged(changes);
   }
 
   /** Result of the last tickStep, for the F3 overlay. */

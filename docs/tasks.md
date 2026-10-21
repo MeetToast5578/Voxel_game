@@ -20,6 +20,10 @@ Completed and verified:
 - **Latest validation:** typecheck, **613 tests / 74 files**, production build, both isolated worker budgets at origin and a forest, GPU regressions and **all 31 gameplay smoke checks passed** on Node 24 / system Chromium 154. Warm generation/mesh: origin 1.100/1.346 ms; forest 1.784/2.706 ms (3 ms budgets). Physical-browser acceptance and current GitHub CI remain unrun.
 - Old block IDs, dependencies, lockfile and save format are preserved. States 73..76 append. Unedited terrain regenerates; saved edits remain. LOD covers generated terrain to ~2.4 km, omits saved distant structures and is disabled with workers=0. Mountain heights remain capped. Biome IDs now resolve per surface cell; dynamic plant ecology remains separate.
 
+Bug audit requested by owner (2026-10-21):
+- Fixed tick-driven edits failing to invalidate chunk meshes (visible terrain could disagree with collision), per-chunk instead of shared scheduled-tick budget, duplicate cell/reason ticks, random-tick starvation, high-speed collision tunnelling, and falling/fluid updates lost while adjacent chunks stream in. Added regressions; final verification recorded in log.txt.
+- **Priority override:** confirmed fully loaded seed-1 horizon artifacts at (101.5,245,-26.5), yaw -0.8/pitch -0.35; fix inaccurate distant terrain first (see HANDOFF). Then complete T-G1 durable pending updates before visual feature work. This was a focused critical-path audit, not proof that all game bugs are gone. The existing clock is 20 Hz for blocks and 60 Hz for bodies; those rates remain.
+
 Next priorities:
 1. **T-G1 pending-fall persistence**, then **T-F5 wind → T-F7 seasonal visuals → T-F8 smooth lighting → T-F14 lightning/thunder**. These are the next five coding priorities; keep measured worker budgets in view.
 2. **T-C / T-E11b — Owner playtest and visual acceptance.** Remain open; do not block independent coding or claim physical-browser acceptance from headless tests. River-seam review (T-C6) still gates overall terrain-phase acceptance.

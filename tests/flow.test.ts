@@ -139,3 +139,15 @@ describe('flowing water (spec 25, slice 4)', () => {
     expect(FLOW_REASON).toBe('flow');
   });
 });
+
+it('keeps a source update alive until an adjacent streamed chunk arrives', () => {
+  const world = stacked(); floor(world);
+  pour(world, 15, 1, 5, BlockId.WATER);
+  settle(world, 10);
+  expect(world.pendingTickCount).toBeGreaterThan(0);
+  world.addChunk(new Chunk(1, 0, 0));
+  world.installColumnTops(1, 0, new Int32Array(256).fill(-1000));
+  world.setBlock(16, 0, 5, BlockId.STONE);
+  settle(world, WATER_TICK_DELAY);
+  expect(isWaterState(world.getBlock(16, 1, 5))).toBe(true);
+});

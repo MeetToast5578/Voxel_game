@@ -76,6 +76,11 @@ export function handleFlow(world: World, tick: Tick): TickResult {
     for (const [dx, dy, dz] of NEIGHBOURS) coolLava(world, x + dx, y + dy, z + dz);
   }
   const f = fluid(id);
+  // Missing chunks are unknown, not air. Keep this interface alive until streaming completes.
+  if (NEIGHBOURS.some(([dx, dy, dz]) => !world.isLoadedAt(x + dx, y + dy, z + dz))) {
+    world.scheduleTick(x, y, z, world.currentTick + f.delay, FLOW_REASON);
+    return 'handled';
+  }
   let strength = SOURCE_WATER_LEVEL;
   if (id !== f.source) {
     const above = world.getBlock(x, y + 1, z);
