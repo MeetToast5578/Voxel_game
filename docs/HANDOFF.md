@@ -12,8 +12,8 @@ state appends after existing IDs; saved edits/dependencies/save format remain in
 
 Next: boulders, fallen logs, lily pads, moss/art, then finer biome resolution (T-E10).
 Owner playtests/river-seam acceptance and current CI remain unrun. The owner authorized
-commits/pushes; the prior batch is checkpointed as 2396e91. The new batch will be committed
-and pushed on codex/coasts-horizon-flora after final documentation review. See tasks.md
+commits/pushes; the prior batch is checkpointed as 2396e91. The new batch is committed as dd1d991
+and pushed on codex/coasts-horizon-flora; origin was verified against the local SHA. See tasks.md
 and log.txt for the current queue/evidence; older uncommitted-status notes are historical.
 
 ## Current local batch — 2026-10-21

@@ -817,3 +817,13 @@ Updated README, task completions/next queue, spec index and handoff. T-E9 remain
 T-E10 stays open, and mountains remain capped. No new dependencies/save format changes.
 Next action: commit the verified batch and perform a normal non-force feature-branch push
 including prior checkpoint 2396e91, then verify origin against local HEAD.
+
+2026-10-21 — Commit and push confirmed
+- 2396e91: verified aquifers, underground pools and fluid hazards checkpoint.
+- dd1d991a9dee4e445664b2a17068518d0fb5e120: verified coasts, horizon and climate flora.
+- Normal push created origin/codex/coasts-horizon-flora and set the upstream. Native Git
+  authentication worked; no tokens requested or extracted. git ls-remote returned the
+  exact local dd1d991 SHA for the feature branch. Working tree was clean after that push.
+- Updated handoff/tasks to record the actual push result. This documentation-only record
+  is committed and pushed next; no functional source changed after final validation.
+- No force push, merge, PR creation, environment publication or current CI claim.
