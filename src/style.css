@@ -587,3 +587,16 @@ body {
     height: 30px;
   }
 }
+
+.hazard-warning {
+  position: absolute;
+  top: 18%;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 8px 12px;
+  color: #fff;
+  background: #66271f;
+  border: 2px solid #ffd17b;
+  font-weight: bold;
+  pointer-events: none;
+}

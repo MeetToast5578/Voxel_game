@@ -1,5 +1,5 @@
 import {
-  AIR_ACCEL, EYE_HEIGHT, FEET_WATER_HEIGHT, FLY_SPEED, GRAVITY, GROUND_ACCEL, JUMP_SPEED, PLAYER_DENSITY,
+  LAVA_DENSITY, LAVA_DRAG, BLOCK_SIZE_M, AIR_ACCEL, EYE_HEIGHT, FEET_WATER_HEIGHT, FLY_SPEED, GRAVITY, GROUND_ACCEL, JUMP_SPEED, PLAYER_DENSITY,
   PLAYER_HALF_WIDTH, PLAYER_HEIGHT, SPRINT_SPEED, STEP_HEIGHT, STEP_SMOOTH_S, SWIM_THRUST, SWIM_UP_ACCEL,
   SPLASH_MIN_SPEED, SWIM_WAIST_HEIGHT, TERMINAL_VELOCITY, WADE_SLOWDOWN, WALK_SPEED, WATER_DENSITY, WATER_DRAG,
 } from '../config';
@@ -44,6 +44,9 @@ export class Player {
   flying = false;
   /** True when the middle of the body is in water (updated by update()). */
   inWater = false;
+  inLava = false;
+  /** Downward speed immediately before a ground collision, in m/s (zero on non-landings). */
+  impactSpeedM_S = 0;
   /**
    * Downward speed (blocks/s) of the frame in which the body entered water fast enough to splash; 0 on every other
    * frame. The game plays the splash sound on it, and fall damage will read it later.
@@ -68,6 +71,8 @@ export class Player {
     this.eyeOffset = this.prevEyeOffset = 0;
     this.submerged = 0;
     this.splashSpeed = 0;
+    this.impactSpeedM_S = 0;
+    this.inWater = this.inLava = false;
   }
 
   /** dx, dy: mouse movement in pixels. sensitivity: radians per pixel. */
@@ -83,8 +88,8 @@ export class Player {
     this.velocity.y = 0;
   }
 
-  /** isWater is optional so older callers and tests keep working; it defaults to "no water anywhere". */
-  update(dt: number, c: PlayerControls, isSolid: SolidFn, isWater: SolidFn = () => false): void {
+  /** Optional fluid predicates preserve dry-world callers; lava has its own density, drag and flags. */
+  update(dt: number, c: PlayerControls, isSolid: SolidFn, isWater: SolidFn = () => false, isLava: SolidFn = () => false): void {
     this.prevPosition.x = this.position.x;
     this.prevPosition.y = this.position.y;
     this.prevPosition.z = this.position.z;
@@ -94,11 +99,17 @@ export class Player {
     const bz = Math.floor(this.position.z);
     this.inWater = isWater(bx, Math.floor(this.position.y + SWIM_WAIST_HEIGHT), bz); // water at waist height
     const feetInWater = isWater(bx, Math.floor(this.position.y + FEET_WATER_HEIGHT), bz);
-    const swimming = this.inWater && !this.flying;
-    const submerged = this.flying ? 0 : submergedFraction(bx, bz, this.position.y, isWater);
+    this.inLava = isLava(bx, Math.floor(this.position.y + SWIM_WAIST_HEIGHT), bz);
+    const waterSubmerged = this.flying ? 0 : submergedFraction(bx, bz, this.position.y, isWater);
+    const lavaSubmerged = this.flying ? 0 : submergedFraction(bx, bz, this.position.y, isLava);
+    const submerged = Math.max(waterSubmerged, lavaSubmerged);
+    const lava = lavaSubmerged > 0 && waterSubmerged === 0;
+    const fluidDensity = lava ? LAVA_DENSITY : WATER_DENSITY;
+    const fluidDrag = lava ? LAVA_DRAG : WATER_DRAG;
+    const swimming = (this.inWater || this.inLava) && !this.flying;
     const fallSpeed = -this.velocity.y;
-    this.splashSpeed = this.submerged === 0 && submerged > 0 && fallSpeed >= SPLASH_MIN_SPEED ? fallSpeed : 0;
-    this.submerged = submerged;
+    this.splashSpeed = this.submerged === 0 && waterSubmerged > 0 && fallSpeed >= SPLASH_MIN_SPEED ? fallSpeed : 0;
+    this.submerged = waterSubmerged;
 
     // Horizontal wish direction from yaw. Yaw 0 looks toward -Z.
     const ix = (c.right ? 1 : 0) - (c.left ? 1 : 0);
@@ -117,7 +128,7 @@ export class Player {
     const t = 1 - Math.exp(-(this.flying || this.onGround ? GROUND_ACCEL : AIR_ACCEL) * dt);
     if (swimming) {
       // Drag first, then the stroke, so that at steady speed thrust = drag × speed² exactly.
-      const drag = 1 - WATER_DRAG * Math.hypot(this.velocity.x, this.velocity.y, this.velocity.z) * dt;
+      const drag = Math.max(0, 1 - fluidDrag * Math.hypot(this.velocity.x, this.velocity.y, this.velocity.z) * dt);
       this.velocity.x *= drag;
       this.velocity.y *= drag;
       this.velocity.z *= drag;
@@ -137,14 +148,16 @@ export class Player {
       if (c.jump && swimming) this.velocity.y += SWIM_UP_ACCEL * dt;
       else if (c.jump && this.onGround) this.velocity.y = JUMP_SPEED;
       // Buoyancy is gravity's counterweight, scaled by how much of the body is under water.
-      this.velocity.y += (GRAVITY * (WATER_DENSITY / PLAYER_DENSITY) * submerged - GRAVITY) * dt;
+      this.velocity.y += (GRAVITY * (fluidDensity / PLAYER_DENSITY) * submerged - GRAVITY) * dt;
       this.velocity.y = Math.max(this.velocity.y, -TERMINAL_VELOCITY);
     }
 
-    const stepHeight = this.flying || this.inWater ? 0 : STEP_HEIGHT;
+    const stepHeight = this.flying || this.inWater || this.inLava ? 0 : STEP_HEIGHT;
+    const impact = this.flying ? 0 : Math.max(0, -this.velocity.y) * BLOCK_SIZE_M;
     const r = moveAndCollide(this.position, this.velocity, dt, PLAYER_SHAPE, isSolid, stepHeight);
     this.eyeOffset -= r.stepped; // the body rose; keep the eye where it was and let it catch up
     this.onGround = r.onGround;
+    this.impactSpeedM_S = r.onGround ? impact : 0;
     this.againstWall = r.hitX || r.hitZ;
     if (this.flying && r.onGround) this.flying = false; // landing ends flight
   }

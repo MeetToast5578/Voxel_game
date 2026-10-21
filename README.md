@@ -3,6 +3,9 @@
 A Minecraft-like voxel sandbox that runs in the browser, built with TypeScript, Vite and three.js.
 
 - Endless procedural terrain: hills, mountains, beaches, rivers, lakes, trees and caves, with layers of granite, diorite, andesite, sandstone, limestone, slate and basalt underground, deepslate below 100 m underground, bare rock on steep ground, ore veins (coal, iron, gold, redstone, lapis, diamond, emerald) by depth band, grass blocks that are green on every side, and tall grass, ferns, poppies, dandelions and mushrooms on the grass
+- Underground caves continue below sea level, with seeded local groundwater tables: passages above the table stay dry and lower cavities fill with water. Surface oceans, rivers and lakes retain their levels.
+- Dedicated underground lakes and deeper lava pools have solid basin walls. Lava glows, flows more slowly than water, and has greater buoyancy and drag. Water cools lava into stone, cobblestone or obsidian.
+- In survival, lava contact causes damage and leaves you burning briefly; enter water to extinguish it. Water cushions landings according to depth, and shallow puddles can still hurt.
 - Walk, sprint, jump, fly and swim, with block collisions
 - Ledges up to 0.6 m are stepped up automatically, no jump needed
 - Break and place blocks including gravel, clay and cactus. Water flows: the source block spreads, and it levels out.
@@ -103,4 +106,4 @@ CI (GitHub Actions) runs `npm run check`, worker budget guards, GPU regressions 
 | `src/workers` | Web Worker pool for generation and meshing |
 | `tests` | Vitest unit tests for all logic modules |
 
-Tree generation updates apply to regenerated, unedited terrain. Saved edits remain in place. Worlds containing newly placed cactus or clay blocks require this version or newer.
+Tree and aquifer generation updates apply to regenerated, unedited terrain. New underground caves, groundwater and pools can appear when unedited chunks regenerate. Saves containing lava or obsidian states need this version or newer. Saved edits remain in place. Worlds containing newly placed cactus or clay blocks require this version or newer.

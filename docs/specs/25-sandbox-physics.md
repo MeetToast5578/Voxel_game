@@ -1,5 +1,10 @@
 # Spec 25: Sandbox physics (program)
 
+> Update 2026-10-21: spec 47 extends the original water-only flow/body rules to lava,
+> adds water/lava reactions and survival fluid hazards. Its rules supersede older
+> statements below that lava is not implemented. Pending-fall persistence remains open.
+
+
 Phase 5 of [the roadmap](../ROADMAP.md), items 1–5, plus the shared body work from phase 6 item 2. This is the plan for a physics layer: falling blocks, fluid flow, structural collapse and loose rigid bodies. It is a program spec. Each slice below gets its own branch, pull request and detailed spec when it is reached, as the roadmap asks. Slice 1 is the first to be specced in full.
 
 ## Goal

@@ -1,3 +1,4 @@
+import { LAVA_DENSITY } from '../config';
 export const BlockId = {
   AIR: 0,
   STONE: 1,
@@ -38,6 +39,9 @@ export const BlockId = {
   FLOWING_WATER: 36,
   CACTUS: 52,
   CLAY: 53,
+  LAVA: 54,
+  FLOWING_LAVA: 55,
+  OBSIDIAN: 71,
 } as const;
 
 export const Tile = {
@@ -91,6 +95,8 @@ export const Tile = {
   CACTUS_SIDE: 47,
   CACTUS_TOP: 48,
   CLAY: 49,
+  LAVA: 50,
+  OBSIDIAN: 51,
 } as const;
 
 export type RenderLayer = 'none' | 'opaque' | 'cutout' | 'translucent';
@@ -340,6 +346,14 @@ export const BLOCK_REGISTRY = buildBlockRegistry([
   }),
   def('cactus', 'Cactus', { top: Tile.CACTUS_TOP, side: Tile.CACTUS_SIDE, bottom: Tile.CACTUS_TOP }, { hardness: 0.5, density: 700 }),
   def('clay', 'Clay', all(Tile.CLAY), { hardness: 0.6, density: 1700 }),
+  def('lava', 'Lava', all(Tile.LAVA), {
+    solid: false, opaque: false, targetable: false, breakable: false, cullSame: true, lightEmission: 15, density: LAVA_DENSITY,
+  }),
+  def('flowing_lava', 'Flowing lava', all(Tile.LAVA), {
+    variants: FLOWING_WATER_VARIANTS, solid: false, opaque: false, targetable: false, breakable: false,
+    cullSame: true, lightEmission: 15, flows: true, density: LAVA_DENSITY,
+  }),
+  def('obsidian', 'Obsidian', all(Tile.OBSIDIAN), { hardness: 8, density: 2600 }),
 ]);
 
 // BlockId.X is variant 0 of the type whose key is x; keep the two lists in step.
@@ -390,9 +404,9 @@ export function isFallingWater(state: number): boolean {
   return isFlowingWaterState(state) && state - BlockId.FLOWING_WATER >= WATER_LEVELS;
 }
 
-/** How high a block's top face stands, in blocks: flowing water stands at its level, everything else a full block. */
+/** How high a block's top face stands: flowing fluids use their level, other states a full block. */
 export function blockTopHeight(state: number): number {
-  return isFlowingWaterState(state) ? waterLevel(state) / WATER_LEVELS : 1;
+  return isFlowingWaterState(state) ? waterLevel(state) / WATER_LEVELS : isFlowingLavaState(state) ? lavaLevel(state) / WATER_LEVELS : 1;
 }
 
 /** The flowing water state for a level (1..8), falling or not. */
@@ -400,3 +414,18 @@ export function flowingWaterState(level: number, falling: boolean): number {
   return BlockId.FLOWING_WATER + (level - 1) + (falling ? WATER_LEVELS : 0);
 }
 
+/** Lava uses the same level/falling encoding as water, in its own stable state range. */
+export function isFlowingLavaState(state: number): boolean {
+  return state >= BlockId.FLOWING_LAVA && state < BlockId.FLOWING_LAVA + FLOWING_WATER_VARIANTS;
+}
+export function isLavaState(state: number): boolean { return state === BlockId.LAVA || isFlowingLavaState(state); }
+export function isFluidState(state: number): boolean { return isWaterState(state) || isLavaState(state); }
+export function lavaLevel(state: number): number {
+  return isFlowingLavaState(state) ? ((state - BlockId.FLOWING_LAVA) % WATER_LEVELS) + 1 : WATER_LEVELS;
+}
+export function isFallingLava(state: number): boolean {
+  return isFlowingLavaState(state) && state - BlockId.FLOWING_LAVA >= WATER_LEVELS;
+}
+export function flowingLavaState(level: number, falling: boolean): number {
+  return BlockId.FLOWING_LAVA + (level - 1) + (falling ? WATER_LEVELS : 0);
+}

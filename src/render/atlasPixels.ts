@@ -46,6 +46,8 @@ const PAINTERS: Record<number, PixelFn> = {
   [Tile.CLAY]: noisy([151, 162, 170], 0.12),
   [Tile.GRAVEL]: noisy([128, 122, 116], 0.5),
   [Tile.WATER]: noisy([48, 96, 200], 0.1),
+  [Tile.LAVA]: (x, y, r) => shade((x * 3 + y * 5) % 11 < 3 ? [255, 211, 55] : [239, 76, 12], 0.85 + r() * 0.15),
+  [Tile.OBSIDIAN]: noisy([36, 25, 49], 0.5),
   [Tile.LOG_SIDE]: (x, _y, r) => shade(BARK, (x % 4 === 0 ? 0.75 : 1) + (r() - 0.5) * 0.15),
   [Tile.LOG_TOP]: (x, y, r) => {
     if (x === 0 || y === 0 || x === 15 || y === 15) return shade(BARK, 1);

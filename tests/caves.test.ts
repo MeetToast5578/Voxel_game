@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { BLOCK_SIZE_M, RAVINE_DEPTH_M, RAVINE_ROOF, SEA_LEVEL, SHORE_CAVE_BAND, SHORE_ROOF, SOIL_DEPTH } from '../src/config';
+import { BLOCK_SIZE_M, CAVE_BOTTOM_ROWS, CHUNK_SIZE, TERRAIN_CHUNK_BOTTOM, RAVINE_DEPTH_M, RAVINE_ROOF, SEA_LEVEL, SHORE_CAVE_BAND, SHORE_ROOF, SOIL_DEPTH } from '../src/config';
 import { BlockId } from '../src/world/blocks';
+import { Chunk } from '../src/world/chunk';
 import { caveKind, createCaveNoises, isCaveBlock, type CaveKind } from '../src/world/caves';
 import { TerrainGenerator } from '../src/world/generator';
 import { landColumns, stackedColumn, type StackedColumn } from './support/stackedColumn';
@@ -26,12 +27,14 @@ describe('caves', () => {
     expect(fraction).toBeGreaterThan(0.005);
     expect(fraction).toBeLessThan(0.08);
   });
-  it('never carve y = 0 or y = 1 under the surface', () => {
-    for (const c of columns)
-      for (let lz = 0; lz < 16; lz++)
-        for (let lx = 0; lx < 16; lx++) {
-          const h = g.getHeight(c.cx * 16 + lx, c.cz * 16 + lz);
-          for (let y = 0; y <= 1 && y < h; y++) expect(c.get(lx, y, lz)).not.toBe(BlockId.AIR);
+  it('never carves the lowest two rows of the terrain band (spec 46 replaces the sea-level floor)', () => {
+    const bottom = new Chunk(0, TERRAIN_CHUNK_BOTTOM, 0);
+    g.generateChunk(bottom);
+    for (let y = 0; y < CAVE_BOTTOM_ROWS; y++)
+      for (let z = 0; z < CHUNK_SIZE; z++)
+        for (let x = 0; x < CHUNK_SIZE; x++) {
+          expect(bottom.get(x, y, z)).not.toBe(BlockId.AIR);
+          expect(bottom.get(x, y, z)).not.toBe(BlockId.WATER);
         }
   });
   it('never open a hole under the shore', () => {

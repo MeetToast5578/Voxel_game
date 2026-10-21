@@ -1,6 +1,7 @@
 import { createNoise2D, type NoiseFunction2D } from 'simplex-noise';
 import {
   BARE_ROCK_AMP_M,
+  CAVE_BOTTOM_ROWS,
   BEACH_BAND,
   BLOCK_SIZE_M,
   BIOME_BLEND_BLOCKS,
@@ -33,6 +34,8 @@ import { hash2, mulberry32 } from '../core/random';
 import { caveKind, createCaveNoises, type CaveNoises } from './caves';
 import { BlockId, blocksSky, parseBlockStateName } from './blocks';
 import { Chunk } from './chunk';
+import { AquiferSampler } from './aquifer';
+import { UndergroundPools } from './undergroundPools';
 import { TerrainDensity } from './density';
 import { ClimateSampler, detailAmpMeters } from './shape';
 import { blockPrecipitation, blockTemperature } from './climate';
@@ -111,6 +114,8 @@ interface Column {
   waterLevels: Float64Array;
   /** 0 = ordinary terrain/ocean, 1 = river, 2 = lake. */
   waterBodies: Uint8Array;
+  /** Highest groundwater row for deep density voids and carved caves (spec 46). */
+  waterTables: Int32Array;
   /** Biome key for this column (computed once at column center). */
   biomeKey: string;
 }
@@ -124,6 +129,8 @@ export class TerrainGenerator {
   private readonly rockNoise: NoiseFunction2D;
   /** The four cave systems (spec 45). */
   private readonly caves: CaveNoises;
+  private readonly aquifers: AquiferSampler;
+  private readonly pools: UndergroundPools;
   private readonly columnCache = new Map<string, Column>();
   /** The biome of each chunk column, from its centre. Cheaper than a whole column, so neighbours can be asked. */
   private readonly chunkBiomes = new Map<string, string>();
@@ -141,6 +148,8 @@ export class TerrainGenerator {
     this.regions = new RegionSampler(climateHeightSource((xM, zM) => this.climate.fields(xM, zM)));
     this.rockNoise = createNoise2D(mulberry32(seed + 300));
     this.caves = createCaveNoises(seed);
+    this.aquifers = new AquiferSampler(seed);
+    this.pools = new UndergroundPools(seed);
     this.featureRegistry.registerFeature({
       key: 'tree',
       densityPerChunk: TREE_CHANCE * CHUNK_SIZE * CHUNK_SIZE,
@@ -277,6 +286,7 @@ export class TerrainGenerator {
         // Water level: the sea, or a lake or river surface from the region simulation. A riverbed
         // or lakebed is sand or gravel, not grass.
         const waterY = Math.max(SEA_LEVEL, Math.floor(metersToBlocks(column.waterLevels[i]!)));
+        const waterTable = column.waterTables[i]!;
         const submerged = h < waterY;
         const bed = column.waterBodies[i] === 1 ? riverbedMaterial(this.seed, wx, wz) : BlockId.SAND;
         const plant = !submerged && surface === BlockId.GRASS && inSlice ? this.plantAt(wx, wz, h) : BlockId.AIR;
@@ -293,16 +303,22 @@ export class TerrainGenerator {
               id = submerged ? bed : beach ? BlockId.SAND : soilBlock(column.biomeKey);
             } else id = this.rockAt(y, warp);
           } else if (y === h + 1 && plant !== BlockId.AIR) id = plant;
-          else id = y <= waterY ? BlockId.WATER : BlockId.AIR;
+          else {
+            // Surface water retains its local level. Enclosed density voids use groundwater,
+            // just like carved caves, so sea level does not flood every underground passage.
+            const level = y <= h - SHORE_ROOF ? waterTable : waterY;
+            id = y <= level ? BlockId.WATER : BlockId.AIR;
+          }
           out[localIndex(lx, y - y0, lz)] = id;
         }
         const top = Math.min(this.caveTop(h, column.waterBodies[i] ? waterY : SEA_LEVEL), y1 - 1);
-        for (let y = Math.max(2, y0); y <= top; y++) {
-          if (this.isCave(wx, y, wz, h)) out[localIndex(lx, y - y0, lz)] = BlockId.AIR;
+        for (let y = Math.max(TERRAIN_CHUNK_BOTTOM * CHUNK_SIZE + CAVE_BOTTOM_ROWS, y0); y <= top; y++) {
+          if (this.isCave(wx, y, wz, h)) out[localIndex(lx, y - y0, lz)] = y <= waterTable ? BlockId.WATER : BlockId.AIR;
         }
       }
     }
     this.placeOres(column, cx, cz, y0, y1, out);
+    this.pools.fill(cx, cz, y0, y1, out, (x, z) => this.getHeight(x, z));
     this.placeTrees(cx, cz, y0, y1, out);
   }
 
@@ -323,6 +339,7 @@ export class TerrainGenerator {
       warp: new Float64Array(CHUNK_SIZE * CHUNK_SIZE),
       waterLevels: new Float64Array(CHUNK_SIZE * CHUNK_SIZE),
       waterBodies: new Uint8Array(CHUNK_SIZE * CHUNK_SIZE),
+      waterTables: new Int32Array(CHUNK_SIZE * CHUNK_SIZE),
       biomeKey: '',
     };
     for (let lz = 0; lz < CHUNK_SIZE; lz++)
@@ -345,6 +362,7 @@ export class TerrainGenerator {
         column.waterLevels[i] = sample.waterLevelM;
         column.waterBodies[i] = sample.isRiver ? 1 : sample.isLake ? 2 : 0;
         column.solidTop[i] = this.solidTop(wx, wz, column.offsets[i]!, column.amps[i]!);
+        column.waterTables[i] = this.aquifers.waterTableAt(wx, wz, column.solidTop[i]!);
       }
     column.biomeKey = this.chunkBiome(cx, cz);
     this.columnCache.set(key, column);

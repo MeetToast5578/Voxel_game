@@ -608,3 +608,143 @@ CI result: run 39259305015 on 58ae409 (PR #32) PASSED both jobs — `check` 1m5s
 meshing mean 1.243 ms and generation mean 1.256 ms (both 3 ms budgets) and the same mesh
 fixture hash; `smoke` 6m58s, all 25 checks. PR #31 (98706b2) had already been merged to
 main as 697f926, so the T-D2 batch went out as a new PR rather than an update.
+
+
+2026-10-21 — Autonomous backlog execution: initial audit / T-A6
+User requested tasks.md updates, priority-based implementation, checking and logging all work.
+Working in existing checkout; initial git status clean. No AGENTS.md found.
+Updated tasks.md with current queue, historical-evidence labels, T-A6 regression and Pixel Aero
+proposal T-K8. Owner playtests remain open; no new CI results claimed.
+Baseline from onboarding: npm run check PASS (548 tests / 63 files, typecheck, build), GPU
+render smoke PASS, generation 1.319 ms and meshing 1.198 ms PASS (3 ms budgets).
+Full gameplay smoke FAIL after 13 checks at mining/pickup: Grass inventory 64 -> 64, two
+items dropped, player fell to y=6841.2 from fixture y=8392. Isolated browser reproduction:
+stone support 1 -> air, grass 3 -> air, items=2 after mining. Structural collapse is correct.
+Changed only the mining fixture: a 5x5 bedrock floor replaces the single floating stone
+support, retaining the real grass mining, crack-stage and exact-one-item assertions.
+Validation pending; continue through full smoke before marking T-A6 done.
+
+2026-10-21 — T-D3 investigation and design
+Found cave fillRange loop starts at max(2,y0): the four cave systems never carve negative y.
+Density voids below sea level were blanket-filled with water. Spec 46 documents the bounded
+local-water-table model and extension of caves below sea level. The legacy y=0/1 guard will
+move to the actual terrain-band floor, preserving bottom protection without a sea-level slab.
+Tables are seeded 2D fields cached per column; no per-cell 3D noise added. Surface-water
+roofs and water levels remain; underground lake basins/lava remain T-D4/T-G8.
+
+T-A6 verification: full gameplay smoke PASS, all 25 checks (system Chromium 154).
+Crack-stage and exact-one-item pickup assertions retained. Marked T-A6 done locally; CI unrun.
+T-D3: added AquiferSampler, cached column water tables, deep density-void filling and negative-y
+cave carving. Ported the old y=0/1 bottom-protection test to the actual terrain-band floor per
+spec 46; no assertion was dropped to mask a regression. Added direct wet/dry, sea-level seam,
+bottom, density-void, ocean/river, seed/order/cache and water-height regressions.
+
+Review correction: the new wide floor initially used numeric state 11 (cobblestone), not
+bedrock 10. That run passed 25 checks but did not prove permanent support. Corrected it to
+state 10 after checking BlockId. Final full smoke will validate the actual anchored fixture.
+Focused aquifer/cave/riverbed suite PASS: 24 tests / 3 files, including 9 aquifer tests.
+
+T-D3 browser coverage: added real seed-1 dry (-16,-80,-16) and wet (8,-144,15) cave
+fixtures to smoke and pure generator tests. Browser checks read worker-generated chunks
+without editing terrain and restore the player. Ported the deep-chunk assertion from a
+single guaranteed-rock cell to a neighbourhood requiring rock while allowing cave air/water.
+README records regenerated underground caves/groundwater; existing edits and saves retained.
+
+Diff review caught an overly broad smoke-script text replacement before execution. Restored
+the untouched checks from HEAD and reapplied the three intended edits with exact-match
+guards. All original 25 checks remain, plus the new aquifer check; syntax validation follows.
+
+T-D3 regression results so far (2026-10-21):
+- npm run check PASS: typecheck, 558 tests / 64 files, production build.
+- Isolated worker guards PASS: generation 1.511 ms, meshing 1.248 ms
+  (3 ms budgets); region 61.353 ms, spawn 130.323 ms,
+  cold column preparation 47.017 ms. Cold setup remains outside budget.
+- Mesh fixture hash now c838b8dddfc61ad867f0c9b6c231b0b9b4d3882de3a7ecd4c27c4a636b973c46.
+  The benchmark builds actual generated neighbouring chunks, so newly carved y=0/1 and
+  negative-y caves change geometry/light inputs. No mesher code changed; mesher/light tests pass.
+- GPU render smoke PASS (wet 255->178, sheltered 128->128; sky translation and moon phases).
+- node --check scripts/smoke.mjs and git diff --check PASS.
+Full 26-check gameplay smoke is running; do not mark T-D3 done until it passes.
+
+2026-10-21 — Final batch verification / T-A6 and T-D3 complete
+Full final gameplay smoke PASS, all 26 checks, including actual bedrock-supported mining
+and exact pickup, generated dry/wet aquifer fixtures, deep/high chunks, fluid timing,
+volume tools/undo, menu/inventory accessibility and worker use. Final measurement:
+3979 chunks loaded / 2057 meshed / 364 draw calls / 22 fps on SwiftShader; this is not
+a physical-hardware performance claim. Each command preserved its exit status; worker
+budgets, GPU checks and gameplay smoke ran sequentially.
+Reviewed final source/test diffs. No dependency, lockfile or save-format changes. Ten new
+aquifer tests; original 25 gameplay checks retained plus one aquifer check. The cave floor
+test was ported from sea-level y=0/1 to the real generation-band floor as documented in
+spec 46. Updated tasks.md and the spec index with verified completion and the next queue.
+T-D4 is next: dedicated underground lake basins, then lava pools with T-G8 fluid prerequisites.
+Owner playtests and current GitHub CI remain unrun/open. Work remains local and uncommitted.
+
+
+2026-10-21 — Continuation batch: five related tasks (spec 47)
+User requested continuing the queue and about five tasks. Preserved all previous uncommitted
+T-A6/T-D3 work. Selected T-D4, T-G8, T-G9, T-G13 and T-G14 in dependency order: local
+pools require lava states/flow; mixing and hazards complete the useful fluid workflow.
+Inspected block registry, flow/ecology dispatch, generator, player physics, loose bodies,
+survival loop, mesh/atlas and existing regression conventions. Wrote spec 47 before coding.
+No new dependencies or save-format changes. New states append after clay (old IDs retained).
+
+Spec 47 implementation and focused validation:
+- Appended lava 54, flowing lava 55..70 and obsidian 71; old states retain IDs. Added
+  procedural lava/obsidian tiles and level-aware lava geometry through existing mesh tables.
+- Generalized scheduled flow to own-fluid feeding and separate delays; added cooling and
+  reload contact scheduling. Existing water-flow regressions pass unchanged.
+- Added stateless jittered underground pools with solid shells and protected surface roofs.
+- Added player/body lava buoyancy and drag; actual collision-speed fall damage with
+  depth-dependent water cushioning; AABB fluid contact, timed fire and extinguishing.
+- Added a textual fire warning and debug burning/lava state. No fire spread or persistence.
+First focused run: 88/89 tests passed. The remaining assertion used a lethal dry impact
+(speed 20 m/s), so correct death/respawn returned health to 20 before inspection. Changed
+the comparison fixture to a nonfatal 10 m/s impact, retaining the dry-vs-water assertion;
+death/reset has its own actual-game test. Corrected one trailing whitespace finding.
+The initial registry test expected exactly the old keys; appended explicit new state IDs
+to its expected table while retaining every old ID/name/variant assertion.
+
+Spec 47 review and regression status:
+- Focused suite PASS, 89 tests / 9 files. Full check PASS, 582 tests / 68 files,
+  typecheck and production build. Added two review regressions (source interfaces on
+  newly loaded water-side chunk seams; full basin rejection when a distant shell cell
+  breaches a roof); these will be run after the browser suite to avoid contention.
+- Pool eligibility now checks the complete global shell footprint, cached with a bounded
+  map. Every intersecting chunk rejects the same invalid basin instead of clipping it.
+- Reservoir reload scheduling skips internal opposite-fluid lookups for uniform chunks;
+  mixed chunks and external chunk faces still resume reactions. Flowing states keep delays.
+- Worker guards PASS: generation 1.428 ms, meshing 1.356 ms (3 ms budgets). Mesh hash
+  c838b8dddfc61ad867f0c9b6c231b0b9b4d3882de3a7ecd4c27c4a636b973c46 unchanged
+  from the aquifer batch. GPU render smoke PASS. Full gameplay smoke is running, with
+  real generated pool inspection and actual survival fire/extinguishing checks added.
+- README documents pools, lava rules, fire/extinguishing, depth-based fall cushioning
+  and new-state save compatibility. No dependency or lockfile changes.
+
+Full spec 47 gameplay smoke PASS: all 28 checks, including generated lake/lava pool surfaces
+and floors; actual lava spreading; obsidian reaction; survival contact damage; visible
+fire warning; water extinguishing with stable health afterward. Original checks retained.
+Final SwiftShader measurement: 3921 chunks / 2116 meshed / 378 draw calls / 9 fps, not
+owner hardware performance. Inspected screenshots/lava-pool.png: bright orange liquid,
+visible basalt shell and cave roof, normal HUD/controls retained.
+Running final check including the two review regressions before closing the five tasks.
+
+2026-10-21 — Continuation batch complete: five tasks closed
+T-D4, T-G8, T-G9, T-G13 and T-G14 meet spec 47's acceptance checks.
+Final npm run check PASS: typecheck, 584 tests / 68 files, production build (1.86 s).
+Both added review regressions pass in the full suite. Previously verified worker guards,
+GPU regressions and full 28-check gameplay smoke pass; no functional source changed
+after those checks (only comments, two test additions and documentation).
+Reviewed source and test diffs, inspected the real rendered lava-pool screenshot, checked
+JavaScript syntax and git diff whitespace. Dependency manifests and lockfile unchanged.
+Updated tasks.md with completion/evidence and next priorities, marked T-G15 partial rather
+than claiming animation/snow, added spec-index entry, and prefaced the historical handoff
+and physics spec to avoid stale no-lava claims. Original T-A6/T-D3 changes preserved.
+Next queue: T-D6 coasts/oceans, then T-D7 horizon LOD. Owner physical playtests and current
+CI remain unrun. No commits, pushes, pull requests, merges or publication performed.
+
+2026-10-21 — Next five-task batch / commit authorization
+User authorized committing and pushing completed work, and requested five more tasks.
+Selected T-D6, T-D7, T-E2, T-E3 and T-E4 in queue order. No AGENTS.md found.
+Checkpointing the fully verified prior aquifer/pool/lava batch before new implementation;
+its previous uncommitted-status notes are historical. Will push after final validation.

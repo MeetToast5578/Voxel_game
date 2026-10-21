@@ -1,5 +1,20 @@
 # Handoff: Voxel Game (MeetToast5578/Voxel_game)
 
+## Current local batch — 2026-10-21
+
+The live queue and acceptance evidence are in `docs/tasks.md`; older session notes below
+are historical. Current local changes complete T-A6/T-D3 (mining fixture, aquifers) and
+T-D4/T-G8/T-G9/T-G13/T-G14 (underground pools, lava, cooling, water-cushioned falls and
+survival fire/extinguishing). Specs 46–47 describe the implementation and limits.
+
+Validation: typecheck, 584 tests / 68 files, production build, isolated worker guards
+(generation 1.428 ms; meshing 1.356 ms), GPU regressions and all 28 gameplay smoke checks
+pass. Old IDs, dependencies and save format are preserved; new lava/obsidian states append.
+Unedited terrain regenerates with new caves/groundwater/basins; saved edits remain. Fire is
+transient. Next: coasts/oceans (T-D6), then horizon LOD (T-D7). Owner playtests and current
+CI remain unrun. All work and corrections are logged in `log.txt`; changes remain local
+and uncommitted. No push, PR, merge or publication occurred in this session.
+
 ## Session note — 2026-10-19 (reference gap map, PR #25)
 
 Worked on branch `claude/zealous-allen-odrdj5`. Merged into `main` as `d8bd22d`.

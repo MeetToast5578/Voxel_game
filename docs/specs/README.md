@@ -65,6 +65,11 @@ Status is checked against the code on 2026-10-17. "Open" means the spec's goal i
 | [40-leaf-decay.md](40-leaf-decay.md) | Leaf decay | Done | |
 | [41-region-simulation.md](41-region-simulation.md) | Region simulation: rivers, lakes, erosion, moisture | Done | Feeds the terrain. Seam continuity not yet checked by eye |
 
+| [45-caves.md](45-caves.md) | Four cave systems | Done | Cheese, spaghetti, noodles and ravines; spec 46 extends them below sea level |
+| [46-aquifers.md](46-aquifers.md) | Local aquifers | Done | Negative-y caves, local groundwater and surface-water protection; unit/build, worker budgets, GPU and all 26 gameplay smoke checks pass |
+
+| [47-underground-fluids.md](47-underground-fluids.md) | Pools, lava and fluid hazards | Done | T-D4/G8/G9/G13/G14; 584 unit tests, worker guards, GPU and all 28 gameplay checks pass |
+
 ### Known problems in the spec files
 
 - **Spec 27** never existed in the repo. Specs 29 and 30 were added afterwards, to document the code.

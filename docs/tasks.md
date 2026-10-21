@@ -1,12 +1,29 @@
 # Tasks: Voxel Game
 
-Compiled 2026-10-17 against `main` at **`adf5aba`**. Every item was read in the code, not taken from a commit message or a status line.
+Originally compiled 2026-10-17 against `main` at **`adf5aba`**. Current execution status updated 2026-10-21; older dated evidence below is historical, not a claim about the current checkout.
 
 Sources: `README.md`, `docs/HANDOFF.md`, `docs/ROADMAP.md`, `docs/specs/README.md`, `docs/specs/*.md`, `docs/plans/*.md`, plus direct inspection of `src/` and `tests/`.
 
 IDs are stable — reference them in commits and PRs. Sections are ordered by what unblocks the most.
 
 Status key: `[ ]` open · `[x]` done · `[~]` partial
+
+---
+
+## Current execution queue — 2026-10-21
+
+Completed and verified:
+- **T-A6 + T-D3 (first batch):** stable mining/pickup fixture; deterministic local aquifers and negative-y caves (spec 46).
+- **T-D4 + T-G8 + T-G9 + T-G13 + T-G14 (continuation, spec 47):** dedicated underground lakes/lava basins, lava flow and body physics, water/lava cooling, depth-based water landing protection, and survival ignition/extinguishing.
+- **Latest validation:** typecheck, **584 tests / 68 files**, production build, both isolated worker budgets, GPU regressions and **all 28 gameplay smoke checks passed** on Node 24 / system Chromium 154. Warm generation 1.428 ms and meshing 1.356 ms (3 ms budgets). Physical-browser acceptance and current GitHub CI remain unrun.
+- Old block IDs, dependencies, lockfile and save format are preserved. New states append after clay. Unedited terrain regenerates with the new basins; saved edits remain. Fire is transient; fire spread, fire persistence and fluid animation are not implemented.
+
+Next priorities:
+1. **T-D6 — Coasts and oceans**, then **T-D7 — Horizon LOD**. Preserve the aquifer/basin rules and verify terrain seams and worker budgets.
+2. **T-C / T-E11b — Owner playtest and visual acceptance.** Remain open; do not block independent coding or claim physical-browser acceptance from headless tests.
+3. Continue T-E → T-F → T-G → T-H → T-I in dependency order. T-G1 (persist pending falls), T-G2 (snow/ice) and T-G12 (currents) remain open. Address measured T-J bottlenecks throughout. Slabs (T-K1–K2) and the Pixel Aero proposal (T-K8) are separate tracks.
+
+For every batch: log decisions, changes, failures and results in `log.txt`; run focused tests and relevant regression checks sequentially; mark done only after acceptance passes. The known green CI runs recorded below are historical.
 
 ---
 
@@ -27,6 +44,8 @@ Also landed, not previously tracked: `abd4435` puts block updates on a fixed 20 
 ---
 
 ## A. Test and build health
+
+- [x] **T-A6 — Make the mining smoke platform structurally stable.** Closed 2026-10-21: replaced its single floating stone support with a wide bedrock floor. Final full local smoke passed all 26 checks on system Chromium 154; crack-stage and exact pickup assertions retained. CI not rerun.
 
 **Historical baseline (2026-10-17):** the owner's suite timed out before T-A1. Current local `npm run check` and CI `check` pass. CI smoke status is tracked separately under T-A2a; see the latest verification notes below.
 
@@ -83,7 +102,7 @@ Also landed, not previously tracked: `abd4435` puts block updates on a fixed 20 
 
 ## C. Manual verification (owner)
 
-Nothing below can be done headless (`HANDOFF.md:45-57`). **This is the real blocker** — every system has only been tested in headless Chromium at ~8 fps on SwiftShader.
+Nothing below can be done headless (`HANDOFF.md:45-57`). Physical acceptance remains open. Headless SwiftShader frame rates vary and do not establish performance on the owner’s hardware.
 
 - [ ] **T-C1 — 10-minute playtest** with a real mouse and keyboard: pointer lock, mouse look, audio, and stepping up 0.6 m (2-block) ledges. Anything broken jumps the queue.
 - [ ] **T-C2 — Clearance.** A 2 m tunnel fits the 1.75 m player; a 1.5 m one does not.
@@ -102,8 +121,8 @@ Nothing below can be done headless (`HANDOFF.md:45-57`). **This is the real bloc
 
 - [x] **T-D1 — Riverbed gravel and clay.** Deterministic sand/gravel/clay patches, including subsurface sediment. Clay state 53 and a procedural texture are appended without renumbering old states. Negative-coordinate patch consistency, deterministic generation, water/bed placement, registry/atlas and actual seeded river tests pass. Full gameplay smoke passes; clay picker/icon covered.
 - [x] **T-D2 — Caves beyond noise.** Item 6. Four seeded systems now share the rock: cheese caverns (~6 % of the underground), spaghetti tubes (~3 %), noodle tunnels (~1 %) and depth-tapered ravines (~1 %). The surface is protected by a 4–24-block fading roof, only cheese caverns may open a mouth, and the spec 14 shore/river/lake roof still caps every system. `src/world/caves.ts`, spec `docs/specs/45-caves.md`; per-system share tests plus forced-open river/lake roof tests. Aquifers and lava stay in T-D3/T-D4.
-- [ ] **T-D3 — Aquifers.** Item 6. A local water table, so caves below sea level are not all flooded.
-- [ ] **T-D4 — Underground lakes and lava pools** at depth. Item 6.
+- [x] **T-D3 — Aquifers.** Closed 2026-10-21 (spec 46): seeded local water tables (-72 to -12 m, clamped below terrain), cached once per column cell, fill carved caves and deep density voids. Caves extend below sea level; the old y=0/1 floor guard moved to the actual terrain-band bottom. Ten aquifer regressions cover wet/dry cells, negative seams, seeds, generation order/cache, ocean/river protection and bottom rows. Full check, both worker budgets, GPU regressions and all 26 gameplay smoke checks pass. Dedicated lake basins and lava are now completed under T-D4/T-G8 (spec 47). Unedited terrain regenerates; saved edits remain.
+- [x] **T-D4 — Underground lakes and lava pools.** Closed 2026-10-21 (spec 47): seeded jittered-grid ellipsoid basins with a solid shell, level fluid and air above. Freshwater at -20 to -60 m; lava at -140 to -260 m. Whole-footprint roof eligibility is cached and agrees across chunks; surface roofs and bottom-band rows are preserved. Real generated basins, shell/roof rejection and split-slice tests pass; browser smoke inspects both water and lava surfaces/floors.
 - [x] **T-D5 — Cave openings that respect rivers and the sea.** Cave roofs now use local freshwater levels as well as sea level, retaining the configured 5 m cover. Forced-open cave noise tests prove river/lake roofs remain intact while dry land retains openings. Separate closed-noise tests prove land plants cannot replace underwater cells.
 - [ ] **T-D6 — Coasts and oceans.** Item 7, not started. Beaches, cliffs, stony shores and sandbars decided by wave exposure; continental shelf dropping to deep ocean.
 - [ ] **T-D7 — Horizon LOD.** Item 8, not started, and the reason mountains are capped at 60 m (`HANDOFF.md:72`): taller peaks read as walls until this exists. Coarse heightfield rings out to kilometres, biome-coloured, fading into the chunk meshes.
@@ -140,7 +159,7 @@ Newly found while auditing:
 ## F. Phase 4 — Sky, seasons and weather
 
 - [x] **T-F1 — Moon phases.** Four cycles per saved game year; shader renders new, waxing, full and waning discs. Pure clock tests and actual GPU lit-pixel checks pass. New moons are dark; the orbit remains a stylised opposite-sun night orbit.
-- [x] **T-F2 — Stars that rotate.** Closed 2026-10-18: `Sky.update` sets an absolute quaternion from time of day around the celestial pole at the configured latitude. It does not accumulate frame deltas or rewrite star geometry. Node tests check a quarter-day turn, a full-day wrap, pole invariance, repeatable time jumps and camera recentering. Spec 33 remains partial for moon phases.
+- [x] **T-F2 — Stars that rotate.** Closed 2026-10-18: `Sky.update` sets an absolute quaternion from time of day around the celestial pole at the configured latitude. It does not accumulate frame deltas or rewrite star geometry. Node tests check a quarter-day turn, a full-day wrap, pole invariance, repeatable time jumps and camera recentering. Moon phases are also complete (T-F1); owner visual acceptance remains open.
 - [x] **T-F3 — Wet-surface darkening.** Rain/sleet wetness now reaches the block material; directly exposed upward faces darken and dry again. Sheltered faces, water and items retain their colour. GPU test uses geometry without normals, matching real chunk meshes: exposed 255→178, sheltered 128→128.
 - [x] **T-F4 — Morning valley fog and humidity haze.** Humidity reduces visibility; terrain depression adds dawn fog, fading above the valley walls. Neighbouring terrain samples are cached for two seconds. Unit/integration tests cover dawn, dry air, ridges, altitude, caching and underwater fog priority.
 - [ ] **T-F5 — Wind.** Foliage sway in the vertex shader, slanted particles, drifting clouds. Item 4.
@@ -174,14 +193,14 @@ All six sandbox-physics slices (spec 25) are built and tested. One known shortcu
 - [ ] **T-G5 — Plants succeeding each other** on bare ground. Item 2.
 - [ ] **T-G6 — Autumn leaf litter.** Item 2.
 - [ ] **T-G7 — Catch-up on reload.** A chunk reloaded after Δt applies expected outcomes directly (crops advanced by Δt × rate, snow set from current weather) instead of replaying ticks. Item 3.
-- [ ] **T-G8 — Lava.** Not in the game at all. Needs a slower tick plus per-fluid config properties (density ~3,100 kg/m³, high drag). Items 4 and 5.
-- [ ] **T-G9 — Water meeting lava** makes stone, cobblestone or obsidian. Item 4.
+- [x] **T-G8 — Lava.** Closed 2026-10-21 (spec 47): appended luminous source/flowing lava states, procedural texture and level-aware mesh. Same-fluid flow feeds, thinning/draining, gravity, negative chunk seams and reload are covered. Lava delay 20 ticks vs water 5; density 3100 kg/m³ and greater drag apply to players and loose bodies. Named state/save compatibility and existing water timing are preserved.
+- [x] **T-G9 — Water meeting lava.** Closed 2026-10-21: lava directly above water becomes stone; other source contact becomes obsidian and flowing contact cobblestone. Water remains intact. Both handler orders, negative chunk boundaries and water-side chunk reloads are covered; browser smoke verifies source cooling.
 - [ ] **T-G10 — Rivers carry a flow direction** from the drainage simulation, used for animated flow textures. Item 4.
 - [ ] **T-G11 — Waterfalls** where rivers drop. Item 4.
 - [ ] **T-G12 — Currents.** Flowing fluid pushes bodies along its flow vector; strong rivers carry the player; waterfalls push down. Item 5. Was blocked on fluid levels — those now exist.
-- [ ] **T-G13 — Water breaks falls.** Impact speed reduced by entry depth, feeding phase 7 fall damage. Item 5.
-- [ ] **T-G14 — Lava sets the body on fire**; water extinguishes it. Item 5 tail, needs phase 7 damage.
-- [ ] **T-G15 — Rendering for the above:** fluid surfaces and flowing animation, snow layers. Item 6.
+- [x] **T-G13 — Water breaks falls.** Closed 2026-10-21: survival uses actual pre-collision downward speed (including drag), attenuated by contiguous water depth at landing. Partial-height water and gaps are respected. Dry, shallow and deep-water falls, flight/teleport resets and real survival damage wiring pass regressions; shallow puddles can still hurt.
+- [x] **T-G14 — Lava ignites the player; water extinguishes it.** Closed 2026-10-21: actual body/fluid overlap causes survival contact damage and transient burning after leaving lava. Water extinguishes residual fire; simultaneous lava contact still directly hurts. Creative mode is immune; death/mode changes reset fire. Text warning and debug flags are wired. Pure and real-game regressions plus full browser ignition/extinguishing smoke pass. Fire spread/persistence and creature fire are outside this slice.
+- [~] **T-G15 — Fluid and snow rendering.** Lava sources/flowing states have a procedural orange texture, luminous level-aware meshes and rendered pool coverage (spec 47). Fluid texture animation and snow layers remain open; do not mark this combined item done.
 
 ---
 
@@ -250,6 +269,8 @@ All six sandbox-physics slices (spec 25) are built and tested. One known shortcu
 - [~] **T-K3 — Inventory access root cause.** Audit correction 2026-10-18: E already works in the pause menu and pointer-lock refusal already shows a message. T-A2a fixed the reproduced ~20 s uncached-icon GPU readback stall. **HUD button implemented:** a real Inventory button shares `toggleInventory`, works without mouse capture over start/pause menus, and uses the existing focus ring and native Tab/Enter/Space activation. It is disabled before ready and while inventory is open. Closing restores the originating menu without requesting capture; opening from play retains the existing capture-on-close behaviour. Five lifecycle regressions pass. All 25 full smoke checks pass, including pointer-free HUD clicks, pause-overlay clicks, Tab/focus-ring, Enter/Space and E/Escape/Close returns to the originating menu. **Still open:** owner verification of the original physical-browser complaint (not closed by headless testing).
 - [~] **T-K4 — A proper GUI.** Preact menus/HUD/inventory, theme tokens, focus styles and item tooltips already exist. Audit the full plan against the UI before proposing more implementation; physical-browser acceptance remains open.
 
+- [ ] **T-K8 — Pixel Aero HUD proposal.** `docs/pixel-aero-hud/README_FOR_CODEX.md` adds a distinct HUD track: theme/pixel scaling, real vitality, inventory dock, context and accessibility, then screenshot acceptance. Preserve the nine-slot model and existing mechanics; do not invent energy rules or conflate this with the existing Preact GUI.
+
 From `ROADMAP.md` "Later":
 
 - [ ] **T-K5 — Building tools:** redo, copy and paste; stairs, doors; world export and import. Volume fill and undo are done; redo has no implementation.
@@ -279,7 +300,7 @@ From `ROADMAP.md` "Later":
 
 ## Suggested order
 
-Updated 2026-10-18: completed baseline fixes must not be repeated.
+Historical ordering (2026-10-18); the current execution queue above takes precedence. Completed baseline fixes must not be repeated.
 
 1. **T-C1 + T-C9** — owner playtest and visual review; any discovered bugs take priority. This does not block independent coding.
 2. **T-E11** — finish tree species/habitats and review silhouettes; implementation complete, owner review open.
@@ -288,7 +309,7 @@ Updated 2026-10-18: completed baseline fixes must not be repeated.
 5. **T-K1–K2** — slabs can proceed independently. Audit the existing GUI before duplicating it.
 6. Per task: implement, review, run relevant tests and full regression checks, record evidence in `log.txt`, then check off only completed acceptance criteria.
 
-## Latest verification notes
+## Historical verification notes (2026-10-18)
 
 - PR #30 CI on `a0456dc`: check passed; smoke failed during **“E opens the inventory and Escape closes it”**. The new annotations successfully exposed the failure. Earlier attribution to pick-block timing was a hypothesis, not the confirmed CI cause.
 - Local browser support was recovered using a Chromium binary distributed via npm, installed outside the repository (no dependency changes). Chromium 153 differs from CI's Playwright-pinned browser. Full smoke reproduced the same inventory failure; the inventory check alone passed. T-A2a remains open while the sequence-dependent failure is isolated.

@@ -20,6 +20,7 @@ interface HudState {
   tool: ToolRow[];
   hints: boolean;
   inventoryAvailable: boolean;
+  hazard: string;
 }
 
 /** Every setting of the volume tools, always shown, so the screen says what is selected (single block mode included). */
@@ -47,6 +48,7 @@ function HudView({ state, atlas, onInventory }: { state: HudState; atlas: HTMLCa
         Inventory <kbd aria-hidden="true">E</kbd>
       </button>
       <div class="crosshair" />
+      {state.hazard && <div class="hazard-warning" role="status">{state.hazard}</div>}
       <div class={`block-name${state.nameVisible ? ' visible' : ''}`}>{state.name}</div>
       <ToolPanel rows={state.tool} />
       <div class="hotbar">
@@ -95,6 +97,7 @@ export class Hud {
       tool: [],
       hints: true,
       inventoryAvailable: false,
+      hazard: '',
     };
     this.draw();
   }
@@ -149,6 +152,12 @@ export class Hud {
     if (key === this.toolKey) return;
     this.toolKey = key;
     this.state = { ...this.state, tool: rows };
+    this.draw();
+  }
+
+  setHazard(hazard: string): void {
+    if (this.state.hazard === hazard) return;
+    this.state = { ...this.state, hazard };
     this.draw();
   }
 
