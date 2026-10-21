@@ -1,5 +1,5 @@
 import { CHUNK_SIZE, GRAVITY_TICK_DELAY } from '../config';
-import { BlockId, getBlockDef, isWaterState } from './blocks';
+import { BlockId, getBlockDef, isFluidState } from './blocks';
 import type { Chunk } from './chunk';
 import type { Tick, TickResult } from './tick';
 import type { World } from './world';
@@ -12,7 +12,7 @@ export const FALL_REASON = 'fall';
  * fall.
  */
 export function canFallInto(id: number): boolean {
-  return id === BlockId.AIR || isWaterState(id) || getBlockDef(id).shape === 'cross';
+  return id === BlockId.AIR || isFluidState(id) || getBlockDef(id).shape !== 'cube';
 }
 
 /**

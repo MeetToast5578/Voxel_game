@@ -4,8 +4,8 @@ import {
   AUTOSAVE_INTERVAL_S, BLOCK_SIZE_M, BREAK_REPEAT_S, DAY_LENGTH_S, DAYS_PER_SEASON, DEFAULT_MOUSE_SENSITIVITY, EYE_HEIGHT, FIXED_DT,
   FOOTSTEP_DISTANCE, FOOTSTEP_MIN_SPEED, GEN_BUDGET_MS, HOTBAR_SIZE, MAX_FRAME_DT, MESH_BUDGET_MS, REACH, SEA_LEVEL,
   SETTINGS_KEY, SPAWN_READY_RADIUS, START_TIME_OF_DAY, WORLD_LATITUDE_DEG, ITEM_SIZE, PLAYER_HEIGHT, WALK_SPEED,
-  GAME_MODE_CREATIVE, GAME_MODE_SURVIVAL, HEALTH_MAX, HUNGER_MAX, FALL_DAMAGE_THRESHOLD_M_S, FALL_DAMAGE_MULTIPLIER,
-  DROWN_DAMAGE_PER_S, AIR_MAX_S, GRAVITY_M_S2, GAME_TICKS_PER_SECOND,
+  GAME_MODE_CREATIVE, GAME_MODE_SURVIVAL, HEALTH_MAX, HUNGER_MAX,
+  DROWN_DAMAGE_PER_S, AIR_MAX_S, GAME_TICKS_PER_SECOND,
 } from './config';
 import { Sounds } from './audio/sounds';
 import { FixedStepLoop } from './core/loop';
@@ -18,11 +18,13 @@ import { BuildTool, cornerFor, frameFor } from './player/buildTool';
 import { Inventory, type ItemStack } from './player/inventory';
 import { blockIntersectsBody, canBreak, placementTarget } from './player/interaction';
 import type { Vec3 } from './player/physics';
+import { FireExposure, fluidContact, landingDamage, landingWaterDepth } from './player/fluidHazards';
 import { NO_CONTROLS, PLAYER_SHAPE, Player, type PlayerControls } from './player/player';
 import { raycastVoxels, type RaycastHit } from './player/raycast';
 import { type Box, type Cell, boundsOf } from './player/volumes';
 import { ChunkMeshes } from './render/chunkMeshes';
 import { Clouds } from './render/clouds';
+import { Horizon } from './render/horizon';
 import { HeldBlock } from './render/heldBlock';
 import { BlockHighlight, BreakOverlay } from './render/highlight';
 import { ItemMeshes } from './render/itemMeshes';
@@ -41,7 +43,7 @@ import { formatDebugLines } from './ui/debugText';
 import { Hud } from './ui/hud';
 import { InventoryScreen } from './ui/inventoryScreen';
 import { Menu, type MenuMode } from './ui/menu';
-import { BlockId, getBlockDef, isSolid, isWaterState } from './world/blocks';
+import { BlockId, getBlockDef, isSolid, isWaterState, isLavaState, isFluidState } from './world/blocks';
 import { scheduleLeafDecay } from './world/ecology';
 import { scheduleFallChecks } from './world/falling';
 import { scheduleFlowChecks } from './world/flow';
@@ -78,6 +80,7 @@ export class Game {
   readonly generator: TerrainGenerator;
   readonly renderer: Renderer;
   readonly meshes: ChunkMeshes;
+  readonly horizon: Horizon;
   readonly chunks: ChunkManager;
   readonly player = new Player();
   inventory = new Inventory();
@@ -136,10 +139,8 @@ export class Game {
   private actionCooldown = 0;
   /** The menu to return to when inventory was opened without capturing the pointer. */
   private inventoryReturnMenu: MenuMode | null = null;
-  /** Y where the current fall started (null when on ground). */
-  private fallStartY: number | null = null;
-  /** Was the player on the ground last frame? */
-  private wasOnGround = false;
+  readonly fire = new FireExposure();
+
   /** The volumetric build tools (see src/player/buildTool.ts). */
   readonly tool = new BuildTool();
   private readonly edits: EditQueue;
@@ -214,6 +215,7 @@ export class Game {
     this.usingWorkers = options.workers && typeof Worker !== 'undefined';
     const workerCount = Math.max(1, Math.min(4, (navigator.hardwareConcurrency || 2) - 1));
     const jobs = this.usingWorkers ? new WorkerPool(seed, workerCount) : null;
+    this.horizon = new Horizon(this.renderer.scene, seed, this.usingWorkers);
     this.chunks = new ChunkManager(this.world, this.generator, this.meshes, this.settings.renderDistance, jobs);
     this.edits = new EditQueue(this.world, this.chunks, (id) => canBreak(id));
     this.applySettings(this.settings);
@@ -303,11 +305,13 @@ export class Game {
 
   readonly isWaterAt = (x: number, y: number, z: number): boolean => isWaterState(this.world.getBlock(x, y, z));
 
+  readonly isLavaAt = (x: number, y: number, z: number): boolean => isLavaState(this.world.getBlock(x, y, z));
+
   private fixedUpdate(dt: number): void {
     if (!this.ready || this.idle) return;
     this.timeOfDay = (this.timeOfDay + dt / DAY_LENGTH_S) % 1;
     this.calendar.advance(dt); // Both clocks follow simulation time, including the existing menu-time behaviour.
-    this.player.update(dt, this.playing ? this.readControls() : NO_CONTROLS, this.isSolidAt, this.isWaterAt);
+    this.player.update(dt, this.playing ? this.readControls() : NO_CONTROLS, this.isSolidAt, this.isWaterAt, this.isLavaAt);
     this.items.step(dt, this.isSolidAt);
     // Block updates run at a fixed rate of game ticks, so a flow or a fall takes several ticks, as in Minecraft.
     this.tickTimer += dt;
@@ -315,7 +319,7 @@ export class Game {
       this.tickTimer -= 1 / GAME_TICKS_PER_SECOND;
       this.chunks.tick();
     }
-    for (const body of this.bodies.step(dt, this.isSolidAt, this.isWaterAt, (state) => getBlockDef(state).density)) {
+    for (const body of this.bodies.step(dt, this.isSolidAt, this.isWaterAt, (state) => getBlockDef(state).density, this.isLavaAt)) {
       this.settleBody(body);
     }
     this.edits.step();
@@ -339,19 +343,10 @@ export class Game {
   private updateSurvival(dt: number): void {
     const p = this.player;
 
-    // Fall damage: track fall start when leaving ground.
-    if (this.wasOnGround && !p.onGround) {
-      this.fallStartY = p.position.y;
-    } else if (!this.wasOnGround && p.onGround && this.fallStartY !== null) {
-      const fallDistanceM = (this.fallStartY - p.position.y) * BLOCK_SIZE_M;
-      const impactSpeedM_S = Math.sqrt(2 * GRAVITY_M_S2 * fallDistanceM);
-      if (impactSpeedM_S > FALL_DAMAGE_THRESHOLD_M_S) {
-        const damage = (impactSpeedM_S - FALL_DAMAGE_THRESHOLD_M_S) * FALL_DAMAGE_MULTIPLIER;
-        this.damage(damage);
-      }
-      this.fallStartY = null;
+    if (p.impactSpeedM_S > 0) {
+      this.damage(landingDamage(p.impactSpeedM_S, landingWaterDepth(p.position, (x, y, z) => this.world.getBlock(x, y, z))));
     }
-    this.wasOnGround = p.onGround;
+    this.damage(this.fire.step(dt, fluidContact(p.position, PLAYER_SHAPE, (x, y, z) => this.world.getBlock(x, y, z))));
 
     // Drowning: lose air when submerged, take damage when air runs out.
     if (p.inWater) {
@@ -377,6 +372,7 @@ export class Game {
     if (mode !== GAME_MODE_CREATIVE && mode !== GAME_MODE_SURVIVAL) return;
     if (mode === this.gameMode) return;
     this.gameMode = mode;
+    this.fire.reset();
     if (mode === GAME_MODE_SURVIVAL) {
       this.health = HEALTH_MAX;
       this.hunger = HUNGER_MAX;
@@ -408,7 +404,8 @@ export class Game {
     this.inventory = new Inventory();
     this.inventory.select(0);
 
-    // Reset health and air.
+    // Reset health, air and transient fire.
+    this.fire.reset();
     this.health = HEALTH_MAX;
     this.air = AIR_MAX_S;
 
@@ -476,7 +473,13 @@ export class Game {
     this.renderer.setCamera(eye.x, eye.y, eye.z, this.player.yaw, this.player.pitch);
     this.updateAtmosphere(eye, frameDt);
     this.clouds.update(eye.x, eye.z, frameDt, daylightAt(this.timeOfDay));
-    this.renderer.setUnderwater(this.isWaterAt(Math.floor(eye.x), Math.floor(eye.y), Math.floor(eye.z)));
+    const underwater = this.isWaterAt(Math.floor(eye.x), Math.floor(eye.y), Math.floor(eye.z));
+    this.renderer.setUnderwater(underwater);
+    const skyTop = this.world.topAt(Math.floor(eye.x), Math.floor(eye.z));
+    this.horizon.update(eye.x, eye.z, this.settings.renderDistance, this.ready && !underwater && (skyTop === undefined || eye.y >= skyTop - metersToBlocks(16)));
+    this.renderer.setHorizonDistance(this.horizon.visible ? this.horizon.radius : 0);
+    const horizonEnvironment = this.renderer.horizonEnvironment;
+    this.horizon.setEnvironment(horizonEnvironment.daylight, horizonEnvironment.sky, horizonEnvironment.haze);
     const look = this.player.lookDirection();
     this.updateTarget(eye, look);
     if (this.playing && this.ready && !this.inventoryScreen.isOpen) this.handleBlockActions(frameDt, eye, look);
@@ -489,6 +492,7 @@ export class Game {
     if (frameDt > 0) this.fps += (1 / frameDt - this.fps) * 0.05;
     this.renderer.render();
     this.hud.update(this.inventory.slots, this.inventory.selected, frameDt, this.playing, this.ready && !this.inventoryScreen.isOpen);
+    this.hud.setHazard(this.gameMode === GAME_MODE_SURVIVAL && this.fire.remaining > 0 ? 'On fire · Enter water to extinguish' : '');
     this.debugOverlay.update(frameDt, () => formatDebugLines(this.debugState()));
   }
 
@@ -648,7 +652,7 @@ export class Game {
     const y = Math.floor(body.y + 0.5);
     const z = Math.floor(body.z);
     const cell = this.world.getBlock(x, y, z);
-    const open = (cell === BlockId.AIR || isWaterState(cell)) && !blockIntersectsBody(x, y, z, this.player.position, PLAYER_SHAPE);
+    const open = (cell === BlockId.AIR || isFluidState(cell)) && !blockIntersectsBody(x, y, z, this.player.position, PLAYER_SHAPE);
     if (open && this.setBlock(x, y, z, body.state)) return;
     this.items.spawn(body.state, 1, body.x, body.y, body.z, Math.random);
   }
@@ -976,6 +980,9 @@ export class Game {
       dayLengthMin: Math.round(this.calendar.dayLengthMin),
       gameMode: this.gameMode,
       health: this.health,
+      horizon: { centerX: this.horizon.centerX, centerZ: this.horizon.centerZ, ready: this.horizon.radius > 0, visible: this.horizon.visible, vertices: this.horizon.vertices, radiusM: this.horizon.radius * BLOCK_SIZE_M, builds: this.horizon.builds },
+      burning: this.fire.remaining > 0,
+      inLava: this.player.inLava,
       hunger: this.hunger,
       air: Math.round(this.air * 100) / 100,
       target: this.target ? [this.target.x, this.target.y, this.target.z] : null,

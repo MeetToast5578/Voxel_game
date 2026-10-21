@@ -363,7 +363,9 @@ const CHECKS = [
       await waitMeshed();
       await page.evaluate(([x, z, y]) => {
         for (let i = -2; i <= 2; i++) for (let j = -2; j <= 2; j++) for (let k = 0; k <= 4; k++) window.__game.setBlock(x + i, y + k, z + j, 0);
-        window.__game.setBlock(x, y, z, 1); // stone support
+        // An isolated stone support collapses as soon as the grass is mined. Bedrock anchors this
+        // fixture, and a wide floor catches the dropped item and supports the player's full body.
+        for (let i = -2; i <= 2; i++) for (let j = -2; j <= 2; j++) window.__game.setBlock(x + i, y, z + j, 10);
         window.__game.setBlock(x, y + 1, z, 3); // the grass block to mine
         window.__game.setFlying(false);
         window.__game.teleport(x + 0.5, y + 2, z + 0.5);
@@ -490,10 +492,17 @@ const CHECKS = [
         window.__game.teleport(x, -200, z);
       }, [x, z]);
       await waitMeshed();
-      const below = await page.evaluate(([x, z]) => window.__game.getBlock(x, -205, z), [bx, bz]);
-      // stone and the seven strata rocks (specs 15, 20), plus the ores that can host at this depth (spec 26).
+      // Negative-y caves may now contain air or groundwater (spec 46). Check a neighbourhood,
+      // retaining the rock assertion without requiring one arbitrary cell to miss every cave.
+      const below = await page.evaluate(([x, z]) => {
+        const ids = [];
+        for (let dy = -5; dy <= 0; dy++) for (let dx = -2; dx <= 2; dx++) for (let dz = -2; dz <= 2; dz++)
+          ids.push(window.__game.getBlock(x + dx, -200 + dy, z + dz));
+        return ids;
+      }, [bx, bz]);
       const ROCKS = [1, 14, 15, 16, 17, 22, 23, 24, 28, 29, 30, 31, 32, 33, 34];
-      if (!ROCKS.includes(below)) throw new Error(`expected rock 5 blocks below y = -200, found ${below}`);
+      if (!below.some(id => ROCKS.includes(id)) || below.some(id => !ROCKS.includes(id) && id !== 0 && id !== 5))
+        throw new Error(`expected deep rock with optional cave air/water, found states ${[...new Set(below)]}`);
 
       await page.evaluate(([x, z]) => window.__game.teleport(x, 8400, z), [x, z]); // above the highest terrain (2,450 m, 8,167 blocks)
       await waitMeshed();
@@ -507,6 +516,59 @@ const CHECKS = [
         window.__game.setFlying(flying);
       }, [...start.position, start.flying]);
       await waitMeshed();
+    },
+  },
+  {
+    name: 'underground aquifers contain both dry caves and groundwater',
+    run: async (page) => {
+      const start = await page.evaluate(() => window.__game.state());
+      // Seed-1 generated cave fixtures, independently checked by the pure generator tests.
+      // These exercise the actual worker pipeline and public block reads; no terrain is edited.
+      try {
+        for (const [x, y, z, expected] of [[-16, -80, -16, 0], [8, -144, 15, 5]]) {
+          await page.evaluate(([x, y, z]) => {
+            window.__game.setFlying(true);
+            window.__game.teleport(x + 0.5, y, z + 0.5);
+          }, [x, y, z]);
+          await page.waitForFunction(() => window.__game.state().areaMeshed, null, { timeout: 60_000 });
+          const actual = await page.evaluate(([x, y, z]) => window.__game.getBlock(x, y, z), [x, y, z]);
+          if (actual !== expected) throw new Error(`aquifer at ${x},${y},${z}: expected ${expected}, got ${actual}`);
+        }
+      } finally {
+        await page.evaluate(([x, y, z, flying]) => {
+          window.__game.teleport(x, y, z);
+          window.__game.setFlying(flying);
+        }, [...start.position, start.flying]);
+        await page.waitForFunction(() => window.__game.state().areaMeshed, null, { timeout: 60_000 });
+      }
+    },
+  },
+  {
+    name: 'underground lakes and lava pools have fluid surfaces and solid floors',
+    run: async (page) => {
+      const start = await page.evaluate(() => window.__game.state());
+      try {
+        // Real seed-1 jittered basins, also validated through TerrainGenerator in Node.
+        for (const [x, y, z, liquid, shell] of [[316, -107, 218, 5, 1], [156, -507, 129, 54, 24]]) {
+          await page.evaluate(([x, y, z]) => {
+            window.__game.setFlying(true);
+            window.__game.teleport(x + 0.5, y + 2, z + 0.5);
+            window.__game.look(0, -0.8);
+          }, [x, y, z]);
+          await page.waitForFunction(() => window.__game.state().areaMeshed, null, { timeout: 60_000 });
+          const cells = await page.evaluate(([x, y, z]) => [
+            window.__game.getBlock(x, y, z), window.__game.getBlock(x, y + 1, z), window.__game.getBlock(x, y - 10, z),
+          ], [x, y, z]);
+          if (cells[0] !== liquid || cells[1] !== 0 || cells[2] !== shell)
+            throw new Error(`pool at ${x},${y},${z}: expected ${liquid},0,${shell}, got ${cells}`);
+          if (liquid === 54) await page.screenshot({ path: 'screenshots/lava-pool.png' });
+        }
+      } finally {
+        await page.evaluate(([x, y, z, flying, yaw, pitch]) => {
+          window.__game.teleport(x, y, z); window.__game.setFlying(flying); window.__game.look(yaw, pitch);
+        }, [...start.position, start.flying, start.yaw, start.pitch]);
+        await page.waitForFunction(() => window.__game.state().areaMeshed, null, { timeout: 60_000 });
+      }
     },
   },
   {
@@ -760,6 +822,130 @@ const CHECKS = [
       if (await hudPage.evaluate(() => document.pointerLockElement !== null || window.__game.state().playing))
         throw new Error('inventory access from a menu must not capture the pointer or start play');
       });
+    },
+  },
+  {
+    name: 'lava flows, cools against water, ignites survival players and water extinguishes them',
+    run: async (page) => {
+      const start = await page.evaluate(() => window.__game.state());
+      const [x, z] = [Math.floor(start.position[0]), Math.floor(start.position[2])];
+      const y = 8390;
+      try {
+        await page.evaluate(([x, y, z]) => {
+          window.__game.setFlying(true); window.__game.teleport(x + 0.5, y + 5, z + 0.5);
+        }, [x, y, z]);
+        await page.waitForFunction(() => window.__game.state().areaMeshed, null, { timeout: 60_000 });
+        await page.evaluate(([x, y, z]) => {
+          const g = window.__game;
+          for (let dx = -5; dx <= 5; dx++) for (let dz = -5; dz <= 5; dz++) {
+            for (let dy = 1; dy <= 7; dy++) g.setBlock(x + dx, y + dy, z + dz, 0);
+            g.setBlock(x + dx, y, z + dz, 10);
+          }
+          g.setBlock(x - 3, y + 1, z, 54);
+        }, [x, y, z]);
+        await page.waitForFunction(([x, y, z]) => {
+          const s = window.__game.getBlock(x - 2, y + 1, z); return s >= 55 && s <= 70;
+        }, [x, y, z], { timeout: 20_000 });
+        await page.evaluate(([x, y, z]) => window.__game.setBlock(x - 4, y + 1, z, 5), [x, y, z]);
+        await page.waitForFunction(([x, y, z]) => window.__game.getBlock(x - 3, y + 1, z) === 71, [x, y, z], { timeout: 20_000 });
+        await page.evaluate(([x, y, z]) => {
+          const g = window.__game;
+          g.setBlock(x + 3, y + 1, z, 54); g.teleport(x + 3.5, y + 1, z + 0.5);
+          g.setFlying(true); g.setGameMode('survival');
+        }, [x, y, z]);
+        await page.waitForFunction(() => window.__game.state().burning && window.__game.state().health < 20, null, { timeout: 10_000 });
+        await page.locator('.hazard-warning').waitFor({ state: 'visible', timeout: 5000 });
+        await page.evaluate(([x, y, z]) => window.__game.setBlock(x + 3, y + 1, z, 5), [x, y, z]);
+        await page.waitForFunction(() => !window.__game.state().burning, null, { timeout: 10_000 });
+        // Give the adjacent lava/water interfaces time to cool, then verify residual fire has stopped.
+        await page.waitForTimeout(750);
+        const health = await page.evaluate(() => window.__game.state().health);
+        if (health <= 0 || health >= 20) throw new Error(`expected survival damage without respawn, got health ${health}`);
+        await page.waitForTimeout(500);
+        const after = await page.evaluate(() => window.__game.state());
+        if (after.burning || after.health !== health) throw new Error(`water did not stop fire damage: ${health} -> ${after.health}`);
+      } finally {
+        await page.evaluate(([x, y, z, flying, mode, health]) => {
+          const g = window.__game; g.setGameMode(mode); g.setHealth(health);
+          g.teleport(x, y, z); g.setFlying(flying);
+        }, [...start.position, start.flying, start.gameMode, start.health]);
+        await page.waitForFunction(() => window.__game.state().areaMeshed, null, { timeout: 60_000 });
+      }
+    },
+  },
+  {
+    name: 'distant terrain builds kilometres of geometry and recenters after movement',
+    run: async (page) => {
+      const start = await page.evaluate(() => window.__game.state());
+      const [x, y, z] = start.position;
+      try {
+        await page.evaluate(([x, y, z]) => {
+          window.__game.setFlying(true); window.__game.teleport(x + 128, y + 50, z);
+          window.__game.look(-0.8, -0.35);
+        }, [x, y, z]);
+        await page.waitForFunction(() => {
+          const s = window.__game.state();
+          return s.areaMeshed && s.horizon.ready && s.horizon.visible && s.horizon.vertices > 0 &&
+            s.horizon.centerX === Math.floor(s.position[0] / 64) * 64;
+        }, null, { timeout: 90_000 });
+        const h = await page.evaluate(() => window.__game.state().horizon);
+        if (h.radiusM < 2000) throw new Error(`horizon ends too near: ${JSON.stringify(h)}`);
+        await page.screenshot({ path: 'screenshots/horizon.png' });
+      } finally {
+        await page.evaluate(([x, y, z, flying, yaw, pitch]) => {
+          window.__game.teleport(x, y, z); window.__game.setFlying(flying); window.__game.look(yaw, pitch);
+        }, [...start.position, start.flying, start.yaw, start.pitch]);
+        await page.waitForFunction(() => window.__game.state().areaMeshed, null, { timeout: 60_000 });
+      }
+    },
+  },
+  {
+    name: 'shoreline reeds are generated beside surface water',
+    run: async (page) => {
+      const start = await page.evaluate(() => window.__game.state());
+      try {
+        await page.evaluate(() => {
+          window.__game.setFlying(true); window.__game.teleport(-384.5, 5, 16.5); window.__game.look(0.6, -0.4);
+        });
+        await page.waitForFunction(() => window.__game.state().areaMeshed, null, { timeout: 60_000 });
+        const reed = await page.evaluate(() => window.__game.getBlock(-386, 1, 14));
+        if (reed !== 72) throw new Error(`expected seed-1 bank reed, got ${reed}`);
+        await page.screenshot({ path: 'screenshots/shoreline-reeds.png' });
+      } finally {
+        await page.evaluate(([x, y, z, flying, yaw, pitch]) => {
+          window.__game.teleport(x, y, z); window.__game.setFlying(flying); window.__game.look(yaw, pitch);
+        }, [...start.position, start.flying, start.yaw, start.pitch]);
+        await page.waitForFunction(() => window.__game.state().areaMeshed, null, { timeout: 60_000 });
+      }
+    },
+  },
+  {
+    name: 'supported boulders, fallen logs, moss and lake pads reach worker meshes',
+    run: async (page) => {
+      const start = await page.evaluate(() => window.__game.state());
+      try {
+        for (const [name, x, y, z, state] of [
+          ['boulder', 3129, 152, -2168, 14], ['moss', 3517, 161, -2163, 76],
+          ['fallen-log', 3873, 186, -1690, 73], ['lily-pad', 4240, 223, -3020, 75],
+        ]) {
+          await page.evaluate(([x, y, z]) => {
+            window.__game.setFlying(true); window.__game.teleport(x + 3.5, y + 4, z + 5.5); window.__game.look(0.55, -0.55);
+          }, [x, y, z]);
+          await page.waitForFunction(() => window.__game.state().areaMeshed, null, { timeout: 60_000 });
+          const actual = await page.evaluate(([x, y, z]) => window.__game.getBlock(x, y, z), [x, y, z]);
+          if (actual !== state) throw Error(`${name}: expected generated state ${state}, got ${actual}`);
+          if (name === 'lily-pad') {
+            const below = await page.evaluate(([x, y, z]) => window.__game.getBlock(x, y - 1, z), [x, y, z]);
+            if (below !== 5) throw Error(`lily pad lacks source water: ${below}`);
+          }
+          await page.screenshot({ path: `screenshots/surface-${name}.png` });
+        }
+      } finally {
+        await page.evaluate(([x, y, z, flying, yaw, pitch]) => {
+          window.__game.teleport(x, y, z); window.__game.setFlying(flying); window.__game.look(yaw, pitch);
+        }, [...start.position, start.flying, start.yaw, start.pitch]);
+        await page.waitForFunction(() => window.__game.state().areaMeshed, null, { timeout: 60_000 });
+      }
     },
   },
   {

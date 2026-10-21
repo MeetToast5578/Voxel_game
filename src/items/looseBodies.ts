@@ -1,5 +1,5 @@
 import {
-  GRAVITY, LOOSE_BODY_CAP, LOOSE_BODY_FRICTION, LOOSE_BODY_MAX_S, LOOSE_BODY_REST_S, LOOSE_BODY_REST_SPEED_M_S, LOOSE_BODY_SPIN_RATE,
+  LAVA_DENSITY, LAVA_BODY_DRAG, GRAVITY, LOOSE_BODY_CAP, LOOSE_BODY_FRICTION, LOOSE_BODY_MAX_S, LOOSE_BODY_REST_S, LOOSE_BODY_REST_SPEED_M_S, LOOSE_BODY_SPIN_RATE,
   LOOSE_BODY_WATER_DRAG, TERMINAL_VELOCITY, WATER_DENSITY, metersToBlocks,
 } from '../config';
 import { type BodyShape, moveAndCollide, type SolidFn } from '../player/physics';
@@ -94,18 +94,23 @@ export class LooseBodies {
     isSolid: SolidFn,
     isWater: (x: number, y: number, z: number) => boolean,
     densityOf: (state: number) => number,
+    isLava: SolidFn = () => false,
   ): LooseBody[] {
     const settled: LooseBody[] = [];
     for (let i = this.bodies.length - 1; i >= 0; i--) {
       const b = this.bodies[i]!;
       b.age += dt;
-      const submerged = submergedFraction(isWater, b);
+      const water = submergedFraction(isWater, b);
+      const lava = submergedFraction(isLava, b);
+      const submerged = Math.max(water, lava);
+      const density = lava > 0 && water === 0 ? LAVA_DENSITY : WATER_DENSITY;
+      const fluidDrag = lava > 0 && water === 0 ? LAVA_BODY_DRAG : LOOSE_BODY_WATER_DRAG;
       // Buoyancy pushes up with the weight of the water a body displaces, so a body lighter than water floats and a
       // heavier one sinks at a reduced rate.
-      const buoyancy = submerged * GRAVITY * (WATER_DENSITY / densityOf(b.state));
+      const buoyancy = submerged * GRAVITY * (density / densityOf(b.state));
       b.vy = Math.max(-TERMINAL_VELOCITY, b.vy + (buoyancy - GRAVITY) * dt);
       if (submerged > 0) {
-        const drag = Math.exp(-LOOSE_BODY_WATER_DRAG * submerged * dt);
+        const drag = Math.exp(-fluidDrag * submerged * dt);
         b.vx *= drag;
         b.vy *= drag;
         b.vz *= drag;

@@ -27,9 +27,12 @@ describe('sky visibility and lunar phases (T-F1)', () => {
   it('retains enough camera range for the sky when the terrain view distance changes', () => {
     const renderer = Object.create(Renderer.prototype) as Renderer;
     const camera = new THREE.PerspectiveCamera(75,1,0.1,2000);
-    Object.assign(renderer,{camera,viewBlocks:128,surfaceDistance:0});
+    Object.assign(renderer,{camera,viewBlocks:128,surfaceDistance:0,horizonDistance:0});
     Reflect.apply(Reflect.get(Renderer.prototype,'updateFar'),renderer,[]);
     expect(camera.far).toBeGreaterThan(1000);
+    Object.assign(renderer, { horizonDistance: 8192 });
+    Reflect.apply(Reflect.get(Renderer.prototype, 'updateFar'), renderer, []);
+    expect(camera.far).toBeGreaterThan(Math.SQRT2 * 8192);
   });
   it('derives repeatable new, quarter and full moons from the saved year clock', () => {
     expect(moonPhaseAt(0)).toBe(0);

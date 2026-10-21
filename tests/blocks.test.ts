@@ -43,7 +43,7 @@ describe('block states', () => {
     COBBLESTONE: 11, BRICK: 12, GLOWSTONE: 13, GRANITE: 14, DIORITE: 15, ANDESITE: 16, SANDSTONE: 17,
     TALL_GRASS: 18, POPPY: 19, FERN: 20, DANDELION: 21, LIMESTONE: 22, SLATE: 23, BASALT: 24, DEEPSLATE: 25,
     BROWN_MUSHROOM: 26, RED_MUSHROOM: 27, COAL_ORE: 28, IRON_ORE: 29, GOLD_ORE: 30, REDSTONE_ORE: 31,
-    DIAMOND_ORE: 32, EMERALD_ORE: 33, LAPIS_ORE: 34, GRAVEL: 35, FLOWING_WATER: 36, CACTUS: 52, CLAY: 53,
+    DIAMOND_ORE: 32, EMERALD_ORE: 33, LAPIS_ORE: 34, GRAVEL: 35, FLOWING_WATER: 36, CACTUS: 52, CLAY: 53, LAVA: 54, FLOWING_LAVA: 55, OBSIDIAN: 71, REED: 72, FALLEN_LOG_X: 73, FALLEN_LOG_Z: 74, LILY_PAD: 75, MOSS: 76,
   };
 
   it('keeps every BlockId number, named after its key', () => {
@@ -54,7 +54,7 @@ describe('block states', () => {
       expect(getBlockDef(state).key).toBe(name.toLowerCase());
       expect(blockVariant(state)).toBe(0);
     }
-    expect(BLOCK_STATE_COUNT).toBe(54); // gravel (slice 3) and flowing water (slice 4, 16 states) come after lapis
+    expect(BLOCK_STATE_COUNT).toBe(77); // surface features append after the original states
   });
   it('ores are stone-like blocks: solid, opaque, breakable, with a painted tile', () => {
     for (const id of [BlockId.COAL_ORE, BlockId.IRON_ORE, BlockId.GOLD_ORE, BlockId.REDSTONE_ORE, BlockId.DIAMOND_ORE, BlockId.EMERALD_ORE, BlockId.LAPIS_ORE]) {
@@ -144,9 +144,9 @@ describe('breaking (spec 24)', () => {
 
 
 describe('physics rule fields (spec 25, slice 2)', () => {
-  it('default to no falling, flow only for flowing water, and support the solid blocks except leaves', () => {
+  it('default to no falling, flow only for flowing fluid states, and support the solid blocks except leaves', () => {
     for (const def of BLOCKS) {
-      expect(def.flows).toBe(def.key === 'flowing_water');
+      expect(def.flows).toBe(['flowing_water', 'flowing_lava'].includes(def.key));
       // Leaves are solid but hold nothing up (spec 25, slice 5): a canopy is not a support.
       expect(def.supports).toBe(def.key === 'leaves' ? false : def.solid);
       if (def.key !== 'sand' && def.key !== 'gravel') expect(def.falls).toBe(false);

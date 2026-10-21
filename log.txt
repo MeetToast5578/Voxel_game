@@ -608,3 +608,268 @@ CI result: run 39259305015 on 58ae409 (PR #32) PASSED both jobs — `check` 1m5s
 meshing mean 1.243 ms and generation mean 1.256 ms (both 3 ms budgets) and the same mesh
 fixture hash; `smoke` 6m58s, all 25 checks. PR #31 (98706b2) had already been merged to
 main as 697f926, so the T-D2 batch went out as a new PR rather than an update.
+
+
+2026-10-21 — Autonomous backlog execution: initial audit / T-A6
+User requested tasks.md updates, priority-based implementation, checking and logging all work.
+Working in existing checkout; initial git status clean. No AGENTS.md found.
+Updated tasks.md with current queue, historical-evidence labels, T-A6 regression and Pixel Aero
+proposal T-K8. Owner playtests remain open; no new CI results claimed.
+Baseline from onboarding: npm run check PASS (548 tests / 63 files, typecheck, build), GPU
+render smoke PASS, generation 1.319 ms and meshing 1.198 ms PASS (3 ms budgets).
+Full gameplay smoke FAIL after 13 checks at mining/pickup: Grass inventory 64 -> 64, two
+items dropped, player fell to y=6841.2 from fixture y=8392. Isolated browser reproduction:
+stone support 1 -> air, grass 3 -> air, items=2 after mining. Structural collapse is correct.
+Changed only the mining fixture: a 5x5 bedrock floor replaces the single floating stone
+support, retaining the real grass mining, crack-stage and exact-one-item assertions.
+Validation pending; continue through full smoke before marking T-A6 done.
+
+2026-10-21 — T-D3 investigation and design
+Found cave fillRange loop starts at max(2,y0): the four cave systems never carve negative y.
+Density voids below sea level were blanket-filled with water. Spec 46 documents the bounded
+local-water-table model and extension of caves below sea level. The legacy y=0/1 guard will
+move to the actual terrain-band floor, preserving bottom protection without a sea-level slab.
+Tables are seeded 2D fields cached per column; no per-cell 3D noise added. Surface-water
+roofs and water levels remain; underground lake basins/lava remain T-D4/T-G8.
+
+T-A6 verification: full gameplay smoke PASS, all 25 checks (system Chromium 154).
+Crack-stage and exact-one-item pickup assertions retained. Marked T-A6 done locally; CI unrun.
+T-D3: added AquiferSampler, cached column water tables, deep density-void filling and negative-y
+cave carving. Ported the old y=0/1 bottom-protection test to the actual terrain-band floor per
+spec 46; no assertion was dropped to mask a regression. Added direct wet/dry, sea-level seam,
+bottom, density-void, ocean/river, seed/order/cache and water-height regressions.
+
+Review correction: the new wide floor initially used numeric state 11 (cobblestone), not
+bedrock 10. That run passed 25 checks but did not prove permanent support. Corrected it to
+state 10 after checking BlockId. Final full smoke will validate the actual anchored fixture.
+Focused aquifer/cave/riverbed suite PASS: 24 tests / 3 files, including 9 aquifer tests.
+
+T-D3 browser coverage: added real seed-1 dry (-16,-80,-16) and wet (8,-144,15) cave
+fixtures to smoke and pure generator tests. Browser checks read worker-generated chunks
+without editing terrain and restore the player. Ported the deep-chunk assertion from a
+single guaranteed-rock cell to a neighbourhood requiring rock while allowing cave air/water.
+README records regenerated underground caves/groundwater; existing edits and saves retained.
+
+Diff review caught an overly broad smoke-script text replacement before execution. Restored
+the untouched checks from HEAD and reapplied the three intended edits with exact-match
+guards. All original 25 checks remain, plus the new aquifer check; syntax validation follows.
+
+T-D3 regression results so far (2026-10-21):
+- npm run check PASS: typecheck, 558 tests / 64 files, production build.
+- Isolated worker guards PASS: generation 1.511 ms, meshing 1.248 ms
+  (3 ms budgets); region 61.353 ms, spawn 130.323 ms,
+  cold column preparation 47.017 ms. Cold setup remains outside budget.
+- Mesh fixture hash now c838b8dddfc61ad867f0c9b6c231b0b9b4d3882de3a7ecd4c27c4a636b973c46.
+  The benchmark builds actual generated neighbouring chunks, so newly carved y=0/1 and
+  negative-y caves change geometry/light inputs. No mesher code changed; mesher/light tests pass.
+- GPU render smoke PASS (wet 255->178, sheltered 128->128; sky translation and moon phases).
+- node --check scripts/smoke.mjs and git diff --check PASS.
+Full 26-check gameplay smoke is running; do not mark T-D3 done until it passes.
+
+2026-10-21 — Final batch verification / T-A6 and T-D3 complete
+Full final gameplay smoke PASS, all 26 checks, including actual bedrock-supported mining
+and exact pickup, generated dry/wet aquifer fixtures, deep/high chunks, fluid timing,
+volume tools/undo, menu/inventory accessibility and worker use. Final measurement:
+3979 chunks loaded / 2057 meshed / 364 draw calls / 22 fps on SwiftShader; this is not
+a physical-hardware performance claim. Each command preserved its exit status; worker
+budgets, GPU checks and gameplay smoke ran sequentially.
+Reviewed final source/test diffs. No dependency, lockfile or save-format changes. Ten new
+aquifer tests; original 25 gameplay checks retained plus one aquifer check. The cave floor
+test was ported from sea-level y=0/1 to the real generation-band floor as documented in
+spec 46. Updated tasks.md and the spec index with verified completion and the next queue.
+T-D4 is next: dedicated underground lake basins, then lava pools with T-G8 fluid prerequisites.
+Owner playtests and current GitHub CI remain unrun/open. Work remains local and uncommitted.
+
+
+2026-10-21 — Continuation batch: five related tasks (spec 47)
+User requested continuing the queue and about five tasks. Preserved all previous uncommitted
+T-A6/T-D3 work. Selected T-D4, T-G8, T-G9, T-G13 and T-G14 in dependency order: local
+pools require lava states/flow; mixing and hazards complete the useful fluid workflow.
+Inspected block registry, flow/ecology dispatch, generator, player physics, loose bodies,
+survival loop, mesh/atlas and existing regression conventions. Wrote spec 47 before coding.
+No new dependencies or save-format changes. New states append after clay (old IDs retained).
+
+Spec 47 implementation and focused validation:
+- Appended lava 54, flowing lava 55..70 and obsidian 71; old states retain IDs. Added
+  procedural lava/obsidian tiles and level-aware lava geometry through existing mesh tables.
+- Generalized scheduled flow to own-fluid feeding and separate delays; added cooling and
+  reload contact scheduling. Existing water-flow regressions pass unchanged.
+- Added stateless jittered underground pools with solid shells and protected surface roofs.
+- Added player/body lava buoyancy and drag; actual collision-speed fall damage with
+  depth-dependent water cushioning; AABB fluid contact, timed fire and extinguishing.
+- Added a textual fire warning and debug burning/lava state. No fire spread or persistence.
+First focused run: 88/89 tests passed. The remaining assertion used a lethal dry impact
+(speed 20 m/s), so correct death/respawn returned health to 20 before inspection. Changed
+the comparison fixture to a nonfatal 10 m/s impact, retaining the dry-vs-water assertion;
+death/reset has its own actual-game test. Corrected one trailing whitespace finding.
+The initial registry test expected exactly the old keys; appended explicit new state IDs
+to its expected table while retaining every old ID/name/variant assertion.
+
+Spec 47 review and regression status:
+- Focused suite PASS, 89 tests / 9 files. Full check PASS, 582 tests / 68 files,
+  typecheck and production build. Added two review regressions (source interfaces on
+  newly loaded water-side chunk seams; full basin rejection when a distant shell cell
+  breaches a roof); these will be run after the browser suite to avoid contention.
+- Pool eligibility now checks the complete global shell footprint, cached with a bounded
+  map. Every intersecting chunk rejects the same invalid basin instead of clipping it.
+- Reservoir reload scheduling skips internal opposite-fluid lookups for uniform chunks;
+  mixed chunks and external chunk faces still resume reactions. Flowing states keep delays.
+- Worker guards PASS: generation 1.428 ms, meshing 1.356 ms (3 ms budgets). Mesh hash
+  c838b8dddfc61ad867f0c9b6c231b0b9b4d3882de3a7ecd4c27c4a636b973c46 unchanged
+  from the aquifer batch. GPU render smoke PASS. Full gameplay smoke is running, with
+  real generated pool inspection and actual survival fire/extinguishing checks added.
+- README documents pools, lava rules, fire/extinguishing, depth-based fall cushioning
+  and new-state save compatibility. No dependency or lockfile changes.
+
+Full spec 47 gameplay smoke PASS: all 28 checks, including generated lake/lava pool surfaces
+and floors; actual lava spreading; obsidian reaction; survival contact damage; visible
+fire warning; water extinguishing with stable health afterward. Original checks retained.
+Final SwiftShader measurement: 3921 chunks / 2116 meshed / 378 draw calls / 9 fps, not
+owner hardware performance. Inspected screenshots/lava-pool.png: bright orange liquid,
+visible basalt shell and cave roof, normal HUD/controls retained.
+Running final check including the two review regressions before closing the five tasks.
+
+2026-10-21 — Continuation batch complete: five tasks closed
+T-D4, T-G8, T-G9, T-G13 and T-G14 meet spec 47's acceptance checks.
+Final npm run check PASS: typecheck, 584 tests / 68 files, production build (1.86 s).
+Both added review regressions pass in the full suite. Previously verified worker guards,
+GPU regressions and full 28-check gameplay smoke pass; no functional source changed
+after those checks (only comments, two test additions and documentation).
+Reviewed source and test diffs, inspected the real rendered lava-pool screenshot, checked
+JavaScript syntax and git diff whitespace. Dependency manifests and lockfile unchanged.
+Updated tasks.md with completion/evidence and next priorities, marked T-G15 partial rather
+than claiming animation/snow, added spec-index entry, and prefaced the historical handoff
+and physics spec to avoid stale no-lava claims. Original T-A6/T-D3 changes preserved.
+Next queue: T-D6 coasts/oceans, then T-D7 horizon LOD. Owner physical playtests and current
+CI remain unrun. No commits, pushes, pull requests, merges or publication performed.
+
+2026-10-21 — Next five-task batch / commit authorization
+User authorized committing and pushing completed work, and requested five more tasks.
+Selected T-D6, T-D7, T-E2, T-E3 and T-E4 in queue order. No AGENTS.md found.
+Checkpointing the fully verified prior aquifer/pool/lava batch before new implementation;
+its previous uncommitted-status notes are historical. Will push after final validation.
+
+Spec 48 implementation progress:
+- Added gradient-based wave exposure, coast materials/sandbar shaping and shelf/deep-ocean
+  spline. River/lake paths bypass ocean shaping; existing sediment/roof tests pass.
+- Added biome flower weights and append-only reed state 72 with procedural cross art.
+  Reed banks require dry valid substrate next to actual generated water and no cave mouth.
+- Added world-coordinate climate vertex tints. Seed/cx/cz now pass through worker and
+  synchronous meshing paths; benchmark explicitly exercises enabled tinting.
+- Added dedicated horizon worker and stitched concentric rings, near terrain/region/broad
+  elevation blending, climate colour, separate fade/fog, coalesced recentering and disposal.
+  workers=0 omits LOD; terrain-only LOD does not include saved distant buildings.
+- Review adjusted the LOD inner hole/recenter step for low render distances, so moving
+  within a snapped tile cannot leave a gap outside the loaded near-world footprint.
+Initial focused baseline PASS: 31 tests / 4 files (shape, blocks, riverbed, plants).
+Typecheck passed before the final hole adjustment. New feature regressions follow.
+
+Spec 48 focused feature tests PASS: 13 tests / 4 files (coast profiles/exposure/generation,
+tint continuity and actual mesh colours, stitched horizon geometry, biome flowers and
+reeds crossing vertical chunk slices). Enabled-tint worker benchmark PASS: generation
+1.356 ms, meshing 1.463 ms under unchanged 3 ms limits; new colour hash expected.
+First full check: 596/597 tests passed. The sky-camera test creates a renderer with
+Object.create and did not initialize the newly added horizonDistance field, producing
+NaN only in that harness. Added the real constructor's zero default to the fixture;
+retained its camera-range assertion. Production constructor already initializes it.
+Review also ordered celestial layers before the distant silhouette and enabled depth
+for nonzero-alpha horizon fragments, so terrain can occlude clouds/sun correctly.
+
+Full spec 48 check PASS after renderer fixture correction: typecheck, 598 tests / 72
+files, production build. GPU render regressions PASS. Gameplay smoke progressing.
+Review follow-up before final validation: disallow ordinary trees/cacti on new coastal
+materials, since biome surface metadata alone may still say grass at a rocky cliff.
+Added an actual generated-rock/tree eligibility regression. Short view fog now resumes
+when horizon is hidden underground; the extended fog range applies only with visible LOD.
+These changes require final full validation before commit/push.
+
+First full spec 48 browser smoke PASS: all 30 checks, including real horizon geometry
+and snapped recentering, the seed-1 shoreline reed, and all previous fluid/build/UI checks.
+Inspected horizon.png and shoreline-reeds.png: distant coloured heightfield/coastal water
+and procedural reeds render. Lowered the horizon screenshot camera for the final run so
+it includes more near voxel terrain in the foreground; the geometry/recenter assertions
+are unchanged. Final run must also include the reviewed coast-tree/fog fixes.
+
+Final spec 48 unit/type/build validation PASS: 599 tests / 72 files, typecheck and
+production build. Includes the coast-tree guard, renderer harness defaults, real reed
+fixture and camera range beyond the diagonal horizon extent. Syntax/whitespace checks
+pass; package.json and package-lock.json unchanged.
+Created feature branch codex/coasts-horizon-flora after confirming it is absent on origin;
+it includes prior checkpoint 2396e91. Final worker/GPU/browser checks are now running
+sequentially before the spec 48 commit and normal (non-force) push.
+
+2026-10-21 — Spec 48 final acceptance / five tasks complete
+T-D6, T-D7, T-E2, T-E3 and T-E4 acceptance passed. Final checks:
+- npm run check: PASS, typecheck, 599 tests / 72 files, production build 1.92 s.
+- Enabled-tint worker guards: PASS, generation 1.312 ms, meshing 1.286 ms
+  (strict 3 ms budgets); hash b0583bcc82b546f824aa031bceda457b36691586910a712a812d10817f6883c9.
+  Colour/generation fixture hash changes are expected from tints and coast tree exclusion.
+- GPU render regressions: PASS.
+- Full final gameplay smoke: PASS, all 30 checks including generated pools, fluid hazards,
+  distant terrain geometry/recentering and generated reeds. Final SwiftShader measurement:
+  4172 loaded chunks / 2157 meshed / 356 draw calls / 15 fps, not owner hardware.
+- Inspected final horizon.png: textured near voxel terrain/flowers/trees in front of
+  distant coloured heightfield. shoreline-reeds.png shows generated procedural stems on
+  a sandy bank. Screenshots do not close owner physical/seam acceptance.
+- Reviewed final source/test diffs; node --check and git diff --check pass. Dependency
+  manifests/lockfile unchanged. No source changes after validation except a comment label.
+Updated README, task completions/next queue, spec index and handoff. T-E9 remains partial,
+T-E10 stays open, and mountains remain capped. No new dependencies/save format changes.
+Next action: commit the verified batch and perform a normal non-force feature-branch push
+including prior checkpoint 2396e91, then verify origin against local HEAD.
+
+2026-10-21 — Commit and push confirmed
+- 2396e91: verified aquifers, underground pools and fluid hazards checkpoint.
+- dd1d991a9dee4e445664b2a17068518d0fb5e120: verified coasts, horizon and climate flora.
+- Normal push created origin/codex/coasts-horizon-flora and set the upstream. Native Git
+  authentication worked; no tokens requested or extracted. git ls-remote returned the
+  exact local dd1d991 SHA for the feature branch. Working tree was clean after that push.
+- Updated handoff/tasks to record the actual push result. This documentation-only record
+  is committed and pushed next; no functional source changed after final validation.
+- No force push, merge, PR creation, environment publication or current CI claim.
+
+2026-10-21 — Spec 49 started (next five authorized tasks)
+Read task queue, generator, biome lookup, feature registry, block registry, mesher, art and physics.
+Working on T-E5 boulders, T-E6 fallen logs, T-E7 lily pads, T-E8 moss, T-E10 per-cell biome resolution.
+Spec 49 records ecology, support, stable IDs, clipping and verification requirements.
+No dependency changes planned. Commit/push remains authorized after checks.
+
+Spec 49 implementation and focused checks
+- Replaced chunk-centre biome IDs with per-cell actual elevation/climate/region moisture; cached surface dithering now follows real world-coordinate boundaries. Tree classification/debug queries share those cells.
+- Added deterministic supported boulders and horizontal forest logs through jittered anchors. Whole-feature tree collisions reject before clipping; cache results without chunk-order dependence.
+- Appended states 73..76 (X/Z logs, lily pad, moss) without changing old IDs; procedural cutout art and thin noncolliding/light-transparent layer geometry in chunk and item render paths. Fluids/falling material can replace layers.
+- Added warm shallow lake pads, damp rock/feature moss. Initial nearby seed-1 search found no warm forests/lakes; broader climate scan located real fixtures rather than weakening habitat rules. Fixtures: boulder (3129,152,-2168), moss (3517,161,-2163), X-log (3873,186,-1690), pad (4240,223,-3020).
+- Initial full suite: 598 pass, one expected stable-ID list failure fixed by appending explicit IDs. Focused fixture initially used a climate yielding badlands rather than desert; corrected mocked humidity/temperature to test sand-to-grass boundaries. Expanded clipping area to ensure both feature types and vertical layers are exercised.
+- Intermediate npm run check PASS: 607 tests / 74 files, typecheck/build. Initial isolated worker guards PASS (~1.74 ms generation / 1.46 ms mesh). Adding final real generator/browser fixtures, tree collision test and rerunning acceptance.
+
+Spec 49 extra forest performance check and correction
+- Final initial check passed 609 tests / 74 files. Standard worker fixture passed generation 1.569 ms / mesh 1.295 ms.
+- Additional 50-surface-chunk forest fixture (chunk origin 240,-108, seed 1) exposed warm generation 3.902 ms, above 3 ms. This was a real failure, not accepted or relaxed.
+- Cached deterministic tree geometry/empty anchors after hash selection and cached cell temperature/precipitation alongside biome data. Repeated vertical slices no longer rebuild trees or resample their surface climate. Added cache-eviction regeneration coverage and actual layer replacement by floods/falling sand.
+- Same forest fixture now PASS: generation 1.897 ms / mesh 2.923 ms; identical mesh SHA ffcc15b4cdaf6291cc3fdbea708a26e106143500d561304929d5aaa290e58293 before/after cache optimization.
+- Made fixture coordinates selectable via BENCHMARK_CHUNK_X/Z in the existing worker script so the extra measurement is reproducible; defaults retain the original fixture. Rerunning final suite, both tracked worker fixtures and browser acceptance sequentially.
+
+2026-10-21 — Spec 49 final acceptance
+- T-E5/E6/E7/E8/E10 complete; related procedural art T-E9 closed.
+- npm run check PASS: typecheck, 613 tests / 74 files, production build 1.95 s.
+- Final tracked standard worker guards PASS: generation 1.100 ms, mesh 1.346 ms.
+- Final tracked forest worker guards PASS: generation 1.784 ms, mesh 2.706 ms. Standard/forest geometry hashes unchanged after caching.
+- GPU render regression PASS (wet/sheltered lighting, sky translation, moon phases).
+- Full gameplay smoke PASS: all 31 checks, including real generated rock/log/moss/lake-pad cells, source water beneath pads, worker meshing and screenshots. Final SwiftShader measurement 4228 loaded / 2125 meshed / 425 draw calls / 20 fps; not owner hardware.
+- Inspected all four surface screenshots: rounded granite outcrop, horizontal bark-textured forest trunk, thin moss patches on rock and notched pads on lake water. Held block/HUD remain in shots; owner visual/seam acceptance remains open.
+- Dependency manifests and lockfile unchanged. Appended named states, saved edits and old block IDs preserved; no save-version bump. Dynamic plant ecology stays separate. Current GitHub CI not run or claimed.
+- Updated task completion/next five priorities, README, handoff, roadmap status and spec index. Final diff/syntax checks precede commit and normal non-force push to existing feature branch.
+
+2026-10-21 — Spec 49 commit/push confirmed
+Commit 0cd1097c550e9e0bd9dcdd664b90d9e0360d924f contains the completed, verified batch.
+Normal push advanced origin/codex/coasts-horizon-flora from ca93f63 to 0cd1097.
+git ls-remote matched local HEAD exactly; working tree was clean. No force push, merge or PR.
+This documentation-only push record follows in a separate commit; no functional changes after acceptance.
+
+2026-10-21 — Explicit handoff update requested
+Expanded docs/HANDOFF.md with verified implementation/push commits, the next five tasks,
+resume instructions, exact regression commands, real feature coordinates and artifact paths.
+Replaced the stale "Current local batch" section with an archived specs 46–47 checkpoint
+so the next session does not mistake old uncommitted status for the current branch state.
+Documentation-only change; git diff --check passed. Prior functional acceptance remains
+613 tests / 74 files, both worker fixtures, GPU checks and all 31 gameplay smoke checks.

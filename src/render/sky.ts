@@ -64,7 +64,7 @@ export class Sky {
       depthWrite: false,
     });
     this.sun = new THREE.Mesh(new THREE.PlaneGeometry(SUN_SIZE, SUN_SIZE), sunMaterial);
-    this.sun.renderOrder = 1;
+    this.sun.renderOrder = -2; // celestial layers precede the distant terrain silhouette
     scene.add(this.sun);
 
     // Moon: billboard quad facing the camera.
@@ -91,7 +91,7 @@ export class Sky {
       depthWrite: false,
     });
     this.moon = new THREE.Mesh(new THREE.PlaneGeometry(MOON_SIZE, MOON_SIZE), moonMaterial);
-    this.moon.renderOrder = 1;
+    this.moon.renderOrder = -2;
     scene.add(this.moon);
 
     // Stars: random points in the sky dome.
@@ -110,7 +110,7 @@ export class Sky {
       depthWrite: false,
     });
     this.stars = new THREE.Points(starGeometry, starMaterial);
-    this.stars.renderOrder = 0;
+    this.stars.renderOrder = -2;
     scene.add(this.stars);
   }
 

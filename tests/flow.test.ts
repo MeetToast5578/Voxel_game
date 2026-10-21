@@ -36,6 +36,12 @@ function settle(world: World, steps = 80): void {
 }
 
 describe('flowing water (spec 25, slice 4)', () => {
+  it.each([BlockId.LILY_PAD, BlockId.MOSS])('a rising flood replaces thin plant %i', (plant) => {
+    const world = stacked(); floor(world);
+    build(world, [[5, 1, 4, plant]]);
+    pour(world, 4, 1, 4, BlockId.WATER); settle(world);
+    expect(isWaterState(world.getBlock(5, 1, 4))).toBe(true);
+  });
   it('a source on flat ground levels out, one level thinner per block', () => {
     const world = stacked();
     floor(world);

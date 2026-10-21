@@ -53,6 +53,11 @@ export const RAVINE_SCALE_M = 160; // the 2D ridge whose zero set a ravine follo
 export const RAVINE_BAND = 0.012; // half-width of the ravine band at its widest (under the roof)
 export const RAVINE_ROOF = 6; // solid blocks kept above a ravine at its top
 export const RAVINE_DEPTH_M = 30; // how far below its roof a ravine cuts, tapering to nothing
+// Local groundwater (spec 46). Tables stay below sea level; surface water uses its own levels.
+export const AQUIFER_SCALE_M = 160;
+export const AQUIFER_LEVEL_M = -42;
+export const AQUIFER_AMPLITUDE_M = 30;
+export const CAVE_BOTTOM_ROWS = 2; // solid rows at the bottom of the terrain band, not at sea level
 export const SOIL_DEPTH_M = 1.8; // dirt under the grass
 export const GEOLOGY_LAYER_M = 12; // thickness of one rock layer (seven strata rocks, spec 20), before the warp
 export const GEOLOGY_WARP_M = 400; // horizontal size of the noise that bends the rock layers
@@ -558,3 +563,64 @@ export const FALL_DAMAGE_THRESHOLD_M_S = 6; // impact speed above this causes da
 export const FALL_DAMAGE_MULTIPLIER = 2; // damage per m/s above threshold
 export const DROWN_DAMAGE_PER_S = 2; // damage per second when out of air
 export const AIR_MAX_S = 15; // seconds the player can hold their breath
+
+// ---- Underground pools and fluid hazards (spec 47) ----
+export const LAVA_TICK_DELAY = 20;
+export const LAVA_DENSITY = 3100;
+export const LAVA_DRAG = WATER_DRAG * 4;
+export const LAVA_BODY_DRAG = LOOSE_BODY_WATER_DRAG * 4;
+export const LAVA_CONTACT_DAMAGE_PER_S = 8;
+export const FIRE_DAMAGE_PER_S = 2;
+export const FIRE_DURATION_S = 5;
+export const WATER_CUSHION_DEPTH_M = 0.6;
+export const WATER_CUSHION_MAX_M = 2.4;
+export const POOL_SPACING_M = 96;
+export const POOL_WATER_LEVEL_M = -20;
+export const POOL_WATER_DEPTH_RANGE_M = 40;
+export const POOL_LAVA_LEVEL_M = -140;
+export const POOL_LAVA_DEPTH_RANGE_M = 120;
+export const POOL_WATER_RADIUS_M = 6;
+export const POOL_WATER_RADIUS_RANGE_M = 4;
+export const POOL_LAVA_RADIUS_M = 3;
+export const POOL_LAVA_RADIUS_RANGE_M = 3;
+export const POOL_HALF_HEIGHT_M = 3;
+export const POOL_SHELL_M = 0.6;
+export const POOL_CACHE_LIMIT = 2048;
+
+// ---- Coasts, climate colours and shoreline flora (spec 48) ----
+export const COAST_PROBE_M = 80;
+export const COAST_CONTINENTAL_BAND = 0.12;
+export const COAST_SHORE_HEIGHT_M = 3;
+export const COAST_CLIFF_MAX_M = 18;
+export const COAST_CLIFF_SLOPE = 0.55;
+export const COAST_SHELF_DEPTH_M = 45;
+export const COAST_EXPOSED = 0.7;
+export const COAST_SANDBAR_RISE_M = 1.2;
+export const COAST_SANDBAR_SCALE_M = 40;
+export const TINT_GRID_M = 24;
+export const TINT_CACHE_LIMIT = 2048;
+export const REED_CHANCE = 0.12;
+export const REED_MIN_HEIGHT_M = 0.9;
+export const REED_MAX_HEIGHT_M = 1.8;
+export const REED_BANK_HEIGHT_M = 0.9;
+export const HORIZON_STEPS_BLOCKS = [16, 64, 256, 512] as const;
+export const HORIZON_RING_CELLS = 16;
+export const HORIZON_RECENTER_BLOCKS = 64;
+export const HORIZON_OVERLAP_BLOCKS = 32;
+export const HORIZON_NEAR_BLEND_BLOCKS = 128;
+export const HORIZON_REGION_BLEND_BLOCKS = 2048;
+export const HORIZON_BIAS_BLOCKS = 0.05;
+
+// Spec 49: small surface features. Distances are metres, converted once here.
+export const BOULDER_SPACING = roundBlocks(7.2);
+export const BOULDER_CHANCE = 0.32;
+export const BOULDER_RADIUS = roundBlocks(0.9);
+export const FALLEN_LOG_SPACING = roundBlocks(8.4);
+export const FALLEN_LOG_CHANCE = 0.4;
+export const FALLEN_LOG_MIN_LENGTH = roundBlocks(1.2);
+export const FALLEN_LOG_MAX_LENGTH = roundBlocks(2.4);
+export const LILY_PAD_CHANCE = 0.08;
+export const LILY_PAD_MAX_DEPTH = roundBlocks(1.8);
+export const MOSS_CHANCE = 0.35;
+export const MOSS_MIN_PRECIPITATION_MM = 750;
+export const SURFACE_LAYER_HEIGHT = 0.015 / BLOCK_SIZE_M;

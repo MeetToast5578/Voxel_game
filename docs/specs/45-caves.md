@@ -3,6 +3,10 @@
 **Built by:** Claude. Completes roadmap phase 2 item 6 for caves (task T-D2). Aquifers (T-D3) and underground lava
 (T-D4) are separate.
 
+> Spec 46 extends these systems below sea level and moves the legacy y=0/1 no-carve guard
+> to the actual terrain-band bottom. Its groundwater filling and bottom-protection rules
+> supersede the corresponding rules below; cave shapes and surface-water roofs are unchanged.
+
 ## Goal
 
 The underground is not one kind of tunnel. Four independent, deterministic systems share the rock, in the way

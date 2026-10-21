@@ -598,7 +598,7 @@ export class ChunkManager {
   }
 
   private meshNow(p: ChunkPos): void {
-    this.sink.set(p.cx, p.cy, p.cz, buildChunkMesh(this.neighborBlocks(p.cx, p.cy, p.cz), this.neighborTops(p.cx, p.cz), p.cy));
+    this.sink.set(p.cx, p.cy, p.cz, buildChunkMesh(this.neighborBlocks(p.cx, p.cy, p.cz), this.neighborTops(p.cx, p.cz), p.cy, { seed: this.world.seed, cx: p.cx, cz: p.cz }));
     this.meshed.set(p.key, p);
     this.dirty.delete(p.key);
   }

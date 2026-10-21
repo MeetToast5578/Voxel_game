@@ -42,9 +42,9 @@ export class WorkerPool implements ChunkJobs {
   }
 
   /** The block and top arrays are moved to the worker, so pass copies. */
-  mesh(_cx: number, cy: number, _cz: number, neighbors: Uint16Array[], tops: Int32Array[]): Promise<ChunkMeshData> {
+  mesh(cx: number, cy: number, cz: number, neighbors: Uint16Array[], tops: Int32Array[]): Promise<ChunkMeshData> {
     const transfer = [...neighbors, ...tops].map((a) => a.buffer as ArrayBuffer);
-    return this.send({ type: 'mesh', id: 0, cy, neighbors, tops }, transfer).then((r) => {
+    return this.send({ type: 'mesh', id: 0, seed: this.seed, cx, cy, cz, neighbors, tops }, transfer).then((r) => {
       if (r.type !== 'meshed') throw new Error('unexpected worker reply');
       return r.mesh;
     });
