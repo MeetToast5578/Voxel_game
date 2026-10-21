@@ -21,6 +21,7 @@ try {
   await page.goto('http://127.0.0.1:5174/src/config.ts');
   const results=await page.evaluate(async()=>{
     const {Sky}=await import('/src/render/sky.ts');
+    const {Horizon}=await import('/src/render/horizon.ts');
     const THREE=await import('/@id/__x00__virtual:render-smoke-three');
     const {patchLightMaterial}=await import('/src/render/lightMaterial.ts');
     document.body.replaceChildren();document.body.style.cssText='background:#18222a;color:white;font:16px sans-serif;margin:20px';
@@ -71,6 +72,19 @@ try {
     }
     check(counts[0]===0&&counts[2]>1000,`new/full moon failed: ${counts}`);
     check(counts[1]>counts[2]*0.4&&counts[1]<counts[2]*0.6&&Math.abs(counts[1]-counts[3])<30,`quarter moons failed: ${counts}`);
+    // A proxy can be higher than the true terrain. It must never cover nearby voxel geometry.
+    const terrainScene=new THREE.Scene(), horizon=new Horizon(terrainScene,1,false);
+    horizon.setData({positions:new Float32Array([159,1,-1,159,1,1,161,1,-1,161,1,1]),
+      colors:new Float32Array([1,0,0,1,0,0,1,0,0,1,0,0]), indices:new Uint32Array([0,1,2,2,1,3]),
+      centerX:0,centerZ:0,inner:0,overlap:16,radius:8192});
+    horizon.update(0,0,8,true);
+    camera.position.set(160,10,0);camera.up.set(0,0,-1);camera.lookAt(160,0,0);
+    read(terrainScene,camera);
+    check(pixels[(64*128+64)*4]>200,'horizon fixture was not rendered');
+    const realGround=new THREE.Mesh(new THREE.PlaneGeometry(2,2).rotateX(-Math.PI/2),new THREE.MeshBasicMaterial({color:0x0000ff}));
+    realGround.position.set(160,0,0);terrainScene.add(realGround);read(terrainScene,camera);
+    check(pixels[(64*128+64)*4+2]>200&&pixels[(64*128+64)*4]<5,'coarse horizon occluded true voxel terrain');
+    image(terrainScene,camera,'True terrain wins over higher horizon proxy');
     sky.dispose();geometry.dispose();material.dispose();dryMaterial.dispose();target.dispose();renderer.dispose();
     return {dry,wet,shelteredDry,shelteredWet,day,night,translated,moonLitPixels:counts};
   });

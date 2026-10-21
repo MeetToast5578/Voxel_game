@@ -3,7 +3,7 @@ import { type Tick, type TickResult } from './tick';
 import { BlockId, blocksSky } from './blocks';
 import { mulberry32 } from '../core/random';
 import { mixSeed } from './randomTick';
-import { orphanedLeaves } from './leafDecay';
+import { leafSupport, orphanedLeaves } from './leafDecay';
 import { FALL_REASON, handleFall } from './falling';
 import { SUPPORT_REASON, handleSupport } from './collapse';
 import { FLOW_REASON, handleFlow } from './flow';
@@ -60,7 +60,10 @@ export function scheduleLeafDecay(world: World, x: number, y: number, z: number)
 /** A leaf scheduled to decay: remove it if it is still a leaf (a log placed since the chop would keep it). */
 function handleLeafDecay(world: World, tick: Tick): TickResult {
   if (world.getBlock(tick.x, tick.y, tick.z) === BlockId.LEAVES) {
-    world.setBlock(tick.x, tick.y, tick.z, BlockId.AIR);
+    const support = leafSupport((x, y, z) => world.isLoadedAt(x, y, z) ? world.getBlock(x, y, z) : undefined,
+      tick.x, tick.y, tick.z, LEAF_DECAY_LIMIT);
+    if (support === 'orphaned') world.setBlock(tick.x, tick.y, tick.z, BlockId.AIR);
+    else if (support === 'unknown') world.scheduleTick(tick.x, tick.y, tick.z, world.currentTick + 1, 'leaf-decay');
   }
   return 'handled';
 }

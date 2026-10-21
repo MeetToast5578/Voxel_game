@@ -54,7 +54,7 @@ export class Sky {
     });
 
     this.dome = new THREE.Mesh(new THREE.SphereGeometry(SKY_RADIUS, 32, 16), skyMaterial);
-    this.dome.renderOrder = 0; // drawn first, before terrain
+    this.dome.renderOrder = -2; // drawn first, before terrain
     scene.add(this.dome);
 
     // Sun: billboard quad facing the camera.

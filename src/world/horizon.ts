@@ -1,10 +1,10 @@
 import {
   BLOCK_SIZE_M, CHUNK_SIZE, HORIZON_STEPS_BLOCKS, HORIZON_RING_CELLS, HORIZON_OVERLAP_BLOCKS,
-  HORIZON_RECENTER_BLOCKS, HORIZON_NEAR_BLEND_BLOCKS, HORIZON_REGION_BLEND_BLOCKS, HORIZON_BIAS_BLOCKS, SEA_LEVEL_M,
+  HORIZON_RECENTER_BLOCKS, HORIZON_BIAS_BLOCKS, SEA_LEVEL_M,
 } from '../config';
 import { clamp } from '../core/math';
 import { TerrainGenerator } from './generator';
-import { ClimateSampler, heightMeters } from './shape';
+import { ClimateSampler } from './shape';
 import { blockTemperature, blockPrecipitation } from './climate';
 import { climateTint } from './climateTint';
 
@@ -20,32 +20,20 @@ export interface HorizonData {
 }
 export type HorizonSample = readonly [number, number, number, number]; // height in blocks, linear RGB
 export type HorizonSampleAt = (x: number, z: number) => HorizonSample;
-const smooth = (a: number, b: number, x: number) => { const t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
 const linear = (v: number) => v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4;
 
-/** Reused only in the dedicated worker. Exact near terrain, then region and broad climate elevation. */
+/** Reused only in the dedicated worker. Exact shared density surface at every ring; no second, mismatching terrain model. */
 export class HorizonSampler {
   private readonly generator: TerrainGenerator;
   private readonly climate: ClimateSampler;
   constructor(seed: number) { this.generator = new TerrainGenerator(seed); this.climate = new ClimateSampler(seed); }
-  at(x: number, z: number, centerX: number, centerZ: number, near: number): HorizonSample {
-    const distance = Math.max(Math.abs(x - centerX), Math.abs(z - centerZ));
+  at(x: number, z: number, _centerX: number, _centerZ: number, _near: number): HorizonSample {
     const f = this.climate.fields(x * BLOCK_SIZE_M, z * BLOCK_SIZE_M);
-    const broad = heightMeters(f);
-    let h = broad, water = SEA_LEVEL_M, moisture: number | undefined;
-    if (distance < HORIZON_REGION_BLEND_BLOCKS) {
-      const sample = this.generator.sampleColumn(x, z);
-      water = Math.max(SEA_LEVEL_M, sample.waterLevelM);
-      moisture = sample.moisture;
-      const regionWeight = 1 - smooth(HORIZON_REGION_BLEND_BLOCKS / 2, HORIZON_REGION_BLEND_BLOCKS, distance);
-      h = broad + (sample.offsetM - broad) * regionWeight;
-      if (distance < near + HORIZON_NEAR_BLEND_BLOCKS && h > water - 4) {
-        const exact = this.generator.getHeight(x, z) * BLOCK_SIZE_M;
-        h += (exact - h) * (1 - smooth(near, near + HORIZON_NEAR_BLEND_BLOCKS, distance));
-      }
-    }
+    const surface = this.generator.sampleSurface(x, z);
+    const h = surface.height * BLOCK_SIZE_M;
+    const water = Math.floor(Math.max(SEA_LEVEL_M, surface.waterLevelM) / BLOCK_SIZE_M) * BLOCK_SIZE_M;
     const wet = h < water;
-    const temperature = blockTemperature(f, h), precipitation = blockPrecipitation(f, 0, moisture);
+    const temperature = blockTemperature(f, h), precipitation = blockPrecipitation(f, surface.ampM, surface.moisture);
     const tint = climateTint(temperature, clamp(precipitation / 2000, 0, 1), wet ? 3 : 1);
     const base = wet ? [48, 96, 200] : Math.abs(h) < 3 || (temperature > 20 && precipitation < 250) ? [219, 207, 163] : [95, 159, 53];
     return [(Math.max(h, water) / BLOCK_SIZE_M) + 1 - HORIZON_BIAS_BLOCKS,

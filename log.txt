@@ -912,3 +912,104 @@ Final audit checkpoint — user requested immediate wrap-up at 4% session usage:
 - Final logs: /tmp/voxel-bug-audit-check-final.log, smoke-final.log, horizon.log,
   horizon-smoke.log and visual.log with the same voxel-bug-audit- prefix.
 - Updated handoff/task priorities with exact reproduction and honest remaining limitations.
+
+2026-10-21 — Continued owner-requested codebase bug audit
+Priorities: confirmed horizon defect, durable block updates, worker failure recovery.
+Inspected renderer/horizon/lighting, chunk generation/loading/meshing, tick rules/queues,
+world mutations, save codecs/stores/saver, input, movement, items, inventory and ecology.
+Findings/fixes in progress:
+- Horizon proxy was a transparent depth-writing surface rendered AFTER real opaque voxels;
+  approximate elevations hid real ground/trunks. Draw an opaque alpha-hashed proxy BEFORE
+  voxels with depth writes disabled, and sky before both. Added a GPU fixture that deliberately
+  puts proxy terrain ABOVE real ground and asserts real ground wins (old behavior fails).
+- Reduced ring resolution jumps from 4x to 2x; first step 8 blocks, far radius unchanged.
+- Pending ticks now snapshot active and dormant queues, preserve remaining simulation delay
+  and game tick in backward-compatible optional save metadata, pause on unload and restore
+  on load. Recovery scans no longer accelerate restored falls/flows.
+- Worker errors/rejected jobs now release slots and fall back to synchronous generation;
+  pool errors reject pending promises and future sends instead of leaving them unresolved.
+- Stable tick ordering now also breaks same-cell ties by reason.
+Initial codec tests caught changed parsed-meta shape (2 failures); updated canonical fixture
+with explicit empty scheduledTicks/gameTick defaults. Persistence + codec + worker focused
+suite now passes 20 tests. GPU suite with real occlusion regression passes.
+No dependencies or lockfile edits. Save version remains 3; old records without new fields load.
+Further confirmed issues and regression coverage:
+- Visual inspection after proxy material fix STILL showed floating tree silhouettes. Found
+  dense canopy lighting tops were incorrectly used as ground bounds: SURFACE_BAND=1
+  could omit real ground beneath a full-chunk canopy. Added TerrainGenerator.columnGroundMin,
+  transferred it explicitly in worker tops results, and used it to bound loader surface bands.
+  Covered both synchronous and worker metadata paths with elevated-camera canopy fixtures.
+- Repeated sorting of thousands of chunks could consume the entire random-tick budget before
+  visiting any cells (observed randomTickRan=0). Cache the stable order until chunks change.
+- Delayed leaf ticks unconditionally deleted leaves even after a replacement log restored
+  support. Recheck bounded current support; defer unknown/unloaded boundaries. Added regressions.
+- Structural collapse did not wake neighbouring fluids/falling blocks. Added those notifications.
+- Expanded worker tests to rejected tops, generation and mesh jobs, pool disposal, constructor
+  failure and asynchronous crash. Horizon failures now gracefully fall back to voxels as well.
+First canopy test run exposed a test-fixture class typo (Sink vs FakeSink), corrected; focused
+updates suite passes. Final full validation now runs on all fixes together.
+Final terrain root causes identified beyond the initial material correction:
+- The old horizon changed height model with camera distance (exact -> regional -> raw climate).
+  A fixed location could change height as the camera moved. Added a single-cell surface sampler
+  sharing the exact coast/density parameters used by generated columns; every ring now uses it.
+  Regressions compare near/far heights with real voxel ground/water and camera-independent samples.
+- Mesh hysteresis retained incomplete perimeter columns beyond the active mesh set. Remove
+  these orphan rendered sections while retaining generated chunk hysteresis; covered by a move test.
+- Enhanced the full browser horizon check to revisit seed1 (101.5,245,-26.5), yaw-.8/pitch-.35,
+  wait for all gen/mesh jobs and save screenshots/terrain-regression.png for direct inspection.
+- Full suite after these fixes: 640 tests / 76 files, typecheck and build PASS.
+Performance investigation: standard guard initially PASS 1.210/1.361 ms gen/mesh. Forest
+mesh guard failed at 3.175 ms (gen 1.945). Profiled 30 passes with Node CPU samples; colour
+sampling is measurable but both per-instance and shared vertex caches failed to improve
+wall time (3.218/3.552 ms), and palette precomputation did not help (3.288 ms). Reverted ALL
+those experiments; climateTint.ts and its tests match the prior committed implementation.
+A broad replacement error during one experiment was caught by its focused test and corrected
+before the experiment was reverted. No weakened budgets or changed benchmark fixtures.
+The forest geometry hash remained ffcc15b4cdaf6291cc3fdbea708a26e106143500d561304929d5aaa290e58293.
+Final worker/browser acceptance follows; forest performance remains a separately recorded issue.
+Acceptance on final functional implementation:
+- npm run check PASS: 640 tests / 76 files, typecheck, production build (2.37 s).
+- Standard worker guards PASS: generation 1.556 ms / mesh 1.692 ms.
+- Extra forest: generation PASS 2.081 ms; mesh FAIL 3.057 ms vs 3 ms. Remains open T-J14;
+  no mesher/tint/benchmark implementation changes retained, hashes unchanged.
+- Final GPU regression suite PASS, including deliberately raised proxy above real terrain.
+- Full browser acceptance running again after exact-surface/perimeter changes; prior 32 checks passed.
+Updated spec 50, task priority/status, spec index and README. Old checkpoints remain historical.
+Final browser/visual investigation:
+- Full exact-surface acceptance run passed the first 28 checks but timed out in the enhanced
+  elevated horizon readiness condition (90 s). Added state diagnostics to that wait.
+- Isolated distant-terrain rerun PASS, including elevated generation/mesh quiescence and
+  screenshots/terrain-regression.png. Direct inspection STILL shows broad untextured proxy
+  surfaces and partial-looking distant vegetation. T-D7 visual acceptance is explicitly
+  reopened; no claim that the owner's terrain complaint is fully resolved.
+- Re-running the complete suite with the new diagnostic to distinguish a readiness race
+  from an application stall. Prior all-32 pass predates the final exact-surface change.
+Readiness timeout diagnosed and fixture repair:
+- Diagnostic full run: elevated position and horizon centre/visibility correct, pendingGen=0,
+  but 297 dirty meshes and 16 jobs persisted. The preceding fluid fixtures were uncontained:
+  physics/water floors were narrower than the 7-cell spread, and the lava check never cleaned
+  its sources. This could leave high-altitude waterfalls and continuing remesh work.
+- Expanded these fixtures to anchored bedrock floors beyond each source's full reach, clear
+  their entire volume on exit, and explicitly clean lava/water in finally. Kept global
+  terrain-quiescence and all flow/collapse assertions; no timeout/budget relaxation.
+- Also found a real skyline bug while reviewing this path: removing a block high above ground
+  exhausted scanDown's 64-chunk limit and incorrectly returned NO_TOP. Preserve generated
+  skyline bounds, inspect saved edits above them, and jump known-empty gaps before scanning.
+  Added regressions for an 8001-high edit and an intermediate unloaded edited blocker.
+- Raised the first seed-1 horizon flight to at least 245 blocks so a previous test's landing
+  height cannot put the view under canopy; underground horizon suppression remains correct.
+Release full check now runs with skyline repair and both new regressions.
+Release acceptance complete:
+- npm run check PASS: 642 tests / 76 files; typecheck; production build 2.08 s.
+- Final full browser suite PASS all 32 checks, including exact elevated readiness with zero
+  gen/mesh jobs, tick save/reload, flow delays, collapse, lava reactions, reeds and feature meshes.
+  The fixture containment/cleanup fixed the prior readiness timeout without relaxing assertions.
+- Final browser steady measurement: 13 fps on SwiftShader, 4003 loaded / 2018 meshed /
+  337 draw calls; software-GPU measurement, not owner hardware.
+- Inspected final screenshots/terrain-regression.png: near terrain drawn; distant proxy is
+  still visibly too coarse and some distant vegetation appears partial. T-D7 remains partial.
+- GPU suite PASS. Standard worker guards PASS 1.556/1.692 ms gen/mesh; forest generation
+  PASS 2.081 ms, forest mesh FAIL 3.057 ms (3 ms limit). T-J14 remains open; no relaxed limits.
+- git diff --check and script syntax checks PASS. Dependencies/lockfile and block IDs unchanged.
+- Updated tasks, handoff, roadmap, spec 25 note, spec index and new spec 50 with final evidence.
+- Commit and normal non-force push to the existing authorized feature branch follow.

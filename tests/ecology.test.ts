@@ -202,3 +202,23 @@ describe('ecology - leaf decay', () => {
     expect(world.getBlock(8, 6, 8)).toBe(BlockId.LEAVES);
   });
 });
+
+it('retains leaves when a replacement log restores support before the decay tick', () => {
+  const world = new World(1); world.addChunk(new Chunk(0, 0, 0));
+  world.installColumnTops(0, 0, new Int32Array(256).fill(8));
+  world.setBlock(8, 6, 8, BlockId.LEAVES);
+  world.scheduleTick(8, 6, 8, 2, 'leaf-decay');
+  world.setBlock(8, 5, 8, BlockId.LOG);
+  world.tickStep(100); world.tickStep(100);
+  expect(world.getBlock(8, 6, 8)).toBe(BlockId.LEAVES);
+});
+
+it('defers a border leaf decay until missing neighbouring terrain is known', () => {
+  const world = new World(1); world.addChunk(new Chunk(0, 0, 0));
+  world.installColumnTops(0, 0, new Int32Array(256).fill(8));
+  world.setBlock(15, 6, 8, BlockId.LEAVES);
+  world.scheduleTick(15, 6, 8, 1, 'leaf-decay'); world.tickStep(100);
+  expect(world.getBlock(15, 6, 8)).toBe(BlockId.LEAVES);
+  world.addChunk(new Chunk(1, 0, 0)); world.tickStep(100);
+  expect(world.getBlock(15, 6, 8)).toBe(BlockId.AIR);
+});

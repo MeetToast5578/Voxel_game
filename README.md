@@ -9,6 +9,7 @@ A Minecraft-like voxel sandbox that runs in the browser, built with TypeScript, 
 - Wave exposure shapes sandy beaches, gravel shores, rocky cliffs and sheltered sandbars; continental shelves descend to deep ocean.
 - Worker-built distant terrain extends about 2.4 km with coarse heightfield rings. This shows generated terrain, not distant saved buildings; `?workers=0` omits horizon LOD.
 - Grass, foliage and water have smoothly blended climate colours. Flower mixtures vary by biome, reeds grow on dry banks, and supported boulders and fallen logs dot the land. Shallow unfrozen lakes grow lily pads; damp rock and fallen trunks grow moss. Surface biomes are classified per block, with blended boundaries.
+- Scheduled block updates run at 20 Hz and survive chunk unloading and save/reload with their remaining delays. Terrain loading includes ground beneath dense canopies; failed workers fall back to main-thread loading.
 - Walk, sprint, jump, fly and swim, with block collisions
 - Ledges up to 0.6 m are stepped up automatically, no jump needed
 - Break and place blocks including gravel, clay and cactus. Water flows: the source block spreads, and it levels out.

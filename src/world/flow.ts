@@ -37,6 +37,7 @@ export function scheduleFlowingWater(world: World, chunk: Chunk): void {
     const lx = i % CHUNK_SIZE, lz = Math.floor(i / CHUNK_SIZE) % CHUNK_SIZE;
     const ly = Math.floor(i / (CHUNK_SIZE * CHUNK_SIZE));
     const x = chunk.cx * CHUNK_SIZE + lx, y = chunk.cy * CHUNK_SIZE + ly, z = chunk.cz * CHUNK_SIZE + lz;
+    if (world.hasScheduledTick(x, y, z, FLOW_REASON)) continue;
     let mixed = false;
     if (!fluid(id).flowing(id)) for (const [dx, dy, dz] of NEIGHBOURS) {
       // A uniform fluid chunk can only meet the other fluid across a chunk face. Avoid

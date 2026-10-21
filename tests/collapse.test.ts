@@ -144,3 +144,16 @@ describe('structural collapse (spec 25, slice 5)', () => {
     scheduleFallChecks(world, 0, 0, 0); // keeps the import used when the falling rules change
   });
 });
+
+it('retries an inconclusive support check when the neighbouring chunk arrives', () => {
+  const world = new World(1); world.addChunk(new Chunk(0, 0, 0));
+  world.installColumnTops(0, 0, new Int32Array(256).fill(-100));
+  world.setBlock(15, 5, 8, BlockId.STONE);
+  world.scheduleTick(15, 5, 8, 1, 'support'); world.tickStep(100);
+  expect(world.getBlock(15, 5, 8)).toBe(BlockId.STONE);
+  expect(world.pendingTickCount).toBe(1);
+  world.addChunk(new Chunk(1, 0, 0));
+  for (let i = 0; i < 3; i++) world.tickStep(100);
+  expect(world.getBlock(15, 5, 8)).toBe(BlockId.AIR);
+  expect(world.takeDrops()).toHaveLength(1);
+});

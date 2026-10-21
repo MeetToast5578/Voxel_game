@@ -8,7 +8,7 @@ export type WorkerRequest =
 
 /** Messages from a chunk worker back to the main thread. */
 export type WorkerResponse =
-  | { type: 'tops'; id: number; tops: Int32Array }
+  | { type: 'tops'; id: number; tops: Int32Array; groundMin: number }
   | { type: 'generated'; id: number; blocks: Uint16Array }
   | { type: 'meshed'; id: number; mesh: ChunkMeshData };
 

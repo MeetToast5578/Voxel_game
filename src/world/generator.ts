@@ -33,7 +33,7 @@ import { Chunk } from './chunk';
 import { AquiferSampler } from './aquifer';
 import { UndergroundPools } from './undergroundPools';
 import { TerrainDensity } from './density';
-import { ClimateSampler, detailAmpMeters, heightMeters } from './shape';
+import { ClimateSampler, detailAmpMeters, heightMeters, type ClimateFields } from './shape';
 import { blockPrecipitation, blockTemperature } from './climate';
 import { FeatureRegistry, type FeatureBlock } from './feature';
 import { anchorSpecies, biomeAt, biomeName, blendSurfaceBlocks, riparianTreeSpecies, secondarySpecies, soilBlock, surfaceBlock, treeSpecies } from './biome';
@@ -173,6 +173,39 @@ export class TerrainGenerator {
     const cx = floorDiv(wx, CHUNK_SIZE);
     const cz = floorDiv(wz, CHUNK_SIZE);
     return this.column(cx, cz).solidTop[columnIndex(wx - cx * CHUNK_SIZE, wz - cz * CHUNK_SIZE)]!;
+  }
+
+  /** Lowest actual ground under the canopy; lighting tops alone cannot bound a dense forest. */
+  columnGroundMin(cx: number, cz: number): number { return Math.min(...this.column(cx, cz).solidTop); }
+
+  /** The exact density surface of one cell, without preparing its 255 neighbouring columns. */
+  sampleSurface(wx: number, wz: number): { height: number; waterLevelM: number; moisture: number; ampM: number } {
+    const fields = this.climate.fields(wx * BLOCK_SIZE_M, wz * BLOCK_SIZE_M), sample = this.regions.sample(wx, wz);
+    const p = this.surfaceParameters(wx, wz, fields, sample);
+    return { height: this.solidTop(wx, wz, p.offsetM, p.ampM), waterLevelM: sample.waterLevelM, moisture: sample.moisture, ampM: p.ampM };
+  }
+
+  private surfaceParameters(wx: number, wz: number, fields: ClimateFields, sample: ColumnSample) {
+    let offsetM = sample.offsetM;
+    // The 3D detail noise has an amplitude of up to 22 m, which is far more than a river
+    // channel is deep, so left alone it fills every channel back in with rock and the river
+    // never appears. Damping it inside channels and lakes lets the water show while keeping
+    // some bumpiness.
+    const ampScale = sample.isRiver ? 0.2 : sample.isLake ? 0.35 : 1;
+    let ampM = detailAmpMeters(fields) * ampScale;
+    let exposure = 0, coastal = false, coastSlope = 0;
+    if (!sample.isRiver && !sample.isLake && Math.abs(fields.continentalness) <= COAST_CONTINENTAL_BAND) {
+      coastal = true;
+      const xM = wx * BLOCK_SIZE_M, zM = wz * BLOCK_SIZE_M;
+      const east = this.climate.fields(xM + COAST_PROBE_M, zM), west = this.climate.fields(xM - COAST_PROBE_M, zM);
+      const north = this.climate.fields(xM, zM + COAST_PROBE_M), south = this.climate.fields(xM, zM - COAST_PROBE_M);
+      exposure = waveExposure(east.continentalness - west.continentalness, north.continentalness - south.continentalness);
+      coastSlope = Math.hypot(heightMeters(east) - heightMeters(west), heightMeters(north) - heightMeters(south)) / (2 * COAST_PROBE_M);
+      if (exposure >= COAST_EXPOSED && fields.erosion < 0) ampM *= 1 + exposure * 2;
+      if (exposure < 0.35 && sample.offsetM > -3 && sample.offsetM < 0)
+        offsetM += COAST_SANDBAR_RISE_M * Math.max(0, this.rockNoise(xM / COAST_SANDBAR_SCALE_M, zM / COAST_SANDBAR_SCALE_M));
+    }
+    return { offsetM, ampM, exposure, coastal, coastSlope };
   }
 
   /** Climate at a block, for the F3 overlay: temperature (°C), precipitation (mm a year) and the biome's name. */
@@ -376,31 +409,14 @@ export class TerrainGenerator {
         // The region's surface replaces the raw shape height: it already carries erosion,
         // river channels and lake basins.
         const sample = this.regions.sample(wx, wz);
-        column.offsets[i] = sample.offsetM;
-        // The 3D detail noise has an amplitude of up to 22 m, which is far more than a river
-        // channel is deep, so left alone it fills every channel back in with rock and the river
-        // never appears. Damping it inside channels and lakes lets the water show while keeping
-        // some bumpiness.
-        const ampScale = sample.isRiver ? 0.2 : sample.isLake ? 0.35 : 1;
-        column.amps[i] = detailAmpMeters(fields) * ampScale;
-        let exposure = 0, coastal = false, coastSlope = 0;
-        if (!sample.isRiver && !sample.isLake && Math.abs(fields.continentalness) <= COAST_CONTINENTAL_BAND) {
-          coastal = true;
-          const xM = wx * BLOCK_SIZE_M, zM = wz * BLOCK_SIZE_M;
-          const east = this.climate.fields(xM + COAST_PROBE_M, zM), west = this.climate.fields(xM - COAST_PROBE_M, zM);
-          const north = this.climate.fields(xM, zM + COAST_PROBE_M), south = this.climate.fields(xM, zM - COAST_PROBE_M);
-          exposure = waveExposure(east.continentalness - west.continentalness, north.continentalness - south.continentalness);
-          coastSlope = Math.hypot(heightMeters(east) - heightMeters(west), heightMeters(north) - heightMeters(south)) / (2 * COAST_PROBE_M);
-          if (exposure >= COAST_EXPOSED && fields.erosion < 0) column.amps[i] *= 1 + exposure * 2;
-          if (exposure < 0.35 && sample.offsetM > -3 && sample.offsetM < 0)
-            column.offsets[i] += COAST_SANDBAR_RISE_M * Math.max(0, this.rockNoise(xM / COAST_SANDBAR_SCALE_M, zM / COAST_SANDBAR_SCALE_M));
-        }
+        const p = this.surfaceParameters(wx, wz, fields, sample);
+        column.offsets[i] = p.offsetM; column.amps[i] = p.ampM;
         column.warp[i] = this.rockNoise((wx * BLOCK_SIZE_M) / GEOLOGY_WARP_M, (wz * BLOCK_SIZE_M) / GEOLOGY_WARP_M);
         column.waterLevels[i] = sample.waterLevelM;
         column.waterBodies[i] = sample.isRiver ? 1 : sample.isLake ? 2 : 0;
         column.solidTop[i] = this.solidTop(wx, wz, column.offsets[i]!, column.amps[i]!);
-        if (coastal) column.coastMaterials[i] = coastProfile(column.solidTop[i]! * BLOCK_SIZE_M,
-          Math.max(coastSlope, column.amps[i]! / 16), exposure).material;
+        if (p.coastal) column.coastMaterials[i] = coastProfile(column.solidTop[i]! * BLOCK_SIZE_M,
+          Math.max(p.coastSlope, column.amps[i]! / 16), p.exposure).material;
         const heightM = column.solidTop[i]! * BLOCK_SIZE_M;
         column.temperatures[i] = blockTemperature(fields, heightM);
         column.precipitation[i] = blockPrecipitation(fields, column.amps[i]!, sample.moisture);

@@ -166,3 +166,24 @@ describe('column tops', () => {
     expect(w.chunkCount).toBe(0);
   });
 });
+
+it('restores the real skyline after removing a block thousands of blocks above terrain', () => {
+  const fallback = stoneBelowZero(), world = new World(1, fallback);
+  world.installColumnTops(0, 0, flatTops(-1));
+  world.addChunk(new Chunk(0, 500, 0));
+  world.setBlock(5, 8001, 5, BlockId.STONE);
+  expect(world.topAt(5, 5)).toBe(8001);
+  world.setBlock(5, 8001, 5, BlockId.AIR);
+  expect(world.topAt(5, 5)).toBe(-1);
+  expect(fallback.calls).toBe(1); // Jump the known empty gap instead of exhausting the 64-chunk scan.
+});
+
+it('keeps an unloaded intermediate edited blocker when jumping a large empty skyline gap', () => {
+  const world = new World(1, stoneBelowZero());
+  world.installColumnTops(0, 0, flatTops(-1));
+  world.addChunk(new Chunk(0, 250, 0)); world.addChunk(new Chunk(0, 500, 0));
+  world.setBlock(5, 4001, 5, BlockId.STONE); world.setBlock(5, 8001, 5, BlockId.STONE);
+  world.removeChunk(0, 250, 0);
+  world.setBlock(5, 8001, 5, BlockId.AIR);
+  expect(world.topAt(5, 5)).toBe(4001);
+});

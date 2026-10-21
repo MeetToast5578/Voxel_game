@@ -2,7 +2,7 @@ import { CHUNK_SIZE, CHUNK_VOLUME, RANDOM_TICKS_PER_CHUNK } from '../config';
 import { chunkKey, columnIndex, columnKey, localIndex, worldToChunk, worldToLocal } from '../core/coords';
 import { BlockId, blocksSky } from './blocks';
 import { Chunk } from './chunk';
-import { type TickHandoff } from './tick';
+import { type PendingTick, type TickHandoff } from './tick';
 import { handleTick, handleRandomTick } from './ecology';
 import { forEachRandomCell } from './randomTick';
 
@@ -52,10 +52,39 @@ export class World {
   private readonly editedChunksByColumn = new Map<string, Set<string>>();
   /** columnKey -> world y of the highest sky-blocking block per cell (index lz * 16 + lx). */
   private readonly tops = new Map<string, Int32Array>();
+  private readonly generatedTops = new Map<string, Int32Array>();
   /** columnKey -> number of loaded chunks in that column. */
   private readonly loadedPerColumn = new Map<string, number>();
   /** Global tick counter, incremented once per tickStep. */
   private tickCounter = 0;
+  private orderedTickChunks: Chunk[] | null = null;
+  private tickChunks(): Chunk[] {
+    return this.orderedTickChunks ??= this.chunks().sort((a, b) => a.cx - b.cx || a.cy - b.cy || a.cz - b.cz);
+  }
+  private readonly dormantTicks = new Map<string, Map<string, PendingTick>>();
+
+  /** Snapshot both active and unloaded work with relative delays, independent of wall-clock time. */
+  snapshotTicks(): PendingTick[] {
+    const ticks = [...this.dormantTicks.values()].flatMap(queue => [...queue.values()].map(t => ({ ...t })));
+    for (const chunk of this.chunkMap.values()) for (const t of chunk.ticks.snapshot())
+      ticks.push({ x: t.x, y: t.y, z: t.z, reason: t.reason, delay: Math.max(0, t.dueTick - this.tickCounter) });
+    return ticks.sort((a, b) => a.x - b.x || a.y - b.y || a.z - b.z || a.reason.localeCompare(b.reason));
+  }
+
+  /** Load before chunks; old saves without pending work retain their load-time recovery scans. */
+  loadTicks(ticks: readonly PendingTick[], gameTick = 0): void {
+    this.tickCounter = gameTick;
+    this.dormantTicks.clear();
+    for (const t of ticks) this.scheduleTick(t.x, t.y, t.z, this.tickCounter + t.delay, t.reason);
+  }
+
+  private parkTick(t: PendingTick): void {
+    const key = chunkKey(worldToChunk(t.x), worldToChunk(t.y), worldToChunk(t.z));
+    let queue = this.dormantTicks.get(key);
+    if (!queue) { queue = new Map(); this.dormantTicks.set(key, queue); }
+    const id = `${t.x},${t.y},${t.z}:${t.reason}`, previous = queue.get(id);
+    if (!previous || t.delay < previous.delay) queue.set(id, { ...t });
+  }
   private tickCursor = 0;
   private randomCursor = 0;
   private readonly changedChunks = new Map<string, { cx: number; cy: number; cz: number }>();
@@ -121,12 +150,21 @@ export class World {
     const key = chunkKey(chunk.cx, chunk.cy, chunk.cz);
     if (this.chunkMap.has(key)) return;
     this.chunkMap.set(key, chunk);
+    this.orderedTickChunks = null;
+    const dormant = this.dormantTicks.get(key);
+    this.dormantTicks.delete(key);
+    if (dormant) for (const t of dormant.values())
+      chunk.ticks.schedule({ x: t.x, y: t.y, z: t.z, reason: t.reason, dueTick: this.tickCounter + t.delay }, chunk.cx, chunk.cy, chunk.cz);
     const col = columnKey(chunk.cx, chunk.cz);
     this.loadedPerColumn.set(col, (this.loadedPerColumn.get(col) ?? 0) + 1);
   }
 
   removeChunk(cx: number, cy: number, cz: number): void {
-    if (!this.chunkMap.delete(chunkKey(cx, cy, cz))) return;
+    const chunk = this.getChunk(cx, cy, cz);
+    if (!chunk) return;
+    for (const t of chunk.ticks.snapshot()) this.parkTick({ x: t.x, y: t.y, z: t.z, reason: t.reason, delay: Math.max(0, t.dueTick - this.tickCounter) });
+    this.chunkMap.delete(chunkKey(cx, cy, cz));
+    this.orderedTickChunks = null;
     const col = columnKey(cx, cz);
     const n = (this.loadedPerColumn.get(col) ?? 1) - 1;
     if (n > 0) this.loadedPerColumn.set(col, n);
@@ -179,6 +217,7 @@ export class World {
    */
   installColumnTops(cx: number, cz: number, generated: Int32Array): void {
     const col = columnKey(cx, cz);
+    this.generatedTops.set(col, generated.slice());
     this.tops.set(col, generated);
     const edited = this.editedChunksByColumn.get(col);
     if (!edited) return;
@@ -210,6 +249,7 @@ export class World {
     const col = columnKey(cx, cz);
     if (this.loadedPerColumn.has(col)) return false;
     this.tops.delete(col);
+    this.generatedTops.delete(col);
     return true;
   }
 
@@ -323,6 +363,24 @@ export class World {
    * are not loaded, generates them with the fallback (plus saved edits) without adding them to the world.
    */
   private scanDown(cx: number, cz: number, lx: number, lz: number, fromY: number): number {
+    const col = columnKey(cx, cz), cell = columnIndex(lx, lz);
+    const generated = this.generatedTops.get(col)?.[cell];
+    if (generated !== undefined && fromY > generated) {
+      // Above the generated skyline only edits can block sky. Jump empty high-altitude
+      // gaps rather than exhausting the downward scan before reaching actual terrain.
+      let editedTop = NO_TOP;
+      for (const key of this.editedChunksByColumn.get(col) ?? []) {
+        const cy = Number(key.split(',')[1]);
+        for (const [index, id] of this.editMap.get(key)!) {
+          if (index % (CHUNK_SIZE * CHUNK_SIZE) !== cell || !blocksSky(id)) continue;
+          const y = cy * CHUNK_SIZE + Math.floor(index / (CHUNK_SIZE * CHUNK_SIZE));
+          if (y <= fromY) editedTop = Math.max(editedTop, y);
+        }
+      }
+      if (editedTop > generated) return editedTop;
+      if (generated === NO_TOP) return NO_TOP;
+      fromY = generated;
+    }
     let cy = worldToChunk(fromY);
     let ly = worldToLocal(fromY);
     for (let n = 0; n < TOP_SCAN_CHUNKS; n++, cy--, ly = CHUNK_SIZE - 1) {
@@ -336,13 +394,20 @@ export class World {
     return NO_TOP;
   }
 
+  hasScheduledTick(x: number, y: number, z: number, reason: string): boolean {
+    return this.getChunk(worldToChunk(x), worldToChunk(y), worldToChunk(z))?.ticks.has(x, y, z, reason) ?? false;
+  }
+
   /** Schedule a tick at world coordinates (wx, wy, wz) due at `dueTick`. Returns any handoff to a neighbour chunk. */
   scheduleTick(wx: number, wy: number, wz: number, dueTick: number, reason: string): TickHandoff | null {
     const cx = worldToChunk(wx);
     const cy = worldToChunk(wy);
     const cz = worldToChunk(wz);
     const chunk = this.getChunk(cx, cy, cz);
-    if (!chunk) return null;
+    if (!chunk) {
+      this.parkTick({ x: wx, y: wy, z: wz, delay: Math.max(0, dueTick - this.tickCounter), reason });
+      return null;
+    }
     return chunk.ticks.schedule({ x: wx, y: wy, z: wz, dueTick, reason }, cx, cy, cz);
   }
 
@@ -355,7 +420,7 @@ export class World {
     this.tickCounter++;
     let ran = 0;
     const start = performance.now();
-    const chunks = this.chunks().sort((a, b) => a.cx - b.cx || a.cy - b.cy || a.cz - b.cz);
+    const chunks = this.tickChunks();
     let visited = 0;
     while (visited < chunks.length && performance.now() - start < budgetMs) {
       const chunk = chunks[this.tickCursor % chunks.length]!;
@@ -373,7 +438,7 @@ export class World {
         if (target) {
           target.ticks.schedule(t, tcx, tcy, tcz);
         }
-        // If the neighbour isn't loaded, the handoff is dropped.
+        else this.scheduleTick(t.x, t.y, t.z, t.dueTick, t.reason);
       }
     }
 
@@ -401,7 +466,7 @@ export class World {
   randomTickStep(budgetMs: number, handler: typeof handleRandomTick = handleRandomTick): { ran: number; ms: number } {
     const start = performance.now();
     let ran = 0;
-    const chunks = this.chunks().sort((a, b) => a.cx - b.cx || a.cy - b.cy || a.cz - b.cz);
+    const chunks = this.tickChunks();
     for (let visited = 0; visited < chunks.length; visited++) {
       if (performance.now() - start >= budgetMs) break;
       const chunk = chunks[this.randomCursor % chunks.length]!;

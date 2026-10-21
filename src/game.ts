@@ -195,6 +195,7 @@ export class Game {
     this.calendar = new Calendar(DAYS_PER_SEASON, WORLD_LATITUDE_DEG);
     if (save.loaded && loaded) {
       this.world.loadEdits(save.loaded.edits);
+      this.world.loadTicks(loaded.scheduledTicks ?? [], loaded.gameTick ?? 0);
       this.inventory = new Inventory(loaded.inventory);
       this.inventory.select(loaded.selectedSlot);
       this.items.restore(loaded.items);
@@ -428,6 +429,8 @@ export class Game {
     const p = this.player;
     return {
       seed: this.world.seed,
+      scheduledTicks: this.world.snapshotTicks(),
+      gameTick: this.world.currentTick,
       player: { x: p.position.x, y: p.position.y, z: p.position.z, yaw: p.yaw, pitch: p.pitch, flying: p.flying },
       selectedSlot: this.inventory.selected,
       inventory: this.inventory.slots.map((s) => (s ? { ...s } : null)),
@@ -1000,7 +1003,7 @@ export class Game {
       breakStageSeen: this.breakStageSeen,
       frames: this.frameCount,
       renderDistance: this.chunks.renderDistance,
-      workers: this.usingWorkers,
+      workers: this.chunks.usingWorkers,
       drawCalls: this.renderer.drawCalls,
       /** True when the 3x3x3 chunks around the player's feet are meshed. */
       areaMeshed: this.chunks.isAreaMeshed(p.position.x, p.position.y, p.position.z, SPAWN_READY_RADIUS),

@@ -1,4 +1,6 @@
 import { describe, expect, it } from 'vitest';
+import { TerrainGenerator } from '../src/world/generator';
+import { BLOCK_SIZE_M } from '../src/config';
 import { buildHorizon, HorizonSampler, type HorizonSample } from '../src/world/horizon';
 import { HORIZON_RECENTER_BLOCKS, HORIZON_RING_CELLS, HORIZON_STEPS_BLOCKS } from '../src/config';
 const field = (x: number, z: number): HorizonSample => [Math.sin(x / 100) * 10 + z / 100, 0.2, 0.4, 0.1];
@@ -46,4 +48,15 @@ describe('distant terrain rings (T-D7)', () => {
     expect(sample).not.toEqual(c.at(-5000, -5000, 0, 0, 128));
     expect(sample.every(Number.isFinite)).toBe(true);
   });
+});
+
+it('uses the same ground and water heights as voxels at near and distant coordinates, independent of camera', () => {
+  const sampler = new HorizonSampler(1), terrain = new TerrainGenerator(1);
+  for (const [x, z] of [[0, 0], [101, -26], [3517, -2163], [-5000, -5000]]) {
+    const surface = terrain.sampleSurface(x!, z!);
+    expect(surface.height).toBe(terrain.getHeight(x!, z!));
+    const expected = Math.max(surface.height, Math.floor(Math.max(0, surface.waterLevelM) / BLOCK_SIZE_M)) + 1 - 0.05;
+    expect(sampler.at(x!, z!, 0, 0, 128)[0]).toBeCloseTo(expected, 8);
+    expect(sampler.at(x!, z!, x!, z!, 32)).toEqual(sampler.at(x!, z!, 0, 0, 128));
+  }
 });

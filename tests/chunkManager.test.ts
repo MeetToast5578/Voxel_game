@@ -165,3 +165,25 @@ describe('ChunkManager', () => {
     expect(remeshed.has('2,2,0')).toBe(false); // outside the 3x3 columns
   });
 });
+
+it('meshes the ground below a canopy covering every lighting-top cell', () => {
+  class CanopyGenerator extends FakeGenerator {
+    columnGroundMin() { return 0; }
+    override columnTops() { return new Int32Array(256).fill(64); }
+  }
+  const world = new World(7), sink = new FakeSink();
+  const manager = new ChunkManager(world, new CanopyGenerator(() => 0), sink, 2);
+  for (let i = 0; i < 8; i++) manager.update(8, 200, 8, Infinity, Infinity);
+  expect(manager.isMeshed(0, 0, 0)).toBe(true);
+  expect(manager.isMeshed(0, 4, 0)).toBe(true);
+});
+
+it('removes orphan perimeter meshes after moving while retaining generated chunk hysteresis', () => {
+  const world = new World(7), sink = new FakeSink();
+  const manager = new ChunkManager(world, new FakeGenerator(() => 0), sink, 2);
+  for (let i = 0; i < 8; i++) manager.update(8, 8, 8, Infinity, Infinity);
+  expect(manager.isMeshed(-2, 0, 0)).toBe(true);
+  manager.update(24, 8, 8, Infinity, Infinity);
+  expect(manager.isMeshed(-2, 0, 0)).toBe(false);
+  expect(world.hasChunk(-2, 0, 0)).toBe(true);
+});

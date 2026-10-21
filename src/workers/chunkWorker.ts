@@ -23,7 +23,7 @@ self.onmessage = (event: MessageEvent<WorkerRequest>) => {
   const msg = event.data;
   if (msg.type === 'tops') {
     const tops = generatorFor(msg.seed).columnTops(msg.cx, msg.cz);
-    reply({ type: 'tops', id: msg.id, tops }, [tops.buffer as ArrayBuffer]);
+    reply({ type: 'tops', id: msg.id, tops, groundMin: generatorFor(msg.seed).columnGroundMin(msg.cx, msg.cz) }, [tops.buffer as ArrayBuffer]);
   } else if (msg.type === 'generate') {
     const chunk = new Chunk(msg.cx, msg.cy, msg.cz);
     generatorFor(msg.seed).generateChunk(chunk);

@@ -10,6 +10,9 @@ export interface Tick {
   reason: string; // why it was scheduled (e.g. 'falling-sand', 'fluid-flow')
 }
 
+/** Remaining simulation delay; unloaded chunks pause their scheduled work. */
+export interface PendingTick { x: number; y: number; z: number; delay: number; reason: string; }
+
 export type TickResult = 'handled' | 'handoff' | 'skip';
 
 /** Handoff target: a tick that belongs in a neighbouring chunk's queue. */
@@ -24,7 +27,7 @@ function compareTicks(a: Tick, b: Tick): number {
   if (a.dueTick !== b.dueTick) return a.dueTick - b.dueTick;
   if (a.x !== b.x) return a.x - b.x;
   if (a.y !== b.y) return a.y - b.y;
-  return a.z - b.z;
+  return a.z - b.z || (a.reason < b.reason ? -1 : a.reason > b.reason ? 1 : 0);
 }
 
 /** A per-chunk queue of scheduled ticks. Runs in fixed order: due tick, then cell position. */
@@ -109,6 +112,10 @@ export class TickQueue {
     this.dirty = false;
     return { handedOff, ran };
   }
+
+  has(x: number, y: number, z: number, reason: string): boolean { return this.scheduled.has(`${x},${y},${z}:${reason}`); }
+
+  snapshot(): Tick[] { return this.ticks.map(t => ({ ...t })).sort(compareTicks); }
 
   get size(): number { return this.ticks.length; }
   get isEmpty(): boolean { return this.ticks.length === 0; }

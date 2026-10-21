@@ -1,5 +1,6 @@
-import { LOOSE_BODY_MIN_GROUP, SUPPORT_NODE_LIMIT, SUPPORT_RADIUS_BLOCKS } from '../config';
+import { GRAVITY_TICK_DELAY, LOOSE_BODY_MIN_GROUP, SUPPORT_NODE_LIMIT, SUPPORT_RADIUS_BLOCKS } from '../config';
 import { BlockId, getBlockDef } from './blocks';
+import { scheduleFlowChecks } from './flow';
 import { scheduleFallChecks } from './falling';
 import type { Tick, TickResult } from './tick';
 import type { World } from './world';
@@ -41,7 +42,7 @@ function anchor(id: number): boolean {
  * check radius (a long roof or a mountain is not cut off by a local check), when it is too big to check, or when it
  * touches cells that are not loaded. A closed group inside the radius that touches nothing holds nothing up: it falls.
  */
-export function unsupportedGroup(world: World, sx: number, sy: number, sz: number): { x: number; y: number; z: number }[] | null {
+export function unsupportedGroup(world: World, sx: number, sy: number, sz: number, onUnknown?: () => void): { x: number; y: number; z: number }[] | null {
   const r = SUPPORT_RADIUS_BLOCKS;
   const inside = (x: number, y: number, z: number) => Math.abs(x - sx) <= r && Math.abs(y - sy) <= r && Math.abs(z - sz) <= r;
   const seen = new Set<string>([`${sx},${sy},${sz}`]);
@@ -52,7 +53,7 @@ export function unsupportedGroup(world: World, sx: number, sy: number, sz: numbe
       const x = c.x + dx;
       const y = c.y + dy;
       const z = c.z + dz;
-      if (!world.isLoadedAt(x, y, z)) return null;
+      if (!world.isLoadedAt(x, y, z)) { onUnknown?.(); return null; }
       const id = world.getBlock(x, y, z);
       if (anchor(id)) return null;
       if (!collapsible(id)) continue;
@@ -85,7 +86,9 @@ export function scheduleSupportChecks(world: World, x: number, y: number, z: num
  */
 export function handleSupport(world: World, tick: Tick): TickResult {
   if (!collapsible(world.getBlock(tick.x, tick.y, tick.z))) return 'handled';
-  const group = unsupportedGroup(world, tick.x, tick.y, tick.z);
+  let unknown = false;
+  const group = unsupportedGroup(world, tick.x, tick.y, tick.z, () => { unknown = true; });
+  if (unknown) world.scheduleTick(tick.x, tick.y, tick.z, world.currentTick + GRAVITY_TICK_DELAY, SUPPORT_REASON);
   if (!group) return 'handled';
   for (const c of group) {
     const id = world.getBlock(c.x, c.y, c.z);
@@ -96,6 +99,8 @@ export function handleSupport(world: World, tick: Tick): TickResult {
     if (world.setBlock(c.x, c.y, c.z, BlockId.AIR)) {
       world.queueDrop(id, c.x, c.y, c.z, group.length >= LOOSE_BODY_MIN_GROUP);
       scheduleSupportChecks(world, c.x, c.y, c.z);
+      scheduleFallChecks(world, c.x, c.y, c.z);
+      scheduleFlowChecks(world, c.x, c.y, c.z);
     }
   }
   return 'handled';

@@ -1,6 +1,54 @@
 # Handoff: Voxel Game (MeetToast5578/Voxel_game)
 
-## Stop checkpoint — 2026-10-21: CONTINUE TERRAIN BUG FIRST
+## Latest implementation — 2026-10-21 (spec 50 bug audit)
+
+This section supersedes the older checkpoints below. Continue correctness/terrain review
+before decorative features. Implementation and evidence: [spec 50](specs/50-engine-bug-audit.md).
+
+Repaired dense-canopy ground bounds in synchronous/worker loading, incomplete perimeter
+meshes, horizon/voxel height-model divergence and proxy depth ordering. Every horizon
+sample now uses shared exact coast/density parameters and remains independent of the
+camera. Coarse geometry between samples remains an approximation.
+**Visual acceptance is still open:** the exact elevated reproduction still shows broad
+flat proxy surfaces and partial-looking distant vegetation. Do not claim the owner's
+terrain complaint is fully resolved merely because sampling/occlusion tests pass.
+The final reproduction screenshot is `screenshots/terrain-regression.png` (ignored local artifact).
+
+**T-G1 complete:** pending scheduled work (all current reasons), remaining delays and
+simulation tick survive unload/save/reload. Unloaded queues pause. Optional save-v3 fields
+keep old saves compatible; legacy scans skip restored cells. Fixed worker failure stalls,
+random-tick sorting overhead, restored leaf support and collapse/border notifications.
+The clock remains 20 Hz for blocks and 60 Hz for bodies.
+Also repaired high-altitude skyline removal: a known-empty gap no longer exhausts the
+64-chunk downward scan and falsely discards the actual ground height. Fluid smoke fixtures
+now use sufficiently wide anchored floors and clean their sources before terrain review.
+
+Validation: final functional check **642 tests / 76 files**, typecheck/build PASS; GPU
+regressions PASS, including real terrain below a deliberately raised proxy. Full browser
+acceptance PASS: all **32 checks** after containing/cleaning fluid fixtures. It includes an actual IndexedDB
+pending-sand save/reload and the exact elevated terrain reproduction. No dependency,
+block-ID or save-version changes. No palette-cache experiments were retained.
+
+Standard worker guards PASS **1.556 ms generation / 1.692 ms mesh**. Extra forest fixture
+at chunk (240,-108): generation PASS **2.081 ms**, mesh **FAIL 3.057 ms** against 3 ms.
+This remains open **T-J14**; thresholds and geometry hashes are unchanged. Profiling and
+failed/reverted optimization attempts are logged; do not claim all performance checks pass.
+
+Resume priorities:
+1. Inspect `screenshots/terrain-regression.png` from the final browser run and review near/far
+   LOD transitions/river seams. Do not mistake geometry readiness for visual acceptance.
+2. Resolve T-J14 with measured changes. Keep generation/mesh hashes and strict budgets.
+3. Review saved edits/large structures outside the immediate surface band and remaining
+   manual acceptance; distant LOD still omits saved structures and vegetation.
+4. Only then resume visual/ecology/creature tasks from tasks.md. No claim of an exhaustive
+   proof that every game bug is fixed; physical-browser acceptance/current CI remain unrun.
+
+Logs: `/tmp/voxel-audit2-release-check.log`, `voxel-audit2-budget-final.log`,
+`voxel-audit2-forest-final.log`, `voxel-audit2-gpu-final.log`,
+`voxel-audit2-release-smoke.log` (all under `/tmp`). Use this checkout and branch
+`codex/coasts-horizon-flora`; commits/pushes remain authorized. Do not create a worktree.
+
+## Archived stop checkpoint — before spec 50
 
 Owner stopped this audit due to remaining session usage. Opened actual game in Chromium.
 **Terrain is NOT visually fixed:** fully loaded seed 1 at (101.5,245,-26.5), yaw -0.8,

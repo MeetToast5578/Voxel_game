@@ -4,7 +4,7 @@ import type { HorizonData } from '../world/horizon';
 
 /** Dedicated terrain worker; coalesces camera movement and replaces/disposes completed meshes. */
 export class Horizon {
-  private readonly worker: Worker | null;
+  private worker: Worker | null = null;
   private readonly mesh: THREE.Mesh;
   private readonly material: THREE.MeshBasicMaterial;
   private readonly uniforms = {
@@ -20,7 +20,7 @@ export class Horizon {
   vertices = 0;
   builds = 0;
   constructor(scene: THREE.Scene, private readonly seed: number, enabled: boolean) {
-    this.material = new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, depthWrite: true, fog: false });
+    this.material = new THREE.MeshBasicMaterial({ vertexColors: true, alphaHash: true, depthWrite: false, fog: false });
     this.material.onBeforeCompile = shader => {
       Object.assign(shader.uniforms, this.uniforms);
       shader.vertexShader = shader.vertexShader.replace('#include <common>', '#include <common>\nvarying vec2 vHorizonXZ;')
@@ -31,34 +31,46 @@ export class Horizon {
     this.mesh = new THREE.Mesh(new THREE.BufferGeometry(), this.material);
     this.mesh.renderOrder = -1; this.mesh.visible = false;
     scene.add(this.mesh);
-    this.worker = enabled ? new Worker(new URL('../workers/horizonWorker.ts', import.meta.url), { type: 'module' }) : null;
+    if (enabled) {
+      try { this.worker = new Worker(new URL('../workers/horizonWorker.ts', import.meta.url), { type: 'module' }); }
+      catch { console.warn('Horizon worker unavailable; using voxel terrain only.'); }
+    }
     if (this.worker) {
-      this.worker.onerror = e => console.error('horizon worker error:', e.message);
+      this.worker.onerror = e => {
+        e.preventDefault(); this.worker?.terminate(); this.worker = null;
+        this.busy = false; this.desired = null; this.radius = 0; this.mesh.visible = false;
+        console.warn('Horizon worker failed; using voxel terrain only.');
+      };
       this.worker.onmessage = (e: MessageEvent<HorizonData>) => {
-        const d = e.data, geometry = new THREE.BufferGeometry();
-        geometry.setAttribute('position', new THREE.BufferAttribute(d.positions, 3));
-        geometry.setAttribute('color', new THREE.BufferAttribute(d.colors, 3));
-        geometry.setIndex(new THREE.BufferAttribute(d.indices, 1)); geometry.computeBoundingSphere();
-        this.mesh.geometry.dispose(); this.mesh.geometry = geometry; this.mesh.position.set(d.centerX, 0, d.centerZ);
-        this.centerX = d.centerX; this.centerZ = d.centerZ; this.radius = d.radius; this.vertices = d.positions.length / 3; this.builds++;
-        this.uniforms.uFar.value = d.radius;
+        this.setData(e.data);
         this.busy = false; this.pump();
       };
     }
   }
   update(x: number, z: number, renderDistance: number, visible: boolean): void {
     this.mesh.visible = visible && this.radius > 0;
-    if (!this.worker || !visible) return;
+    if (!visible) return;
     this.uniforms.uCenter.value.set(x, z);
     // Match the circular voxel load radius; coarse terrain must not cover the near scene.
     this.uniforms.uInner.value = Math.max(CHUNK_SIZE, (renderDistance - 1) * CHUNK_SIZE);
     this.uniforms.uOverlap.value = CHUNK_SIZE;
+    if (!this.worker) return;
     const step = Math.min(HORIZON_RECENTER_BLOCKS, Math.max(CHUNK_SIZE, renderDistance * CHUNK_SIZE / 2));
     const cx = Math.floor(x / step) * step;
     const cz = Math.floor(z / step) * step;
     const key = `${cx},${cz},${renderDistance}`;
     if (key !== this.key) { this.key = key; this.desired = { seed: this.seed, centerX: cx, centerZ: cz, viewBlocks: renderDistance * CHUNK_SIZE }; }
     this.pump();
+  }
+  /** Install one complete proxy mesh. It renders before voxels without occluding their true surfaces. */
+  setData(d: HorizonData): void {
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute('position', new THREE.BufferAttribute(d.positions, 3));
+    geometry.setAttribute('color', new THREE.BufferAttribute(d.colors, 3));
+    geometry.setIndex(new THREE.BufferAttribute(d.indices, 1)); geometry.computeBoundingSphere();
+    this.mesh.geometry.dispose(); this.mesh.geometry = geometry; this.mesh.position.set(d.centerX, 0, d.centerZ);
+    this.centerX = d.centerX; this.centerZ = d.centerZ; this.radius = d.radius; this.vertices = d.positions.length / 3; this.builds++;
+    this.uniforms.uFar.value = d.radius;
   }
   private pump(): void {
     if (!this.worker || this.busy || !this.desired) return;

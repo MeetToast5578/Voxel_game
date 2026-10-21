@@ -247,6 +247,35 @@ const CHECKS = [
     },
   },
   {
+    name: 'pending falling-block ticks survive a saved-world reload',
+    run: async page => withPrimaryIdle(page, async () => {
+      const context=await page.context().browser().newContext({viewport:{width:1280,height:720}});
+      try {
+        const p=await context.newPage(); watchPage(p); await configureAuxiliaryPage(p);
+        await p.goto(new URL('/?autostart=1',page.url()).href);
+        await waitForCondition(p,'tick persistence world ready',()=>window.__game?.ready===true);
+        await p.evaluate(()=>{window.__game.setFlying(true);window.__game.teleport(8.5,8394,8.5);});
+        await waitForCondition(p,'tick persistence fixture meshed',()=>window.__game.state().areaMeshed,90000);
+        await p.evaluate(async()=>{
+          const g=window.__game;g.setIdle(true);
+          for(let x=4;x<=12;x++)for(let z=4;z<=12;z++)g.setBlock(x,8390,z,10);
+          if(!g.setBlock(10,8396,10,4))throw Error('sand fixture was not loaded');
+          if(!await g.save())throw Error('pending tick save failed');
+        });
+        const pending=await p.evaluate(()=>new Promise((resolve,reject)=>{
+          const open=indexedDB.open('voxel-game');open.onerror=()=>reject(Error('cannot read saved ticks'));
+          open.onsuccess=()=>{const db=open.result,tx=db.transaction('meta','readonly'),read=tx.objectStore('meta').get('meta');
+            read.onsuccess=()=>resolve(read.result.scheduledTicks);tx.oncomplete=()=>db.close();};
+        }));
+        if(!pending.some(t=>t.x===10&&t.y===8396&&t.z===10&&t.reason==='fall'&&t.delay===2))
+          throw Error('save omitted the sand tick or its remaining two-tick delay');
+        await p.reload();await waitForCondition(p,'tick persistence reloaded',()=>window.__game?.ready===true);
+        await waitForCondition(p,'restored sand lands',()=>window.__game.getBlock(10,8391,10)===4,30000);
+        if(await p.evaluate(()=>window.__game.getBlock(10,8396,10))!==0)throw Error('restored sand duplicated');
+      } finally {await context.close();await page.bringToFront();}
+    }),
+  },
+  {
     name: 'swims in water and sees the underwater fog',
     run: async (page) => {
       const start = await page.evaluate(() => window.__game.state());
@@ -633,9 +662,9 @@ const CHECKS = [
         window.__game.teleport(x + 0.5, y + 10, z + 0.5);
       }, [x, z, y]);
       await waitMeshed();
-      // A stone floor, with sand above one cell, water at another, and a stack of two stone blocks on a third.
+      // An anchored floor wider than the full fluid spread, with sand, water and a breakable stack.
       await page.evaluate(([x, z, y]) => {
-        for (let i = -4; i <= 4; i++) for (let j = -4; j <= 4; j++) window.__game.setBlock(x + i, y, z + j, 1);
+        for (let i = -10; i <= 10; i++) for (let j = -10; j <= 10; j++) window.__game.setBlock(x + i, y, z + j, 10);
         window.__game.setBlock(x + 1, y + 5, z + 1, 4); // sand, in the air
         window.__game.setBlock(x - 2, y + 1, z - 2, 5); // a water source on the floor
         window.__game.setBlock(x + 2, y + 1, z - 2, 1); // stack: bottom block
@@ -651,7 +680,7 @@ const CHECKS = [
       await page.waitForFunction(() => window.__game.state().looseBodies === 0, null, { timeout: 30_000 });
       await page.evaluate(([x, z, y, p]) => {
         // Wider than the water's 7-cell spread from its source, so nothing is left flowing when the next check starts.
-        for (let i = -9; i <= 9; i++) for (let j = -9; j <= 9; j++) for (let k = 0; k <= 12; k++) window.__game.setBlock(x + i, y + k, z + j, 0);
+        for (let i = -10; i <= 10; i++) for (let j = -10; j <= 10; j++) for (let k = 0; k <= 12; k++) window.__game.setBlock(x + i, y + k, z + j, 0);
         window.__game.setTool({ mode: 'single' });
         window.__game.setFlying(false);
         window.__game.teleport(p[0], p[1], p[2]);
@@ -675,7 +704,7 @@ const CHECKS = [
         // The previous check also used this platform. Clear the air above the floor first: a faster frame rate lets
         // its water spread beyond that check's cleanup radius, and flowing water left there would re-flood these cells.
         for (let i = -6; i <= 6; i++) for (let j = -6; j <= 6; j++) for (let k = 1; k <= 8; k++) window.__game.setBlock(x + i, y + k, z + j, 0);
-        for (let i = -6; i <= 6; i++) for (let j = -6; j <= 6; j++) window.__game.setBlock(x + i, y, z + j, 1);
+        for (let i = -10; i <= 10; i++) for (let j = -10; j <= 10; j++) window.__game.setBlock(x + i, y, z + j, 10);
         window.__game.setBlock(x - 2, y + 1, z - 2, 5); // a water source on the floor
         // Check synchronously with placement, before the game can advance any ticks between browser RPCs.
         if (window.__game.getBlock(x - 3, y + 1, z - 2) !== 0 || window.__game.getBlock(x - 4, y + 1, z - 2) !== 0)
@@ -688,7 +717,7 @@ const CHECKS = [
       await page.waitForFunction((c) => window.__game.getBlock(...c) >= 36 && window.__game.getBlock(...c) < 52, distOne, { timeout: 5_000 });
       await page.waitForFunction((c) => window.__game.getBlock(...c) >= 36 && window.__game.getBlock(...c) < 52, distTwo, { timeout: 5_000 });
       await page.evaluate(([x, z, y, p]) => {
-        for (let i = -6; i <= 6; i++) for (let j = -6; j <= 6; j++) for (let k = 0; k <= 12; k++) window.__game.setBlock(x + i, y + k, z + j, 0);
+        for (let i = -10; i <= 10; i++) for (let j = -10; j <= 10; j++) for (let k = 0; k <= 12; k++) window.__game.setBlock(x + i, y + k, z + j, 0);
         window.__game.setFlying(false);
         window.__game.teleport(p[0], p[1], p[2]);
       }, [x, z, y, start.position]);
@@ -837,7 +866,7 @@ const CHECKS = [
         await page.waitForFunction(() => window.__game.state().areaMeshed, null, { timeout: 60_000 });
         await page.evaluate(([x, y, z]) => {
           const g = window.__game;
-          for (let dx = -5; dx <= 5; dx++) for (let dz = -5; dz <= 5; dz++) {
+          for (let dx = -12; dx <= 12; dx++) for (let dz = -12; dz <= 12; dz++) {
             for (let dy = 1; dy <= 7; dy++) g.setBlock(x + dx, y + dy, z + dz, 0);
             g.setBlock(x + dx, y, z + dz, 10);
           }
@@ -865,10 +894,12 @@ const CHECKS = [
         const after = await page.evaluate(() => window.__game.state());
         if (after.burning || after.health !== health) throw new Error(`water did not stop fire damage: ${health} -> ${after.health}`);
       } finally {
-        await page.evaluate(([x, y, z, flying, mode, health]) => {
-          const g = window.__game; g.setGameMode(mode); g.setHealth(health);
-          g.teleport(x, y, z); g.setFlying(flying);
-        }, [...start.position, start.flying, start.gameMode, start.health]);
+        await page.evaluate(([x, y, z, px, py, pz, flying, mode, health]) => {
+          const g = window.__game;
+          for(let dx=-12;dx<=12;dx++)for(let dz=-12;dz<=12;dz++)for(let dy=7;dy>=0;dy--)g.setBlock(x+dx,y+dy,z+dz,0);
+          g.setGameMode(mode); g.setHealth(health);
+          g.teleport(px, py, pz); g.setFlying(flying);
+        }, [x,y,z,...start.position, start.flying, start.gameMode, start.health]);
         await page.waitForFunction(() => window.__game.state().areaMeshed, null, { timeout: 60_000 });
       }
     },
@@ -880,17 +911,30 @@ const CHECKS = [
       const [x, y, z] = start.position;
       try {
         await page.evaluate(([x, y, z]) => {
-          window.__game.setFlying(true); window.__game.teleport(x + 128, y + 50, z);
+          window.__game.setFlying(true); window.__game.teleport(x + 128, Math.max(245, y + 50), z);
           window.__game.look(-0.8, -0.35);
         }, [x, y, z]);
         await page.waitForFunction(() => {
           const s = window.__game.state();
           return s.areaMeshed && s.horizon.ready && s.horizon.visible && s.horizon.vertices > 0 &&
             s.horizon.centerX === Math.floor(s.position[0] / 64) * 64;
-        }, null, { timeout: 90_000 });
+        }, null, { timeout: 90_000 }).catch(async error => {
+          const s=await page.evaluate(()=>window.__game.state());
+          throw Error(`initial horizon readiness: ${JSON.stringify({position:s.position,horizon:s.horizon,pendingGen:s.pendingGen,pendingMesh:s.pendingMesh,jobs:s.jobsInFlight})}; ${error.message}`);
+        });
         const h = await page.evaluate(() => window.__game.state().horizon);
         if (h.radiusM < 2000) throw new Error(`horizon ends too near: ${JSON.stringify(h)}`);
         await page.screenshot({ path: 'screenshots/horizon.png' });
+        // Reproduce the elevated view that exposed missing ground and the mismatching proxy.
+        await page.evaluate(() => {window.__game.setFlying(true);window.__game.teleport(101.5,245,-26.5);window.__game.look(-0.8,-0.35);});
+        await page.waitForFunction(() => {
+          const s=window.__game.state();
+          return s.areaMeshed && s.pendingGen===0 && s.pendingMesh===0 && s.jobsInFlight===0 && s.horizon.ready && s.horizon.centerX===64 && s.horizon.centerZ===-64;
+        },null,{timeout:90000}).catch(async error => {
+          const s=await page.evaluate(()=>window.__game.state());
+          throw Error(`elevated terrain readiness: ${JSON.stringify({position:s.position,horizon:s.horizon,pendingGen:s.pendingGen,pendingMesh:s.pendingMesh,jobs:s.jobsInFlight})}; ${error.message}`);
+        });
+        await page.screenshot({path:'screenshots/terrain-regression.png'});
       } finally {
         await page.evaluate(([x, y, z, flying, yaw, pitch]) => {
           window.__game.teleport(x, y, z); window.__game.setFlying(flying); window.__game.look(yaw, pitch);

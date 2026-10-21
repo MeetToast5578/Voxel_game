@@ -28,8 +28,8 @@ export function scheduleFallChecks(world: World, x: number, y: number, z: number
 
 /**
  * Schedules a fall check for every falling block in a chunk that has room below it. Called when a chunk is loaded, so
- * a falling block that was saved mid-fall resumes its fall after a reload. Pending ticks are not saved; this scan
- * finds them again (shortcut: the scan costs one pass over the chunk's cells, upgrade if chunks grow much larger).
+ * old saves without scheduled work still resume their falls. Restored queues already contain exact remaining
+ * delays, so those cells are skipped rather than accelerated by this legacy recovery scan.
  */
 export function scheduleFallingBlocks(world: World, chunk: Chunk): void {
   const blocks = chunk.blocks;
@@ -43,7 +43,7 @@ export function scheduleFallingBlocks(world: World, chunk: Chunk): void {
     const x = chunk.cx * CHUNK_SIZE + lx;
     const y = chunk.cy * CHUNK_SIZE + ly;
     const z = chunk.cz * CHUNK_SIZE + lz;
-    if (canFallInto(world.getBlock(x, y - 1, z))) world.scheduleTick(x, y, z, due, FALL_REASON);
+    if (!world.hasScheduledTick(x, y, z, FALL_REASON) && canFallInto(world.getBlock(x, y - 1, z))) world.scheduleTick(x, y, z, due, FALL_REASON);
   }
 }
 

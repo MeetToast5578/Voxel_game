@@ -64,3 +64,26 @@ export function orphanedLeaves(
   }
   return leaves;
 }
+
+/** Recheck delayed decay against current support. Incomplete searches preserve the canopy. */
+export function leafSupport(
+  getBlock: (x: number, y: number, z: number) => number | undefined,
+  x: number, y: number, z: number, limit: number,
+): 'supported' | 'orphaned' | 'unknown' {
+  const queue = [{ x, y, z }], seen = new Set([`${x},${y},${z}`]);
+  let unknown = false;
+  for (let i = 0; i < queue.length; i++) {
+    if (i >= limit) return 'unknown';
+    const c = queue[i]!;
+    for (const [dx, dy, dz] of NEIGHBORS) {
+      const nx = c.x + dx, ny = c.y + dy, nz = c.z + dz, key = `${nx},${ny},${nz}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      const id = getBlock(nx, ny, nz);
+      if (id === undefined) unknown = true;
+      else if (id === BlockId.LOG) return 'supported';
+      else if (id === BlockId.LEAVES) queue.push({ x: nx, y: ny, z: nz });
+    }
+  }
+  return unknown ? 'unknown' : 'orphaned';
+}

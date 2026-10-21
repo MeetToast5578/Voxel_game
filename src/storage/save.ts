@@ -1,4 +1,5 @@
 import { CHUNK_VOLUME, GAME_MODE_CREATIVE, GAME_MODE_SURVIVAL, HEALTH_MAX, HUNGER_MAX, HOTBAR_SIZE, INVENTORY_SIZE, MAX_ITEMS, MAX_STACK, START_TIME_OF_DAY, STARTING_STACK, AIR_MAX_S } from '../config';
+import type { PendingTick } from '../world/tick';
 import type { DroppedItem } from '../items/itemEntities';
 import { DEFAULT_HOTBAR, type ItemStack } from '../player/inventory';
 import { BlockId, blockStateName, parseBlockStateName } from '../world/blocks';
@@ -17,6 +18,9 @@ export interface SavedPlayer {
 /** The world meta as the game uses it: block states, not names. */
 export interface WorldMeta {
   seed: number;
+  /** Optional for compatibility with saves made before scheduled update persistence. */
+  scheduledTicks?: PendingTick[];
+  gameTick?: number;
   player: SavedPlayer;
   selectedSlot: number;
   /** INVENTORY_SIZE slots: the hotbar first, then the grid. */
@@ -47,6 +51,9 @@ export interface StoredStack {
 export interface MetaRecord {
   version: typeof SAVE_VERSION;
   seed: number;
+  /** Optional for compatibility with saves made before scheduled update persistence. */
+  scheduledTicks?: PendingTick[];
+  gameTick?: number;
   player: SavedPlayer;
   selectedSlot: number;
   inventory: (StoredStack | null)[];
@@ -77,6 +84,8 @@ export function metaRecord(meta: WorldMeta): MetaRecord {
   return {
     version: SAVE_VERSION,
     seed: meta.seed,
+    scheduledTicks: meta.scheduledTicks?.map(t => ({ ...t })) ?? [],
+    gameTick: meta.gameTick ?? 0,
     player: { ...meta.player },
     selectedSlot: meta.selectedSlot,
     inventory: meta.inventory.map((s) => (s ? { name: blockStateName(s.state), count: s.count } : null)),
@@ -151,6 +160,19 @@ export function repairItems(items: unknown): DroppedItem[] {
   return out.slice(-MAX_ITEMS);
 }
 
+const TICK_REASONS = new Set(['fall', 'flow', 'support', 'leaf-decay', 'grass-spread']);
+/** Malformed scheduled work is dropped without rejecting a usable world. */
+export function repairTicks(raw: unknown): PendingTick[] {
+  if (!Array.isArray(raw)) return [];
+  return raw.flatMap(value => {
+    if (!value || typeof value !== 'object') return [];
+    const t = value as Partial<PendingTick>;
+    if (![t.x, t.y, t.z, t.delay].every(Number.isSafeInteger) || t.delay! < 0 ||
+        typeof t.reason !== 'string' || !TICK_REASONS.has(t.reason)) return [];
+    return [{ x: t.x!, y: t.y!, z: t.z!, delay: t.delay!, reason: t.reason }];
+  });
+}
+
 /**
  * Parses a stored meta (an object, or its JSON text). Returns null when it is missing, corrupt or of another
  * version, or when the seed, player or selected slot is invalid. The inventory, items and time of day are repaired,
@@ -173,6 +195,8 @@ export function parseMeta(raw: unknown): WorldMeta | null {
   if (!isNum(p.x) || !isNum(p.y) || !isNum(p.z) || !isNum(p.yaw) || !isNum(p.pitch) || typeof p.flying !== 'boolean') return null;
   return {
     seed: d.seed,
+    scheduledTicks: repairTicks(d.scheduledTicks),
+    gameTick: Number.isSafeInteger(d.gameTick) && (d.gameTick as number) >= 0 ? d.gameTick as number : 0,
     player: { x: p.x, y: p.y, z: p.z, yaw: p.yaw, pitch: p.pitch, flying: p.flying },
     selectedSlot: d.selectedSlot,
     inventory: repairInventory(d.inventory, d.hotbar),
