@@ -1,6 +1,8 @@
 import { createNoise2D, type NoiseFunction2D } from 'simplex-noise';
 import {
   BARE_ROCK_AMP_M,
+  COAST_PROBE_M, COAST_CONTINENTAL_BAND, COAST_EXPOSED, COAST_SANDBAR_RISE_M, COAST_SANDBAR_SCALE_M,
+  REED_CHANCE, REED_MIN_HEIGHT_M, REED_MAX_HEIGHT_M, REED_BANK_HEIGHT_M, roundBlocks,
   CAVE_BOTTOM_ROWS,
   BEACH_BAND,
   BLOCK_SIZE_M,
@@ -16,13 +18,7 @@ import {
   SHORE_CAVE_BAND,
   SHORE_ROOF,
   SOIL_DEPTH,
-  DANDELION_CHANCE,
-  BROWN_MUSHROOM_CHANCE,
   DEEPSLATE_DEPTH_M,
-  FERN_CHANCE,
-  RED_MUSHROOM_CHANCE,
-  POPPY_CHANCE,
-  TALL_GRASS_CHANCE,
   TERRAIN_CHUNK_BOTTOM,
   TREE_CHANCE,
   TREE_REACH,
@@ -37,12 +33,14 @@ import { Chunk } from './chunk';
 import { AquiferSampler } from './aquifer';
 import { UndergroundPools } from './undergroundPools';
 import { TerrainDensity } from './density';
-import { ClimateSampler, detailAmpMeters } from './shape';
+import { ClimateSampler, detailAmpMeters, heightMeters } from './shape';
 import { blockPrecipitation, blockTemperature } from './climate';
 import { FeatureRegistry, type FeatureBlock } from './feature';
 import { anchorSpecies, biomeAt, biomeName, blendSurfaceBlocks, riparianTreeSpecies, secondarySpecies, soilBlock, surfaceBlock, treeSpecies } from './biome';
 import { climateHeightSource, RegionSampler, REGION_CELLS, type ColumnSample, type RegionData } from './region';
 import { riverbedMaterial } from './riverbed';
+import { coastProfile, waveExposure } from './coast';
+import { groundCoverAt } from './groundCover';
 import { MAX_TREE_RISE, treeBlocks } from './trees';
 
 /** The column cache is only a cache, so clearing it never changes a result. */
@@ -72,6 +70,8 @@ function ditheredSurface(own: string, neighbours: readonly BiomeNeighbour[], lx:
   const weight = (BIOME_BLEND_BLOCKS - nearest.dist) / (2 * BIOME_BLEND_BLOCKS);
   return blendSurfaceBlocks(ownBlock, surfaceBlock(nearest.key, false), wx, wz, weight);
 }
+/** Valid substrate for shoreline reeds. */
+const REED_GROUNDS = new Set<number>([BlockId.GRASS, BlockId.SAND, BlockId.CLAY, BlockId.GRAVEL]);
 /** Rock types of the strata, in layer order (the layer index wraps around this list). */
 const ROCKS = [
   BlockId.GRANITE, BlockId.DIORITE, BlockId.ANDESITE, BlockId.SANDSTONE, BlockId.LIMESTONE, BlockId.SLATE, BlockId.BASALT,
@@ -116,6 +116,7 @@ interface Column {
   waterBodies: Uint8Array;
   /** Highest groundwater row for deep density voids and carved caves (spec 46). */
   waterTables: Int32Array;
+  coastMaterials: Uint16Array;
   /** Biome key for this column (computed once at column center). */
   biomeKey: string;
 }
@@ -281,28 +282,31 @@ export class TerrainGenerator {
         const wx = cx * CHUNK_SIZE + lx;
         const wz = cz * CHUNK_SIZE + lz;
         const inSlice = h + 1 >= y0 && h + 1 < y1; // the plant cell is in this range
-        const surface = soil ? (beach ? BlockId.SAND : ditheredSurface(column.biomeKey, neighbours, lx, lz, wx, wz)) : BlockId.AIR;
+        const coast = column.coastMaterials[i]!;
+        const surface = coast || (soil ? (beach ? BlockId.SAND : ditheredSurface(column.biomeKey, neighbours, lx, lz, wx, wz)) : BlockId.AIR);
         // Plants only grow on grass, so beaches, deserts and bare rock stay bare.
         // Water level: the sea, or a lake or river surface from the region simulation. A riverbed
         // or lakebed is sand or gravel, not grass.
         const waterY = Math.max(SEA_LEVEL, Math.floor(metersToBlocks(column.waterLevels[i]!)));
         const waterTable = column.waterTables[i]!;
         const submerged = h < waterY;
-        const bed = column.waterBodies[i] === 1 ? riverbedMaterial(this.seed, wx, wz) : BlockId.SAND;
-        const plant = !submerged && surface === BlockId.GRASS && inSlice ? this.plantAt(wx, wz, h) : BlockId.AIR;
+        const bed = column.waterBodies[i] === 1 ? riverbedMaterial(this.seed, wx, wz) : coast || BlockId.SAND;
+        const plant = !submerged && surface === BlockId.GRASS && inSlice ? this.plantAt(wx, wz, h, column.biomeKey) : BlockId.AIR;
+        const reed = !submerged ? this.reedHeight(wx, wz, h, surface, waterY) : 0;
         for (let y = y0; y < y1; y++) {
           let id: number;
           if (this.density.isSolid(wx, y, wz, offsetM, ampM)) {
-            if (soil && y === h) {
+            if ((soil || coast) && y === h) {
               // Rivers carry patches of clay, gravel and sand; lake/ocean beds retain sand.
               id = submerged ? bed : surface;
               if (id === BlockId.GRASS && !beach) {
                 this.onGrassPlaced?.(wx, y, wz);
               }
-            } else if (soil && y >= h - SOIL_DEPTH) {
-              id = submerged ? bed : beach ? BlockId.SAND : soilBlock(column.biomeKey);
+            } else if ((soil || coast) && y >= h - SOIL_DEPTH) {
+              id = coast || (submerged ? bed : beach ? BlockId.SAND : soilBlock(column.biomeKey));
             } else id = this.rockAt(y, warp);
-          } else if (y === h + 1 && plant !== BlockId.AIR) id = plant;
+          } else if (y > h && y <= h + reed) id = BlockId.REED;
+          else if (y === h + 1 && plant !== BlockId.AIR) id = plant;
           else {
             // Surface water retains its local level. Enclosed density voids use groundwater,
             // just like carved caves, so sea level does not flood every underground passage.
@@ -340,6 +344,7 @@ export class TerrainGenerator {
       waterLevels: new Float64Array(CHUNK_SIZE * CHUNK_SIZE),
       waterBodies: new Uint8Array(CHUNK_SIZE * CHUNK_SIZE),
       waterTables: new Int32Array(CHUNK_SIZE * CHUNK_SIZE),
+      coastMaterials: new Uint16Array(CHUNK_SIZE * CHUNK_SIZE),
       biomeKey: '',
     };
     for (let lz = 0; lz < CHUNK_SIZE; lz++)
@@ -358,10 +363,24 @@ export class TerrainGenerator {
         // some bumpiness.
         const ampScale = sample.isRiver ? 0.2 : sample.isLake ? 0.35 : 1;
         column.amps[i] = detailAmpMeters(fields) * ampScale;
+        let exposure = 0, coastal = false, coastSlope = 0;
+        if (!sample.isRiver && !sample.isLake && Math.abs(fields.continentalness) <= COAST_CONTINENTAL_BAND) {
+          coastal = true;
+          const xM = wx * BLOCK_SIZE_M, zM = wz * BLOCK_SIZE_M;
+          const east = this.climate.fields(xM + COAST_PROBE_M, zM), west = this.climate.fields(xM - COAST_PROBE_M, zM);
+          const north = this.climate.fields(xM, zM + COAST_PROBE_M), south = this.climate.fields(xM, zM - COAST_PROBE_M);
+          exposure = waveExposure(east.continentalness - west.continentalness, north.continentalness - south.continentalness);
+          coastSlope = Math.hypot(heightMeters(east) - heightMeters(west), heightMeters(north) - heightMeters(south)) / (2 * COAST_PROBE_M);
+          if (exposure >= COAST_EXPOSED && fields.erosion < 0) column.amps[i] *= 1 + exposure * 2;
+          if (exposure < 0.35 && sample.offsetM > -3 && sample.offsetM < 0)
+            column.offsets[i] += COAST_SANDBAR_RISE_M * Math.max(0, this.rockNoise(xM / COAST_SANDBAR_SCALE_M, zM / COAST_SANDBAR_SCALE_M));
+        }
         column.warp[i] = this.rockNoise((wx * BLOCK_SIZE_M) / GEOLOGY_WARP_M, (wz * BLOCK_SIZE_M) / GEOLOGY_WARP_M);
         column.waterLevels[i] = sample.waterLevelM;
         column.waterBodies[i] = sample.isRiver ? 1 : sample.isLake ? 2 : 0;
         column.solidTop[i] = this.solidTop(wx, wz, column.offsets[i]!, column.amps[i]!);
+        if (coastal) column.coastMaterials[i] = coastProfile(column.solidTop[i]! * BLOCK_SIZE_M,
+          Math.max(coastSlope, column.amps[i]! / 16), exposure).material;
         column.waterTables[i] = this.aquifers.waterTableAt(wx, wz, column.solidTop[i]!);
       }
     column.biomeKey = this.chunkBiome(cx, cz);
@@ -431,21 +450,21 @@ export class TerrainGenerator {
   }
 
   /** The plant growing on the surface of column (wx, wz) at height h, or air. Caves that open the surface keep it bare. */
-  private plantAt(wx: number, wz: number, h: number): number {
+  private plantAt(wx: number, wz: number, h: number, biome: string): number {
     if (this.isCave(wx, h, wz, h)) return BlockId.AIR;
-    const r = hash2(this.seed + 11, wx, wz);
-    let edge = DANDELION_CHANCE;
-    if (r < edge) return BlockId.DANDELION;
-    edge += POPPY_CHANCE;
-    if (r < edge) return BlockId.POPPY;
-    edge += TALL_GRASS_CHANCE;
-    if (r < edge) return BlockId.TALL_GRASS;
-    edge += FERN_CHANCE;
-    if (r < edge) return BlockId.FERN;
-    edge += BROWN_MUSHROOM_CHANCE;
-    if (r < edge) return BlockId.BROWN_MUSHROOM;
-    edge += RED_MUSHROOM_CHANCE;
-    return r < edge ? BlockId.RED_MUSHROOM : BlockId.AIR;
+    return groundCoverAt(this.seed, wx, wz, biome);
+  }
+
+  /** Dry banks beside actual generated surface water; evaluate whole plants before slicing into chunks. */
+  private reedHeight(x: number, z: number, h: number, ground: number, waterY: number): number {
+    if (!REED_GROUNDS.has(ground) ||
+        h > waterY + roundBlocks(REED_BANK_HEIGHT_M) || hash2(this.seed + 1200, x, z) >= REED_CHANCE || this.isCave(x, h, z, h)) return 0;
+    const bank = [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dz]) => {
+      const nx = x + dx!, nz = z + dz!, sample = this.regions.sample(nx, nz);
+      return this.getHeight(nx, nz) < Math.max(SEA_LEVEL, Math.floor(metersToBlocks(sample.waterLevelM)));
+    });
+    if (!bank) return 0;
+    return roundBlocks(REED_MIN_HEIGHT_M + hash2(this.seed + 1201, x, z) * (REED_MAX_HEIGHT_M - REED_MIN_HEIGHT_M));
   }
 
   /**
@@ -525,6 +544,8 @@ export class TerrainGenerator {
     if (h >= 2 && h <= this.caveTop(h, sample.isRiver || sample.isLake ? waterY : SEA_LEVEL) && this.isCave(anchorX, h, anchorZ, h)) return null;
     const riparian = riparianTreeSpecies(temperature, precipitation, waterY - h, sample.isRiver || sample.isLake);
     if (riparian) return riparian;
+    const cx = floorDiv(anchorX, CHUNK_SIZE), cz = floorDiv(anchorZ, CHUNK_SIZE);
+    if (this.column(cx, cz).coastMaterials[columnIndex(anchorX - cx * CHUNK_SIZE, anchorZ - cz * CHUNK_SIZE)]) return null;
     // Ordinary trees and cacti cannot grow below the waterline or on the beach band.
     if (h < waterY || h <= SEA_LEVEL + BEACH_BAND) return null;
     const biome = biomeAt(

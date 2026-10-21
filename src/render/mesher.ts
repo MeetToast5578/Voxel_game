@@ -10,6 +10,7 @@ import {
   neighborIndex,
   regionIndex,
 } from '../world/light';
+import { MeshTints, type TintKind } from '../world/climateTint';
 import { FACES } from './faces';
 import { ATLAS_TILES, tileUV } from './tiles';
 
@@ -48,6 +49,7 @@ const CROSS_SHAPE = 1;
 const TRANSLUCENT_LAYER = 1;
 const STATE_COUNT = BLOCK_REGISTRY.stateCount;
 const CROSS_TABLE = new Uint8Array(STATE_COUNT);
+const TINT_KIND = new Uint8Array(STATE_COUNT);
 const TRANSLUCENT_TABLE = new Uint8Array(STATE_COUNT);
 const CULL_SAME_TABLE = new Uint8Array(STATE_COUNT);
 const TOP_HEIGHT_TABLE = new Float64Array(STATE_COUNT);
@@ -55,6 +57,7 @@ const TOP_HEIGHT_TABLE = new Float64Array(STATE_COUNT);
 const TILE_TABLE = new Uint8Array(STATE_COUNT * 3);
 for (let state = 0; state < STATE_COUNT; state++) {
   const def = BLOCK_REGISTRY.getBlockDef(state);
+  TINT_KIND[state] = def.key === 'grass' ? 1 : def.key === 'leaves' ? 2 : def.key === 'water' || def.key === 'flowing_water' ? 3 : 0;
   CROSS_TABLE[state] = def.shape === 'cross' ? CROSS_SHAPE : 0;
   TRANSLUCENT_TABLE[state] = def.layer === 'translucent' ? TRANSLUCENT_LAYER : 0;
   CULL_SAME_TABLE[state] = def.cullSame ? 1 : 0;
@@ -328,13 +331,14 @@ function emptyMesh(): ChunkMeshData {
  * Meshes chunk (cx, cy, cz). neighbors: the 27 block arrays around it (see buildPaddedVolume). tops: the 9
  * column-top arrays around its column, index (dz + 1) * 3 + (dx + 1). Positions are relative to the chunk origin.
  */
-export function buildChunkMesh(neighbors: readonly Uint16Array[], tops: readonly Int32Array[], cy: number): ChunkMeshData {
+export function buildChunkMesh(neighbors: readonly Uint16Array[], tops: readonly Int32Array[], cy: number, context?: { seed: number; cx: number; cz: number }): ChunkMeshData {
   if (neighbors.length !== 27) throw new Error('buildChunkMesh needs 27 chunks');
   if (tops.length !== 9) throw new Error('buildChunkMesh needs 9 column-top arrays');
   // Quick exits; both give exactly what full meshing would (no faces), without computing light.
   if (allAir(neighbors[CENTER]!)) return emptyMesh();
   if (fullyHidden(neighbors)) return emptyMesh();
 
+  const tints = context && neighbors[CENTER]!.some(id => TINT_KIND[id]! > 0) ? new MeshTints(context.seed, context.cx, cy, context.cz) : null;
   const region = buildRegion(neighbors, scratchRegion);
   const vol = paddedFromRegion(region, scratchVolume);
   const opaque = OPAQUE_TABLE;
@@ -453,7 +457,11 @@ export function buildChunkMesh(neighbors: readonly Uint16Array[], tops: readonly
             );
             out.writeUV(uvOffset, FACE_UV_U[at] === 0 ? u0 : u1, FACE_UV_V[at] === 0 ? v0 : v1);
             const brightness = shade * AO_LEVELS[ao[k]!]!;
-            out.writeColor(positionOffset, brightness, brightness, brightness);
+            const tint = TINT_KIND[id]!;
+            if (tints && tint) {
+              tints.sample(lx + FACE_CORNERS[at * 3]!, y + (cyCorner === 1 ? top : cyCorner), lz + FACE_CORNERS[at * 3 + 2]!, tint as TintKind);
+              out.writeColor(positionOffset, brightness * tints.r, brightness * tints.g, brightness * tints.b);
+            } else out.writeColor(positionOffset, brightness, brightness, brightness);
             out.writeLight(lightOffset, skyB, blkB);
             out.vertexCount++;
             positionOffset += 3;

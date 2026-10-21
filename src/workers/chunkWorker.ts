@@ -29,7 +29,7 @@ self.onmessage = (event: MessageEvent<WorkerRequest>) => {
     generatorFor(msg.seed).generateChunk(chunk);
     reply({ type: 'generated', id: msg.id, blocks: chunk.blocks }, [chunk.blocks.buffer as ArrayBuffer]);
   } else {
-    const mesh = buildChunkMesh(msg.neighbors, msg.tops, msg.cy);
+    const mesh = buildChunkMesh(msg.neighbors, msg.tops, msg.cy, { seed: msg.seed, cx: msg.cx, cz: msg.cz });
     reply({ type: 'meshed', id: msg.id, mesh }, meshBuffers(mesh));
   }
 };

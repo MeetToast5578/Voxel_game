@@ -748,3 +748,72 @@ User authorized committing and pushing completed work, and requested five more t
 Selected T-D6, T-D7, T-E2, T-E3 and T-E4 in queue order. No AGENTS.md found.
 Checkpointing the fully verified prior aquifer/pool/lava batch before new implementation;
 its previous uncommitted-status notes are historical. Will push after final validation.
+
+Spec 48 implementation progress:
+- Added gradient-based wave exposure, coast materials/sandbar shaping and shelf/deep-ocean
+  spline. River/lake paths bypass ocean shaping; existing sediment/roof tests pass.
+- Added biome flower weights and append-only reed state 72 with procedural cross art.
+  Reed banks require dry valid substrate next to actual generated water and no cave mouth.
+- Added world-coordinate climate vertex tints. Seed/cx/cz now pass through worker and
+  synchronous meshing paths; benchmark explicitly exercises enabled tinting.
+- Added dedicated horizon worker and stitched concentric rings, near terrain/region/broad
+  elevation blending, climate colour, separate fade/fog, coalesced recentering and disposal.
+  workers=0 omits LOD; terrain-only LOD does not include saved distant buildings.
+- Review adjusted the LOD inner hole/recenter step for low render distances, so moving
+  within a snapped tile cannot leave a gap outside the loaded near-world footprint.
+Initial focused baseline PASS: 31 tests / 4 files (shape, blocks, riverbed, plants).
+Typecheck passed before the final hole adjustment. New feature regressions follow.
+
+Spec 48 focused feature tests PASS: 13 tests / 4 files (coast profiles/exposure/generation,
+tint continuity and actual mesh colours, stitched horizon geometry, biome flowers and
+reeds crossing vertical chunk slices). Enabled-tint worker benchmark PASS: generation
+1.356 ms, meshing 1.463 ms under unchanged 3 ms limits; new colour hash expected.
+First full check: 596/597 tests passed. The sky-camera test creates a renderer with
+Object.create and did not initialize the newly added horizonDistance field, producing
+NaN only in that harness. Added the real constructor's zero default to the fixture;
+retained its camera-range assertion. Production constructor already initializes it.
+Review also ordered celestial layers before the distant silhouette and enabled depth
+for nonzero-alpha horizon fragments, so terrain can occlude clouds/sun correctly.
+
+Full spec 48 check PASS after renderer fixture correction: typecheck, 598 tests / 72
+files, production build. GPU render regressions PASS. Gameplay smoke progressing.
+Review follow-up before final validation: disallow ordinary trees/cacti on new coastal
+materials, since biome surface metadata alone may still say grass at a rocky cliff.
+Added an actual generated-rock/tree eligibility regression. Short view fog now resumes
+when horizon is hidden underground; the extended fog range applies only with visible LOD.
+These changes require final full validation before commit/push.
+
+First full spec 48 browser smoke PASS: all 30 checks, including real horizon geometry
+and snapped recentering, the seed-1 shoreline reed, and all previous fluid/build/UI checks.
+Inspected horizon.png and shoreline-reeds.png: distant coloured heightfield/coastal water
+and procedural reeds render. Lowered the horizon screenshot camera for the final run so
+it includes more near voxel terrain in the foreground; the geometry/recenter assertions
+are unchanged. Final run must also include the reviewed coast-tree/fog fixes.
+
+Final spec 48 unit/type/build validation PASS: 599 tests / 72 files, typecheck and
+production build. Includes the coast-tree guard, renderer harness defaults, real reed
+fixture and camera range beyond the diagonal horizon extent. Syntax/whitespace checks
+pass; package.json and package-lock.json unchanged.
+Created feature branch codex/coasts-horizon-flora after confirming it is absent on origin;
+it includes prior checkpoint 2396e91. Final worker/GPU/browser checks are now running
+sequentially before the spec 48 commit and normal (non-force) push.
+
+2026-10-21 — Spec 48 final acceptance / five tasks complete
+T-D6, T-D7, T-E2, T-E3 and T-E4 acceptance passed. Final checks:
+- npm run check: PASS, typecheck, 599 tests / 72 files, production build 1.92 s.
+- Enabled-tint worker guards: PASS, generation 1.312 ms, meshing 1.286 ms
+  (strict 3 ms budgets); hash b0583bcc82b546f824aa031bceda457b36691586910a712a812d10817f6883c9.
+  Colour/generation fixture hash changes are expected from tints and coast tree exclusion.
+- GPU render regressions: PASS.
+- Full final gameplay smoke: PASS, all 30 checks including generated pools, fluid hazards,
+  distant terrain geometry/recentering and generated reeds. Final SwiftShader measurement:
+  4172 loaded chunks / 2157 meshed / 356 draw calls / 15 fps, not owner hardware.
+- Inspected final horizon.png: textured near voxel terrain/flowers/trees in front of
+  distant coloured heightfield. shoreline-reeds.png shows generated procedural stems on
+  a sandy bank. Screenshots do not close owner physical/seam acceptance.
+- Reviewed final source/test diffs; node --check and git diff --check pass. Dependency
+  manifests/lockfile unchanged. No source changes after validation except a comment label.
+Updated README, task completions/next queue, spec index and handoff. T-E9 remains partial,
+T-E10 stays open, and mountains remain capped. No new dependencies/save format changes.
+Next action: commit the verified batch and perform a normal non-force feature-branch push
+including prior checkpoint 2396e91, then verify origin against local HEAD.

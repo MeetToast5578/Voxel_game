@@ -24,6 +24,7 @@ import { raycastVoxels, type RaycastHit } from './player/raycast';
 import { type Box, type Cell, boundsOf } from './player/volumes';
 import { ChunkMeshes } from './render/chunkMeshes';
 import { Clouds } from './render/clouds';
+import { Horizon } from './render/horizon';
 import { HeldBlock } from './render/heldBlock';
 import { BlockHighlight, BreakOverlay } from './render/highlight';
 import { ItemMeshes } from './render/itemMeshes';
@@ -79,6 +80,7 @@ export class Game {
   readonly generator: TerrainGenerator;
   readonly renderer: Renderer;
   readonly meshes: ChunkMeshes;
+  readonly horizon: Horizon;
   readonly chunks: ChunkManager;
   readonly player = new Player();
   inventory = new Inventory();
@@ -213,6 +215,7 @@ export class Game {
     this.usingWorkers = options.workers && typeof Worker !== 'undefined';
     const workerCount = Math.max(1, Math.min(4, (navigator.hardwareConcurrency || 2) - 1));
     const jobs = this.usingWorkers ? new WorkerPool(seed, workerCount) : null;
+    this.horizon = new Horizon(this.renderer.scene, seed, this.usingWorkers);
     this.chunks = new ChunkManager(this.world, this.generator, this.meshes, this.settings.renderDistance, jobs);
     this.edits = new EditQueue(this.world, this.chunks, (id) => canBreak(id));
     this.applySettings(this.settings);
@@ -470,7 +473,13 @@ export class Game {
     this.renderer.setCamera(eye.x, eye.y, eye.z, this.player.yaw, this.player.pitch);
     this.updateAtmosphere(eye, frameDt);
     this.clouds.update(eye.x, eye.z, frameDt, daylightAt(this.timeOfDay));
-    this.renderer.setUnderwater(this.isWaterAt(Math.floor(eye.x), Math.floor(eye.y), Math.floor(eye.z)));
+    const underwater = this.isWaterAt(Math.floor(eye.x), Math.floor(eye.y), Math.floor(eye.z));
+    this.renderer.setUnderwater(underwater);
+    const skyTop = this.world.topAt(Math.floor(eye.x), Math.floor(eye.z));
+    this.horizon.update(eye.x, eye.z, this.settings.renderDistance, this.ready && !underwater && (skyTop === undefined || eye.y >= skyTop - metersToBlocks(16)));
+    this.renderer.setHorizonDistance(this.horizon.visible ? this.horizon.radius : 0);
+    const horizonEnvironment = this.renderer.horizonEnvironment;
+    this.horizon.setEnvironment(horizonEnvironment.daylight, horizonEnvironment.sky, horizonEnvironment.haze);
     const look = this.player.lookDirection();
     this.updateTarget(eye, look);
     if (this.playing && this.ready && !this.inventoryScreen.isOpen) this.handleBlockActions(frameDt, eye, look);
@@ -971,6 +980,7 @@ export class Game {
       dayLengthMin: Math.round(this.calendar.dayLengthMin),
       gameMode: this.gameMode,
       health: this.health,
+      horizon: { centerX: this.horizon.centerX, centerZ: this.horizon.centerZ, ready: this.horizon.radius > 0, visible: this.horizon.visible, vertices: this.horizon.vertices, radiusM: this.horizon.radius * BLOCK_SIZE_M, builds: this.horizon.builds },
       burning: this.fire.remaining > 0,
       inLava: this.player.inLava,
       hunger: this.hunger,

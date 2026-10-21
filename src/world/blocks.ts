@@ -42,6 +42,7 @@ export const BlockId = {
   LAVA: 54,
   FLOWING_LAVA: 55,
   OBSIDIAN: 71,
+  REED: 72,
 } as const;
 
 export const Tile = {
@@ -97,6 +98,7 @@ export const Tile = {
   CLAY: 49,
   LAVA: 50,
   OBSIDIAN: 51,
+  REED: 52,
 } as const;
 
 export type RenderLayer = 'none' | 'opaque' | 'cutout' | 'translucent';
@@ -354,6 +356,7 @@ export const BLOCK_REGISTRY = buildBlockRegistry([
     cullSame: true, lightEmission: 15, flows: true, density: LAVA_DENSITY,
   }),
   def('obsidian', 'Obsidian', all(Tile.OBSIDIAN), { hardness: 8, density: 2600 }),
+  def('reed', 'Reed', all(Tile.REED), { solid: false, opaque: false, layer: 'cutout', shape: 'cross', hardness: 0 }),
 ]);
 
 // BlockId.X is variant 0 of the type whose key is x; keep the two lists in step.

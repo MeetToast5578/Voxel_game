@@ -4,7 +4,7 @@ import type { ChunkMeshData, MeshData } from '../render/mesher';
 export type WorkerRequest =
   | { type: 'tops'; id: number; seed: number; cx: number; cz: number }
   | { type: 'generate'; id: number; seed: number; cx: number; cy: number; cz: number }
-  | { type: 'mesh'; id: number; cy: number; neighbors: Uint16Array[]; tops: Int32Array[] };
+  | { type: 'mesh'; id: number; seed: number; cx: number; cz: number; cy: number; neighbors: Uint16Array[]; tops: Int32Array[] };
 
 /** Messages from a chunk worker back to the main thread. */
 export type WorkerResponse =

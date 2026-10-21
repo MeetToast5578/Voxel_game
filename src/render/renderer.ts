@@ -29,6 +29,7 @@ export class Renderer {
   private viewBlocks = DEFAULT_RENDER_DISTANCE * CHUNK_SIZE;
   /** Vertical distance to the farthest visible surface (from the loaded column tops), in blocks. */
   private surfaceDistance = 0;
+  private horizonDistance = 0;
   /** Draw calls of the world pass in the last frame (the hand pass is not counted). */
   drawCalls = 0;
 
@@ -91,8 +92,17 @@ export class Renderer {
     this.updateFar();
   }
 
+  setHorizonDistance(blocks: number): void {
+    if (blocks === this.horizonDistance) return;
+    this.horizonDistance = blocks; this.updateFar(); this.applyFog();
+  }
+
+  get horizonEnvironment(): { daylight: number; sky: number; haze: number } {
+    return { daylight: this.lightUniforms.uDaylight.value, sky: this.skyColor, haze: this.atmosphericFog };
+  }
+
   private updateFar(): void {
-    this.camera.far = Math.max(metersToBlocks(CAMERA_FAR_M), Math.hypot(this.viewBlocks, this.surfaceDistance) + 64);
+    this.camera.far = Math.max(this.horizonDistance * 1.5, metersToBlocks(CAMERA_FAR_M), Math.hypot(this.viewBlocks, this.surfaceDistance) + 64);
     this.camera.updateProjectionMatrix();
   }
 
@@ -150,7 +160,7 @@ export class Renderer {
     this.fog.color.setHex(color);
     this.background.setHex(color);
     this.fog.near = this.underwater ? 0.1 : this.viewBlocks * 0.6 * (1 - this.atmosphericFog * 0.85);
-    this.fog.far = this.underwater ? metersToBlocks(UNDERWATER_FAR_M) : this.viewBlocks * 0.95 * (1 - this.atmosphericFog * 0.65);
+    this.fog.far = this.underwater ? metersToBlocks(UNDERWATER_FAR_M) : (this.horizonDistance || this.viewBlocks * 0.95) * (1 - this.atmosphericFog * 0.65);
   }
 
   private readonly resize = (): void => {

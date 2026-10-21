@@ -76,13 +76,13 @@ if (isMainThread) {
       for(let dz=-1;dz<=1;dz++)for(let dx=-1;dx<=1;dx++)t.push(topAt(x+dx,z+dz));
       jobs.push({x,y,z,n,t});
     }
-    for(const job of jobs.slice(0,10)){g.generateChunk(new Chunk(job.x,job.y,job.z));buildChunkMesh(job.n,job.t,job.y);}
+    for(const job of jobs.slice(0,10)){g.generateChunk(new Chunk(job.x,job.y,job.z));buildChunkMesh(job.n,job.t,job.y,{seed:workerData.seed,cx:job.x,cz:job.z});}
     const generation=[],meshing=[];const hash=createHash('sha256');
     for(let pass=0;pass<(workerData.profile ? 30 : 3);pass++){
       generation.push(timed(()=>{for(const job of jobs)g.generateChunk(new Chunk(job.x,job.y,job.z));})/jobs.length);
-      meshing.push(timed(()=>{for(const job of jobs)buildChunkMesh(job.n,job.t,job.y);})/jobs.length);
+      meshing.push(timed(()=>{for(const job of jobs)buildChunkMesh(job.n,job.t,job.y,{seed:workerData.seed,cx:job.x,cz:job.z});})/jobs.length);
     }
-    for(const job of jobs){const mesh=buildChunkMesh(job.n,job.t,job.y);
+    for(const job of jobs){const mesh=buildChunkMesh(job.n,job.t,job.y,{seed:workerData.seed,cx:job.x,cz:job.z});
       for(const layer of [mesh.solid,mesh.translucent])for(const field of ['positions','uvs','colors','light','indices']){
         const values=layer[field];hash.update(Buffer.from(values.buffer,values.byteOffset,values.byteLength));
       }

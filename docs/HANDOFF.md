@@ -1,5 +1,21 @@
 # Handoff: Voxel Game (MeetToast5578/Voxel_game)
 
+## Latest local batch — 2026-10-21 (spec 48)
+
+Completed T-D6/T-D7/T-E2/T-E3/T-E4: wave-exposed coasts/deep shelves, worker-built
+horizon to ~2.4 km, climate vertex colours, biome flower mixtures and shoreline reeds.
+Latest validation: 599 tests / 72 files, typecheck/build, enabled-tint worker guards
+(generation 1.312 ms; meshing 1.286 ms), GPU regressions and all 30 gameplay smoke
+checks pass. Horizon and shoreline screenshots inspected. Generated-terrain LOD excludes
+saved distant structures and workers=0; mountains retain their approved cap. New reed
+state appends after existing IDs; saved edits/dependencies/save format remain intact.
+
+Next: boulders, fallen logs, lily pads, moss/art, then finer biome resolution (T-E10).
+Owner playtests/river-seam acceptance and current CI remain unrun. The owner authorized
+commits/pushes; the prior batch is checkpointed as 2396e91. The new batch will be committed
+and pushed on codex/coasts-horizon-flora after final documentation review. See tasks.md
+and log.txt for the current queue/evidence; older uncommitted-status notes are historical.
+
 ## Current local batch — 2026-10-21
 
 The live queue and acceptance evidence are in `docs/tasks.md`; older session notes below

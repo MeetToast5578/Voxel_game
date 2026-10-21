@@ -13,17 +13,18 @@ Status key: `[ ]` open · `[x]` done · `[~]` partial
 ## Current execution queue — 2026-10-21
 
 Completed and verified:
-- **T-A6 + T-D3 (first batch):** stable mining/pickup fixture; deterministic local aquifers and negative-y caves (spec 46).
-- **T-D4 + T-G8 + T-G9 + T-G13 + T-G14 (continuation, spec 47):** dedicated underground lakes/lava basins, lava flow and body physics, water/lava cooling, depth-based water landing protection, and survival ignition/extinguishing.
-- **Latest validation:** typecheck, **584 tests / 68 files**, production build, both isolated worker budgets, GPU regressions and **all 28 gameplay smoke checks passed** on Node 24 / system Chromium 154. Warm generation 1.428 ms and meshing 1.356 ms (3 ms budgets). Physical-browser acceptance and current GitHub CI remain unrun.
-- Old block IDs, dependencies, lockfile and save format are preserved. New states append after clay. Unedited terrain regenerates with the new basins; saved edits remain. Fire is transient; fire spread, fire persistence and fluid animation are not implemented.
+- **T-A6 + T-D3:** stable mining/pickup fixture; deterministic local aquifers and negative-y caves (spec 46).
+- **T-D4 + T-G8 + T-G9 + T-G13 + T-G14:** underground lakes/lava basins, lava flow/body physics, water/lava cooling, water-cushioned landings and survival fire/extinguishing (spec 47).
+- **T-D6 + T-D7 + T-E2 + T-E3 + T-E4:** exposed/sheltered coasts and deep shelves, worker horizon rings, smooth climate vertex colours, biome flower mixtures and shoreline reeds (spec 48).
+- **Latest validation:** typecheck, **599 tests / 72 files**, production build, both isolated worker budgets, GPU regressions and **all 30 gameplay smoke checks passed** on Node 24 / system Chromium 154. Enabled-tint warm generation 1.312 ms and meshing 1.286 ms (3 ms budgets). Physical-browser acceptance and current GitHub CI remain unrun.
+- Old block IDs, dependencies, lockfile and save format are preserved. New states append. Unedited terrain regenerates; saved edits remain. LOD covers generated terrain to ~2.4 km, omits saved distant structures and is disabled with workers=0. Mountain heights remain capped. Biome IDs still use chunk columns (T-E10); tint continuity does not close that task.
 
 Next priorities:
-1. **T-D6 — Coasts and oceans**, then **T-D7 — Horizon LOD**. Preserve the aquifer/basin rules and verify terrain seams and worker budgets.
-2. **T-C / T-E11b — Owner playtest and visual acceptance.** Remain open; do not block independent coding or claim physical-browser acceptance from headless tests.
-3. Continue T-E → T-F → T-G → T-H → T-I in dependency order. T-G1 (persist pending falls), T-G2 (snow/ice) and T-G12 (currents) remain open. Address measured T-J bottlenecks throughout. Slabs (T-K1–K2) and the Pixel Aero proposal (T-K8) are separate tracks.
+1. **T-E5 boulders → T-E6 fallen logs → T-E7 lily pads → T-E8 moss**, with the remaining procedural art under T-E9. **T-E10** (finer biome resolution) is the next core terrain correction.
+2. **T-C / T-E11b — Owner playtest and visual acceptance.** Remain open; do not block independent coding or claim physical-browser acceptance from headless tests. River-seam review (T-C6) still gates overall terrain-phase acceptance.
+3. Continue T-F → T-G → T-H → T-I in dependency order, including pending-fall persistence, snow/ice and currents. Address measured T-J bottlenecks throughout. Slabs and Pixel Aero remain separate tracks.
 
-For every batch: log decisions, changes, failures and results in `log.txt`; run focused tests and relevant regression checks sequentially; mark done only after acceptance passes. The known green CI runs recorded below are historical.
+For every batch: log decisions, changes, failures and results in `log.txt`; run focused tests and relevant regression checks sequentially; mark done only after acceptance passes. The owner authorized committing and pushing completed work. Historical CI entries below do not establish the status of new commits.
 
 ---
 
@@ -124,22 +125,22 @@ Nothing below can be done headless (`HANDOFF.md:45-57`). Physical acceptance rem
 - [x] **T-D3 — Aquifers.** Closed 2026-10-21 (spec 46): seeded local water tables (-72 to -12 m, clamped below terrain), cached once per column cell, fill carved caves and deep density voids. Caves extend below sea level; the old y=0/1 floor guard moved to the actual terrain-band bottom. Ten aquifer regressions cover wet/dry cells, negative seams, seeds, generation order/cache, ocean/river protection and bottom rows. Full check, both worker budgets, GPU regressions and all 26 gameplay smoke checks pass. Dedicated lake basins and lava are now completed under T-D4/T-G8 (spec 47). Unedited terrain regenerates; saved edits remain.
 - [x] **T-D4 — Underground lakes and lava pools.** Closed 2026-10-21 (spec 47): seeded jittered-grid ellipsoid basins with a solid shell, level fluid and air above. Freshwater at -20 to -60 m; lava at -140 to -260 m. Whole-footprint roof eligibility is cached and agrees across chunks; surface roofs and bottom-band rows are preserved. Real generated basins, shell/roof rejection and split-slice tests pass; browser smoke inspects both water and lava surfaces/floors.
 - [x] **T-D5 — Cave openings that respect rivers and the sea.** Cave roofs now use local freshwater levels as well as sea level, retaining the configured 5 m cover. Forced-open cave noise tests prove river/lake roofs remain intact while dry land retains openings. Separate closed-noise tests prove land plants cannot replace underwater cells.
-- [ ] **T-D6 — Coasts and oceans.** Item 7, not started. Beaches, cliffs, stony shores and sandbars decided by wave exposure; continental shelf dropping to deep ocean.
-- [ ] **T-D7 — Horizon LOD.** Item 8, not started, and the reason mountains are capped at 60 m (`HANDOFF.md:72`): taller peaks read as walls until this exists. Coarse heightfield rings out to kilometres, biome-coloured, fading into the chunk meshes.
+- [x] **T-D6 — Coasts and oceans.** Closed 2026-10-21 (spec 48): westerly wave exposure from continental gradients and slope choose beaches, gravel/stony shores and rocky cliffs. Sheltered shallow water gains seeded sandbars; the shelf descends to deep ocean within the existing terrain band. Rivers/lakes bypass ocean shaping; roof/aquifer/basin guarantees remain. Coast profile, generated rock/tree eligibility, seed/negative-coordinate and existing water tests pass. Owner seam/visual acceptance remains T-C5/T-C6.
+- [x] **T-D7 — Horizon LOD.** Closed 2026-10-21 (spec 48): dedicated worker builds stitched concentric heightfield rings to 2.46 km, with near terrain/water sampling, regional/broad elevation blending, climate/surface colour and overlap/far fades. Snapped requests coalesce; replaced geometry is disposed; camera/fog cover the horizon while retaining underwater/underground behaviour. Unit geometry/stitching/low-view-range tests and actual browser recenter/screenshot checks pass. Generated terrain only; workers=0 omits LOD. Mountain heights remain unchanged; physical-browser review is open.
 
 ---
 
 ## E. Phase 3 — Biomes and flora
 
 - [x] **T-E1 — Wire `blendSurfaceBlocks` into the generator.** Closed in `656c247`.
-- [ ] **T-E2 — Per-vertex colour blending.** The *other* half of `ROADMAP.md` item 3, and still open: grass, foliage and water tints must blend smoothly **per vertex** from a climate colour map. Only the surface **block** choice was blended. No tint code exists in `src/world/biome.ts` or `src/render/`.
-- [ ] **T-E3 — Flowers by biome.** Item 6.
-- [ ] **T-E4 — Reeds.** Item 6.
+- [x] **T-E2 — Per-vertex colour blending.** Closed 2026-10-21: grass, leaves and water use a world-coordinate climate map with altitude, independent of chunk biome IDs. Worker and synchronous meshing receive the same seed/coordinates. Shared horizontal/vertical vertices, negative coordinates, neutral rock, unchanged geometry/light and real mesh colours are tested. The enabled tint path passes the strict worker benchmark. T-E10 biome resolution remains open.
+- [x] **T-E3 — Flowers by biome.** Closed 2026-10-21: deterministic poppy/dandelion weights favour meadows/plains, distinguish birch/cold/tropical mixtures and exclude barren biomes. Existing ferns/mushrooms and dry-grass placement remain. Distribution, actual plant generation and full browser regressions pass; no new flower art/state was needed.
+- [x] **T-E4 — Reeds.** Closed 2026-10-21: appended state 72 with procedural cross art. Configured-height plants grow on dry valid banks beside actual surface water, never submerged or over cave mouths. Whole plants reproduce across vertical slices. Mocked shoreline/negative-coordinate coverage plus real seed-1 bank (-386,1,14) generator/browser tests and screenshot pass. Dynamic plant ecology is separate.
 - [ ] **T-E5 — Boulders.** Item 6.
 - [ ] **T-E6 — Fallen logs.** Item 6.
 - [ ] **T-E7 — Lily pads.** Item 6.
 - [ ] **T-E8 — Moss.** Item 6.
-- [ ] **T-E9 — New blocks and procedural textures** for all of the above. Item 7. Still generated in code, no asset files.
+- [~] **T-E9 — New blocks and procedural textures.** Reed state/art are done under spec 48; boulders, logs, lily pads and moss art remain with their feature tasks. All art stays procedural; no asset files or new dependencies.
 
 Newly found while auditing:
 

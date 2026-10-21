@@ -24,15 +24,17 @@ const WAVELENGTH_M: Record<keyof ClimateFields, number> = {
 /** Base height of the continentalness spline: [field value, height in meters]. */
 const CONTINENTAL_SPLINE: ReadonlyArray<readonly [number, number]> = [
   [-1, -300],
-  [-0.45, -120],
-  [-0.2, -25],
+  [-0.55, -260],
+  [-0.35, -180],
+  [-0.2, -30],
+  [-0.08, -8],
   [-0.05, -2],
   [0.05, 4],
   [0.25, 40],
   [0.6, 110],
   [1, 150],
 ];
-// shortcut: mountains stay low because the renderer has no horizon LOD (phase 2 item 8); a 2 km peak reads as an infinite wall, so raise this only with LOD
+// Retain the approved mountain cap; distant terrain support does not itself authorize retuning heights.
 const MOUNTAIN_M = 60;
 
 /** Fractal noise: `octaves` layers, each at double the frequency and half the amplitude. Result in [-1, 1]. */

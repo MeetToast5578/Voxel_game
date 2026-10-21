@@ -874,6 +874,52 @@ const CHECKS = [
     },
   },
   {
+    name: 'distant terrain builds kilometres of geometry and recenters after movement',
+    run: async (page) => {
+      const start = await page.evaluate(() => window.__game.state());
+      const [x, y, z] = start.position;
+      try {
+        await page.evaluate(([x, y, z]) => {
+          window.__game.setFlying(true); window.__game.teleport(x + 128, y + 50, z);
+          window.__game.look(-0.8, -0.35);
+        }, [x, y, z]);
+        await page.waitForFunction(() => {
+          const s = window.__game.state();
+          return s.areaMeshed && s.horizon.ready && s.horizon.visible && s.horizon.vertices > 0 &&
+            s.horizon.centerX === Math.floor(s.position[0] / 64) * 64;
+        }, null, { timeout: 90_000 });
+        const h = await page.evaluate(() => window.__game.state().horizon);
+        if (h.radiusM < 2000) throw new Error(`horizon ends too near: ${JSON.stringify(h)}`);
+        await page.screenshot({ path: 'screenshots/horizon.png' });
+      } finally {
+        await page.evaluate(([x, y, z, flying, yaw, pitch]) => {
+          window.__game.teleport(x, y, z); window.__game.setFlying(flying); window.__game.look(yaw, pitch);
+        }, [...start.position, start.flying, start.yaw, start.pitch]);
+        await page.waitForFunction(() => window.__game.state().areaMeshed, null, { timeout: 60_000 });
+      }
+    },
+  },
+  {
+    name: 'shoreline reeds are generated beside surface water',
+    run: async (page) => {
+      const start = await page.evaluate(() => window.__game.state());
+      try {
+        await page.evaluate(() => {
+          window.__game.setFlying(true); window.__game.teleport(-384.5, 5, 16.5); window.__game.look(0.6, -0.4);
+        });
+        await page.waitForFunction(() => window.__game.state().areaMeshed, null, { timeout: 60_000 });
+        const reed = await page.evaluate(() => window.__game.getBlock(-386, 1, 14));
+        if (reed !== 72) throw new Error(`expected seed-1 bank reed, got ${reed}`);
+        await page.screenshot({ path: 'screenshots/shoreline-reeds.png' });
+      } finally {
+        await page.evaluate(([x, y, z, flying, yaw, pitch]) => {
+          window.__game.teleport(x, y, z); window.__game.setFlying(flying); window.__game.look(yaw, pitch);
+        }, [...start.position, start.flying, start.yaw, start.pitch]);
+        await page.waitForFunction(() => window.__game.state().areaMeshed, null, { timeout: 60_000 });
+      }
+    },
+  },
+  {
     name: 'chunks are built by Web Workers',
     run: async (page) => {
       const s = await page.evaluate(() => window.__game.state());

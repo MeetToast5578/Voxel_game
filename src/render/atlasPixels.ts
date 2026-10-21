@@ -48,6 +48,10 @@ const PAINTERS: Record<number, PixelFn> = {
   [Tile.WATER]: noisy([48, 96, 200], 0.1),
   [Tile.LAVA]: (x, y, r) => shade((x * 3 + y * 5) % 11 < 3 ? [255, 211, 55] : [239, 76, 12], 0.85 + r() * 0.15),
   [Tile.OBSIDIAN]: noisy([36, 25, 49], 0.5),
+  [Tile.REED]: (x, y, r) => {
+    const stem = x === 5 || x === 10 || (y % 6 === 0 && x >= 4 && x <= 11);
+    return stem ? shade([132, 163, 65], 0.85 + r() * 0.15) : [0, 0, 0, 0];
+  },
   [Tile.LOG_SIDE]: (x, _y, r) => shade(BARK, (x % 4 === 0 ? 0.75 : 1) + (r() - 0.5) * 0.15),
   [Tile.LOG_TOP]: (x, y, r) => {
     if (x === 0 || y === 0 || x === 15 || y === 15) return shade(BARK, 1);

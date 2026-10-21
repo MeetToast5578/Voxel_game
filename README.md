@@ -6,6 +6,9 @@ A Minecraft-like voxel sandbox that runs in the browser, built with TypeScript, 
 - Underground caves continue below sea level, with seeded local groundwater tables: passages above the table stay dry and lower cavities fill with water. Surface oceans, rivers and lakes retain their levels.
 - Dedicated underground lakes and deeper lava pools have solid basin walls. Lava glows, flows more slowly than water, and has greater buoyancy and drag. Water cools lava into stone, cobblestone or obsidian.
 - In survival, lava contact causes damage and leaves you burning briefly; enter water to extinguish it. Water cushions landings according to depth, and shallow puddles can still hurt.
+- Wave exposure shapes sandy beaches, gravel shores, rocky cliffs and sheltered sandbars; continental shelves descend to deep ocean.
+- Worker-built distant terrain extends about 2.4 km with coarse heightfield rings. This shows generated terrain, not distant saved buildings; `?workers=0` omits horizon LOD.
+- Grass, foliage and water have smoothly blended climate colours. Flower mixtures vary by biome, and reeds grow on dry banks next to surface water.
 - Walk, sprint, jump, fly and swim, with block collisions
 - Ledges up to 0.6 m are stepped up automatically, no jump needed
 - Break and place blocks including gravel, clay and cactus. Water flows: the source block spreads, and it levels out.
@@ -78,7 +81,7 @@ The pause menu has a **New world** button that deletes the save and generates a 
 | `?seed=123` | Play a specific world (does not load or overwrite your save) |
 | `?nosave=1` | Never read or write the save |
 | `?autostart=1` | Skip the menu (used by the automated tests) |
-| `?workers=0` | Generate and mesh on the main thread instead of Web Workers |
+| `?workers=0` | Generate and mesh on the main thread instead of Web Workers; omit horizon LOD |
 
 ## Development
 
@@ -106,4 +109,4 @@ CI (GitHub Actions) runs `npm run check`, worker budget guards, GPU regressions 
 | `src/workers` | Web Worker pool for generation and meshing |
 | `tests` | Vitest unit tests for all logic modules |
 
-Tree and aquifer generation updates apply to regenerated, unedited terrain. New underground caves, groundwater and pools can appear when unedited chunks regenerate. Saves containing lava or obsidian states need this version or newer. Saved edits remain in place. Worlds containing newly placed cactus or clay blocks require this version or newer.
+Tree and aquifer generation updates apply to regenerated, unedited terrain. New underground caves, groundwater and pools can appear when unedited chunks regenerate. Saves containing lava, obsidian or reed states need this version or newer. Saved edits remain in place. Worlds containing newly placed cactus or clay blocks require this version or newer.

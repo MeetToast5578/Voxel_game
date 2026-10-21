@@ -586,3 +586,27 @@ export const POOL_LAVA_RADIUS_RANGE_M = 3;
 export const POOL_HALF_HEIGHT_M = 3;
 export const POOL_SHELL_M = 0.6;
 export const POOL_CACHE_LIMIT = 2048;
+
+// ---- Coasts, climate colours and shoreline flora (spec 48) ----
+export const COAST_PROBE_M = 80;
+export const COAST_CONTINENTAL_BAND = 0.12;
+export const COAST_SHORE_HEIGHT_M = 3;
+export const COAST_CLIFF_MAX_M = 18;
+export const COAST_CLIFF_SLOPE = 0.55;
+export const COAST_SHELF_DEPTH_M = 45;
+export const COAST_EXPOSED = 0.7;
+export const COAST_SANDBAR_RISE_M = 1.2;
+export const COAST_SANDBAR_SCALE_M = 40;
+export const TINT_GRID_M = 24;
+export const TINT_CACHE_LIMIT = 2048;
+export const REED_CHANCE = 0.12;
+export const REED_MIN_HEIGHT_M = 0.9;
+export const REED_MAX_HEIGHT_M = 1.8;
+export const REED_BANK_HEIGHT_M = 0.9;
+export const HORIZON_STEPS_BLOCKS = [16, 64, 256, 512] as const;
+export const HORIZON_RING_CELLS = 16;
+export const HORIZON_RECENTER_BLOCKS = 64;
+export const HORIZON_OVERLAP_BLOCKS = 32;
+export const HORIZON_NEAR_BLEND_BLOCKS = 128;
+export const HORIZON_REGION_BLEND_BLOCKS = 2048;
+export const HORIZON_BIAS_BLOCKS = 0.05;

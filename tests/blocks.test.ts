@@ -43,7 +43,7 @@ describe('block states', () => {
     COBBLESTONE: 11, BRICK: 12, GLOWSTONE: 13, GRANITE: 14, DIORITE: 15, ANDESITE: 16, SANDSTONE: 17,
     TALL_GRASS: 18, POPPY: 19, FERN: 20, DANDELION: 21, LIMESTONE: 22, SLATE: 23, BASALT: 24, DEEPSLATE: 25,
     BROWN_MUSHROOM: 26, RED_MUSHROOM: 27, COAL_ORE: 28, IRON_ORE: 29, GOLD_ORE: 30, REDSTONE_ORE: 31,
-    DIAMOND_ORE: 32, EMERALD_ORE: 33, LAPIS_ORE: 34, GRAVEL: 35, FLOWING_WATER: 36, CACTUS: 52, CLAY: 53, LAVA: 54, FLOWING_LAVA: 55, OBSIDIAN: 71,
+    DIAMOND_ORE: 32, EMERALD_ORE: 33, LAPIS_ORE: 34, GRAVEL: 35, FLOWING_WATER: 36, CACTUS: 52, CLAY: 53, LAVA: 54, FLOWING_LAVA: 55, OBSIDIAN: 71, REED: 72,
   };
 
   it('keeps every BlockId number, named after its key', () => {
@@ -54,7 +54,7 @@ describe('block states', () => {
       expect(getBlockDef(state).key).toBe(name.toLowerCase());
       expect(blockVariant(state)).toBe(0);
     }
-    expect(BLOCK_STATE_COUNT).toBe(72); // new source/flowing lava and obsidian append after the original 54 states
+    expect(BLOCK_STATE_COUNT).toBe(73); // new source/flowing lava and obsidian append after the original 54 states
   });
   it('ores are stone-like blocks: solid, opaque, breakable, with a painted tile', () => {
     for (const id of [BlockId.COAL_ORE, BlockId.IRON_ORE, BlockId.GOLD_ORE, BlockId.REDSTONE_ORE, BlockId.DIAMOND_ORE, BlockId.EMERALD_ORE, BlockId.LAPIS_ORE]) {
