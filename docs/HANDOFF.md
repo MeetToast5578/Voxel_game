@@ -18,23 +18,51 @@ Next five: T-G1 pending falls, T-F5 wind, T-F7 seasonal visuals, T-F8 smooth lig
 T-F14 lightning/thunder. Owner playtests/river seam acceptance and current CI remain
 unrun. Dynamic plant ecology stays separate. Horizon LOD still omits distant saved
 structures and workers=0; mountain heights remain capped. The owner authorized
-commits/pushes; spec 49 commit 0cd1097 is pushed on codex/coasts-horizon-flora and verified against origin. See tasks.md
-and log.txt for the latest commit/push record; historical notes below predate this batch.
+commits/pushes. Implementation commit **0cd1097** and validation/push record **6c39418**
+are pushed on **codex/coasts-horizon-flora**; local and remote HEAD matched and the working
+tree was clean at completion. No merge or PR was created. Use this existing checkout for
+continuation; preserve dependencies and saved edits. Historical notes below predate this batch.
 
-## Current local batch — 2026-10-21
+### Resume from here
 
-The live queue and acceptance evidence are in `docs/tasks.md`; older session notes below
-are historical. Current local changes complete T-A6/T-D3 (mining fixture, aquifers) and
-T-D4/T-G8/T-G9/T-G13/T-G14 (underground pools, lava, cooling, water-cushioned falls and
-survival fire/extinguishing). Specs 46–47 describe the implementation and limits.
+Read `docs/tasks.md` and spec 49, then start **T-G1 — Save pending falls**. Inspect the
+current chunk-load scan and tick/save interfaces before changing persistence. Continue
+with T-F5, T-F7, T-F8 and T-F14 after that. Log decisions, failures and verification in
+`log.txt`; update task status only after checks pass. Commit and push completed batches
+to the existing feature branch under the owner's authorization.
 
-Validation: typecheck, 584 tests / 68 files, production build, isolated worker guards
-(generation 1.428 ms; meshing 1.356 ms), GPU regressions and all 28 gameplay smoke checks
-pass. Old IDs, dependencies and save format are preserved; new lava/obsidian states append.
-Unedited terrain regenerates with new caves/groundwater/basins; saved edits remain. Fire is
-transient. Next: coasts/oceans (T-D6), then horizon LOD (T-D7). Owner playtests and current
-CI remain unrun. All work and corrections are logged in `log.txt`; changes remain local
-and uncommitted. No push, PR, merge or publication occurred in this session.
+Required regression commands (run worker/browser checks sequentially):
+
+```sh
+npm run check
+node scripts/benchmark.mjs --assert-generation-budget --assert-mesh-budget
+BENCHMARK_CHUNK_X=240 BENCHMARK_CHUNK_Z=-108 node scripts/benchmark.mjs --assert-generation-budget --assert-mesh-budget
+CHROMIUM_PATH=/usr/bin/chromium node scripts/render-smoke.mjs
+CHROMIUM_PATH=/usr/bin/chromium npm run smoke
+```
+
+Seed-1 generated fixtures, in world block coordinates:
+
+| Feature | x | y | z | State |
+|---|---:|---:|---:|---:|
+| Boulder | 3129 | 152 | -2168 | 14 |
+| Moss | 3517 | 161 | -2163 | 76 |
+| Fallen log (X) | 3873 | 186 | -1690 | 73 |
+| Lily pad | 4240 | 223 | -3020 | 75 |
+
+Screenshots: `screenshots/surface-{boulder,moss,fallen-log,lily-pad}.png` (local generated
+artifacts). Latest raw validation logs: `/tmp/voxel-b4-final-check2.log`,
+`/tmp/voxel-b4-final-{default,forest}-budget.log`, `/tmp/voxel-b4-final-render.log`,
+`/tmp/voxel-b4-final-smoke.log`. These local artifacts may not survive a fresh environment;
+the tracked tests and commands reproduce the checks.
+
+## Archived checkpoint — 2026-10-21 (specs 46–47)
+
+Earlier work completed T-A6/T-D3 and T-D4/T-G8/T-G9/T-G13/T-G14: mining fixture,
+aquifers, underground pools, lava/cooling, cushioned falls and survival fire. That
+checkpoint passed 584 tests / 68 files and all 28 gameplay smoke checks. It was later
+committed and pushed as 2396e91; specs 48/49 and the latest validation above supersede
+its former local/uncommitted status and next-task queue.
 
 ## Session note — 2026-10-19 (reference gap map, PR #25)
 

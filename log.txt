@@ -865,3 +865,11 @@ Commit 0cd1097c550e9e0bd9dcdd664b90d9e0360d924f contains the completed, verified
 Normal push advanced origin/codex/coasts-horizon-flora from ca93f63 to 0cd1097.
 git ls-remote matched local HEAD exactly; working tree was clean. No force push, merge or PR.
 This documentation-only push record follows in a separate commit; no functional changes after acceptance.
+
+2026-10-21 — Explicit handoff update requested
+Expanded docs/HANDOFF.md with verified implementation/push commits, the next five tasks,
+resume instructions, exact regression commands, real feature coordinates and artifact paths.
+Replaced the stale "Current local batch" section with an archived specs 46–47 checkpoint
+so the next session does not mistake old uncommitted status for the current branch state.
+Documentation-only change; git diff --check passed. Prior functional acceptance remains
+613 tests / 74 files, both worker fixtures, GPU checks and all 31 gameplay smoke checks.
