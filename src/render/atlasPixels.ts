@@ -33,6 +33,15 @@ function crackPainter(stage: number): PixelFn {
 }
 
 const PAINTERS: Record<number, PixelFn> = {
+  [Tile.LILY_PAD]: (x, y, r) => {
+    const dx = x - 7.5, dz = y - 7.5;
+    if (Math.hypot(dx, dz) > 7 || dz > 0 && Math.abs(dx) < dz * 0.45) return [0, 0, 0, 0];
+    return shade([58, 132, 47], (x === 7 || y === 7 ? 0.75 : 1) + (r() - 0.5) * 0.25);
+  },
+  [Tile.MOSS]: (x, y, r) => {
+    if ((x < 2 || y < 2 || x > 13 || y > 13) && r() < 0.5) return [0, 0, 0, 0];
+    return shade([72, 110, 42], 0.8 + r() * 0.4);
+  },
   [Tile.CACTUS_SIDE]: (x, y, r) => {
     if (x % 4 === 0 && y % 5 === 0) return shade([222, 209, 146], 1);
     return shade([55, 122, 52], (x % 4 === 0 ? 0.65 : 1) + (r() - 0.5) * 0.15);

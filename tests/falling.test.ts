@@ -55,10 +55,10 @@ describe('falling blocks (spec 25, slice 3)', () => {
     expect(world.getBlock(0, 11, 0)).toBe(BlockId.AIR);
   });
 
-  it('sand falling onto a plant replaces the plant', () => {
+  it.each([BlockId.TALL_GRASS, BlockId.LILY_PAD, BlockId.MOSS])('sand falling onto plant %i replaces it', (plant) => {
     const world = stacked();
     place(world, 0, 0, 0, BlockId.STONE);
-    place(world, 0, 2, 0, BlockId.TALL_GRASS);
+    place(world, 0, 2, 0, plant);
     place(world, 0, 6, 0, BlockId.SAND);
     settle(world);
     expect(world.getBlock(0, 1, 0)).toBe(BlockId.SAND);

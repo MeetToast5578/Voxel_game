@@ -12,7 +12,7 @@ export const FALL_REASON = 'fall';
  * fall.
  */
 export function canFallInto(id: number): boolean {
-  return id === BlockId.AIR || isFluidState(id) || getBlockDef(id).shape === 'cross';
+  return id === BlockId.AIR || isFluidState(id) || getBlockDef(id).shape !== 'cube';
 }
 
 /**

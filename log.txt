@@ -827,3 +827,35 @@ including prior checkpoint 2396e91, then verify origin against local HEAD.
 - Updated handoff/tasks to record the actual push result. This documentation-only record
   is committed and pushed next; no functional source changed after final validation.
 - No force push, merge, PR creation, environment publication or current CI claim.
+
+2026-10-21 — Spec 49 started (next five authorized tasks)
+Read task queue, generator, biome lookup, feature registry, block registry, mesher, art and physics.
+Working on T-E5 boulders, T-E6 fallen logs, T-E7 lily pads, T-E8 moss, T-E10 per-cell biome resolution.
+Spec 49 records ecology, support, stable IDs, clipping and verification requirements.
+No dependency changes planned. Commit/push remains authorized after checks.
+
+Spec 49 implementation and focused checks
+- Replaced chunk-centre biome IDs with per-cell actual elevation/climate/region moisture; cached surface dithering now follows real world-coordinate boundaries. Tree classification/debug queries share those cells.
+- Added deterministic supported boulders and horizontal forest logs through jittered anchors. Whole-feature tree collisions reject before clipping; cache results without chunk-order dependence.
+- Appended states 73..76 (X/Z logs, lily pad, moss) without changing old IDs; procedural cutout art and thin noncolliding/light-transparent layer geometry in chunk and item render paths. Fluids/falling material can replace layers.
+- Added warm shallow lake pads, damp rock/feature moss. Initial nearby seed-1 search found no warm forests/lakes; broader climate scan located real fixtures rather than weakening habitat rules. Fixtures: boulder (3129,152,-2168), moss (3517,161,-2163), X-log (3873,186,-1690), pad (4240,223,-3020).
+- Initial full suite: 598 pass, one expected stable-ID list failure fixed by appending explicit IDs. Focused fixture initially used a climate yielding badlands rather than desert; corrected mocked humidity/temperature to test sand-to-grass boundaries. Expanded clipping area to ensure both feature types and vertical layers are exercised.
+- Intermediate npm run check PASS: 607 tests / 74 files, typecheck/build. Initial isolated worker guards PASS (~1.74 ms generation / 1.46 ms mesh). Adding final real generator/browser fixtures, tree collision test and rerunning acceptance.
+
+Spec 49 extra forest performance check and correction
+- Final initial check passed 609 tests / 74 files. Standard worker fixture passed generation 1.569 ms / mesh 1.295 ms.
+- Additional 50-surface-chunk forest fixture (chunk origin 240,-108, seed 1) exposed warm generation 3.902 ms, above 3 ms. This was a real failure, not accepted or relaxed.
+- Cached deterministic tree geometry/empty anchors after hash selection and cached cell temperature/precipitation alongside biome data. Repeated vertical slices no longer rebuild trees or resample their surface climate. Added cache-eviction regeneration coverage and actual layer replacement by floods/falling sand.
+- Same forest fixture now PASS: generation 1.897 ms / mesh 2.923 ms; identical mesh SHA ffcc15b4cdaf6291cc3fdbea708a26e106143500d561304929d5aaa290e58293 before/after cache optimization.
+- Made fixture coordinates selectable via BENCHMARK_CHUNK_X/Z in the existing worker script so the extra measurement is reproducible; defaults retain the original fixture. Rerunning final suite, both tracked worker fixtures and browser acceptance sequentially.
+
+2026-10-21 — Spec 49 final acceptance
+- T-E5/E6/E7/E8/E10 complete; related procedural art T-E9 closed.
+- npm run check PASS: typecheck, 613 tests / 74 files, production build 1.95 s.
+- Final tracked standard worker guards PASS: generation 1.100 ms, mesh 1.346 ms.
+- Final tracked forest worker guards PASS: generation 1.784 ms, mesh 2.706 ms. Standard/forest geometry hashes unchanged after caching.
+- GPU render regression PASS (wet/sheltered lighting, sky translation, moon phases).
+- Full gameplay smoke PASS: all 31 checks, including real generated rock/log/moss/lake-pad cells, source water beneath pads, worker meshing and screenshots. Final SwiftShader measurement 4228 loaded / 2125 meshed / 425 draw calls / 20 fps; not owner hardware.
+- Inspected all four surface screenshots: rounded granite outcrop, horizontal bark-textured forest trunk, thin moss patches on rock and notched pads on lake water. Held block/HUD remain in shots; owner visual/seam acceptance remains open.
+- Dependency manifests and lockfile unchanged. Appended named states, saved edits and old block IDs preserved; no save-version bump. Dynamic plant ecology stays separate. Current GitHub CI not run or claimed.
+- Updated task completion/next five priorities, README, handoff, roadmap status and spec index. Final diff/syntax checks precede commit and normal non-force push to existing feature branch.

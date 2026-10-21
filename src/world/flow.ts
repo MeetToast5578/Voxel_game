@@ -17,7 +17,7 @@ const WATER = { source: BlockId.WATER, same: isWaterState, flowing: isFlowingWat
 const LAVA = { source: BlockId.LAVA, same: isLavaState, flowing: isFlowingLavaState,
   level: lavaLevel, falling: isFallingLava, state: flowingLavaState, delay: LAVA_TICK_DELAY };
 const fluid = (id: number) => isLavaState(id) ? LAVA : WATER;
-const open = (id: number) => id === BlockId.AIR || getBlockDef(id).shape === 'cross';
+const open = (id: number) => id === BlockId.AIR || getBlockDef(id).shape !== 'cube';
 
 /** Schedule the changed cell and neighbours, using the delay belonging to each fluid. */
 export function scheduleFlowChecks(world: World, x: number, y: number, z: number): void {

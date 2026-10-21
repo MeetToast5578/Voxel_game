@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { getBlockDef, Tile } from '../world/blocks';
+import { getBlockDef, blockFaceTile, blockTopHeight, Tile } from '../world/blocks';
 import { tileUV } from './tiles';
 
 type Corner = [number, number, number];
@@ -79,7 +79,16 @@ function cached(key: string, make: () => THREE.BufferGeometry): THREE.BufferGeom
 export function blockGeometry(state: number, size: number): THREE.BufferGeometry {
   const def = getBlockDef(state);
   return cached(`block:${state}:${size}`, () =>
-    toGeometry(def.shape === 'cross' ? crossQuads(def.tiles.side, size / 2) : cubeQuads(def.tiles, size / 2, true)),
+    (() => {
+      if (def.shape === 'cross') return toGeometry(crossQuads(def.tiles.side, size / 2));
+      const quads = cubeQuads(def.tiles, size / 2, true);
+      const normals: Corner[] = [[1,0,0],[-1,0,0],[0,1,0],[0,-1,0],[0,0,1],[0,0,-1]];
+      quads.forEach((q, i) => {
+        q.tile = blockFaceTile(state, ...normals[i]!);
+        if (def.shape === 'layer') q.corners.forEach(c => { c[1] = (c[1] + size / 2) * blockTopHeight(state) - size / 2; });
+      });
+      return toGeometry(quads);
+    })(),
   );
 }
 

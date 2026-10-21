@@ -610,3 +610,17 @@ export const HORIZON_OVERLAP_BLOCKS = 32;
 export const HORIZON_NEAR_BLEND_BLOCKS = 128;
 export const HORIZON_REGION_BLEND_BLOCKS = 2048;
 export const HORIZON_BIAS_BLOCKS = 0.05;
+
+// Spec 49: small surface features. Distances are metres, converted once here.
+export const BOULDER_SPACING = roundBlocks(7.2);
+export const BOULDER_CHANCE = 0.32;
+export const BOULDER_RADIUS = roundBlocks(0.9);
+export const FALLEN_LOG_SPACING = roundBlocks(8.4);
+export const FALLEN_LOG_CHANCE = 0.4;
+export const FALLEN_LOG_MIN_LENGTH = roundBlocks(1.2);
+export const FALLEN_LOG_MAX_LENGTH = roundBlocks(2.4);
+export const LILY_PAD_CHANCE = 0.08;
+export const LILY_PAD_MAX_DEPTH = roundBlocks(1.8);
+export const MOSS_CHANCE = 0.35;
+export const MOSS_MIN_PRECIPITATION_MM = 750;
+export const SURFACE_LAYER_HEIGHT = 0.015 / BLOCK_SIZE_M;

@@ -1,4 +1,4 @@
-import { LAVA_DENSITY } from '../config';
+import { LAVA_DENSITY, SURFACE_LAYER_HEIGHT } from '../config';
 export const BlockId = {
   AIR: 0,
   STONE: 1,
@@ -43,6 +43,10 @@ export const BlockId = {
   FLOWING_LAVA: 55,
   OBSIDIAN: 71,
   REED: 72,
+  FALLEN_LOG_X: 73,
+  FALLEN_LOG_Z: 74,
+  LILY_PAD: 75,
+  MOSS: 76,
 } as const;
 
 export const Tile = {
@@ -99,10 +103,12 @@ export const Tile = {
   LAVA: 50,
   OBSIDIAN: 51,
   REED: 52,
+  LILY_PAD: 53,
+  MOSS: 54,
 } as const;
 
 export type RenderLayer = 'none' | 'opaque' | 'cutout' | 'translucent';
-export type BlockShape = 'cube' | 'cross';
+export type BlockShape = 'cube' | 'cross' | 'layer';
 
 /**
  * A block type. Each type owns `variants` consecutive block states, starting at `id`.
@@ -126,7 +132,7 @@ export interface BlockDef {
   /** Seconds to break the block by hand, held down (0 breaks at once). Spec 24. */
   hardness: number;
   layer: RenderLayer;
-  /** 'cross' blocks are two crossed quads (plants), not cubes. Spec 18. */
+  /** Plants use crossed quads or a thin horizontal layer. */
   shape: BlockShape;
   tiles: { top: number; side: number; bottom: number };
   /**
@@ -192,7 +198,7 @@ export interface BlockRegistry {
 
 /** Air lets sunlight through because it is empty; glass because it is clear and not culled against itself; plants because they are thin. */
 function derivedBlocksSky(d: BlockTypeDef): boolean {
-  const clear = d.layer === 'none' || d.shape === 'cross' || (d.layer === 'cutout' && d.cullSame);
+  const clear = d.layer === 'none' || d.shape === 'cross' || d.shape === 'layer' || (d.layer === 'cutout' && d.cullSame);
   return !clear;
 }
 
@@ -357,6 +363,10 @@ export const BLOCK_REGISTRY = buildBlockRegistry([
   }),
   def('obsidian', 'Obsidian', all(Tile.OBSIDIAN), { hardness: 8, density: 2600 }),
   def('reed', 'Reed', all(Tile.REED), { solid: false, opaque: false, layer: 'cutout', shape: 'cross', hardness: 0 }),
+  def('fallen_log_x', 'Fallen log (X)', all(Tile.LOG_SIDE), { hardness: 1, density: 600 }),
+  def('fallen_log_z', 'Fallen log (Z)', all(Tile.LOG_SIDE), { hardness: 1, density: 600 }),
+  def('lily_pad', 'Lily pad', all(Tile.LILY_PAD), { solid: false, opaque: false, layer: 'cutout', shape: 'layer', hardness: 0 }),
+  def('moss', 'Moss', all(Tile.MOSS), { solid: false, opaque: false, layer: 'cutout', shape: 'layer', hardness: 0 }),
 ]);
 
 // BlockId.X is variant 0 of the type whose key is x; keep the two lists in step.
@@ -407,8 +417,9 @@ export function isFallingWater(state: number): boolean {
   return isFlowingWaterState(state) && state - BlockId.FLOWING_WATER >= WATER_LEVELS;
 }
 
-/** How high a block's top face stands: flowing fluids use their level, other states a full block. */
+/** Top face height: fluid level, thin plant layer, or a full cube. */
 export function blockTopHeight(state: number): number {
+  if (state === BlockId.LILY_PAD || state === BlockId.MOSS) return SURFACE_LAYER_HEIGHT;
   return isFlowingWaterState(state) ? waterLevel(state) / WATER_LEVELS : isFlowingLavaState(state) ? lavaLevel(state) / WATER_LEVELS : 1;
 }
 
@@ -431,4 +442,11 @@ export function isFallingLava(state: number): boolean {
 }
 export function flowingLavaState(level: number, falling: boolean): number {
   return BlockId.FLOWING_LAVA + (level - 1) + (falling ? WATER_LEVELS : 0);
+}
+
+/** Tile for a cube face normal; horizontal logs keep end grain perpendicular to their axis. */
+export function blockFaceTile(state: number, dx: number, dy: number, dz: number): number {
+  if ((state === BlockId.FALLEN_LOG_X && dx !== 0) || (state === BlockId.FALLEN_LOG_Z && dz !== 0)) return Tile.LOG_TOP;
+  const tiles = getBlockDef(state).tiles;
+  return dy > 0 ? tiles.top : dy < 0 ? tiles.bottom : tiles.side;
 }

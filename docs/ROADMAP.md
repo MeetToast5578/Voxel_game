@@ -2,6 +2,8 @@
 
 Last updated 2026-10-17, checked against the code. This replaces the backlog in `HANDOFF.md`. Phase 1 and 1b are merged (specs 1–10). Phases 2–7 are partly merged; each phase below says what is done, partial or not started. The owner's open choices are in `HANDOFF.md`, "Open decisions".
 
+Current implementation update (2026-10-21, specs 48/49): climate colours and surface biomes now resolve in world coordinates at cell/vertex resolution; biome flowers, reeds, supported boulders/logs, lily pads and moss are implemented with procedural art. The dated phase snapshots below are historical; `tasks.md` records current completion and validation.
+
 ## Vision
 
 A deep, believable voxel world that runs in the browser.

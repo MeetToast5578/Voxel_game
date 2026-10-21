@@ -1,6 +1,6 @@
 import { CHUNK_SIZE } from '../config';
 import { localIndex } from '../core/coords';
-import { BLOCK_REGISTRY, BlockId, EMISSION_TABLE, OPAQUE_TABLE, blockTopHeight } from '../world/blocks';
+import { BLOCK_REGISTRY, BlockId, EMISSION_TABLE, OPAQUE_TABLE, blockTopHeight, blockFaceTile } from '../world/blocks';
 import {
   LIGHT_CURVE,
   REGION_SIZE,
@@ -55,8 +55,10 @@ const CULL_SAME_TABLE = new Uint8Array(STATE_COUNT);
 const TOP_HEIGHT_TABLE = new Float64Array(STATE_COUNT);
 /** Tile index per state and axis: [top, side, bottom]. */
 const TILE_TABLE = new Uint8Array(STATE_COUNT * 3);
+const FACE_TILES = new Uint8Array(STATE_COUNT * 6);
 for (let state = 0; state < STATE_COUNT; state++) {
   const def = BLOCK_REGISTRY.getBlockDef(state);
+  FACES.forEach((face, f) => { FACE_TILES[state * 6 + f] = blockFaceTile(state, ...face.dir); });
   TINT_KIND[state] = def.key === 'grass' ? 1 : def.key === 'leaves' ? 2 : def.key === 'water' || def.key === 'flowing_water' ? 3 : 0;
   CROSS_TABLE[state] = def.shape === 'cross' ? CROSS_SHAPE : 0;
   TRANSLUCENT_TABLE[state] = def.layer === 'translucent' ? TRANSLUCENT_LAYER : 0;
@@ -77,8 +79,6 @@ for (let tile = 0; tile < TILE_COUNT; tile++) {
   UV_TABLE[tile * 4 + 3] = uv.v1;
 }
 
-/** Per face: which tile axis it uses, as an index into TILE_TABLE's three slots. */
-const FACE_TILE_SLOT = new Uint8Array(6);
 /** Per face: the region-array index offset of the cell the face looks at. */
 const FACE_REGION_OFFSET = new Int32Array(6);
 /** Per face: the padded-volume index offset of the cell the face looks at. */
@@ -94,11 +94,9 @@ const FACE_UV_U = new Uint8Array(6 * 4);
 const FACE_UV_V = new Uint8Array(6 * 4);
 /** Per face and vertex: AO falloff for AO levels 0..3. */
 const AO_LEVELS = new Float64Array([0.5, 0.7, 0.85, 1.0]);
-const TILE_SLOT = { top: 0, side: 1, bottom: 2 } as const;
 
 for (let f = 0; f < 6; f++) {
   const face = FACES[f]!;
-  FACE_TILE_SLOT[f] = TILE_SLOT[face.tile];
   FACE_NEIGHBOR[f] = face.dir[0] * STRIDE_X + face.dir[1] * STRIDE_Y + face.dir[2] * STRIDE_Z;
   FACE_REGION_OFFSET[f] = face.dir[0] + face.dir[1] * REGION_SIZE * REGION_SIZE + face.dir[2] * REGION_SIZE;
   FACE_SHADE[f] = face.shade;
@@ -433,7 +431,7 @@ export function buildChunkMesh(neighbors: readonly Uint16Array[], tops: readonly
           const skyB = LIGHT_CURVE[skyLight[rf]!]!;
           const blkB = LIGHT_CURVE[blk]!;
 
-          const tile = TILE_TABLE[id * 3 + FACE_TILE_SLOT[f]!]!;
+          const tile = FACE_TILES[id * 6 + f]!;
           const u0 = UV_TABLE[tile * 4]!;
           const v0 = UV_TABLE[tile * 4 + 1]!;
           const u1 = UV_TABLE[tile * 4 + 2]!;

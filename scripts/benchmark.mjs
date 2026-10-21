@@ -1,4 +1,4 @@
-// Optional BENCHMARK_SEED selects the surface fixture; BENCHMARK_PROFILE=1 runs 30 passes for CPU profiling.
+// Optional BENCHMARK_SEED and BENCHMARK_CHUNK_X/Z select the surface fixture; BENCHMARK_PROFILE=1 runs 30 passes for CPU profiling.
 // Run sequentially with browser tests idle: node scripts/benchmark.mjs [--assert-generation-budget] [--assert-mesh-budget]
 // The worker executes the game's actual pure modules. Region/cold-column/spawn preparation is timed separately.
 import { Worker, isMainThread, parentPort, workerData } from 'node:worker_threads';
@@ -8,7 +8,7 @@ import { createServer } from 'vite';
 
 if (isMainThread) {
   const result = await new Promise((resolve, reject) => {
-    const worker = new Worker(new URL(import.meta.url), {workerData:{seed:Number(process.env.BENCHMARK_SEED || 1),profile:process.env.BENCHMARK_PROFILE === '1'}});
+    const worker = new Worker(new URL(import.meta.url), {workerData:{seed:Number(process.env.BENCHMARK_SEED || 1),chunkX:Number(process.env.BENCHMARK_CHUNK_X || 0),chunkZ:Number(process.env.BENCHMARK_CHUNK_Z || 0),profile:process.env.BENCHMARK_PROFILE === '1'}});
     let report;
     worker.once('message', value => { report = value; });
     worker.once('error', reject);
@@ -70,7 +70,7 @@ if (isMainThread) {
     const topAt=(x,z)=>{const key=`${x},${z}`;if(!tops.has(key))tops.set(key,g.columnTops(x,z));return tops.get(key);};
     const blockAt=(x,y,z)=>{const key=`${x},${y},${z}`;if(!chunks.has(key)){const c=new Chunk(x,y,z);g.generateChunk(c);chunks.set(key,c.blocks);}return chunks.get(key);};
     const jobs=[];
-    for(let z=0;z<5;z++)for(let x=0;x<10;x++){
+    for(let z=workerData.chunkZ;z<workerData.chunkZ+5;z++)for(let x=workerData.chunkX;x<workerData.chunkX+10;x++){
       const y=Math.floor(topAt(x,z)[8*16+8]/16),n=new Array(27),t=[];
       for(let dy=-1;dy<=1;dy++)for(let dz=-1;dz<=1;dz++)for(let dx=-1;dx<=1;dx++)n[neighborIndex(dx,dy,dz)]=blockAt(x+dx,y+dy,z+dz);
       for(let dz=-1;dz<=1;dz++)for(let dx=-1;dx<=1;dx++)t.push(topAt(x+dx,z+dz));
@@ -87,7 +87,7 @@ if (isMainThread) {
         const values=layer[field];hash.update(Buffer.from(values.buffer,values.byteOffset,values.byteLength));
       }
     }
-    parentPort.postMessage({runtime:process.version,worker:true,seed:workerData.seed,coldColumnSeed:1,regionSeed:1337,surfaceChunks:jobs.length,
+    parentPort.postMessage({runtime:process.version,worker:true,seed:workerData.seed,coldColumnSeed:1,regionSeed:1337,surfaceChunks:jobs.length,surfaceOriginChunks:[workerData.chunkX,workerData.chunkZ],
       regionSimulation:summary(regions),spawnSearch:summary(spawns),coldColumnTopsWithWarmRegion:summary(coldTops),
       generation:{...summary(generation),meanMs:generation.reduce((a,b)=>a+b,0)/generation.length,passMeansMs:generation},
       meshing:{...summary(meshing),meanMs:meshing.reduce((a,b)=>a+b,0)/meshing.length,passMeansMs:meshing},meshSha256:hash.digest('hex')});

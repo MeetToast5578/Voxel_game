@@ -920,6 +920,35 @@ const CHECKS = [
     },
   },
   {
+    name: 'supported boulders, fallen logs, moss and lake pads reach worker meshes',
+    run: async (page) => {
+      const start = await page.evaluate(() => window.__game.state());
+      try {
+        for (const [name, x, y, z, state] of [
+          ['boulder', 3129, 152, -2168, 14], ['moss', 3517, 161, -2163, 76],
+          ['fallen-log', 3873, 186, -1690, 73], ['lily-pad', 4240, 223, -3020, 75],
+        ]) {
+          await page.evaluate(([x, y, z]) => {
+            window.__game.setFlying(true); window.__game.teleport(x + 3.5, y + 4, z + 5.5); window.__game.look(0.55, -0.55);
+          }, [x, y, z]);
+          await page.waitForFunction(() => window.__game.state().areaMeshed, null, { timeout: 60_000 });
+          const actual = await page.evaluate(([x, y, z]) => window.__game.getBlock(x, y, z), [x, y, z]);
+          if (actual !== state) throw Error(`${name}: expected generated state ${state}, got ${actual}`);
+          if (name === 'lily-pad') {
+            const below = await page.evaluate(([x, y, z]) => window.__game.getBlock(x, y - 1, z), [x, y, z]);
+            if (below !== 5) throw Error(`lily pad lacks source water: ${below}`);
+          }
+          await page.screenshot({ path: `screenshots/surface-${name}.png` });
+        }
+      } finally {
+        await page.evaluate(([x, y, z, flying, yaw, pitch]) => {
+          window.__game.teleport(x, y, z); window.__game.setFlying(flying); window.__game.look(yaw, pitch);
+        }, [...start.position, start.flying, start.yaw, start.pitch]);
+        await page.waitForFunction(() => window.__game.state().areaMeshed, null, { timeout: 60_000 });
+      }
+    },
+  },
+  {
     name: 'chunks are built by Web Workers',
     run: async (page) => {
       const s = await page.evaluate(() => window.__game.state());
