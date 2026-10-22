@@ -250,6 +250,8 @@ body {
 }
 
 .block-picker {
+  flex: 1 1 auto;
+  min-height: 0;
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(56px, 1fr));
   gap: 4px;
@@ -471,6 +473,9 @@ body {
 }
 
 .inventory-panel {
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100dvh - 24px);
   padding: 16px;
   background: var(--panel);
   border: 2px solid var(--panel-edge);
@@ -480,6 +485,10 @@ body {
   max-width: calc(100vw - 24px);
   box-sizing: border-box;
 }
+
+.inventory-head,
+.inventory-tabs,
+.inventory-bar { flex-shrink: 0; }
 
 .inventory-head {
   display: flex;
@@ -509,6 +518,8 @@ body {
 }
 
 .inventory-grid {
+  min-height: 0;
+  overflow-y: auto;
   margin-bottom: 12px;
 }
 

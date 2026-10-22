@@ -1,5 +1,64 @@
 # Handoff: Voxel Game (MeetToast5578/Voxel_game)
 
+## Latest building/interface/platform batch — 2026-10-22 (spec 52)
+
+This section supersedes the older implementation priorities below. Work remains on
+`codex/coasts-horizon-flora`; commits/pushes remain authorized. See
+[spec 52](specs/52-building-interface-platforms.md), section K in tasks.md and `log.txt`.
+
+**T-K1/T-K2 implemented:** every solid cube material has appended bottom/top slab states.
+Existing IDs 0..76 and save version 3 remain unchanged; fluids/plants are not slab materials.
+Slabs are 0.15 m / half a voxel. Side hit height chooses the half; floor/ceiling placement,
+complementary same-material merging and actual body-volume exclusion are handled before edits.
+Shared player/item/body collision supports real height intervals, fast sweeps and step-up;
+rays detect actual faces and skip empty halves, including the origin cell. Held/dropped
+geometry, icons, highlights/cracks, log face orientation, climate tint and emission follow
+the shape. Mined/picked top halves normalize to their material's slab item.
+
+Slabs cannot be replaced by fluid/falling plant rules. A falling full block over a bottom
+half drops its item rather than floating over the gap. Structural support requires actual
+contact, and collapsed slabs drop items rather than incorrect full-cube loose bodies.
+Approved conservative shortcut remains: slabs do not occlude neighbours or block sunlight;
+no waterlogging. Old saves load; older builds cannot recognize new slab names.
+
+**T-K5 partial:** redo is complete, with expected-state conflicts, changed cells only, bounded
+history and the same edit budgets. Ctrl/Cmd+Y and Ctrl/Cmd+Shift+Z redo; Ctrl/Cmd+Z undoes.
+Modifier state is captured at keydown so fast chords survive low frame rates, with stale
+presses discarded on blur/capture transitions. Panel counts and control hints are wired.
+Copy/paste, stairs, doors and world export/import remain open.
+
+**T-K4 partial:** native slot buttons support mouse, Enter, Space and touch without right-click
+or repeat activation. Inventory gets modal focus entry/Tab wrap/return and constrained
+scrolling for the enlarged block catalogue. Inspected 640×360/1280×720 captures; additional
+1920×1080 and 1000×700 captures pass. Physical owner GUI/inventory acceptance stays open.
+Pixel Aero (T-K8) remains a separate unimplemented design track.
+
+**T-K6 partial:** production manifest/icon plus a dependency-free, versioned shell service
+worker cache index/CSS/main and both terrain workers. Relative scope works under /voxel/;
+real offline worker-backed game reload passes. New versions wait for existing tabs to close;
+old shell caches are removed. Saves stay in IndexedDB. Requires HTTPS/localhost and a completed
+online installation. Gamepad, in-world touch controls and physical installed-browser review
+remain open. Native inventory touch is implemented; it is not a full mobile control scheme.
+
+Validation: full **665 tests / 78 files**, typecheck/build PASS (2.13 s); GPU regressions PASS;
+strict standard worker guards **1.157/1.128 ms** generation/mesh PASS with unchanged terrain
+mesh hash. Final platform suite PASS: four sizes, native touch/keyboard, Enter repeat, Space,
+modal Tab and offline worker reload under a subpath. CI now includes this suite after gameplay
+smoke, but remote CI has not been run. Dependencies/lockfile unchanged.
+
+Final gameplay smoke PASS all **33 checks**, including slab placement/half-height landing,
+merge/ceiling, actual IndexedDB top-slab restore, real Ctrl+Y redo, physics/ticks and inventory
+lifecycle. Final software-GPU measurement: 9 fps, 3213 loaded / 1773 meshed / 353 draw calls;
+this is not owner hardware acceptance. No browser errors. Physical owner playtest stays open.
+
+Next: finish category K's remaining building/platform tasks above, or return to terrain
+LOD land/water separation and vegetation boundaries, real-river seam spike and physical
+acceptance from spec 51. No claim that the entire category or all terrain bugs are complete.
+
+Logs: `/tmp/building-release3-check.log`, `/tmp/building-budget.log`, `/tmp/building-gpu.log`,
+`/tmp/building-platform-final.log`, `/tmp/building-final-browser.log`. Images:
+`screenshots/building-slabs.png` and `screenshots/building-interface-*.png` (ignored artifacts).
+
 ## Latest terrain review — 2026-10-22 (spec 51)
 
 This section supersedes the spec-50 visual diagnosis below. Work remains on

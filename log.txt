@@ -1073,3 +1073,62 @@ Release acceptance complete:
 - Updated tasks, README compatibility note, roadmap, spec index, spec 51 and latest handoff.
   Dependencies, block IDs, save version and mountain limits unchanged. Script syntax and
   git diff --check PASS. Commit and normal push to the authorized existing branch follow.
+
+2026-10-22 — Building, interface and platforms (spec 52)
+- Read section K, slab/GUI and volumetric plans, HUD proposal and current engine/UI paths.
+  Prioritize complete slabs and their item/placement/collision paths; preserve existing IDs,
+  dependencies and save version. Existing Preact menus/inventory access are already implemented.
+- Appended slab variants for every solid cube material, preserving base registry states 0..76.
+  Added half-height bounds to shared body sweeps, partial-cell ray targeting, placement/merging,
+  item/held geometry, icons, selection/crack bounds and climate/material face mapping.
+  Slabs intentionally do not occlude neighbours or block sunlight (documented plan shortcut).
+- Initial typecheck caught unused imports and missing interpolation argument, corrected.
+  Focused cube-physics/raycast/registry tests running before new slab-specific regressions.
+- Slab tests cover every cube material's two states, save-name roundtrips, exact held geometry,
+  side/top/bottom placement, same-material merging, body exclusion, fast sweeps, head clearance,
+  half-step settlement, partial-cell ray reach, neighbour face coverage, fluids/falling and support.
+  Fixed integration assumptions that treated all non-cube shapes as replaceable plants; slabs
+  survive flow/falls, falling full blocks drop items on bottom halves, and support requires contact.
+  Collapsing slabs become items rather than incorrectly simulated full-cube loose bodies.
+- Added bounded redo using only successfully undone cells; conflicts, partial work, unloaded
+  cells and new edit branches preserve expected-state semantics. Ctrl/Cmd+Y and Shift+Z plus
+  tool-panel counts/controls share the existing action queue and budgets.
+- Inventory slots now use native click activation (mouse/keyboard/touch), avoiding right-button
+  activation and repeated custom key handlers. Added modal focus entry/trapping/return and
+  constrained scrolling so the expanded block catalogue fits short windows.
+- Added dependency-free production manifest/icon and a versioned offline shell service worker.
+  It precaches entry/CSS/both workers, scopes relative URLs for subpath hosting, leaves saves in
+  IndexedDB, and waits for old tabs before activating updates. Development never registers it.
+  Moved Node-only build plugin into .mjs with a narrow type declaration; no Node typings added.
+- Full intermediate check PASS 661 tests/77 files, typecheck/build 2.07 s. New browser checks
+  cover slab landings/merges/ceiling placement, slab IDB reload and redo; platform script covers
+  four sizes, native touch/keyboard picker and offline worker reload under /voxel/.
+- Full intermediate browser suite PASS all 33 checks (including new slabs, IDB top-slab
+  restoration and redo/undo). GPU suite and strict worker guards PASS 1.157/1.128 ms gen/mesh;
+  original terrain mesh hash remains c4a03d2b1aaaa6a762ad9047c2e875e8216205ac749bf8ce215a9ba398975dd0.
+- Platform first run hit pointer capture after closing the first inventory: a locked pointer
+  routes subsequent clicks to the canvas. Test now explicitly releases capture between window
+  sizes, as a user does with Escape; no forced clicks. Subpath/offline/four-size run PASS.
+  Inspected 640x360 and 1280x720 captures: close/header/hotbar stay visible; picker scrolls.
+- Auditing actual shortcuts found a real existing input bug: quick Ctrl/Cmd+Z could release
+  modifiers before the next low-FPS simulation frame. Capture chord modifiers at keydown;
+  discard stale presses/chords on blur and pointer-capture transitions. Added Ctrl/Meta/Shift,
+  repeat and stale-input regressions. Browser redo now uses real Ctrl+Y rather than only debug.
+- Final verification rerun includes that input repair and native Enter repeat suppression;
+  no remaining implementation is being inferred from the partial category labels.
+- Final functional check PASS 665 tests / 78 files, typecheck, production build 2.13 s.
+  Final platform suite PASS at four sizes, including native touch, quick Enter with repeat
+  suppression, Space activation, modal Tab wrap and actual offline worker reload at /voxel/.
+  Added platform smoke to CI after the existing full browser suite (CI itself not triggered).
+- Inspected slab/held-item and inventory captures; UI shows half-height item silhouettes,
+  keeps Close/header/hotbar in the 640x360 viewport and scrolls the enlarged catalogue.
+  Full browser rerun with the actual Ctrl+Y chord is in progress before commit.
+- Final full browser suite PASS all 33 checks, including the actual Ctrl+Y chord after undo,
+  expected 27 restored bricks, second undo, slab gameplay and saved slab restore. No browser
+  errors. Final software-GPU performance is recorded in /tmp/building-final-browser.log;
+  this is not owner-hardware or physical install/controller acceptance.
+- Updated task K1/K2 complete, K4/K5/K6 partial with exact remaining scope; README, design
+  implementation note, roadmap, spec index, spec 52 and current handoff updated. Pixel Aero,
+  copy/paste, stairs/doors, world export/import, gamepad and in-world touch remain open.
+- Dependencies/lockfile, old IDs, save version and worldgen mesh hash unchanged. Syntax and
+  diff checks pass. Commit and non-force push to the authorized existing branch follow.

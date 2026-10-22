@@ -1,6 +1,6 @@
 import { CHUNK_SIZE, LAVA_TICK_DELAY, WATER_TICK_DELAY } from '../config';
 import {
-  BlockId, flowingWaterState, flowingLavaState, getBlockDef, isFallingWater, isFlowingWaterState,
+  BlockId, flowingWaterState, flowingLavaState, getBlockDef, isPlantState, isFallingWater, isFlowingWaterState,
   isWaterState, SOURCE_WATER_LEVEL, waterLevel, isFluidState, isLavaState, isFlowingLavaState, lavaLevel, isFallingLava,
 } from './blocks';
 import type { Chunk } from './chunk';
@@ -17,7 +17,7 @@ const WATER = { source: BlockId.WATER, same: isWaterState, flowing: isFlowingWat
 const LAVA = { source: BlockId.LAVA, same: isLavaState, flowing: isFlowingLavaState,
   level: lavaLevel, falling: isFallingLava, state: flowingLavaState, delay: LAVA_TICK_DELAY };
 const fluid = (id: number) => isLavaState(id) ? LAVA : WATER;
-const open = (id: number) => id === BlockId.AIR || getBlockDef(id).shape !== 'cube';
+const open = (id: number) => id === BlockId.AIR || isPlantState(id);
 
 /** Schedule the changed cell and neighbours, using the delay belonging to each fluid. */
 export function scheduleFlowChecks(world: World, x: number, y: number, z: number): void {

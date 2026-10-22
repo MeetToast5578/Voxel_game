@@ -1,4 +1,4 @@
-import { LAVA_DENSITY, SURFACE_LAYER_HEIGHT } from '../config';
+import { LAVA_DENSITY, SURFACE_LAYER_HEIGHT, SLAB_HEIGHT } from '../config';
 export const BlockId = {
   AIR: 0,
   STONE: 1,
@@ -108,7 +108,7 @@ export const Tile = {
 } as const;
 
 export type RenderLayer = 'none' | 'opaque' | 'cutout' | 'translucent';
-export type BlockShape = 'cube' | 'cross' | 'layer';
+export type BlockShape = 'cube' | 'cross' | 'layer' | 'slab';
 
 /**
  * A block type. Each type owns `variants` consecutive block states, starting at `id`.
@@ -134,6 +134,8 @@ export interface BlockDef {
   layer: RenderLayer;
   /** Plants use crossed quads or a thin horizontal layer. */
   shape: BlockShape;
+  /** Base cube state for a slab; variants 0/1 are bottom/top. */
+  slabMaterial?: number;
   tiles: { top: number; side: number; bottom: number };
   /**
    * Derived: true if direct sunlight stops at this block. Everything except air and glass blocks the sky
@@ -198,7 +200,7 @@ export interface BlockRegistry {
 
 /** Air lets sunlight through because it is empty; glass because it is clear and not culled against itself; plants because they are thin. */
 function derivedBlocksSky(d: BlockTypeDef): boolean {
-  const clear = d.layer === 'none' || d.shape === 'cross' || d.shape === 'layer' || (d.layer === 'cutout' && d.cullSame);
+  const clear = d.layer === 'none' || d.shape === 'cross' || d.shape === 'layer' || d.shape === 'slab' || (d.layer === 'cutout' && d.cullSame);
   return !clear;
 }
 
@@ -308,7 +310,7 @@ export const WATER_LEVELS = 8;
 export const FLOWING_WATER_VARIANTS = 2 * WATER_LEVELS;
 
 /** The game's block registry. Registration order fixes the state numbers: append new types at the end. */
-export const BLOCK_REGISTRY = buildBlockRegistry([
+const BASE_REGISTRY = buildBlockRegistry([
   def('air', 'Air', all(0), { solid: false, opaque: false, targetable: false, breakable: false, layer: 'none' }),
   def('stone', 'Stone', all(Tile.STONE), { density: 2600 }),
   def('dirt', 'Dirt', all(Tile.DIRT), { hardness: 0.5, density: 1300 }),
@@ -369,6 +371,15 @@ export const BLOCK_REGISTRY = buildBlockRegistry([
   def('moss', 'Moss', all(Tile.MOSS), { solid: false, opaque: false, layer: 'cutout', shape: 'layer', hardness: 0 }),
 ]);
 
+/** Append slab types after every existing ID, preserving old worlds and inventory states. */
+export const BLOCK_REGISTRY = buildBlockRegistry([
+  ...BASE_REGISTRY.types,
+  ...BASE_REGISTRY.types.filter(d => d.solid && d.shape === 'cube').map(d => ({
+    ...d, key: `${d.key}_slab`, name: `${d.name} slab`, variants: 2,
+    shape: 'slab' as const, slabMaterial: d.id, opaque: false, cullSame: false, falls: false, flows: false,
+  })),
+]);
+
 // BlockId.X is variant 0 of the type whose key is x; keep the two lists in step.
 for (const [name, state] of Object.entries(BlockId)) {
   if (BLOCK_REGISTRY.stateName(state) !== name.toLowerCase())
@@ -419,6 +430,7 @@ export function isFallingWater(state: number): boolean {
 
 /** Top face height: fluid level, thin plant layer, or a full cube. */
 export function blockTopHeight(state: number): number {
+  if (getBlockDef(state).shape === 'slab') return blockVariant(state) === 0 ? SLAB_HEIGHT : 1;
   if (state === BlockId.LILY_PAD || state === BlockId.MOSS) return SURFACE_LAYER_HEIGHT;
   return isFlowingWaterState(state) ? waterLevel(state) / WATER_LEVELS : isFlowingLavaState(state) ? lavaLevel(state) / WATER_LEVELS : 1;
 }
@@ -446,7 +458,29 @@ export function flowingLavaState(level: number, falling: boolean): number {
 
 /** Tile for a cube face normal; horizontal logs keep end grain perpendicular to their axis. */
 export function blockFaceTile(state: number, dx: number, dy: number, dz: number): number {
+  state = getBlockDef(state).slabMaterial ?? state;
   if ((state === BlockId.FALLEN_LOG_X && dx !== 0) || (state === BlockId.FALLEN_LOG_Z && dz !== 0)) return Tile.LOG_TOP;
   const tiles = getBlockDef(state).tiles;
   return dy > 0 ? tiles.top : dy < 0 ? tiles.bottom : tiles.side;
+}
+
+const BOTTOM_SLAB_BOUNDS = [0, SLAB_HEIGHT] as const;
+const TOP_SLAB_BOUNDS = [SLAB_HEIGHT, 1] as const;
+/** Local vertical bounds; reused arrays avoid allocations in collision loops. */
+export function slabBounds(state: number): readonly [number, number] | null {
+  if (state < BASE_REGISTRY.stateCount) return null;
+  return getBlockDef(state).shape === 'slab' ? (blockVariant(state) === 0 ? BOTTOM_SLAB_BOUNDS : TOP_SLAB_BOUNDS) : null;
+}
+export function blockBottomHeight(state: number): number { return slabBounds(state)?.[0] ?? 0; }
+export function blockCollision(state: number): boolean | readonly [number, number] { return slabBounds(state) ?? isSolid(state); }
+export function slabItemState(state: number): number { const d = getBlockDef(state); return d.shape === 'slab' ? d.id : state; }
+export function slabState(material: number, top = false): number {
+  const d = BLOCKS.find(d => d.slabMaterial === material);
+  if (!d) throw new Error(`No slab for material ${material}`);
+  return d.id + (top ? 1 : 0);
+}
+
+export function isPlantState(state: number): boolean {
+  const shape = getBlockDef(state).shape;
+  return shape === 'cross' || shape === 'layer';
 }

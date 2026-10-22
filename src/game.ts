@@ -1,3 +1,5 @@
+import { resolvePlacement } from './player/placementTarget';
+import { blockCollision, slabBounds, slabItemState } from './world/blocks';
 import { atmosphericFogStrength } from './world/atmosphere';
 import {
   FOG_SAMPLE_INTERVAL_S, FOG_VALLEY_SAMPLE_M, FOG_GROUND_LAYER_M, metersToBlocks,
@@ -16,7 +18,7 @@ import { LooseBodies } from './items/looseBodies';
 import { BlockBreaking } from './player/breaking';
 import { BuildTool, cornerFor, frameFor } from './player/buildTool';
 import { Inventory, type ItemStack } from './player/inventory';
-import { blockIntersectsBody, canBreak, placementTarget } from './player/interaction';
+import { blockIntersectsBody, canBreak } from './player/interaction';
 import type { Vec3 } from './player/physics';
 import { FireExposure, fluidContact, landingDamage, landingWaterDepth } from './player/fluidHazards';
 import { NO_CONTROLS, PLAYER_SHAPE, Player, type PlayerControls } from './player/player';
@@ -43,7 +45,7 @@ import { formatDebugLines } from './ui/debugText';
 import { Hud } from './ui/hud';
 import { InventoryScreen } from './ui/inventoryScreen';
 import { Menu, type MenuMode } from './ui/menu';
-import { BlockId, getBlockDef, isSolid, isWaterState, isLavaState, isFluidState } from './world/blocks';
+import { BlockId, getBlockDef, isWaterState, isLavaState, isFluidState } from './world/blocks';
 import { scheduleLeafDecay } from './world/ecology';
 import { scheduleFallChecks } from './world/falling';
 import { scheduleFlowChecks } from './world/flow';
@@ -301,8 +303,8 @@ export class Game {
   }
 
   /** Solid test used by physics. Unloaded chunks count as solid so the player can never fall into one. */
-  readonly isSolidAt = (x: number, y: number, z: number): boolean =>
-    !this.world.isLoadedAt(x, y, z) || isSolid(this.world.getBlock(x, y, z));
+  readonly isSolidAt = (x: number, y: number, z: number) =>
+    !this.world.isLoadedAt(x, y, z) || blockCollision(this.world.getBlock(x, y, z));
 
   readonly isWaterAt = (x: number, y: number, z: number): boolean => isWaterState(this.world.getBlock(x, y, z));
 
@@ -488,7 +490,7 @@ export class Game {
     if (this.playing && this.ready && !this.inventoryScreen.isOpen) this.handleBlockActions(frameDt, eye, look);
     this.itemMeshes.sync(this.items.items, this.clockS);
     this.bodyMeshes.sync(this.bodies.bodies);
-    this.breakOverlay.update(this.breaking.target, this.breaking.stage);
+    this.breakOverlay.update(this.breaking.target, this.breaking.stage, this.breaking.target ? slabBounds(this.world.getBlock(this.breaking.target.x, this.breaking.target.y, this.breaking.target.z)) : null);
     const walking = this.player.onGround ? Math.min(1, Math.hypot(this.player.velocity.x, this.player.velocity.z) / WALK_SPEED) : 0;
     this.held.setState(this.inventory.selectedBlock);
     this.held.update(frameDt, walking, this.breaking.target !== null);
@@ -629,7 +631,7 @@ export class Game {
     if (!canBreak(id)) return false;
     const ok = this.setBlock(x, y, z, BlockId.AIR);
     if (ok) {
-      this.items.spawn(id, 1, x + 0.5, y + (1 - ITEM_SIZE) / 2, z + 0.5, Math.random);
+      this.items.spawn(slabItemState(id), 1, x + 0.5, y + (1 - ITEM_SIZE) / 2, z + 0.5, Math.random);
       this.sounds.play('break');
     }
     return ok;
@@ -642,7 +644,7 @@ export class Game {
   private spawnBrokenBlocks(): void {
     for (const d of this.world.takeDrops()) {
       if (d.body && this.bodies.canAdd) this.bodies.spawn(d.id, d.x + 0.5, d.y, d.z + 0.5, Math.random);
-      else this.items.spawn(d.id, 1, d.x + 0.5, d.y + (1 - ITEM_SIZE) / 2, d.z + 0.5, Math.random);
+      else this.items.spawn(slabItemState(d.id), 1, d.x + 0.5, d.y + (1 - ITEM_SIZE) / 2, d.z + 0.5, Math.random);
     }
   }
 
@@ -665,7 +667,7 @@ export class Game {
   pickTarget(): boolean {
     const t = this.target;
     if (!t) return false;
-    this.inventory.pick(this.world.getBlock(t.x, t.y, t.z));
+    this.inventory.pick(slabItemState(this.world.getBlock(t.x, t.y, t.z)));
     return true;
   }
 
@@ -674,8 +676,9 @@ export class Game {
     const t = this.target;
     if (!t || this.inventory.selectedBlock === BlockId.AIR) return false;
     const block = this.inventory.selectedBlock;
-    const p = placementTarget(t, (x, y, z) => this.world.getBlock(x, y, z), block, this.player.position, PLAYER_SHAPE);
-    const ok = p !== null && this.setBlock(p.x, p.y, p.z, block);
+    const eye = this.player.eyePosition(1), look = this.player.lookDirection();
+    const p = resolvePlacement(t, (x, y, z) => this.world.getBlock(x, y, z), block, this.player.position, PLAYER_SHAPE, eye.y + look.y * t.distance);
+    const ok = p !== null && this.setBlock(p.x, p.y, p.z, p.state);
     if (ok) {
       this.inventory.consumeSelected();
       this.sounds.play('place');
@@ -697,7 +700,7 @@ export class Game {
 
   private updateTarget(eye: Vec3, look: Vec3): void {
     this.target = this.ready
-      ? raycastVoxels(eye.x, eye.y, eye.z, look.x, look.y, look.z, REACH, (x, y, z) => getBlockDef(this.world.getBlock(x, y, z)).targetable)
+      ? raycastVoxels(eye.x, eye.y, eye.z, look.x, look.y, look.z, REACH, (x, y, z) => { const state = this.world.getBlock(x, y, z); return getBlockDef(state).targetable ? slabBounds(state) ?? true : false; })
       : null;
     this.updatePreview(eye, look);
   }
@@ -770,13 +773,16 @@ export class Game {
     if (this.input.consumePressed('KeyG')) t.toggleHollow();
     if (this.input.consumePressed('KeyC')) t.toggleDisc();
     if (this.input.consumePressed('KeyX')) t.cancelFrame();
-    if (this.input.consumePressed('KeyZ') && (this.input.isDown('ControlLeft') || this.input.isDown('ControlRight'))) this.undoEdit();
+    if (this.input.consumeShortcut('KeyZ')) this.undoEdit();
+    if (this.input.consumeShortcut('KeyZ', true) || this.input.consumeShortcut('KeyY')) this.redoEdit();
   }
 
   /** Ctrl+Z: undoes the last volume action (cells changed since then are left alone). */
   undoEdit(): boolean {
     return this.edits.undo();
   }
+
+  redoEdit(): boolean { return this.edits.redo(); }
 
   /** True while a volume action is still being applied over several frames. */
   get editsBusy(): boolean {
@@ -823,7 +829,7 @@ export class Game {
 
   /** Queues a volume action. Fills keep only the cells outside the player's body, so a volume never traps the player. */
   private startEdit(cells: EditCell[]): boolean {
-    const wanted = cells.filter((c) => c.clear || !blockIntersectsBody(c.x, c.y, c.z, this.player.position, PLAYER_SHAPE));
+    const wanted = cells.filter((c) => c.clear || !blockIntersectsBody(c.x, c.y, c.z, this.player.position, PLAYER_SHAPE, slabBounds(c.id)));
     const started = this.edits.start(wanted);
     if (started) {
       this.held.swing();
@@ -840,7 +846,7 @@ export class Game {
     const tool = this.tool;
     const t = this.target;
     if (tool.mode === 'single') {
-      this.highlight.update(t);
+      this.highlight.update(t, t ? slabBounds(this.world.getBlock(t.x, t.y, t.z)) : null);
       this.showToolRows(t ? 1 : null);
       return;
     }
@@ -851,7 +857,7 @@ export class Game {
         this.highlight.showBox(box);
         this.showToolRows(volumeOf(box));
       } else {
-        this.highlight.update(t);
+        this.highlight.update(t, t ? slabBounds(this.world.getBlock(t.x, t.y, t.z)) : null);
         this.showToolRows(null);
       }
       return;
@@ -885,6 +891,7 @@ export class Game {
         preview,
         block: selected ? getBlockDef(selected.state).name : 'empty',
         undo: this.edits.undoCount,
+        redo: this.edits.redoCount,
       }),
     );
   }

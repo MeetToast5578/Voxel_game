@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { getBlockDef, blockFaceTile, blockTopHeight, Tile } from '../world/blocks';
+import { getBlockDef, blockFaceTile, blockTopHeight, blockBottomHeight, Tile } from '../world/blocks';
 import { tileUV } from './tiles';
 
 type Corner = [number, number, number];
@@ -85,7 +85,7 @@ export function blockGeometry(state: number, size: number): THREE.BufferGeometry
       const normals: Corner[] = [[1,0,0],[-1,0,0],[0,1,0],[0,-1,0],[0,0,1],[0,0,-1]];
       quads.forEach((q, i) => {
         q.tile = blockFaceTile(state, ...normals[i]!);
-        if (def.shape === 'layer') q.corners.forEach(c => { c[1] = (c[1] + size / 2) * blockTopHeight(state) - size / 2; });
+        if (def.shape === 'layer' || def.shape === 'slab') q.corners.forEach(c => { c[1] = (c[1] + size / 2) * (blockTopHeight(state) - blockBottomHeight(state)) + size * blockBottomHeight(state) - size / 2; });
       });
       return toGeometry(quads);
     })(),

@@ -52,6 +52,7 @@ export interface ToolContext {
   block: string;
   /** Undo steps available. */
   undo: number;
+  redo?: number;
 }
 
 /** Where a two-click wall or floor starts: the cell of its first corner, its normal axis and the way it grows. */
@@ -282,6 +283,7 @@ export class BuildTool {
       },
       { label: 'Block', value: ctx.block, unused: this.mode !== 'add' },
       { label: 'Undo', value: `${ctx.undo} of ${UNDO_LIMIT} (Ctrl+Z)`, unused: false },
+      { label: 'Redo', value: `${ctx.redo ?? 0} (Ctrl+Y / Ctrl+Shift+Z)`, unused: false },
     ];
   }
 }

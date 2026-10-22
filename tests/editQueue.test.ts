@@ -115,3 +115,41 @@ describe('EditQueue', () => {
     expect(queue.undoCount).toBe(UNDO_LIMIT);
   });
 });
+
+it('redo reverses only the cells actually undone, preserving later changes', () => {
+  const { world, queue } = setup();
+  queue.start(fill([{x:1,y:1,z:1},{x:2,y:1,z:1}],BlockId.STONE)); queue.step();
+  world.setBlock(2,1,1,BlockId.DIRT);
+  expect(queue.undo()).toBe(true); queue.step();
+  expect(queue.redoCount).toBe(1);
+  expect(queue.redo()).toBe(true); queue.step();
+  expect(world.getBlock(1,1,1)).toBe(BlockId.STONE);
+  expect(world.getBlock(2,1,1)).toBe(BlockId.DIRT);
+  expect(queue.undo()).toBe(true); queue.step();
+  expect(world.getBlock(1,1,1)).toBe(BlockId.AIR);
+  expect(queue.undo()).toBe(false);
+});
+
+it('refuses unloaded or busy redo without losing history and invalidates redo on a changed edit', () => {
+  const { world, queue } = setup();
+  queue.start(fill([{x:1,y:1,z:1}],BlockId.STONE)); queue.step();
+  queue.undo(); queue.step();
+  world.removeChunk(0,0,0);
+  expect(queue.redo()).toBe(false); expect(queue.redoCount).toBe(1);
+  // A fresh loaded action in another chunk replaces the redo branch only after changing cells.
+  expect(queue.start(fill([{x:17,y:1,z:1}],BlockId.STONE))).toBe(true);
+  expect(queue.redo()).toBe(false); queue.step();
+  expect(queue.redoCount).toBe(0);
+});
+
+it('redo observes edits made after undo and uses the same cell budget', () => {
+  const { world, queue } = setup();
+  const cells = Array.from({length: EDIT_CELLS_PER_STEP + 1}, (_,i) => ({x:i%32,y:1+Math.floor(i/1024),z:Math.floor(i/32)%32}));
+  expect(queue.start(fill(cells,BlockId.STONE))).toBe(true);
+  while(queue.busy) queue.step();
+  queue.undo(); while(queue.busy) queue.step();
+  world.setBlock(0,1,0,BlockId.DIRT);
+  queue.redo(); queue.step(); expect(queue.busy).toBe(true);
+  while(queue.busy) queue.step();
+  expect(world.getBlock(0,1,0)).toBe(BlockId.DIRT);
+});

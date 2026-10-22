@@ -22,7 +22,7 @@ interface JobCell extends EditCell {
 }
 
 interface Job {
-  kind: 'edit' | 'undo';
+  kind: 'edit' | 'undo' | 'redo';
   cells: JobCell[];
   next: number;
   /** x, y, z, before, after for each cell actually changed. */
@@ -37,6 +37,7 @@ export class EditQueue {
   private job: Job | null = null;
   /** Each undo record is flat: x, y, z, before, after for each changed cell. */
   private readonly undos: number[][] = [];
+  private readonly redos: number[][] = [];
 
   constructor(
     private readonly world: World,
@@ -52,6 +53,8 @@ export class EditQueue {
     return this.undos.length;
   }
 
+  get redoCount(): number { return this.redos.length; }
+
   /**
    * Starts an action over these cells, fills and clears together. Refused, returning false, while another action runs,
    * when there are no cells, or when any cell is not in loaded terrain.
@@ -65,17 +68,26 @@ export class EditQueue {
   /** Starts undo of the last action. Refused when busy, when there is nothing to undo, or when its cells are not loaded. */
   undo(): boolean {
     if (this.job || this.undos.length === 0) return false;
-    const record = this.undos[this.undos.length - 1]!;
+    return this.restore('undo', this.undos);
+  }
+
+  /** Replays only cells actually undone and still unchanged, under the same per-step budget. */
+  redo(): boolean {
+    if (this.job || this.redos.length === 0) return false;
+    return this.restore('redo', this.redos);
+  }
+
+  private restore(kind: 'undo' | 'redo', history: number[][]): boolean {
+    const record = history[history.length - 1]!;
     const cells: JobCell[] = [];
     for (let i = 0; i < record.length; i += 5) {
-      const x = record[i]!;
-      const y = record[i + 1]!;
-      const z = record[i + 2]!;
+      const x = record[i]!, y = record[i + 1]!, z = record[i + 2]!;
       if (!this.loaded({ x, y, z })) return false;
+      // Each replay reverses the preceding action, whether edit, undo or redo.
       cells.push({ x, y, z, id: record[i + 3]!, clear: false, expect: record[i + 4]! });
     }
-    this.undos.pop();
-    this.job = { kind: 'undo', cells, next: 0, applied: [] };
+    history.pop();
+    this.job = { kind, cells, next: 0, applied: [] };
     return true;
   }
 
@@ -117,16 +129,18 @@ export class EditQueue {
   }
 
   private accepts(kind: Job['kind'], current: number, c: JobCell): boolean {
-    if (kind === 'undo') return current === c.expect;
+    if (kind !== 'edit') return current === c.expect;
     if (c.clear) return current !== BlockId.AIR && this.breakable(current);
     return current === BlockId.AIR || isWaterState(current);
   }
 
   private finish(job: Job): void {
     this.job = null;
-    if (job.kind === 'undo' || job.applied.length === 0) return;
-    this.undos.push(job.applied);
-    if (this.undos.length > UNDO_LIMIT) this.undos.shift();
+    if (job.applied.length === 0) return;
+    if (job.kind === 'edit') this.redos.length = 0;
+    const history = job.kind === 'undo' ? this.redos : this.undos;
+    history.push(job.applied);
+    if (history.length > UNDO_LIMIT) history.shift();
   }
 
   private loaded(c: { x: number; y: number; z: number }): boolean {

@@ -1,5 +1,5 @@
 import { GRAVITY_TICK_DELAY, LOOSE_BODY_MIN_GROUP, SUPPORT_NODE_LIMIT, SUPPORT_RADIUS_BLOCKS } from '../config';
-import { BlockId, getBlockDef } from './blocks';
+import { BlockId, getBlockDef, slabBounds } from './blocks';
 import { scheduleFlowChecks } from './flow';
 import { scheduleFallChecks } from './falling';
 import type { Tick, TickResult } from './tick';
@@ -7,6 +7,7 @@ import type { World } from './world';
 
 /** The tick reason for a structural support check (spec 25, slice 5). */
 export const SUPPORT_REASON = 'support';
+const FULL_BOUNDS = [0, 1] as const;
 
 /** Six face neighbours. */
 const FACES = [
@@ -23,7 +24,7 @@ const FACES = [
  * collapse, and nothing holds them up.
  */
 export function collapsible(id: number): boolean {
-  if (id === BlockId.AIR || id === BlockId.LEAVES) return false;
+  if (id === BlockId.AIR || id === BlockId.LEAVES || getBlockDef(id).slabMaterial === BlockId.LEAVES) return false;
   const d = getBlockDef(id);
   return d.solid && d.breakable;
 }
@@ -49,12 +50,15 @@ export function unsupportedGroup(world: World, sx: number, sy: number, sz: numbe
   const group = [{ x: sx, y: sy, z: sz }];
   for (let i = 0; i < group.length; i++) {
     const c = group[i]!;
+    const bounds = slabBounds(world.getBlock(c.x, c.y, c.z)) ?? FULL_BOUNDS;
     for (const [dx, dy, dz] of FACES) {
       const x = c.x + dx;
       const y = c.y + dy;
       const z = c.z + dz;
       if (!world.isLoadedAt(x, y, z)) { onUnknown?.(); return null; }
       const id = world.getBlock(x, y, z);
+      const other = slabBounds(id) ?? FULL_BOUNDS;
+      if (dy > 0 ? bounds[1] !== 1 || other[0] !== 0 : dy < 0 ? bounds[0] !== 0 || other[1] !== 1 : Math.max(bounds[0]!, other[0]!) >= Math.min(bounds[1]!, other[1]!)) continue;
       if (anchor(id)) return null;
       if (!collapsible(id)) continue;
       if (!inside(x, y, z)) return null; // the group reaches the radius: held up by terrain beyond it
@@ -97,7 +101,7 @@ export function handleSupport(world: World, tick: Tick): TickResult {
       continue;
     }
     if (world.setBlock(c.x, c.y, c.z, BlockId.AIR)) {
-      world.queueDrop(id, c.x, c.y, c.z, group.length >= LOOSE_BODY_MIN_GROUP);
+      world.queueDrop(id, c.x, c.y, c.z, group.length >= LOOSE_BODY_MIN_GROUP && getBlockDef(id).shape !== 'slab');
       scheduleSupportChecks(world, c.x, c.y, c.z);
       scheduleFallChecks(world, c.x, c.y, c.z);
       scheduleFlowChecks(world, c.x, c.y, c.z);

@@ -2,7 +2,7 @@ import {
   LAVA_DENSITY, LAVA_BODY_DRAG, GRAVITY, LOOSE_BODY_CAP, LOOSE_BODY_FRICTION, LOOSE_BODY_MAX_S, LOOSE_BODY_REST_S, LOOSE_BODY_REST_SPEED_M_S, LOOSE_BODY_SPIN_RATE,
   LOOSE_BODY_WATER_DRAG, TERMINAL_VELOCITY, WATER_DENSITY, metersToBlocks,
 } from '../config';
-import { type BodyShape, moveAndCollide, type SolidFn } from '../player/physics';
+import { type BodyShape, moveAndCollide, type SolidFn, type CollisionFn } from '../player/physics';
 
 /** A one-block cube that tumbles: a block that broke free of a collapse (spec 25, slice 6). (x, z) is its centre and y its bottom, in blocks. */
 export interface LooseBody {
@@ -91,7 +91,7 @@ export class LooseBodies {
    */
   step(
     dt: number,
-    isSolid: SolidFn,
+    isSolid: CollisionFn,
     isWater: (x: number, y: number, z: number) => boolean,
     densityOf: (state: number) => number,
     isLava: SolidFn = () => false,
@@ -136,7 +136,7 @@ export class LooseBodies {
   }
 
   /** Moves a body along its velocity in sub-steps, and updates its ground flag from the sweep. */
-  private sweep(b: LooseBody, dt: number, isSolid: SolidFn): void {
+  private sweep(b: LooseBody, dt: number, isSolid: CollisionFn): void {
     const fastest = Math.max(Math.abs(b.vx), Math.abs(b.vy), Math.abs(b.vz));
     const parts = Math.max(1, Math.ceil((fastest * dt) / MAX_MOVE));
     const h = dt / parts;

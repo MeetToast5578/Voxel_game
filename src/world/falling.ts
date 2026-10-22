@@ -1,5 +1,5 @@
-import { CHUNK_SIZE, GRAVITY_TICK_DELAY } from '../config';
-import { BlockId, getBlockDef, isFluidState } from './blocks';
+import { CHUNK_SIZE, GRAVITY_TICK_DELAY, SLAB_HEIGHT } from '../config';
+import { BlockId, getBlockDef, isFluidState, slabBounds, isPlantState } from './blocks';
 import type { Chunk } from './chunk';
 import type { Tick, TickResult } from './tick';
 import type { World } from './world';
@@ -13,7 +13,7 @@ export const FALL_REASON = 'fall';
  * fall.
  */
 export function canFallInto(id: number): boolean {
-  return id === BlockId.AIR || isFluidState(id) || getBlockDef(id).shape !== 'cube';
+  return id === BlockId.AIR || isFluidState(id) || isPlantState(id);
 }
 
 /**
@@ -43,7 +43,7 @@ export function scheduleFallingBlocks(world: World, chunk: Chunk): void {
     const x = chunk.cx * CHUNK_SIZE + lx;
     const y = chunk.cy * CHUNK_SIZE + ly;
     const z = chunk.cz * CHUNK_SIZE + lz;
-    if (!world.hasScheduledTick(x, y, z, FALL_REASON) && canFallInto(world.getBlock(x, y - 1, z))) world.scheduleTick(x, y, z, due, FALL_REASON);
+    if (!world.hasScheduledTick(x, y, z, FALL_REASON) && (canFallInto(world.getBlock(x, y - 1, z)) || slabBounds(world.getBlock(x, y - 1, z))?.[1] === SLAB_HEIGHT)) world.scheduleTick(x, y, z, due, FALL_REASON);
   }
 }
 
@@ -55,7 +55,16 @@ export function handleFall(world: World, tick: Tick): TickResult {
   const { x, y, z } = tick;
   const id = world.getBlock(x, y, z);
   if (id === BlockId.AIR || !getBlockDef(id).falls) return 'handled';
-  if (!canFallInto(world.getBlock(x, y - 1, z))) return 'handled';
+  const below = world.getBlock(x, y - 1, z);
+  if (slabBounds(below)?.[1] === SLAB_HEIGHT) {
+    // A full falling voxel cannot occupy the half-cell gap: drop its item on the slab.
+    if (world.setBlock(x, y, z, BlockId.AIR)) {
+      world.queueDrop(id, x, y, z, false);
+      scheduleFallChecks(world, x, y, z); scheduleFlowChecks(world, x, y, z);
+    }
+    return 'handled';
+  }
+  if (!canFallInto(below)) return 'handled';
   if (!world.isLoadedAt(x, y - 1, z) || !world.setBlock(x, y - 1, z, id)) {
     world.scheduleTick(x, y, z, world.currentTick + GRAVITY_TICK_DELAY, FALL_REASON);
     return 'handled';

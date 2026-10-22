@@ -12,6 +12,7 @@ A Minecraft-like voxel sandbox that runs in the browser, built with TypeScript, 
 - Scheduled block updates run at 20 Hz and survive chunk unloading and save/reload with their remaining delays. Terrain loading includes ground beneath dense canopies; failed workers fall back to main-thread loading.
 - Saved structures remain visible across vertical terrain bands, including glass and high roofs.
 - Terrain coordinate and lake-basin repairs regenerate unedited ground correctly; existing saved edits are preserved and may float relative to changed ground.
+- Build bottom/top slabs from every solid cube material. Aim at the upper/lower half of a side to select the half; matching complementary slabs merge into a full block. Slabs are 0.15 m tall and have matching collision, targeting and item icons.
 - Walk, sprint, jump, fly and swim, with block collisions
 - Ledges up to 0.6 m are stepped up automatically, no jump needed
 - Break and place blocks including gravel, clay and cactus. Water flows: the source block spreads, and it levels out.
@@ -67,11 +68,12 @@ Press **R** to cycle the mode: single block (the default), add volume, or remove
 | G | Box and sphere: solid, or a one-block shell |
 | C | Plane and flatten: square or disc |
 | X or Esc | Cancel a wall, floor or roof you started (Esc also pauses) |
-| Ctrl+Z | Undo the last volume action (the last 20 in this session) |
+| Ctrl/Cmd+Z | Undo the last volume action (the last 20 in this session) |
+| Ctrl/Cmd+Y or Ctrl/Cmd+Shift+Z | Redo the last undone volume action |
 
 A wall, floor or roof takes two clicks: the first sets its corner, the second sets the far corner. A roof is a horizontal layer built upward from the aimed block.
 
-The **build tool panel** on the top left shows every setting at once: the mode, shape, size, thickness or outline, the frame state, the number of blocks the next action changes, the block used by add, and the undo steps left. It shows the settings in single-block mode too, so you always know what is selected.
+The **build tool panel** on the top left shows every setting at once: the mode, shape, size, thickness or outline, the frame state, the number of blocks the next action changes, the block used by add, and the undo/redo steps left. It shows the settings in single-block mode too, so you always know what is selected.
 
 **Blocks tab (creative):** press E, then the **Blocks (creative)** tab, and click any block in the game. A full stack of it goes into the selected hotbar slot. It is there for testing and is not limited by survival rules. A floor on a ceiling grows downward. Flatten works on either button: it fills the footprint up to the height of the aimed block and clears the blocks above it.
 
@@ -113,3 +115,12 @@ CI (GitHub Actions) runs `npm run check`, worker budget guards, GPU regressions 
 | `tests` | Vitest unit tests for all logic modules |
 
 Tree and aquifer generation updates apply to regenerated, unedited terrain. New underground caves, groundwater and pools can appear when unedited chunks regenerate. Saves containing lava, obsidian or reed states need this version or newer. Saved edits remain in place. Worlds containing newly placed cactus or clay blocks require this version or newer.
+
+The production game can be installed using a supported browser's Install option. After one
+online visit finishes caching, it can reopen offline, including terrain workers. This needs
+HTTPS or localhost; saves still use IndexedDB. Keep an old game tab open to finish playing
+before an update activates. In-game gamepad and touch movement controls are not implemented.
+
+Slabs append named states without changing old IDs or the save version. Existing saves load;
+older builds do not recognize newly saved slab states. Slabs currently let light through and
+do not hide neighbour faces; one cell holds one state, so slabs are not waterlogged.

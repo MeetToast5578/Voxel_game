@@ -214,6 +214,7 @@ const CHECKS = [
           window.__game.setFlying(flying);
         }, [...before.position, before.flying]);
         await waitMeshed('area meshed at the original position');
+        await p.evaluate(([x,y,z])=>window.__game.setBlock(x+3,y+3,z,window.__game.blockState('stone_slab#1')),[x,y,z]);
         const saved = await p.evaluate(() => {
           window.__game.selectSlot(4);
           window.__game.setHotbarSlot(0, 13); // glowstone
@@ -224,6 +225,8 @@ const CHECKS = [
         await p.reload();
         await waitForCondition(p, 'world ready after reload', () => window.__game?.ready === true);
         const after = await p.evaluate(() => window.__game.state());
+        const savedSlab = await p.evaluate(([x,y,z])=>window.__game.getBlock(x+3,y+3,z)===window.__game.blockState('stone_slab#1'),[x,y,z]);
+        if(!savedSlab)throw Error('top slab did not survive IndexedDB reload');
         const brick = await p.evaluate(([x, y, z]) => window.__game.getBlock(x + 2, y + 3, z), [x, y, z]);
         // The chunks 40 blocks away load shortly after the player is placed.
         const deepAndHigh = await p
@@ -601,6 +604,47 @@ const CHECKS = [
     },
   },
   {
+    name: 'slabs place, merge and support the player at half height',
+    run: async page => {
+      const start = await page.evaluate(() => window.__game.state());
+      const [x,z] = [Math.floor(start.position[0]),Math.floor(start.position[2])], y=8350;
+      try {
+        await page.evaluate(([x,y,z])=>{const g=window.__game;g.setFlying(true);g.teleport(x+.5,y+8,z+.5);g.look(0,-Math.PI/2+.001);},[x,y,z]);
+        await page.waitForFunction(()=>window.__game.state().areaMeshed,null,{timeout:90000});
+        await page.evaluate(([x,y,z])=>{
+          const g=window.__game;for(let dx=-8;dx<=8;dx++)for(let dz=-8;dz<=8;dz++){
+            g.setBlock(x+dx,y,z+dz,10);for(let k=1;k<=14;k++)g.setBlock(x+dx,y+k,z+dz,0);
+          }
+          g.setHotbarSlot(0,g.blockState('stone_slab'));g.selectSlot(0);g.setTool({mode:'single'});
+        },[x,y,z]);
+        await page.waitForFunction(y=>window.__game.state().target?.[1]===y,y,{timeout:10000});
+        if(!await page.evaluate(()=>window.__game.placeTarget()))throw Error('bottom slab placement refused');
+        const bottom=await page.evaluate(()=>window.__game.blockState('stone_slab'));
+        if(await page.evaluate(([x,y,z])=>window.__game.getBlock(x,y+1,z),[x,y,z])!==bottom)throw Error('bottom slab missing');
+        await page.evaluate(([x,y,z])=>{const g=window.__game;g.teleport(x+.5,y+6,z+.5);g.setFlying(false);},[x,y,z]);
+        await page.waitForFunction(y=>{const s=window.__game.state();return s.onGround&&Math.abs(s.position[1]-(y+1.5))<.01;},y,{timeout:15000});
+        await page.evaluate(([x,y,z])=>{const g=window.__game;g.setFlying(true);g.teleport(x+.5,y+8,z+.5);},[x,y,z]);
+        await page.waitForFunction(y=>window.__game.state().target?.[1]===y+1,y,{timeout:10000});
+        if(!await page.evaluate(()=>window.__game.placeTarget()))throw Error('matching slab merge refused');
+        if(await page.evaluate(([x,y,z])=>window.__game.getBlock(x,y+1,z),[x,y,z])!==1)throw Error('halves did not merge to stone');
+        await page.evaluate(([x,y,z])=>{
+          const g=window.__game;g.setBlock(x+4,y+12,z,10);g.teleport(x+4.5,y+3,z+.5);g.look(0,Math.PI/2-.001);
+        },[x,y,z]);
+        await page.waitForFunction(y=>window.__game.state().target?.[1]===y+12,y,{timeout:10000});
+        if(!await page.evaluate(()=>window.__game.placeTarget()))throw Error('ceiling slab placement refused');
+        const upper=await page.evaluate(()=>window.__game.blockState('stone_slab#1'));
+        if(await page.evaluate(([x,y,z])=>window.__game.getBlock(x+4,y+11,z),[x,y,z])!==upper)throw Error('ceiling placement was not a top slab');
+        await page.screenshot({path:'screenshots/building-slabs.png'});
+      } finally {
+        await page.evaluate(([x,y,z,start])=>{
+          const g=window.__game;for(let dx=-8;dx<=8;dx++)for(let dz=-8;dz<=8;dz++)for(let k=0;k<=14;k++)g.setBlock(x+dx,y+k,z+dz,0);
+          g.setHotbarSlot(0,start.hotbar[0]);g.selectSlot(start.selectedSlot);g.teleport(...start.position);g.setFlying(start.flying);g.look(start.yaw,start.pitch);
+        },[x,y,z,start]);
+        await page.waitForFunction(()=>window.__game.state().areaMeshed,null,{timeout:90000});
+      }
+    },
+  },
+  {
     name: 'volume tools add a box, and undo removes it',
     run: async (page) => {
       const waitMeshed = () => page.waitForFunction(() => window.__game.state().areaMeshed, null, { timeout: 60_000 });
@@ -645,6 +689,14 @@ const CHECKS = [
       await page.waitForFunction(() => !window.__game.editsBusy, null, { timeout: 10_000 });
       const left = await countBrick();
       if (left !== 0) throw new Error(`undo should leave no bricks, found ${left}`);
+
+      await page.keyboard.press('Control+y');
+      await page.waitForFunction(([x,z,y])=>window.__game.getBlock(x,y+1,z)===12,[x,z,floorY],{timeout:10000});
+      await page.waitForFunction(() => !window.__game.editsBusy, null, { timeout: 10000 });
+      if (await countBrick() !== 27) throw Error('redo did not restore all 27 bricks');
+      if (!(await page.evaluate(() => window.__game.undoEdit()))) throw Error('second undo returned false');
+      await page.waitForFunction(() => !window.__game.editsBusy, null, { timeout: 10000 });
+      if (await countBrick() !== 0) throw Error('second undo did not clear the redone box');
 
       await page.evaluate(([x, z, y]) => {
         for (let i = -3; i <= 3; i++) for (let j = -3; j <= 3; j++) window.__game.setBlock(x + i, y, z + j, 0);

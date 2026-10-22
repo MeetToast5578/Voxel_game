@@ -635,3 +635,7 @@ export function terrainTransition(viewBlocks: number): { start: number; end: num
   const start = end * TERRAIN_TRANSITION_START_RATIO;
   return { start, end, proxyStart: Math.max(0, start - CHUNK_SIZE) };
 }
+
+// Slabs occupy half of one 0.3 m voxel.
+export const SLAB_HEIGHT_M = 0.15;
+export const SLAB_HEIGHT = metersToBlocks(SLAB_HEIGHT_M);

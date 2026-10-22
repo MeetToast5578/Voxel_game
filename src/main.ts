@@ -63,3 +63,9 @@ async function main(root: HTMLElement): Promise<void> {
 }
 
 void main(container);
+
+// Production only: development/HMR must always use current source modules.
+if (import.meta.env.PROD && 'serviceWorker' in navigator) {
+  void navigator.serviceWorker.register(new URL('sw.js', document.baseURI), { scope: './' })
+    .catch(error => console.warn('Offline support could not be enabled.', error));
+}

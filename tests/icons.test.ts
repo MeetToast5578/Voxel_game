@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createAtlasCanvas } from '../src/render/atlas';
 import { drawBlockIcon, iconUrl, ICON_PIXELS } from '../src/ui/icons';
-import { BlockId, getBlockDef } from '../src/world/blocks';
+import { BlockId, getBlockDef, slabState } from '../src/world/blocks';
 import { ATLAS_SIZE, ATLAS_TILES, TILE_SIZE } from '../src/render/tiles';
 
 function canvasFixture() {
@@ -63,4 +63,15 @@ describe('CPU-backed icon readback (T-A2a)', () => {
     expect(image.data.length).toBe(ATLAS_SIZE * ATLAS_SIZE * 4);
     expect([x, y]).toEqual([0, 0]);
   });
+});
+
+it('draws bottom and top slab icons into opposite halves with empty space preserved', () => {
+  const { canvas, context } = canvasFixture();
+  canvas.width = canvas.height = ICON_PIXELS;
+  for (const top of [false, true]) {
+    drawBlockIcon(canvas, {} as HTMLCanvasElement, slabState(BlockId.STONE, top));
+    const args = context.drawImage.mock.lastCall!;
+    expect(args.slice(5)).toEqual([0, top ? 0 : ICON_PIXELS / 2, ICON_PIXELS, ICON_PIXELS / 2]);
+    expect(context.imageSmoothingEnabled).toBe(false);
+  }
 });

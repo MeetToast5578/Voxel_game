@@ -15,6 +15,16 @@ The owner asked for three things:
 - Native Tab/Enter/Space activation and the shared visible focus ring are retained. Five game-lifecycle regressions cover open/close state. The full browser suite passes all 25 checks, including pointer-free start/pause HUD clicks, keyboard focus/activation and return-to-menu behaviour. Owner playtest remains open.
 - This batch does not implement slabs or the remaining GUI pass.
 
+## Spec 52 implementation — 2026-10-22
+
+Slabs and their items are now implemented for every solid cube material; fluids/plants are
+not slab materials. Partial-height collision/rays, merging, body exclusion, save roundtrips,
+held meshes/icons and worker browser checks are covered. The documented conservative
+lighting/culling shortcut is retained. Native inventory activation, modal focus and short-window
+scrolling are repaired. See [spec 52](../specs/52-building-interface-platforms.md), tasks.md
+and HANDOFF.md for current verification. The original design below is historical context;
+physical owner acceptance remains open. No dependencies were added.
+
 ## Slabs
 
 - **Shape.** Add a `slab` shape next to `cube` and `cross` in the block definitions (`src/world/blocks.ts`, `BlockDef`). A slab is a state variant of its material, with a `bottom` or `top` half. The height, 0.15 m, goes in `src/config.ts` and converts to blocks with `metersToBlocks`.

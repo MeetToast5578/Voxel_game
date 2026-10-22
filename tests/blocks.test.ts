@@ -9,7 +9,7 @@ describe('blocks', () => {
     let next = 0;
     BLOCKS.forEach((b) => { expect(b.id).toBe(next); next += b.variants; });
     expect(next).toBe(BLOCK_STATE_COUNT);
-    expect(BLOCKS.length).toBe(Object.keys(BlockId).length);
+    expect(BLOCKS.filter(d => d.shape !== 'slab').length).toBe(Object.keys(BlockId).length);
   });
   it('air, water and see-through blocks', () => {
     expect(isSolid(BlockId.AIR)).toBe(false);
@@ -54,7 +54,7 @@ describe('block states', () => {
       expect(getBlockDef(state).key).toBe(name.toLowerCase());
       expect(blockVariant(state)).toBe(0);
     }
-    expect(BLOCK_STATE_COUNT).toBe(77); // surface features append after the original states
+    expect(BLOCKS.filter(d => d.shape !== 'slab').reduce((n, d) => n + d.variants, 0)).toBe(77); // slab types append after all existing states
   });
   it('ores are stone-like blocks: solid, opaque, breakable, with a painted tile', () => {
     for (const id of [BlockId.COAL_ORE, BlockId.IRON_ORE, BlockId.GOLD_ORE, BlockId.REDSTONE_ORE, BlockId.DIAMOND_ORE, BlockId.EMERALD_ORE, BlockId.LAPIS_ORE]) {
@@ -148,7 +148,7 @@ describe('physics rule fields (spec 25, slice 2)', () => {
     for (const def of BLOCKS) {
       expect(def.flows).toBe(['flowing_water', 'flowing_lava'].includes(def.key));
       // Leaves are solid but hold nothing up (spec 25, slice 5): a canopy is not a support.
-      expect(def.supports).toBe(def.key === 'leaves' ? false : def.solid);
+      expect(def.supports).toBe(def.key === 'leaves' || def.slabMaterial === BlockId.LEAVES ? false : def.solid);
       if (def.key !== 'sand' && def.key !== 'gravel') expect(def.falls).toBe(false);
     }
   });

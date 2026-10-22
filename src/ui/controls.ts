@@ -31,7 +31,8 @@ export const CONTROL_SECTIONS: readonly { title: string; rows: readonly (readonl
       ['G', 'Box and sphere: solid or shell'],
       ['C', 'Plane and flatten: square or disc'],
       ['X or Esc', 'Cancel a wall, floor or roof in progress'],
-      ['Ctrl+Z', 'Undo the last volume action'],
+      ['Ctrl/Cmd+Z', 'Undo the last volume action'],
+      ['Ctrl/Cmd+Y or Shift+Z', 'Redo the last undone volume action'],
     ],
   },
   {
