@@ -20,14 +20,15 @@ export class BlockHighlight {
   }
 
   /** Shows the outline around block (x, y, z), or hides it when target is null. */
-  update(target: { x: number; y: number; z: number } | null): void {
+  update(target: { x: number; y: number; z: number } | null, bounds?: readonly [number, number] | null): void {
     this.area.visible = false;
     if (!target) {
       this.lines.visible = false;
       return;
     }
     this.lines.visible = true;
-    this.lines.position.set(target.x + 0.5, target.y + 0.5, target.z + 0.5);
+    this.lines.scale.y = bounds ? bounds[1] - bounds[0] : 1;
+    this.lines.position.set(target.x + 0.5, target.y + (bounds ? (bounds[0] + bounds[1]) / 2 : 0.5), target.z + 0.5);
   }
 
   /** Shows the outline around a box of blocks (inclusive bounds), or hides it when box is null. */
@@ -67,13 +68,14 @@ export class BreakOverlay {
   }
 
   /** Shows crack stage 0..9 on block cell, or hides the overlay when there is no cell or the stage is -1. */
-  update(cell: { x: number; y: number; z: number } | null, stage: number): void {
+  update(cell: { x: number; y: number; z: number } | null, stage: number, bounds?: readonly [number, number] | null): void {
     if (!cell || stage < 0) {
       this.mesh.visible = false;
       return;
     }
     this.mesh.geometry = crackGeometry(stage, OVERLAY_SIZE);
-    this.mesh.position.set(cell.x + 0.5, cell.y + 0.5, cell.z + 0.5);
+    this.mesh.scale.y = bounds ? bounds[1] - bounds[0] : 1;
+    this.mesh.position.set(cell.x + 0.5, cell.y + (bounds ? (bounds[0] + bounds[1]) / 2 : 0.5), cell.z + 0.5);
     this.mesh.visible = true;
   }
 }

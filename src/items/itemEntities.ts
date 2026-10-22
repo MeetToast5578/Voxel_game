@@ -2,7 +2,7 @@ import {
   GRAVITY, ITEM_FRICTION, ITEM_LIFETIME_S, ITEM_PICKUP_BELOW_M, ITEM_PICKUP_DELAY_S, ITEM_PICKUP_RADIUS_M,
   ITEM_POP_SPEED_M_S, ITEM_SIZE, ITEM_SPREAD_M_S, MAX_ITEMS, TERMINAL_VELOCITY, metersToBlocks,
 } from '../config';
-import { type BodyShape, moveAndCollide, type SolidFn } from '../player/physics';
+import { type BodyShape, moveAndCollide, type CollisionFn } from '../player/physics';
 
 /** A stack of block states lying on the ground. (x, z) is its centre and y its bottom, in blocks. */
 export interface ItemEntity {
@@ -66,7 +66,7 @@ export class ItemEntities {
   }
 
   /** Moves every item by dt seconds under gravity and friction, and removes the ones past their lifetime. */
-  step(dt: number, isSolid: SolidFn): void {
+  step(dt: number, isSolid: CollisionFn): void {
     for (let i = this.items.length - 1; i >= 0; i--) {
       const item = this.items[i]!;
       item.age += dt;

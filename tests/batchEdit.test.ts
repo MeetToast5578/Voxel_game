@@ -100,3 +100,18 @@ describe('ChunkManager.onBlocksChanged', () => {
     expect(new Set(sink.order).size).toBe(sink.order.length);
   });
 });
+
+describe('tick-driven mesh invalidation', () => {
+  it('remeshes falling blocks and keeps save dirtiness independent', () => {
+    const { world, manager, sink } = setup();
+    world.setBlock(8, 4, 8, BlockId.SAND);
+    world.takeBlockChanges(); // Isolate the fall's changes from fixture construction.
+    world.scheduleTick(8, 4, 8, world.currentTick + 1, 'fall');
+    manager.tick();
+    expect(world.getBlock(8, 3, 8)).toBe(BlockId.SAND);
+    manager.update(8, 8, 8, Infinity, Infinity);
+    expect(sink.order).toContain('0,0,0');
+    expect(world.takeDirtyEdits()).toContain('0,0,0');
+    expect(world.takeBlockChanges().chunks).toHaveLength(0);
+  });
+});

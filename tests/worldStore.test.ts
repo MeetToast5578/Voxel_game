@@ -68,7 +68,7 @@ describe('WorldSaver', () => {
     expect(world.takeDirtyEdits()).toEqual(['0,0,0']); // exactly one chunk is dirty
     world.restoreDirtyEdits(['0,0,0']);
     const writes: string[][] = [];
-    const spy: WorldStore = { ...store, load: () => store.load(), clear: () => store.clear(), write: (m, c) => (writes.push(c.map((r) => r.key)), store.write(m, c)) };
+    const spy: WorldStore = { ...store, load: () => store.load(), clear: () => store.clear(), replace: (m,c) => store.replace(m,c), write: (m, c) => (writes.push(c.map((r) => r.key)), store.write(m, c)) };
     expect(await new WorldSaver(spy, world, () => meta(1)).save()).toBe(true);
     expect(writes).toEqual([['0,0,0']]);
   });
@@ -90,6 +90,7 @@ describe('WorldSaver', () => {
     let maxActive = 0;
     let writes = 0;
     const slow: WorldStore = {
+      replace: (m,c) => store.replace(m,c),
       load: () => store.load(),
       clear: () => store.clear(),
       write: async (m, c) => {
@@ -107,4 +108,15 @@ describe('WorldSaver', () => {
     expect(maxActive).toBe(1);
     expect(writes).toBe(2);
   });
+});
+
+it('drains active and coalesced writes before a replacement, without scheduling another save',async()=>{
+  const store=new MemoryWorldStore();let active=0;
+  const slow:WorldStore={load:()=>store.load(),clear:()=>store.clear(),replace:(m,c)=>store.replace(m,c),write:async(m,c)=>{
+    active++;await new Promise(resolve=>setTimeout(resolve,5));const ok=await store.write(m,c);active--;return ok;
+  }};
+  const saver=new WorldSaver(slow,editableWorld(),()=>meta(1));
+  void saver.save();void saver.save();await saver.drain();expect(active).toBe(0);
+  expect(await store.replace(metaRecord(meta(99)),[])).toBe(true);
+  await new Promise(resolve=>setTimeout(resolve,10));expect(readSave((await store.load()).meta,[])!.meta.seed).toBe(99);
 });

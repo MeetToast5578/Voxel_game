@@ -214,6 +214,7 @@ const CHECKS = [
           window.__game.setFlying(flying);
         }, [...before.position, before.flying]);
         await waitMeshed('area meshed at the original position');
+        await p.evaluate(([x,y,z])=>window.__game.setBlock(x+3,y+3,z,window.__game.blockState('stone_slab#1')),[x,y,z]);
         const saved = await p.evaluate(() => {
           window.__game.selectSlot(4);
           window.__game.setHotbarSlot(0, 13); // glowstone
@@ -224,6 +225,8 @@ const CHECKS = [
         await p.reload();
         await waitForCondition(p, 'world ready after reload', () => window.__game?.ready === true);
         const after = await p.evaluate(() => window.__game.state());
+        const savedSlab = await p.evaluate(([x,y,z])=>window.__game.getBlock(x+3,y+3,z)===window.__game.blockState('stone_slab#1'),[x,y,z]);
+        if(!savedSlab)throw Error('top slab did not survive IndexedDB reload');
         const brick = await p.evaluate(([x, y, z]) => window.__game.getBlock(x + 2, y + 3, z), [x, y, z]);
         // The chunks 40 blocks away load shortly after the player is placed.
         const deepAndHigh = await p
@@ -245,6 +248,35 @@ const CHECKS = [
         if (moved > 1) throw new Error(`player position not restored: ${before.position} -> ${after.position}`);
       });
     },
+  },
+  {
+    name: 'pending falling-block ticks survive a saved-world reload',
+    run: async page => withPrimaryIdle(page, async () => {
+      const context=await page.context().browser().newContext({viewport:{width:1280,height:720}});
+      try {
+        const p=await context.newPage(); watchPage(p); await configureAuxiliaryPage(p);
+        await p.goto(new URL('/?autostart=1',page.url()).href);
+        await waitForCondition(p,'tick persistence world ready',()=>window.__game?.ready===true);
+        await p.evaluate(()=>{window.__game.setFlying(true);window.__game.teleport(8.5,8394,8.5);});
+        await waitForCondition(p,'tick persistence fixture meshed',()=>window.__game.state().areaMeshed,90000);
+        await p.evaluate(async()=>{
+          const g=window.__game;g.setIdle(true);
+          for(let x=4;x<=12;x++)for(let z=4;z<=12;z++)g.setBlock(x,8390,z,10);
+          if(!g.setBlock(10,8396,10,4))throw Error('sand fixture was not loaded');
+          if(!await g.save())throw Error('pending tick save failed');
+        });
+        const pending=await p.evaluate(()=>new Promise((resolve,reject)=>{
+          const open=indexedDB.open('voxel-game');open.onerror=()=>reject(Error('cannot read saved ticks'));
+          open.onsuccess=()=>{const db=open.result,tx=db.transaction('meta','readonly'),read=tx.objectStore('meta').get('meta');
+            read.onsuccess=()=>resolve(read.result.scheduledTicks);tx.oncomplete=()=>db.close();};
+        }));
+        if(!pending.some(t=>t.x===10&&t.y===8396&&t.z===10&&t.reason==='fall'&&t.delay===2))
+          throw Error('save omitted the sand tick or its remaining two-tick delay');
+        await p.reload();await waitForCondition(p,'tick persistence reloaded',()=>window.__game?.ready===true);
+        await waitForCondition(p,'restored sand lands',()=>window.__game.getBlock(10,8391,10)===4,30000);
+        if(await p.evaluate(()=>window.__game.getBlock(10,8396,10))!==0)throw Error('restored sand duplicated');
+      } finally {await context.close();await page.bringToFront();}
+    }),
   },
   {
     name: 'swims in water and sees the underwater fog',
@@ -572,6 +604,84 @@ const CHECKS = [
     },
   },
   {
+    name: 'slabs place, merge and support the player at half height',
+    run: async page => {
+      const start = await page.evaluate(() => window.__game.state());
+      const [x,z] = [Math.floor(start.position[0]),Math.floor(start.position[2])], y=8350;
+      try {
+        await page.evaluate(([x,y,z])=>{const g=window.__game;g.setFlying(true);g.teleport(x+.5,y+8,z+.5);g.look(0,-Math.PI/2+.001);},[x,y,z]);
+        await page.waitForFunction(()=>window.__game.state().areaMeshed,null,{timeout:90000});
+        await page.evaluate(([x,y,z])=>{
+          const g=window.__game;for(let dx=-8;dx<=8;dx++)for(let dz=-8;dz<=8;dz++){
+            g.setBlock(x+dx,y,z+dz,10);for(let k=1;k<=14;k++)g.setBlock(x+dx,y+k,z+dz,0);
+          }
+          g.setHotbarSlot(0,g.blockState('stone_slab'));g.selectSlot(0);g.setTool({mode:'single'});
+        },[x,y,z]);
+        await page.waitForFunction(y=>window.__game.state().target?.[1]===y,y,{timeout:10000});
+        if(!await page.evaluate(()=>window.__game.placeTarget()))throw Error('bottom slab placement refused');
+        const bottom=await page.evaluate(()=>window.__game.blockState('stone_slab'));
+        if(await page.evaluate(([x,y,z])=>window.__game.getBlock(x,y+1,z),[x,y,z])!==bottom)throw Error('bottom slab missing');
+        await page.evaluate(([x,y,z])=>{const g=window.__game;g.teleport(x+.5,y+6,z+.5);g.setFlying(false);},[x,y,z]);
+        await page.waitForFunction(y=>{const s=window.__game.state();return s.onGround&&Math.abs(s.position[1]-(y+1.5))<.01;},y,{timeout:15000});
+        await page.evaluate(([x,y,z])=>{const g=window.__game;g.setFlying(true);g.teleport(x+.5,y+8,z+.5);},[x,y,z]);
+        await page.waitForFunction(y=>window.__game.state().target?.[1]===y+1,y,{timeout:10000});
+        if(!await page.evaluate(()=>window.__game.placeTarget()))throw Error('matching slab merge refused');
+        if(await page.evaluate(([x,y,z])=>window.__game.getBlock(x,y+1,z),[x,y,z])!==1)throw Error('halves did not merge to stone');
+        await page.evaluate(([x,y,z])=>{
+          const g=window.__game;g.setBlock(x+4,y+12,z,10);g.teleport(x+4.5,y+3,z+.5);g.look(0,Math.PI/2-.001);
+        },[x,y,z]);
+        await page.waitForFunction(y=>window.__game.state().target?.[1]===y+12,y,{timeout:10000});
+        if(!await page.evaluate(()=>window.__game.placeTarget()))throw Error('ceiling slab placement refused');
+        const upper=await page.evaluate(()=>window.__game.blockState('stone_slab#1'));
+        if(await page.evaluate(([x,y,z])=>window.__game.getBlock(x+4,y+11,z),[x,y,z])!==upper)throw Error('ceiling placement was not a top slab');
+        await page.screenshot({path:'screenshots/building-slabs.png'});
+      } finally {
+        await page.evaluate(([x,y,z,start])=>{
+          const g=window.__game;for(let dx=-8;dx<=8;dx++)for(let dz=-8;dz<=8;dz++)for(let k=0;k<=14;k++)g.setBlock(x+dx,y+k,z+dz,0);
+          g.setHotbarSlot(0,start.hotbar[0]);g.selectSlot(start.selectedSlot);g.teleport(...start.position);g.setFlying(start.flying);g.look(start.yaw,start.pitch);
+        },[x,y,z,start]);
+        await page.waitForFunction(()=>window.__game.state().areaMeshed,null,{timeout:90000});
+      }
+    },
+  },
+  {
+    name: 'copy and paste preserves slab states, existing blocks and undo',
+    run: async page => {
+      const start=await page.evaluate(()=>window.__game.state());
+      const x=Math.floor(start.position[0]),z=Math.floor(start.position[2]),y=8310;
+      const aim=async dx=>{
+        await page.evaluate(([x,y,z,dx])=>{const g=window.__game;g.setFlying(true);g.teleport(x+dx+.5,y+8,z+.5);g.look(0,-Math.PI/2+.001);},[x,y,z,dx]);
+      };
+      try {
+        await aim(0);await page.waitForFunction(()=>window.__game.state().areaMeshed,null,{timeout:90000});
+        await page.evaluate(([x,y,z])=>{const g=window.__game;
+          for(let dx=-8;dx<=8;dx++)for(let dz=-8;dz<=8;dz++){g.setBlock(x+dx,y,z+dz,10);for(let k=1;k<=4;k++)g.setBlock(x+dx,y+k,z+dz,0);}
+          g.setBlock(x,y+1,z,1);g.setBlock(x+1,y+1,z,g.blockState('stone_slab#1'));g.setBlock(x+2,y+1,z,12);g.setBlock(x+6,y+1,z,2);
+        },[x,y,z]);
+        await page.waitForFunction(([x,y])=>{const t=window.__game.state().target;return t?.[0]===x&&t?.[1]===y+1;},[x,y]);
+        await page.keyboard.press('Control+c');await page.getByText(/First corner set;/).waitFor();
+        await aim(2);await page.waitForFunction(([x,y])=>{const t=window.__game.state().target;return t?.[0]===x+2&&t?.[1]===y+1;},[x,y]);
+        await page.keyboard.press('Control+c');await page.getByText(/3 blocks copied/).waitFor();
+        await page.evaluate(([x,y,z])=>window.__game.setBlock(x+1,y+1,z,0),[x,y,z]);
+        await aim(4);await page.waitForFunction(([x,y])=>{const t=window.__game.state().target;return t?.[0]===x+4&&t?.[1]===y;},[x,y]);
+        await page.keyboard.press('Control+v');
+        await page.waitForFunction(([x,y,z])=>window.__game.getBlock(x+5,y+1,z)===window.__game.blockState('stone_slab#1'),[x,y,z]);
+        const blocks=await page.evaluate(([x,y,z])=>[4,6].map(dx=>window.__game.getBlock(x+dx,y+1,z)),[x,y,z]);
+        if(blocks[0]!==1||blocks[1]!==2)throw Error(`paste overwrote existing structure or lost snapshot: ${blocks}`);
+        await page.screenshot({path:'screenshots/building-copy-paste.png'});
+        if(!await page.evaluate(()=>window.__game.undoEdit()))throw Error('paste undo refused');
+        await page.waitForFunction(()=>!window.__game.editsBusy);
+        if(await page.evaluate(([x,y,z])=>window.__game.getBlock(x+5,y+1,z),[x,y,z])!==0)throw Error('undo left a pasted slab');
+      } finally {
+        await page.evaluate(([x,y,z,start])=>{const g=window.__game;
+          for(let dx=-8;dx<=8;dx++)for(let dz=-8;dz<=8;dz++)for(let k=0;k<=4;k++)g.setBlock(x+dx,y+k,z+dz,0);
+          g.teleport(...start.position);g.setFlying(start.flying);g.look(start.yaw,start.pitch);
+        },[x,y,z,start]);
+        await page.waitForFunction(()=>window.__game.state().areaMeshed,null,{timeout:90000});
+      }
+    },
+  },
+  {
     name: 'volume tools add a box, and undo removes it',
     run: async (page) => {
       const waitMeshed = () => page.waitForFunction(() => window.__game.state().areaMeshed, null, { timeout: 60_000 });
@@ -584,12 +694,19 @@ const CHECKS = [
       }, [x, z, floorY]);
       await waitMeshed();
       await page.evaluate(([x, z, y]) => {
-        for (let i = -3; i <= 3; i++) for (let j = -3; j <= 3; j++) window.__game.setBlock(x + i, y, z + j, 1); // stone floor
-        window.__game.selectSlot(8); // brick
+        for (let i = -3; i <= 3; i++) for (let j = -3; j <= 3; j++) {
+          for (let k = 1; k <= 6; k++) window.__game.setBlock(x + i, y + k, z + j, 0);
+          window.__game.setBlock(x + i, y, z + j, 10); // anchored floor
+        }
+        window.__game.setHotbarSlot(8, 12); // explicit brick stack; pick-block may have replaced it
+        window.__game.selectSlot(8);
         window.__game.setTool({ mode: 'add', kind: 'box', size: 3, thickness: 0 });
         window.__game.look(0, -Math.PI / 2 + 0.01); // straight down at the floor
       }, [x, z, floorY]);
-      await page.waitForFunction(() => window.__game.state().target !== null, null, { timeout: 10_000 });
+      await page.waitForFunction(([x, y, z]) => {
+        const target = window.__game.state().target;
+        return target && target[0] === x && target[1] === y && target[2] === z;
+      }, [x, floorY, z], { timeout: 10_000 });
       await page.evaluate(() => window.__game.toolClick(true));
       await page.waitForFunction(() => !window.__game.editsBusy, null, { timeout: 10_000 });
       const countBrick = () =>
@@ -609,6 +726,14 @@ const CHECKS = [
       await page.waitForFunction(() => !window.__game.editsBusy, null, { timeout: 10_000 });
       const left = await countBrick();
       if (left !== 0) throw new Error(`undo should leave no bricks, found ${left}`);
+
+      await page.keyboard.press('Control+y');
+      await page.waitForFunction(([x,z,y])=>window.__game.getBlock(x,y+1,z)===12,[x,z,floorY],{timeout:10000});
+      await page.waitForFunction(() => !window.__game.editsBusy, null, { timeout: 10000 });
+      if (await countBrick() !== 27) throw Error('redo did not restore all 27 bricks');
+      if (!(await page.evaluate(() => window.__game.undoEdit()))) throw Error('second undo returned false');
+      await page.waitForFunction(() => !window.__game.editsBusy, null, { timeout: 10000 });
+      if (await countBrick() !== 0) throw Error('second undo did not clear the redone box');
 
       await page.evaluate(([x, z, y]) => {
         for (let i = -3; i <= 3; i++) for (let j = -3; j <= 3; j++) window.__game.setBlock(x + i, y, z + j, 0);
@@ -633,9 +758,9 @@ const CHECKS = [
         window.__game.teleport(x + 0.5, y + 10, z + 0.5);
       }, [x, z, y]);
       await waitMeshed();
-      // A stone floor, with sand above one cell, water at another, and a stack of two stone blocks on a third.
+      // An anchored floor wider than the full fluid spread, with sand, water and a breakable stack.
       await page.evaluate(([x, z, y]) => {
-        for (let i = -4; i <= 4; i++) for (let j = -4; j <= 4; j++) window.__game.setBlock(x + i, y, z + j, 1);
+        for (let i = -10; i <= 10; i++) for (let j = -10; j <= 10; j++) window.__game.setBlock(x + i, y, z + j, 10);
         window.__game.setBlock(x + 1, y + 5, z + 1, 4); // sand, in the air
         window.__game.setBlock(x - 2, y + 1, z - 2, 5); // a water source on the floor
         window.__game.setBlock(x + 2, y + 1, z - 2, 1); // stack: bottom block
@@ -651,7 +776,7 @@ const CHECKS = [
       await page.waitForFunction(() => window.__game.state().looseBodies === 0, null, { timeout: 30_000 });
       await page.evaluate(([x, z, y, p]) => {
         // Wider than the water's 7-cell spread from its source, so nothing is left flowing when the next check starts.
-        for (let i = -9; i <= 9; i++) for (let j = -9; j <= 9; j++) for (let k = 0; k <= 12; k++) window.__game.setBlock(x + i, y + k, z + j, 0);
+        for (let i = -10; i <= 10; i++) for (let j = -10; j <= 10; j++) for (let k = 0; k <= 12; k++) window.__game.setBlock(x + i, y + k, z + j, 0);
         window.__game.setTool({ mode: 'single' });
         window.__game.setFlying(false);
         window.__game.teleport(p[0], p[1], p[2]);
@@ -675,7 +800,7 @@ const CHECKS = [
         // The previous check also used this platform. Clear the air above the floor first: a faster frame rate lets
         // its water spread beyond that check's cleanup radius, and flowing water left there would re-flood these cells.
         for (let i = -6; i <= 6; i++) for (let j = -6; j <= 6; j++) for (let k = 1; k <= 8; k++) window.__game.setBlock(x + i, y + k, z + j, 0);
-        for (let i = -6; i <= 6; i++) for (let j = -6; j <= 6; j++) window.__game.setBlock(x + i, y, z + j, 1);
+        for (let i = -10; i <= 10; i++) for (let j = -10; j <= 10; j++) window.__game.setBlock(x + i, y, z + j, 10);
         window.__game.setBlock(x - 2, y + 1, z - 2, 5); // a water source on the floor
         // Check synchronously with placement, before the game can advance any ticks between browser RPCs.
         if (window.__game.getBlock(x - 3, y + 1, z - 2) !== 0 || window.__game.getBlock(x - 4, y + 1, z - 2) !== 0)
@@ -688,7 +813,7 @@ const CHECKS = [
       await page.waitForFunction((c) => window.__game.getBlock(...c) >= 36 && window.__game.getBlock(...c) < 52, distOne, { timeout: 5_000 });
       await page.waitForFunction((c) => window.__game.getBlock(...c) >= 36 && window.__game.getBlock(...c) < 52, distTwo, { timeout: 5_000 });
       await page.evaluate(([x, z, y, p]) => {
-        for (let i = -6; i <= 6; i++) for (let j = -6; j <= 6; j++) for (let k = 0; k <= 12; k++) window.__game.setBlock(x + i, y + k, z + j, 0);
+        for (let i = -10; i <= 10; i++) for (let j = -10; j <= 10; j++) for (let k = 0; k <= 12; k++) window.__game.setBlock(x + i, y + k, z + j, 0);
         window.__game.setFlying(false);
         window.__game.teleport(p[0], p[1], p[2]);
       }, [x, z, y, start.position]);
@@ -837,7 +962,7 @@ const CHECKS = [
         await page.waitForFunction(() => window.__game.state().areaMeshed, null, { timeout: 60_000 });
         await page.evaluate(([x, y, z]) => {
           const g = window.__game;
-          for (let dx = -5; dx <= 5; dx++) for (let dz = -5; dz <= 5; dz++) {
+          for (let dx = -12; dx <= 12; dx++) for (let dz = -12; dz <= 12; dz++) {
             for (let dy = 1; dy <= 7; dy++) g.setBlock(x + dx, y + dy, z + dz, 0);
             g.setBlock(x + dx, y, z + dz, 10);
           }
@@ -865,10 +990,12 @@ const CHECKS = [
         const after = await page.evaluate(() => window.__game.state());
         if (after.burning || after.health !== health) throw new Error(`water did not stop fire damage: ${health} -> ${after.health}`);
       } finally {
-        await page.evaluate(([x, y, z, flying, mode, health]) => {
-          const g = window.__game; g.setGameMode(mode); g.setHealth(health);
-          g.teleport(x, y, z); g.setFlying(flying);
-        }, [...start.position, start.flying, start.gameMode, start.health]);
+        await page.evaluate(([x, y, z, px, py, pz, flying, mode, health]) => {
+          const g = window.__game;
+          for(let dx=-12;dx<=12;dx++)for(let dz=-12;dz<=12;dz++)for(let dy=7;dy>=0;dy--)g.setBlock(x+dx,y+dy,z+dz,0);
+          g.setGameMode(mode); g.setHealth(health);
+          g.teleport(px, py, pz); g.setFlying(flying);
+        }, [x,y,z,...start.position, start.flying, start.gameMode, start.health]);
         await page.waitForFunction(() => window.__game.state().areaMeshed, null, { timeout: 60_000 });
       }
     },
@@ -880,17 +1007,30 @@ const CHECKS = [
       const [x, y, z] = start.position;
       try {
         await page.evaluate(([x, y, z]) => {
-          window.__game.setFlying(true); window.__game.teleport(x + 128, y + 50, z);
+          window.__game.setFlying(true); window.__game.teleport(x + 128, Math.max(245, y + 50), z);
           window.__game.look(-0.8, -0.35);
         }, [x, y, z]);
         await page.waitForFunction(() => {
           const s = window.__game.state();
           return s.areaMeshed && s.horizon.ready && s.horizon.visible && s.horizon.vertices > 0 &&
             s.horizon.centerX === Math.floor(s.position[0] / 64) * 64;
-        }, null, { timeout: 90_000 });
+        }, null, { timeout: 90_000 }).catch(async error => {
+          const s=await page.evaluate(()=>window.__game.state());
+          throw Error(`initial horizon readiness: ${JSON.stringify({position:s.position,horizon:s.horizon,pendingGen:s.pendingGen,pendingMesh:s.pendingMesh,jobs:s.jobsInFlight})}; ${error.message}`);
+        });
         const h = await page.evaluate(() => window.__game.state().horizon);
         if (h.radiusM < 2000) throw new Error(`horizon ends too near: ${JSON.stringify(h)}`);
         await page.screenshot({ path: 'screenshots/horizon.png' });
+        // Reproduce the elevated view that exposed missing ground and the mismatching proxy.
+        await page.evaluate(() => {window.__game.setFlying(true);window.__game.teleport(101.5,245,-26.5);window.__game.look(-0.8,-0.35);});
+        await page.waitForFunction(() => {
+          const s=window.__game.state();
+          return s.areaMeshed && s.pendingGen===0 && s.pendingMesh===0 && s.jobsInFlight===0 && s.horizon.ready && s.horizon.centerX===64 && s.horizon.centerZ===-64;
+        },null,{timeout:90000}).catch(async error => {
+          const s=await page.evaluate(()=>window.__game.state());
+          throw Error(`elevated terrain readiness: ${JSON.stringify({position:s.position,horizon:s.horizon,pendingGen:s.pendingGen,pendingMesh:s.pendingMesh,jobs:s.jobsInFlight})}; ${error.message}`);
+        });
+        await page.screenshot({path:'screenshots/terrain-regression.png'});
       } finally {
         await page.evaluate(([x, y, z, flying, yaw, pitch]) => {
           window.__game.teleport(x, y, z); window.__game.setFlying(flying); window.__game.look(yaw, pitch);
@@ -905,10 +1045,10 @@ const CHECKS = [
       const start = await page.evaluate(() => window.__game.state());
       try {
         await page.evaluate(() => {
-          window.__game.setFlying(true); window.__game.teleport(-384.5, 5, 16.5); window.__game.look(0.6, -0.4);
+          window.__game.setFlying(true); window.__game.teleport(-396.5, 5, 6.5); window.__game.look(0.6, -0.4);
         });
         await page.waitForFunction(() => window.__game.state().areaMeshed, null, { timeout: 60_000 });
-        const reed = await page.evaluate(() => window.__game.getBlock(-386, 1, 14));
+        const reed = await page.evaluate(() => window.__game.getBlock(-398, 1, 4));
         if (reed !== 72) throw new Error(`expected seed-1 bank reed, got ${reed}`);
         await page.screenshot({ path: 'screenshots/shoreline-reeds.png' });
       } finally {
@@ -925,8 +1065,8 @@ const CHECKS = [
       const start = await page.evaluate(() => window.__game.state());
       try {
         for (const [name, x, y, z, state] of [
-          ['boulder', 3129, 152, -2168, 14], ['moss', 3517, 161, -2163, 76],
-          ['fallen-log', 3873, 186, -1690, 73], ['lily-pad', 4240, 223, -3020, 75],
+          ['boulder', 3813, 202, -1759, 14], ['moss', 3518, 273, -2162, 76],
+          ['fallen-log', 3478, 268, -2228, 73], ['lily-pad', 4254, 223, -3024, 75],
         ]) {
           await page.evaluate(([x, y, z]) => {
             window.__game.setFlying(true); window.__game.teleport(x + 3.5, y + 4, z + 5.5); window.__game.look(0.55, -0.55);

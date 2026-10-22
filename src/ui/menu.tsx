@@ -9,6 +9,8 @@ export interface MenuCallbacks {
   onPlay(): void;
   onSettingsChange(settings: Settings): void;
   onNewWorld(): void;
+  onExportWorld?(): void;
+  onImportWorld?(file: File): void;
   /** The Inventory button in the pause menu. */
   onInventory(): void;
   /** The Creative / Survival picker. Persisted with the world. */
@@ -19,6 +21,7 @@ export type MenuMode = 'start' | 'paused';
 
 interface ViewProps {
   mode: MenuMode;
+  busy: boolean;
   settings: Settings;
   notes: string[];
   callbacks: MenuCallbacks;
@@ -86,7 +89,7 @@ function Slider(p: {
   );
 }
 
-function MenuView({ mode, settings, notes, callbacks, onSetting, gameMode }: ViewProps) {
+function MenuView({ mode, busy, settings, notes, callbacks, onSetting, gameMode }: ViewProps) {
   return (
     <div class="menu-panel">
       <h1 class="menu-title">{mode === 'start' ? 'Voxel Game' : 'Paused'}</h1>
@@ -95,6 +98,7 @@ function MenuView({ mode, settings, notes, callbacks, onSetting, gameMode }: Vie
           {note}
         </p>
       ))}
+      <fieldset class="menu-content" disabled={busy}>
       <div class="menu-actions">
         <button type="button" class="menu-button primary" onClick={callbacks.onPlay}>
           {mode === 'start' ? 'Play' : 'Resume'}
@@ -137,6 +141,17 @@ function MenuView({ mode, settings, notes, callbacks, onSetting, gameMode }: Vie
           />
         </div>
       </Section>
+      <Section title="World files">
+        <div class="menu-actions world-file-actions">
+          <button type="button" class="menu-button" onClick={callbacks.onExportWorld} disabled={!callbacks.onExportWorld}>Export world</button>
+          <label class="menu-button">
+            Import world
+            <input type="file" accept=".json,application/json" aria-label="Import world backup" disabled={!callbacks.onImportWorld}
+              onChange={event=>{const file=event.currentTarget.files?.[0];event.currentTarget.value='';if(file)callbacks.onImportWorld?.(file);}} />
+          </label>
+        </div>
+        {!callbacks.onImportWorld && <p class="menu-note">Import is available in your saved world.</p>}
+      </Section>
       <Section title="Controls">
         {CONTROL_SECTIONS.map((section) => (
           <div class="controls-group" key={section.title}>
@@ -165,6 +180,7 @@ function MenuView({ mode, settings, notes, callbacks, onSetting, gameMode }: Vie
           New world
         </button>
       </div>
+      </fieldset>
     </div>
   );
 }
@@ -176,6 +192,7 @@ function MenuView({ mode, settings, notes, callbacks, onSetting, gameMode }: Vie
 export class Menu {
   private readonly root: HTMLDivElement;
   private mode: MenuMode = 'start';
+  private busy = false;
   private settings: Settings;
   private gameMode: string;
   private lockNote: string | null = null;
@@ -196,6 +213,8 @@ export class Menu {
     this.root.style.display = 'none';
     parent.append(this.root);
   }
+
+  setBusy(busy:boolean):void { this.busy=busy;this.draw(); }
 
   /** Keeps the picker in step when the mode changes somewhere other than the menu. */
   setGameMode(mode: string): void {
@@ -235,6 +254,7 @@ export class Menu {
     render(
       <MenuView
         mode={this.mode}
+        busy={this.busy}
         settings={this.settings}
         notes={notes}
         callbacks={this.callbacks}

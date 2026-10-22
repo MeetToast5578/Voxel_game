@@ -123,3 +123,22 @@ describe('depenetration', () => {
     expect(pos.y).toBeLessThan(2);
   });
 });
+
+describe('high-speed collision sweeps', () => {
+  it('cannot tunnel through a one-block floor at terminal speed', () => {
+    const pos = { x: .5, y: 5, z: .5 }, vel = { x: 0, y: -600, z: 0 };
+    expect(moveAndCollide(pos, vel, DT, shape, (_x, y) => y === 0).onGround).toBe(true);
+    expect(pos.y).toBeCloseTo(1, 3);
+    expect(vel.y).toBe(0);
+  });
+  it.each(['x', 'z'] as const)('cannot tunnel through thin walls along %s in either direction', axis => {
+    for (const sign of [-1, 1]) {
+      const pos = { x: .5, y: 10, z: .5 }, vel = { x: 0, y: 0, z: 0 };
+      vel[axis] = sign * 600;
+      const wall = sign > 0 ? 3 : -3;
+      moveAndCollide(pos, vel, DT, shape, (x, _y, z) => (axis === 'x' ? x : z) === wall);
+      expect(pos[axis]).toBeCloseTo(sign > 0 ? wall - shape.halfWidth : wall + 1 + shape.halfWidth, 3);
+      expect(vel[axis]).toBe(0);
+    }
+  });
+});

@@ -6,6 +6,7 @@
 export class Input {
   private readonly keysDown = new Set<string>();
   private readonly keysPressed = new Set<string>();
+  private readonly shortcuts = new Map<string, boolean>();
   private readonly buttonsDown = new Set<number>();
   private readonly buttonsClicked = new Set<number>();
   private mouseDx = 0;
@@ -76,7 +77,15 @@ export class Input {
 
   /** True once per physical key press (key repeat is ignored). */
   consumePressed(code: string): boolean {
+    this.shortcuts.delete(code);
     return this.keysPressed.delete(code);
+  }
+
+  /** Capture modifiers at keydown: a quick chord can be released before the next game step. */
+  consumeShortcut(code: string, shift = false): boolean {
+    if (!this.shortcuts.has(code) || this.shortcuts.get(code) !== shift) return false;
+    this.shortcuts.delete(code); this.keysPressed.delete(code);
+    return true;
   }
 
   isMouseDown(button: number): boolean {
@@ -105,7 +114,10 @@ export class Input {
 
   private readonly onKeyDown = (e: KeyboardEvent): void => {
     if (this.pointerLocked || e.code === 'F3') e.preventDefault();
-    if (!e.repeat) this.keysPressed.add(e.code);
+    if (!e.repeat) {
+      this.keysPressed.add(e.code);
+      if (e.ctrlKey || e.metaKey) this.shortcuts.set(e.code, e.shiftKey);
+    }
     this.keysDown.add(e.code);
   };
 
@@ -116,7 +128,8 @@ export class Input {
   private readonly onBlur = (): void => {
     // Without this, keys held while the window loses focus stay "down" forever.
     this.keysDown.clear();
-    this.buttonsDown.clear();
+    this.keysPressed.clear(); this.shortcuts.clear();
+    this.buttonsDown.clear(); this.buttonsClicked.clear();
   };
 
   private readonly onMouseMove = (e: MouseEvent): void => {
@@ -148,6 +161,7 @@ export class Input {
 
   private readonly onPointerLockChange = (): void => {
     const locked = this.pointerLocked;
+    this.shortcuts.clear(); this.keysPressed.clear();
     if (!locked) {
       this.keysDown.clear();
       this.keysPressed.clear();

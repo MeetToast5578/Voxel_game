@@ -1,5 +1,5 @@
 import { GRAVITY, TERMINAL_VELOCITY, ENTITY_FRICTION } from '../config';
-import { moveAndCollide, type BodyShape, type SolidFn, type Vec3 } from '../player/physics';
+import { moveAndCollide, type BodyShape, type CollisionFn, type Vec3 } from '../player/physics';
 
 /** A moving object in the world: players, creatures, dropped items, etc. */
 export interface Entity {
@@ -47,7 +47,7 @@ export class EntitySystem {
   }
 
   /** Step all entities by dt seconds: apply gravity, collide with blocks, friction. */
-  step(dt: number, isSolid: SolidFn): void {
+  step(dt: number, isSolid: CollisionFn): void {
     for (const entity of this.entities.values()) {
       const shape: BodyShape = { halfWidth: entity.halfWidth, height: entity.height };
       const pos: Vec3 = { x: entity.x, y: entity.y, z: entity.z };

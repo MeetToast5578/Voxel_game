@@ -873,3 +873,302 @@ Replaced the stale "Current local batch" section with an archived specs 46–47 
 so the next session does not mistake old uncommitted status for the current branch state.
 Documentation-only change; git diff --check passed. Prior functional acceptance remains
 613 tests / 74 files, both worker fixtures, GPU checks and all 31 gameplay smoke checks.
+
+2026-10-21 — Owner-requested urgent terrain/physics audit
+Prioritized actual update/render/collision failures under the owner's session budget.
+Confirmed 20 Hz block clock already exists alongside 60 Hz body integration.
+Found and fixed:
+- Scheduled/random handlers called World.setBlock directly without notifying ChunkManager;
+  world state/collision changed while old terrain meshes remained visible. Added separate
+  coalesced mesh-change tracking and tick-end batch invalidation, preserving save dirty flags.
+- World.tickStep gave every chunk the entire 2 ms budget. It now shares one deadline,
+  skips empty queues and rotates through a stable coordinate order; random passes rotate too.
+- Repeated notifications appended duplicate cell/reason ticks. Coalesce at earliest due time,
+  removing the identity before dispatch so the handler can schedule its next update.
+- Collision tested only the endpoint AABB; fast bodies could skip thin floors/walls entirely.
+  Sweep the complete axis volume and resolve against the first crossed solid.
+- Sand at an unloaded lower chunk lost its only update; fluid interfaces could lose work or
+  treat missing feed as air. Retry until adjacent chunks are available; falls wake nearby fluid.
+Added regression tests for these failures. Initial full check passed 621 tests / 74 files;
+final neighbour retry regression passed focused tick/flow suite (29 tests).
+An initial browser run was deliberately stopped after noticing its build predated the last
+flow change. Restarted using npm run smoke, which rebuilds first; only final run counts.
+Full final check and browser verification running; results follow below.
+Not claiming every bug fixed: T-G1 pending update serialization remains open, owner scene
+has not been reproduced, physical-browser/river seam/LOD acceptance still needs review.
+Updated HANDOFF and task priority override. Dependencies, block IDs and save schema unchanged.
+Final audit checkpoint — user requested immediate wrap-up at 4% session usage:
+- Full final check PASS: 622 tests / 74 files, typecheck and build.
+- Full rebuilt browser smoke PASS all 31 checks (physics, survival, flow delays, worker terrain).
+- Visual inspection found major LOD defects despite smoke passing. Partially corrected circular
+  fade at the voxel radius and filled snapped geometry hole; added centre-coverage regression.
+- After horizon change: 5 horizon tests PASS, typecheck/build PASS, focused distant-terrain
+  browser smoke PASS. Full suite not repeated after this small isolated horizon change.
+- Independently loaded Chromium at seed1 (101.5,245,-26.5), yaw-.8/pitch-.35 and waited until
+  pending generation/meshing/jobs were all zero. screenshots/terrain-audit.png STILL SHOWS
+  giant flat green LOD sheets/rectangular water strips and floating-looking tree silhouettes.
+  This is NOT resolved; inspect horizon approximation/integration first next session.
+- Existing terrain-at-spawn looked coherent. Pending tick serialization remains open.
+- Final logs: /tmp/voxel-bug-audit-check-final.log, smoke-final.log, horizon.log,
+  horizon-smoke.log and visual.log with the same voxel-bug-audit- prefix.
+- Updated handoff/task priorities with exact reproduction and honest remaining limitations.
+
+2026-10-21 — Continued owner-requested codebase bug audit
+Priorities: confirmed horizon defect, durable block updates, worker failure recovery.
+Inspected renderer/horizon/lighting, chunk generation/loading/meshing, tick rules/queues,
+world mutations, save codecs/stores/saver, input, movement, items, inventory and ecology.
+Findings/fixes in progress:
+- Horizon proxy was a transparent depth-writing surface rendered AFTER real opaque voxels;
+  approximate elevations hid real ground/trunks. Draw an opaque alpha-hashed proxy BEFORE
+  voxels with depth writes disabled, and sky before both. Added a GPU fixture that deliberately
+  puts proxy terrain ABOVE real ground and asserts real ground wins (old behavior fails).
+- Reduced ring resolution jumps from 4x to 2x; first step 8 blocks, far radius unchanged.
+- Pending ticks now snapshot active and dormant queues, preserve remaining simulation delay
+  and game tick in backward-compatible optional save metadata, pause on unload and restore
+  on load. Recovery scans no longer accelerate restored falls/flows.
+- Worker errors/rejected jobs now release slots and fall back to synchronous generation;
+  pool errors reject pending promises and future sends instead of leaving them unresolved.
+- Stable tick ordering now also breaks same-cell ties by reason.
+Initial codec tests caught changed parsed-meta shape (2 failures); updated canonical fixture
+with explicit empty scheduledTicks/gameTick defaults. Persistence + codec + worker focused
+suite now passes 20 tests. GPU suite with real occlusion regression passes.
+No dependencies or lockfile edits. Save version remains 3; old records without new fields load.
+Further confirmed issues and regression coverage:
+- Visual inspection after proxy material fix STILL showed floating tree silhouettes. Found
+  dense canopy lighting tops were incorrectly used as ground bounds: SURFACE_BAND=1
+  could omit real ground beneath a full-chunk canopy. Added TerrainGenerator.columnGroundMin,
+  transferred it explicitly in worker tops results, and used it to bound loader surface bands.
+  Covered both synchronous and worker metadata paths with elevated-camera canopy fixtures.
+- Repeated sorting of thousands of chunks could consume the entire random-tick budget before
+  visiting any cells (observed randomTickRan=0). Cache the stable order until chunks change.
+- Delayed leaf ticks unconditionally deleted leaves even after a replacement log restored
+  support. Recheck bounded current support; defer unknown/unloaded boundaries. Added regressions.
+- Structural collapse did not wake neighbouring fluids/falling blocks. Added those notifications.
+- Expanded worker tests to rejected tops, generation and mesh jobs, pool disposal, constructor
+  failure and asynchronous crash. Horizon failures now gracefully fall back to voxels as well.
+First canopy test run exposed a test-fixture class typo (Sink vs FakeSink), corrected; focused
+updates suite passes. Final full validation now runs on all fixes together.
+Final terrain root causes identified beyond the initial material correction:
+- The old horizon changed height model with camera distance (exact -> regional -> raw climate).
+  A fixed location could change height as the camera moved. Added a single-cell surface sampler
+  sharing the exact coast/density parameters used by generated columns; every ring now uses it.
+  Regressions compare near/far heights with real voxel ground/water and camera-independent samples.
+- Mesh hysteresis retained incomplete perimeter columns beyond the active mesh set. Remove
+  these orphan rendered sections while retaining generated chunk hysteresis; covered by a move test.
+- Enhanced the full browser horizon check to revisit seed1 (101.5,245,-26.5), yaw-.8/pitch-.35,
+  wait for all gen/mesh jobs and save screenshots/terrain-regression.png for direct inspection.
+- Full suite after these fixes: 640 tests / 76 files, typecheck and build PASS.
+Performance investigation: standard guard initially PASS 1.210/1.361 ms gen/mesh. Forest
+mesh guard failed at 3.175 ms (gen 1.945). Profiled 30 passes with Node CPU samples; colour
+sampling is measurable but both per-instance and shared vertex caches failed to improve
+wall time (3.218/3.552 ms), and palette precomputation did not help (3.288 ms). Reverted ALL
+those experiments; climateTint.ts and its tests match the prior committed implementation.
+A broad replacement error during one experiment was caught by its focused test and corrected
+before the experiment was reverted. No weakened budgets or changed benchmark fixtures.
+The forest geometry hash remained ffcc15b4cdaf6291cc3fdbea708a26e106143500d561304929d5aaa290e58293.
+Final worker/browser acceptance follows; forest performance remains a separately recorded issue.
+Acceptance on final functional implementation:
+- npm run check PASS: 640 tests / 76 files, typecheck, production build (2.37 s).
+- Standard worker guards PASS: generation 1.556 ms / mesh 1.692 ms.
+- Extra forest: generation PASS 2.081 ms; mesh FAIL 3.057 ms vs 3 ms. Remains open T-J14;
+  no mesher/tint/benchmark implementation changes retained, hashes unchanged.
+- Final GPU regression suite PASS, including deliberately raised proxy above real terrain.
+- Full browser acceptance running again after exact-surface/perimeter changes; prior 32 checks passed.
+Updated spec 50, task priority/status, spec index and README. Old checkpoints remain historical.
+Final browser/visual investigation:
+- Full exact-surface acceptance run passed the first 28 checks but timed out in the enhanced
+  elevated horizon readiness condition (90 s). Added state diagnostics to that wait.
+- Isolated distant-terrain rerun PASS, including elevated generation/mesh quiescence and
+  screenshots/terrain-regression.png. Direct inspection STILL shows broad untextured proxy
+  surfaces and partial-looking distant vegetation. T-D7 visual acceptance is explicitly
+  reopened; no claim that the owner's terrain complaint is fully resolved.
+- Re-running the complete suite with the new diagnostic to distinguish a readiness race
+  from an application stall. Prior all-32 pass predates the final exact-surface change.
+Readiness timeout diagnosed and fixture repair:
+- Diagnostic full run: elevated position and horizon centre/visibility correct, pendingGen=0,
+  but 297 dirty meshes and 16 jobs persisted. The preceding fluid fixtures were uncontained:
+  physics/water floors were narrower than the 7-cell spread, and the lava check never cleaned
+  its sources. This could leave high-altitude waterfalls and continuing remesh work.
+- Expanded these fixtures to anchored bedrock floors beyond each source's full reach, clear
+  their entire volume on exit, and explicitly clean lava/water in finally. Kept global
+  terrain-quiescence and all flow/collapse assertions; no timeout/budget relaxation.
+- Also found a real skyline bug while reviewing this path: removing a block high above ground
+  exhausted scanDown's 64-chunk limit and incorrectly returned NO_TOP. Preserve generated
+  skyline bounds, inspect saved edits above them, and jump known-empty gaps before scanning.
+  Added regressions for an 8001-high edit and an intermediate unloaded edited blocker.
+- Raised the first seed-1 horizon flight to at least 245 blocks so a previous test's landing
+  height cannot put the view under canopy; underground horizon suppression remains correct.
+Release full check now runs with skyline repair and both new regressions.
+Release acceptance complete:
+- npm run check PASS: 642 tests / 76 files; typecheck; production build 2.08 s.
+- Final full browser suite PASS all 32 checks, including exact elevated readiness with zero
+  gen/mesh jobs, tick save/reload, flow delays, collapse, lava reactions, reeds and feature meshes.
+  The fixture containment/cleanup fixed the prior readiness timeout without relaxing assertions.
+- Final browser steady measurement: 13 fps on SwiftShader, 4003 loaded / 2018 meshed /
+  337 draw calls; software-GPU measurement, not owner hardware.
+- Inspected final screenshots/terrain-regression.png: near terrain drawn; distant proxy is
+  still visibly too coarse and some distant vegetation appears partial. T-D7 remains partial.
+- GPU suite PASS. Standard worker guards PASS 1.556/1.692 ms gen/mesh; forest generation
+  PASS 2.081 ms, forest mesh FAIL 3.057 ms (3 ms limit). T-J14 remains open; no relaxed limits.
+- git diff --check and script syntax checks PASS. Dependencies/lockfile and block IDs unchanged.
+- Updated tasks, handoff, roadmap, spec 25 note, spec index and new spec 50 with final evidence.
+- Commit and normal non-force push to the existing authorized feature branch follow.
+
+2026-10-22 — Terrain and visual acceptance (continuation, spec 51)
+- Compared the exact seed-1 elevated regression with and without only the proxy material,
+  preserving fog/camera range: near-boundary clipped crowns exist independently of the proxy.
+  Extended horizon fog makes that hard voxel boundary visible; proxy itself lacks surface detail.
+- Implementing coordinated voxel/proxy distance fades, finer stitched rings and world-space
+  shading/detail. Saved-build review also found sparse high/non-sky-blocking edits missing from
+  mesh bands, and tall opaque edits displacing the actual ground band. Added explicit sparse
+  edit ranges and retained active neighbour chunks during vertical movement.
+- Initial typecheck caught a shader string delimiter typo, corrected immediately. First new
+  band regression caught air-only saved cleanup entering sets before generated tops arrived;
+  unknown generated bounds now defer air-only ranges until the column is installed.
+- Focused prior geometry/manager checks passed; new regressions and browser review in progress.
+- Found the main terrain defect while inspecting the still-straight shoreline: regionIndexOf
+  used floor(world/core) even though simulation grids are centred on region*core. Negative
+  coordinates near zero and the last quarter of each selected core read outside the simulated
+  grid and silently clamped, producing enormous plateaus and rectangular water/cliff edges.
+  Select the centred ownership interval instead. New tests exercise actual RegionSampler
+  reads on a sloped height source across 50 X/Z ownership seams and cache eviction.
+- Corrected another exposed terrain bug: priority-flood heights used for drainage became solid
+  lake fill. Restore the actual basin bed after lake classification and cap lake detail amplitude
+  below the quantized water surface. Basin and generated-water tests cover this.
+- First full check after ownership correction: 641/647 tests passed. Failures: three stale
+  worldgen fixtures, one lake-bed bug, old cave 8% aggregate bound, unconstructed Renderer mock.
+  Updated mock initialization; cave aggregate now uses the existing spec-45 four-system 16%
+  limit (individual-system budgets unchanged). Surface fixtures were independently rediscovered
+  in real generated chunks, retaining water/support/cache assertions. No performance limits changed.
+- GPU suite passes the real-terrain occlusion regression and new near/mid/far alpha-hash
+  transition checks, including voxel-only fallback. Captured corrected elevated/recenter views:
+  the giant straight cliff is gone; the coarse distant coastline still approximates geometry.
+- The restored seed-42 tree-border fixture was outside the old forest after correcting terrain.
+  Rediscovered an actual hashed oak anchor (-74,-143), moved the bounded window there and
+  strengthened assertions: generated trunks must equal LOG and expected foliage cannot be AIR.
+  Focused 34 tree tests pass; no geometry/support assertion removed to accommodate worldgen.
+- Release npm run check PASS: 647 tests / 76 files, typecheck, production build 2.05 s.
+- Strict idle worker guards PASS: standard generation/mesh 1.193/1.137 ms;
+  previous extra forest (240,-108) 2.268/1.926 ms; current forest (216,-140) 2.471/1.268 ms.
+  An earlier extra-fixture measurement overlapped unit checks; repeated idle above for evidence.
+  Worldgen correction intentionally changes geometry hashes; thresholds remain 3 ms, unchanged.
+- Final GPU suite PASS, including proper midfade coverage after cutout alpha test, disabled
+  horizon fallback and true voxel ground below a raised proxy. Full gameplay/browser review running.
+- First full browser run stopped at volume-box setup: prior pick-block replaced slot 8 with
+  sand, and earlier fixtures left a target above the floor. Explicitly stock brick, clear
+  the build volume, use an anchored floor, and wait for that exact target. Retained all 27
+  placement/undo assertions. Rerun now passes this check and all tick/flow/collapse/lava checks.
+- Corrected-worldgen worker mesh hashes for future comparisons:
+  origin c4a03d2b1aaaa6a762ad9047c2e875e8216205ac749bf8ce215a9ba398975dd0
+  (240,-108) 96f6d4183abdcc10d64005397cde849fa771abe613ad4a9f3d5d111042e4aaee
+  (216,-140) d8ed4cb80d7ac90717d5e120037b0ddd2dcb573b7a1b9314f97823fe20d26d6a
+- Final full browser suite PASS all 32 checks. Final steady software-GPU measurement:
+  12 fps, 3213 loaded / 1773 meshed / 353 draw calls. Physical owner hardware is untested.
+- Final scripts/terrain-review.mjs PASS all five elevated/recenter/ground/forest/ridge views,
+  zero pending generation/mesh jobs and no browser errors. Inspected saved images: original
+  straight cliff removed, ground and trunks present. Forest/ridge still expose coarse
+  green/blue proxy triangles/coast aliasing and some separated faded perimeter crowns.
+  T-D7 stays partial; separate land/water meshes and vegetation-boundary treatment remain.
+  Synthetic 50-slope seams do not close the required real-river debug-map spike (T-C6).
+- Updated tasks, README compatibility note, roadmap, spec index, spec 51 and latest handoff.
+  Dependencies, block IDs, save version and mountain limits unchanged. Script syntax and
+  git diff --check PASS. Commit and normal push to the authorized existing branch follow.
+
+2026-10-22 — Building, interface and platforms (spec 52)
+- Read section K, slab/GUI and volumetric plans, HUD proposal and current engine/UI paths.
+  Prioritize complete slabs and their item/placement/collision paths; preserve existing IDs,
+  dependencies and save version. Existing Preact menus/inventory access are already implemented.
+- Appended slab variants for every solid cube material, preserving base registry states 0..76.
+  Added half-height bounds to shared body sweeps, partial-cell ray targeting, placement/merging,
+  item/held geometry, icons, selection/crack bounds and climate/material face mapping.
+  Slabs intentionally do not occlude neighbours or block sunlight (documented plan shortcut).
+- Initial typecheck caught unused imports and missing interpolation argument, corrected.
+  Focused cube-physics/raycast/registry tests running before new slab-specific regressions.
+- Slab tests cover every cube material's two states, save-name roundtrips, exact held geometry,
+  side/top/bottom placement, same-material merging, body exclusion, fast sweeps, head clearance,
+  half-step settlement, partial-cell ray reach, neighbour face coverage, fluids/falling and support.
+  Fixed integration assumptions that treated all non-cube shapes as replaceable plants; slabs
+  survive flow/falls, falling full blocks drop items on bottom halves, and support requires contact.
+  Collapsing slabs become items rather than incorrectly simulated full-cube loose bodies.
+- Added bounded redo using only successfully undone cells; conflicts, partial work, unloaded
+  cells and new edit branches preserve expected-state semantics. Ctrl/Cmd+Y and Shift+Z plus
+  tool-panel counts/controls share the existing action queue and budgets.
+- Inventory slots now use native click activation (mouse/keyboard/touch), avoiding right-button
+  activation and repeated custom key handlers. Added modal focus entry/trapping/return and
+  constrained scrolling so the expanded block catalogue fits short windows.
+- Added dependency-free production manifest/icon and a versioned offline shell service worker.
+  It precaches entry/CSS/both workers, scopes relative URLs for subpath hosting, leaves saves in
+  IndexedDB, and waits for old tabs before activating updates. Development never registers it.
+  Moved Node-only build plugin into .mjs with a narrow type declaration; no Node typings added.
+- Full intermediate check PASS 661 tests/77 files, typecheck/build 2.07 s. New browser checks
+  cover slab landings/merges/ceiling placement, slab IDB reload and redo; platform script covers
+  four sizes, native touch/keyboard picker and offline worker reload under /voxel/.
+- Full intermediate browser suite PASS all 33 checks (including new slabs, IDB top-slab
+  restoration and redo/undo). GPU suite and strict worker guards PASS 1.157/1.128 ms gen/mesh;
+  original terrain mesh hash remains c4a03d2b1aaaa6a762ad9047c2e875e8216205ac749bf8ce215a9ba398975dd0.
+- Platform first run hit pointer capture after closing the first inventory: a locked pointer
+  routes subsequent clicks to the canvas. Test now explicitly releases capture between window
+  sizes, as a user does with Escape; no forced clicks. Subpath/offline/four-size run PASS.
+  Inspected 640x360 and 1280x720 captures: close/header/hotbar stay visible; picker scrolls.
+- Auditing actual shortcuts found a real existing input bug: quick Ctrl/Cmd+Z could release
+  modifiers before the next low-FPS simulation frame. Capture chord modifiers at keydown;
+  discard stale presses/chords on blur and pointer-capture transitions. Added Ctrl/Meta/Shift,
+  repeat and stale-input regressions. Browser redo now uses real Ctrl+Y rather than only debug.
+- Final verification rerun includes that input repair and native Enter repeat suppression;
+  no remaining implementation is being inferred from the partial category labels.
+- Final functional check PASS 665 tests / 78 files, typecheck, production build 2.13 s.
+  Final platform suite PASS at four sizes, including native touch, quick Enter with repeat
+  suppression, Space activation, modal Tab wrap and actual offline worker reload at /voxel/.
+  Added platform smoke to CI after the existing full browser suite (CI itself not triggered).
+- Inspected slab/held-item and inventory captures; UI shows half-height item silhouettes,
+  keeps Close/header/hotbar in the 640x360 viewport and scrolls the enlarged catalogue.
+  Full browser rerun with the actual Ctrl+Y chord is in progress before commit.
+- Final full browser suite PASS all 33 checks, including the actual Ctrl+Y chord after undo,
+  expected 27 restored bricks, second undo, slab gameplay and saved slab restore. No browser
+  errors. Final software-GPU performance is recorded in /tmp/building-final-browser.log;
+  this is not owner-hardware or physical install/controller acceptance.
+- Updated task K1/K2 complete, K4/K5/K6 partial with exact remaining scope; README, design
+  implementation note, roadmap, spec index, spec 52 and current handoff updated. Pixel Aero,
+  copy/paste, stairs/doors, world export/import, gamepad and in-world touch remain open.
+- Dependencies/lockfile, old IDs, save version and worldgen mesh hash unchanged. Syntax and
+  diff checks pass. Commit and non-force push to the authorized existing branch follow.
+
+2026-10-22 — Next building tasks (spec 53)
+- Continuing section K5: bounded two-corner copy/paste and portable world export/import.
+  Copy snapshots non-air block states (including slabs), previews selection, refuses unloaded/
+  oversized regions and keeps an old clipboard on failed copy. Paste uses the existing budgeted
+  edit/undo/redo path, preserves existing blocks and excludes the actual player's volume.
+  Creative mode only; Ctrl/Cmd+C twice, Ctrl/Cmd+V, X cancels selection.
+- Added versioned world JSON containing metadata and all edits, including unloaded chunks and
+  explicit air removals. Strict validation rejects repairs/dropped/duplicate records, unknown
+  states, malformed coordinates and oversized files instead of partially importing them.
+- Added export download and accessible import picker to menus. Validate before confirmation;
+  import only into persistent worlds, stop old autosaves, drain pending writes, replace metadata
+  and chunks in one transaction and reload. Busy controls prevent conflicting operations.
+  Synchronous transaction errors now abort pending clears/puts rather than committing partial data.
+- Unit regressions and browser verification in progress. Reviewing stale writes from other tabs
+  before calling backup replacement complete; no dependencies, IDs or save version changed.
+- Added a reserved revision key to the existing metadata store (no schema bump). Replacement
+  and deletion increment it; writes compare the opened revision within their transaction.
+  Stale sessions cannot resurrect the old save and get an export/reload message. New-world
+  deletion now also drains old saves, checks clear failure and prevents conflicting actions.
+- Full intermediate check PASS 680 tests / 80 files, typecheck/build. Browser transfer suite
+  PASS actual download, invalid-file rejection, forced second-chunk put failure with full
+  rollback, confirmed file-picker restore and stale second-tab save rejection. State variants,
+  later-edit removal and saved metadata/chunks verified through actual IndexedDB.
+- Focused copy/paste browser PASS actual Ctrl+C/Ctrl+V: top slab snapshot survives source edits,
+  an existing destination dirt block is preserved and paste undo removes copied cells.
+  Inspected both captures. Full gameplay plus offline/platform regression in progress.
+- Final verification PASS: npm run check, 680 tests / 80 files, typecheck and production
+  build (2.05 s), /tmp/next-final-check.log. Full 34-check gameplay smoke PASS,
+  /tmp/next-full-browser.log: 10 fps SwiftShader, 3136 loaded / 1773 meshed / 353 draw calls,
+  fully loaded 9432 ms after checks. Software results do not establish physical acceptance.
+- Rechecked final build: world transfer PASS /tmp/next-final-transfer.log; offline/platform
+  PASS /tmp/next-final-platform.log (four sizes, native/modal input and subpath workers offline).
+  Inspected final world-file controls capture; copy/paste capture previously inspected.
+- Updated README controls/world files, task completion/remaining priorities, spec index,
+  roadmap and latest handoff. Spec 53 implemented; stairs/doors, gamepad/in-world touch,
+  Pixel Aero and outstanding terrain/owner acceptance remain open. No generator/GPU benchmark
+  rerun because those implementations did not change; remote CI remains unrun.
+- Preparing authorized commit/push of this verified batch; dependencies, lockfile, old block
+  IDs, save/database schema versions and terrain generation remain unchanged.

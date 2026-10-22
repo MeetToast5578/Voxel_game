@@ -21,6 +21,9 @@ export interface CollisionResult {
 
 export type SolidFn = (x: number, y: number, z: number) => boolean;
 
+export type CollisionCell = boolean | readonly [number, number];
+export type CollisionFn = (x: number, y: number, z: number) => CollisionCell;
+
 type Axis = 'x' | 'y' | 'z';
 
 const SKIN = 1e-4;
@@ -32,8 +35,7 @@ const DEPENETRATE_STEP = 0.5;
 /**
  * Moves an axis-aligned box (pos = center of the feet) by vel * dt, one axis at a time (Y, X, Z).
  * Mutates pos, and zeroes the velocity component on each axis that collides.
- * Precondition: the box does not overlap a solid block before the move, and per call each axis moves less than
- * the body's width (X, Z) or height (Y).
+ * Sweeps the complete movement volume, including every crossed block at high speeds.
  *
  * With stepHeight > 0, a horizontal move that is blocked right after landing in this move's Y phase is retried
  * up to stepHeight higher: if the body fits there, it moves on and settles onto the ledge (result.stepped > 0).
@@ -44,7 +46,7 @@ const DEPENETRATE_STEP = 0.5;
  * that silently drops the player out of the world when they are wrong is not worth trusting.
  */
 export function moveAndCollide(
-  pos: Vec3, vel: Vec3, dt: number, shape: BodyShape, isSolid: SolidFn, stepHeight = 0,
+  pos: Vec3, vel: Vec3, dt: number, shape: BodyShape, isSolid: CollisionFn, stepHeight = 0,
 ): CollisionResult {
   const result: CollisionResult = { onGround: false, hitX: false, hitY: false, hitZ: false, stepped: 0 };
 
@@ -83,7 +85,7 @@ export function moveAndCollide(
  * Pushes a body that is inside solid out to the nearest free space, along whichever of the six
  * axis directions frees it soonest. Mutates pos only if the body is actually stuck.
  */
-function depenetrate(pos: Vec3, shape: BodyShape, isSolid: SolidFn): void {
+function depenetrate(pos: Vec3, shape: BodyShape, isSolid: CollisionFn): void {
   if (!overlapsSolid(pos, shape, isSolid)) return;
   const dirs: ReadonlyArray<readonly [number, number, number]> = [
     [0, 1, 0], [0, -1, 0], [1, 0, 0], [-1, 0, 0], [0, 0, 1], [0, 0, -1],
@@ -118,7 +120,7 @@ function depenetrate(pos: Vec3, shape: BodyShape, isSolid: SolidFn): void {
  * and 0 is returned.
  */
 function tryStep(
-  pos: Vec3, axis: 'x' | 'z', start: number, d: number, stepHeight: number, shape: BodyShape, isSolid: SolidFn,
+  pos: Vec3, axis: 'x' | 'z', start: number, d: number, stepHeight: number, shape: BodyShape, isSolid: CollisionFn,
 ): number {
   const raised: Vec3 = { x: pos.x, y: pos.y + stepHeight, z: pos.z };
   raised[axis] = start;
@@ -137,29 +139,40 @@ function tryStep(
  * Moves pos along one axis by d. If the box then overlaps solid cells, it is pushed back against the nearest one
  * it entered and true is returned.
  */
-function sweepAxis(pos: Vec3, axis: Axis, d: number, shape: BodyShape, isSolid: SolidFn): boolean {
+function sweepAxis(pos: Vec3, axis: Axis, d: number, shape: BodyShape, isSolid: CollisionFn): boolean {
+  const start = pos[axis];
   pos[axis] += d;
   const hw = shape.halfWidth;
-  const minX = Math.floor(pos.x - hw), maxX = Math.ceil(pos.x + hw) - 1;
-  const minZ = Math.floor(pos.z - hw), maxZ = Math.ceil(pos.z + hw) - 1;
-  const minY = Math.floor(pos.y), maxY = Math.ceil(pos.y + shape.height) - 1;
+  const minX = Math.floor(Math.min(pos.x, axis === 'x' ? start : pos.x) - hw);
+  const maxX = Math.ceil(Math.max(pos.x, axis === 'x' ? start : pos.x) + hw) - 1;
+  const minZ = Math.floor(Math.min(pos.z, axis === 'z' ? start : pos.z) - hw);
+  const maxZ = Math.ceil(Math.max(pos.z, axis === 'z' ? start : pos.z) + hw) - 1;
+  const minY = Math.floor(Math.min(pos.y, axis === 'y' ? start : pos.y));
+  const maxY = Math.ceil(Math.max(pos.y, axis === 'y' ? start : pos.y) + shape.height) - 1;
   let hitCell: number | null = null;
   for (let y = minY; y <= maxY; y++)
     for (let z = minZ; z <= maxZ; z++)
       for (let x = minX; x <= maxX; x++)
-        if (isSolid(x, y, z)) {
-          const cell = axis === 'x' ? x : axis === 'y' ? y : z;
-          if (hitCell === null || (d > 0 ? cell < hitCell : cell > hitCell)) hitCell = cell;
+        {
+          const cell = isSolid(x, y, z);
+          if (!cell) continue;
+          const bottom = y + (cell === true ? 0 : cell[0]);
+          const top = y + (cell === true ? 1 : cell[1]);
+          const sweptBottom = Math.min(pos.y, axis === 'y' ? start : pos.y);
+          const sweptTop = Math.max(pos.y, axis === 'y' ? start : pos.y) + shape.height;
+          if (sweptBottom >= top || sweptTop <= bottom) continue;
+          const plane = axis === 'y' ? (d > 0 ? bottom : top) : (axis === 'x' ? x : z) + (d > 0 ? 0 : 1);
+          if (hitCell === null || (d > 0 ? plane < hitCell : plane > hitCell)) hitCell = plane;
         }
   if (hitCell === null) return false;
   const low = axis === 'y' ? 0 : -hw; // box extent below/behind pos on this axis
   const high = axis === 'y' ? shape.height : hw;
-  pos[axis] = d > 0 ? hitCell - high - SKIN : hitCell + 1 - low + SKIN;
+  pos[axis] = d > 0 ? hitCell - high - SKIN : hitCell - low + SKIN;
   return true;
 }
 
 /** True if the box at pos overlaps any solid cell. */
-function overlapsSolid(pos: Vec3, shape: BodyShape, isSolid: SolidFn): boolean {
+function overlapsSolid(pos: Vec3, shape: BodyShape, isSolid: CollisionFn): boolean {
   const hw = shape.halfWidth;
   const minX = Math.floor(pos.x - hw), maxX = Math.ceil(pos.x + hw) - 1;
   const minZ = Math.floor(pos.z - hw), maxZ = Math.ceil(pos.z + hw) - 1;
@@ -167,6 +180,9 @@ function overlapsSolid(pos: Vec3, shape: BodyShape, isSolid: SolidFn): boolean {
   for (let y = minY; y <= maxY; y++)
     for (let z = minZ; z <= maxZ; z++)
       for (let x = minX; x <= maxX; x++)
-        if (isSolid(x, y, z)) return true;
+        {
+          const cell = isSolid(x, y, z);
+          if (cell && (cell === true || (pos.y < y + cell[1] && pos.y + shape.height > y + cell[0]))) return true;
+        }
   return false;
 }

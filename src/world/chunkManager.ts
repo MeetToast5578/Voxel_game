@@ -17,11 +17,15 @@ export interface MeshSink {
 export interface ChunkGenerator {
   generateChunk(chunk: Chunk): void;
   columnTops(cx: number, cz: number): Int32Array;
+  columnGroundMin?(cx: number, cz: number): number;
 }
 
 /** Does the three chunk jobs somewhere else (Web Workers). Implemented by workers/workerPool.ts. */
+export interface ColumnSurface { tops: Int32Array; groundMin: number; }
+
 export interface ChunkJobs {
-  columnTops(cx: number, cz: number): Promise<Int32Array>;
+  dispose?(): void;
+  columnTops(cx: number, cz: number): Promise<Int32Array | ColumnSurface>;
   generate(cx: number, cy: number, cz: number): Promise<Uint16Array>;
   /** Receives copies of the 27 block arrays and 9 column-top arrays; may keep them. */
   mesh(cx: number, cy: number, cz: number, neighbors: Uint16Array[], tops: Int32Array[]): Promise<ChunkMeshData>;
@@ -93,6 +97,7 @@ export class ChunkManager {
   renderDistance: number;
   readonly verticalDistance = VERTICAL_RENDER_DISTANCE;
   /** Meshed chunks by key. */
+  private readonly groundMin = new Map<string, number>();
   private readonly meshed = new Map<string, ChunkPos>();
   private readonly dirty = new Set<string>();
   private readonly columns = new Map<string, ColumnInfo>();
@@ -111,6 +116,8 @@ export class ChunkManager {
   tick(): void {
     this.lastTickStats = this.world.tickStep(TICK_BUDGET_MS);
     this.lastRandomTickStats = this.world.randomTickStep(RANDOM_TICK_BUDGET_MS);
+    const changes = this.world.takeBlockChanges();
+    if (changes.chunks.length) this.onBlocksChanged(changes);
   }
 
   /** Result of the last tickStep, for the F3 overlay. */
@@ -137,7 +144,7 @@ export class ChunkManager {
     private readonly generator: ChunkGenerator,
     private readonly sink: MeshSink,
     renderDistance: number,
-    private readonly jobs: ChunkJobs | null = null,
+    private jobs: ChunkJobs | null = null,
   ) {
     this.renderDistance = renderDistance;
   }
@@ -171,7 +178,7 @@ export class ChunkManager {
       const item = this.loadList[i]!;
       if (this.isLoaded(item)) continue;
       if (doneOne && performance.now() > deadline) break;
-      if (item.tops) this.installTops(item.cx, item.cz, this.generator.columnTops(item.cx, item.cz));
+      if (item.tops) this.installTops(item.cx, item.cz, this.generator.columnTops(item.cx, item.cz), this.generator.columnGroundMin?.(item.cx, item.cz));
       else {
         const chunk = new Chunk(item.cx, item.cy, item.cz);
         this.generator.generateChunk(chunk);
@@ -213,6 +220,7 @@ export class ChunkManager {
     const ccx = worldToChunk(wx);
     const ccy = worldToChunk(wy);
     const ccz = worldToChunk(wz);
+    if (!this.meshSet.has(chunkKey(ccx, ccy, ccz))) this.setsStale = true;
     for (let dy = -1; dy <= 1; dy++)
       for (let dz = -1; dz <= 1; dz++)
         for (let dx = -1; dx <= 1; dx++) this.markDirty(chunkKey(ccx + dx, ccy + dy, ccz + dz), done);
@@ -242,6 +250,7 @@ export class ChunkManager {
       this.bumpVersion(key);
       if (this.meshed.has(key)) this.dirty.add(key);
     };
+    for (const c of effect.chunks) if (!this.meshSet.has(chunkKey(c.cx, c.cy, c.cz))) this.setsStale = true;
     for (const c of effect.chunks)
       for (let dy = -1; dy <= 1; dy++)
         for (let dz = -1; dz <= 1; dz++)
@@ -302,6 +311,8 @@ export class ChunkManager {
   }
 
   /** Counts are computed when read (the F3 overlay reads them a few times per second). */
+  get usingWorkers(): boolean { return this.jobs !== null; }
+
   get stats(): ChunkStats {
     let pendingGen = 0;
     for (let i = this.loadCursor; i < this.loadList.length; i++) if (!this.isLoaded(this.loadList[i]!)) pendingGen++;
@@ -326,6 +337,7 @@ export class ChunkManager {
    * first, so the area around the player is shown while farther chunks are still loading.
    */
   private dispatchJobs(jobs: ChunkJobs): void {
+    if (this.jobs !== jobs) return;
     this.advanceCursors();
     let checked = 0;
     for (let i = this.meshCursor; i < this.meshList.length && this.jobsInFlight() < MAX_JOBS_IN_FLIGHT; i++) {
@@ -347,7 +359,7 @@ export class ChunkManager {
         if (!this.meshSet.has(p.key) || !this.neighborsReady(p.cx, p.cy, p.cz)) return;
         this.sink.set(p.cx, p.cy, p.cz, data);
         this.meshed.set(p.key, p);
-      });
+      }).catch(() => this.failJobs(jobs));
     }
     for (let i = this.loadCursor; i < this.loadList.length && this.jobsInFlight() < MAX_JOBS_IN_FLIGHT; i++) {
       const item = this.loadList[i]!;
@@ -358,8 +370,9 @@ export class ChunkManager {
           this.fetchingTops.delete(item.key);
           this.jobDone(jobs);
           if (this.world.getColumnTops(item.cx, item.cz) || !this.columnSet.has(item.key)) return;
-          this.installTops(item.cx, item.cz, tops);
-        });
+          if (tops instanceof Int32Array) this.installTops(item.cx, item.cz, tops);
+          else this.installTops(item.cx, item.cz, tops.tops, tops.groundMin);
+        }).catch(() => this.failJobs(jobs));
       } else {
         this.generating.add(item.key);
         void jobs.generate(item.cx, item.cy, item.cz).then((blocks) => {
@@ -369,9 +382,20 @@ export class ChunkManager {
           const chunk = new Chunk(item.cx, item.cy, item.cz);
           chunk.blocks.set(blocks);
           this.addChunk(chunk);
-        });
+        }).catch(() => this.failJobs(jobs));
       }
     }
+  }
+
+  /** Failed jobs must release their slots; use the existing synchronous path to finish loading. */
+  private failJobs(jobs: ChunkJobs): void {
+    if (this.jobs !== jobs) return;
+    this.jobs = null;
+    jobs.dispose?.();
+    for (const key of this.meshing) { this.bumpVersion(key); this.dirty.add(key); }
+    this.fetchingTops.clear(); this.generating.clear(); this.meshing.clear();
+    this.loadCursor = 0; this.meshCursor = 0;
+    console.warn('Chunk workers failed; continuing generation and meshing on the main thread.');
   }
 
   private needsMesh(p: ChunkPos): boolean {
@@ -401,7 +425,8 @@ export class ChunkManager {
     return item.tops ? this.world.getColumnTops(item.cx, item.cz) !== undefined : this.world.hasChunk(item.cx, item.cy, item.cz);
   }
 
-  private installTops(cx: number, cz: number, tops: Int32Array): void {
+  private installTops(cx: number, cz: number, tops: Int32Array, groundMin?: number): void {
+    if (groundMin !== undefined) this.groundMin.set(columnKey(cx, cz), groundMin);
     this.world.installColumnTops(cx, cz, tops);
     if (this.refreshColumn(cx, cz)) this.addBand(cx, cz);
   }
@@ -429,7 +454,9 @@ export class ChunkManager {
       minTop = Math.min(minTop, tops[i]!);
       maxTop = Math.max(maxTop, tops[i]!);
     }
-    const bandHi = worldToChunk(maxTop);
+    const generated = this.world.getGeneratedColumnTops(cx, cz);
+    minTop = Math.min(minTop, this.groundMin.get(key) ?? minTop, generated ? Math.min(...generated) : minTop);
+    const bandHi = worldToChunk(generated ? Math.max(...generated) : maxTop);
     const bandLo = Math.max(worldToChunk(minTop) - SURFACE_BAND, bandHi - MAX_BAND_CHUNKS);
     this.columns.set(key, { bandLo, bandHi, minTop: Math.max(minTop, maxTop - MAX_SURFACE_DISTANCE), maxTop });
     if (!isNew) this.setsStale = true;
@@ -444,7 +471,8 @@ export class ChunkManager {
     const info = this.columns.get(columnKey(cx, cz))!;
     const R = this.renderDistance;
     if ((cx - this.center.cx) ** 2 + (cz - this.center.cz) ** 2 > R * R) return; // only columns within R mesh
-    for (let cy = info.bandLo; cy <= info.bandHi; cy++) {
+    const ranges: [number, number][] = [[info.bandLo, info.bandHi], ...this.world.editedChunkYs(cx, cz).map(y => [y, y] as [number, number])];
+    for (const cy of rangeValues(ranges)) {
       const key = chunkKey(cx, cy, cz);
       if (this.meshSet.has(key)) continue;
       this.meshSet.add(key);
@@ -456,7 +484,7 @@ export class ChunkManager {
     }
     for (let dz = -1; dz <= 1; dz++)
       for (let dx = -1; dx <= 1; dx++)
-        for (let cy = info.bandLo - 1; cy <= info.bandHi + 1; cy++) {
+        for (const cy of rangeValues(ranges.map(([lo, hi]) => [lo - 1, hi + 1]))) {
           const key = chunkKey(cx + dx, cy, cz + dz);
           if (this.genSet.has(key)) continue;
           this.genSet.add(key);
@@ -506,6 +534,7 @@ export class ChunkManager {
       const ranges: [number, number][] = [[pcy - V, pcy + V]];
       const info = this.columns.get(c.key);
       if (info) ranges.push([info.bandLo, info.bandHi]);
+      for (const cy of this.world.editedChunkYs(c.cx, c.cz)) ranges.push([cy, cy]);
       meshRanges.set(c.key, ranges);
     }
 
@@ -612,8 +641,7 @@ export class ChunkManager {
     const meshR = R + MESH_KEEP_MARGIN;
     for (const p of [...this.meshed.values()]) {
       const far = horizontal(p.cx, p.cz) > meshR * meshR;
-      const outside = Math.abs(p.cy - pcy) > V + MESH_KEEP_MARGIN && !this.inBand(p.cx, p.cy, p.cz, 0);
-      if (far || outside) {
+      if (far || !this.meshSet.has(p.key)) {
         this.sink.remove(p.cx, p.cy, p.cz);
         this.meshed.delete(p.key);
         this.dirty.delete(p.key);
@@ -625,13 +653,13 @@ export class ChunkManager {
       const far = horizontal(chunk.cx, chunk.cz) > dropR * dropR;
       // The band's neighbours (1 chunk) are loaded too; keep one more chunk of hysteresis around them.
       const outside = Math.abs(chunk.cy - pcy) > V + UNLOAD_MARGIN && !this.inBand(chunk.cx, chunk.cy, chunk.cz, 2);
-      if (far || outside) this.world.removeChunk(chunk.cx, chunk.cy, chunk.cz);
+      if (far || (outside && !this.genSet.has(chunkKey(chunk.cx, chunk.cy, chunk.cz)))) this.world.removeChunk(chunk.cx, chunk.cy, chunk.cz);
     }
 
     for (const key of this.world.columnKeys()) {
       const [cx, cz] = key.split(',').map(Number) as [number, number];
       if (horizontal(cx, cz) <= dropR * dropR) continue;
-      if (this.world.removeColumnTops(cx, cz)) this.columns.delete(key);
+      if (this.world.removeColumnTops(cx, cz)) { this.columns.delete(key); this.groundMin.delete(key); }
     }
   }
 }

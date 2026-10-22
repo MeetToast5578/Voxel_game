@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import {
   CAMERA_FAR_M, CHUNK_SIZE, DEFAULT_FOV, DEFAULT_RENDER_DISTANCE, metersToBlocks, SKY_COLOR, UNDERWATER_COLOR,
-  UNDERWATER_FAR_M, WATER_OPACITY,
+  UNDERWATER_FAR_M, WATER_OPACITY, terrainTransition,
 } from '../config';
 import { createAtlasCanvas, createAtlasTexture } from './atlas';
 import { patchLightMaterial, type LightUniforms } from './lightMaterial';
@@ -30,6 +30,7 @@ export class Renderer {
   /** Vertical distance to the farthest visible surface (from the loaded column tops), in blocks. */
   private surfaceDistance = 0;
   private horizonDistance = 0;
+  private readonly terrainFade = { value: new THREE.Vector2() };
   /** Draw calls of the world pass in the last frame (the hand pass is not counted). */
   drawCalls = 0;
 
@@ -48,7 +49,7 @@ export class Renderer {
 
     this.atlasCanvas = createAtlasCanvas();
     const atlas = createAtlasTexture(this.atlasCanvas);
-    this.solidMaterial = new THREE.MeshBasicMaterial({ map: atlas, vertexColors: true, alphaTest: 0.5 });
+    this.solidMaterial = new THREE.MeshBasicMaterial({ map: atlas, vertexColors: true, alphaTest: 0.5, alphaHash: true });
     this.waterMaterial = new THREE.MeshBasicMaterial({
       map: atlas,
       vertexColors: true,
@@ -62,8 +63,8 @@ export class Renderer {
       map: atlas, vertexColors: true, alphaTest: 0.5, side: THREE.DoubleSide,
       polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4,
     });
-    patchLightMaterial(this.solidMaterial, this.lightUniforms, true);
-    patchLightMaterial(this.waterMaterial, this.lightUniforms);
+    patchLightMaterial(this.solidMaterial, this.lightUniforms, true, this.terrainFade);
+    patchLightMaterial(this.waterMaterial, this.lightUniforms, false, this.terrainFade);
     patchLightMaterial(this.itemMaterial, this.lightUniforms);
 
     window.addEventListener('resize', this.resize);
@@ -156,6 +157,8 @@ export class Renderer {
   }
 
   private applyFog(): void {
+    const fade = terrainTransition(this.viewBlocks);
+    this.terrainFade.value.set(fade.start, this.horizonDistance > 0 && !this.underwater ? fade.end : 0);
     const color = this.underwater ? UNDERWATER_COLOR : this.skyColor;
     this.fog.color.setHex(color);
     this.background.setHex(color);

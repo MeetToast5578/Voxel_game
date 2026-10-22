@@ -4,7 +4,7 @@ import {
   SPLASH_MIN_SPEED, SWIM_WAIST_HEIGHT, TERMINAL_VELOCITY, WADE_SLOWDOWN, WALK_SPEED, WATER_DENSITY, WATER_DRAG,
 } from '../config';
 import { clamp, lerp } from '../core/math';
-import { moveAndCollide, type BodyShape, type SolidFn, type Vec3 } from './physics';
+import { moveAndCollide, type BodyShape, type SolidFn, type CollisionFn, type Vec3 } from './physics';
 
 export interface PlayerControls {
   forward: boolean;
@@ -89,7 +89,7 @@ export class Player {
   }
 
   /** Optional fluid predicates preserve dry-world callers; lava has its own density, drag and flags. */
-  update(dt: number, c: PlayerControls, isSolid: SolidFn, isWater: SolidFn = () => false, isLava: SolidFn = () => false): void {
+  update(dt: number, c: PlayerControls, isSolid: CollisionFn, isWater: SolidFn = () => false, isLava: SolidFn = () => false): void {
     this.prevPosition.x = this.position.x;
     this.prevPosition.y = this.position.y;
     this.prevPosition.z = this.position.z;

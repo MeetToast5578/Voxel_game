@@ -24,9 +24,9 @@ describe('biome flowers and reeds (T-E3/T-E4)', () => {
   });
   it('retains the actual seed-1 shoreline fixture used by browser worker smoke', () => {
     const g = new TerrainGenerator(1), c = new Chunk(-25, 0, 0); g.generateChunk(c);
-    expect(c.get(14, 1, 14)).toBe(BlockId.REED); // -386,1,14
-    expect(g.getHeight(-386, 14)).toBe(0);
-    expect([[-385, 14], [-387, 14], [-386, 13], [-386, 15]].some(([x, z]) => g.getHeight(x!, z!) < 0)).toBe(true);
+    expect(c.get(2, 1, 4)).toBe(BlockId.REED); // -398,1,4
+    expect(g.getHeight(-398, 4)).toBe(0);
+    expect([[-397, 4], [-399, 4], [-398, 3], [-398, 5]].some(([x, z]) => g.getHeight(x!, z!) < 0)).toBe(true);
   });
   it('generates dry-bank reeds beside water and reproduces tall plants across vertical chunks', () => {
     vi.spyOn(ClimateSampler.prototype, 'fields').mockReturnValue({ continentalness: 0.2, erosion: 1, peaks: 0, temperature: 0, humidity: 0, weirdness: 0 });

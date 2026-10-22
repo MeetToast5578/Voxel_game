@@ -1,0 +1,7 @@
+{
+  "id": "./", "name": "Voxel Game", "short_name": "Voxel",
+  "description": "A procedural voxel sandbox with building and simulation.",
+  "start_url": "./", "scope": "./", "display": "standalone",
+  "background_color": "#18222a", "theme_color": "#18222a",
+  "icons": [{"src":"icon.svg","sizes":"any","type":"image/svg+xml","purpose":"any maskable"}]
+}

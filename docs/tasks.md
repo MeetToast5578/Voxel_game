@@ -1,6 +1,6 @@
 # Tasks: Voxel Game
 
-Originally compiled 2026-10-17 against `main` at **`adf5aba`**. Current execution status updated 2026-10-21; older dated evidence below is historical, not a claim about the current checkout.
+Originally compiled 2026-10-17 against `main` at **`adf5aba`**. Current execution status updated 2026-10-22; older dated evidence below is historical, not a claim about the current checkout.
 
 Sources: `README.md`, `docs/HANDOFF.md`, `docs/ROADMAP.md`, `docs/specs/README.md`, `docs/specs/*.md`, `docs/plans/*.md`, plus direct inspection of `src/` and `tests/`.
 
@@ -10,7 +10,7 @@ Status key: `[ ]` open · `[x]` done · `[~]` partial
 
 ---
 
-## Current execution queue — 2026-10-21
+## Current execution queue — 2026-10-22
 
 Completed and verified:
 - **T-A6 + T-D3:** stable mining/pickup fixture; deterministic local aquifers and negative-y caves (spec 46).
@@ -20,10 +20,26 @@ Completed and verified:
 - **Latest validation:** typecheck, **613 tests / 74 files**, production build, both isolated worker budgets at origin and a forest, GPU regressions and **all 31 gameplay smoke checks passed** on Node 24 / system Chromium 154. Warm generation/mesh: origin 1.100/1.346 ms; forest 1.784/2.706 ms (3 ms budgets). Physical-browser acceptance and current GitHub CI remain unrun.
 - Old block IDs, dependencies, lockfile and save format are preserved. States 73..76 append. Unedited terrain regenerates; saved edits remain. LOD covers generated terrain to ~2.4 km, omits saved distant structures and is disabled with workers=0. Mountain heights remain capped. Biome IDs now resolve per surface cell; dynamic plant ecology remains separate.
 
+Bug audit follow-up (spec 50):
+- Repaired dense-canopy ground loading, orphan perimeter sections, camera-dependent horizon heights, proxy occlusion, pending-update persistence, worker failure stalls, high-altitude skyline removal, random-tick sort overhead and delayed leaf/support notifications.
+- **Validation:** 642 tests / 76 files, typecheck/build, GPU regressions and all 32 final browser checks pass. Standard worker budgets pass; extra forest meshing remains open.
+- **T-G1 is complete.** Keep correctness/visual review ahead of decorative features. See spec 50 and the latest handoff for verification and remaining limitations.
+- **Open:** distant LOD appearance/transition acceptance, river seams, and dense-forest meshing performance. Standard worker guard passes; the extra forest guard remains slightly over 3 ms on this environment. No budgets were weakened.
+
+Building follow-up (specs 52/53, 2026-10-22):
+- Slabs, redo, native/modal inventory and offline installation are implemented (spec 52).
+- Creative two-corner copy/paste and portable world backups are implemented (spec 53).
+  Backups validate before replacement, use one atomic transaction, drain old saves and reject
+  stale-tab writes. All **680 tests / 80 files**, typecheck/build and **34 gameplay checks** pass.
+  Actual file download/import, forced transaction rollback and stale-tab rejection pass;
+  offline/platform regression passes. Physical-browser acceptance and remote CI remain open.
+- **Next building/platform work:** stairs/doors (T-K5), gamepad/in-world touch (T-K6), then
+  Pixel Aero (T-K8). Terrain acceptance/performance below remains an independent open track.
+
 Next priorities:
-1. **T-G1 pending-fall persistence**, then **T-F5 wind → T-F7 seasonal visuals → T-F8 smooth lighting → T-F14 lightning/thunder**. These are the next five coding priorities; keep measured worker budgets in view.
+1. Finish terrain/LOD visual acceptance and dense-forest performance follow-up before **T-F5 wind → T-F7 seasonal visuals → T-F8 smooth lighting → T-F14 lightning/thunder**. T-G1 pending-update persistence is complete.
 2. **T-C / T-E11b — Owner playtest and visual acceptance.** Remain open; do not block independent coding or claim physical-browser acceptance from headless tests. River-seam review (T-C6) still gates overall terrain-phase acceptance.
-3. Continue T-F → T-G → T-H → T-I in dependency order, including pending-fall persistence, snow/ice and currents. Address measured T-J bottlenecks throughout. Slabs and Pixel Aero remain separate tracks.
+3. Continue T-F → T-G → T-H → T-I in dependency order, including pending-fall persistence, snow/ice and currents. Address measured T-J bottlenecks throughout. Building/platform follow-ups and Pixel Aero remain separate tracks.
 
 For every batch: log decisions, changes, failures and results in `log.txt`; run focused tests and relevant regression checks sequentially; mark done only after acceptance passes. The owner authorized committing and pushing completed work. Checkpoints 2396e91, dd1d991 and spec 49 commit 0cd1097 are pushed on `codex/coasts-horizon-flora`; no merge or PR was created. Historical CI entries below do not establish the status of new commits.
 
@@ -110,8 +126,8 @@ Nothing below can be done headless (`HANDOFF.md:45-57`). Physical acceptance rem
 - [ ] **T-C2 — Clearance.** A 2 m tunnel fits the 1.75 m player; a 1.5 m one does not.
 - [ ] **T-C3 — Frame rate on the owner's machine.** The smoke run loads ~3,900 chunks and draws 249 calls (`HANDOFF.md:51`). The owner's CPU is slow (i5-8265U, 4c/8t @ 1.6 GHz). The 8 fps smoke figure is SwiftShader and says nothing about real performance.
 - [ ] **T-C4 — Phase 1 manual checks.** Dig a 30 m (100-block) shaft; chunks keep appearing below and the sky shows above. From a valley, hills visible to the full render distance. Save, dig 9 m down, wait 10 s, reload: hotbar, hole and roughly the same time of day return.
-- [ ] **T-C5 — Terrain after spec 22 and region simulation.** Peaks at most ~232 m. Check rivers, lakes and region seams from a valley and a ridge. **Caveat:** edits in an existing save may float, because unedited ground regenerates.
-- [ ] **T-C6 — River continuity across region seams.** `ROADMAP.md:137` specifies a spike: 50 seams sampled on the debug map, no breaks. This gates the phase 2 "done when".
+- [ ] **T-C5 — Terrain after spec 22 and region simulation.** Peaks at most ~232 m. Check rivers, lakes and region seams from a valley and a ridge. **Caveat:** edits in an existing save may float, because unedited ground regenerates. Spec 51 corrected region ownership and actual lake beds; repeat review on regenerated terrain.
+- [ ] **T-C6 — River continuity across region seams.** `ROADMAP.md:137` specifies a spike: 50 seams sampled on the debug map, no breaks. This gates the phase 2 "done when". Spec 51 adds 50 synthetic X/Z ownership-seam checks through RegionSampler; real river/debug-map acceptance is still required.
   - Fallback if it fails: noise-shaped rivers, and use the simulation only for erosion, lakes and moisture.
 - [ ] **T-C7 — Look of the new rock and plants.** Limestone, slate, basalt, deepslate and the mushrooms have only been checked as atlas code and in headless smoke.
 - [ ] **T-C8 — Tool panel and creative block picker by hand.** Smoke-tested only.
@@ -127,9 +143,12 @@ Nothing below can be done headless (`HANDOFF.md:45-57`). Physical acceptance rem
 - [x] **T-D4 — Underground lakes and lava pools.** Closed 2026-10-21 (spec 47): seeded jittered-grid ellipsoid basins with a solid shell, level fluid and air above. Freshwater at -20 to -60 m; lava at -140 to -260 m. Whole-footprint roof eligibility is cached and agrees across chunks; surface roofs and bottom-band rows are preserved. Real generated basins, shell/roof rejection and split-slice tests pass; browser smoke inspects both water and lava surfaces/floors.
 - [x] **T-D5 — Cave openings that respect rivers and the sea.** Cave roofs now use local freshwater levels as well as sea level, retaining the configured 5 m cover. Forced-open cave noise tests prove river/lake roofs remain intact while dry land retains openings. Separate closed-noise tests prove land plants cannot replace underwater cells.
 - [x] **T-D6 — Coasts and oceans.** Closed 2026-10-21 (spec 48): westerly wave exposure from continental gradients and slope choose beaches, gravel/stony shores and rocky cliffs. Sheltered shallow water gains seeded sandbars; the shelf descends to deep ocean within the existing terrain band. Rivers/lakes bypass ocean shaping; roof/aquifer/basin guarantees remain. Coast profile, generated rock/tree eligibility, seed/negative-coordinate and existing water tests pass. Owner seam/visual acceptance remains T-C5/T-C6.
-- [x] **T-D7 — Horizon LOD.** Closed 2026-10-21 (spec 48): dedicated worker builds stitched concentric heightfield rings to 2.46 km, with near terrain/water sampling, regional/broad elevation blending, climate/surface colour and overlap/far fades. Snapped requests coalesce; replaced geometry is disposed; camera/fog cover the horizon while retaining underwater/underground behaviour. Unit geometry/stitching/low-view-range tests and actual browser recenter/screenshot checks pass. Generated terrain only; workers=0 omits LOD. Mountain heights remain unchanged; physical-browser review is open.
+- [~] **T-D7 — Horizon LOD.** Spec 51 repairs the region ownership mismatch behind giant plateaus/rectangular cliffs, lake basins filled with stone, and exposed voxel silhouettes. Proxy becomes opaque before voxels fade at the load edge; stitched rings now have 29,575 vertices, slope shading and world-space detail over the same 2.46 km range. GPU fade/occlusion checks and fully loaded elevated/recenter captures pass. Coarse distant coastlines still approximate geometry; distant vegetation/buildings and owner visual acceptance remain open. See [spec 51](specs/51-terrain-visual-acceptance.md).
 
 ---
+
+- [x] **T-D9 — Saved structures outside the terrain band.** Spec 51: sparse opaque/glass edit bands keep roofs, intermediate structure sections and original ground visible without filling high empty gaps. Active generation neighbours survive vertical movement; horizontal unload/reload preserves edits. Air-only cleanup above generated terrain is excluded. Regression includes a whole-column opaque roof, glass at y=4000 and distant return.
+- [x] **T-D10 — Region ownership and real lake beds.** Spec 51: centred region ownership matches simulation coordinates; synthetic slopes remain continuous across 50 X/Z seams and negative coordinates. Depression filling no longer becomes solid lake fill; detail amplitude cannot raise lakebed above quantized water. Real generated lake and source-water feature tests pass.
 
 ## E. Phase 3 — Biomes and flora
 
@@ -188,7 +207,7 @@ Rendering batch validation: `npm run check` PASS (527 tests / 62 files, typechec
 
 All six sandbox-physics slices (spec 25) are built and tested. One known shortcut and several open items remain.
 
-- [ ] **T-G1 — Save pending falls.** Spec 25 slice 3 says save the ticks; the implementation resumes them with a scan on chunk load instead (`HANDOFF.md:29`). Replace the shortcut.
+- [x] **T-G1 — Save pending falls.** Spec 50: active/dormant pending updates and remaining delays survive chunk unloading and save/reload in optional save-v3 metadata. Covers all existing scheduled reasons, not just sand; recovery scans preserve restored delays. Unit round-trip and actual IndexedDB browser reload verified.
 - [ ] **T-G2 — Snow layers.** 8 heights, building up on exposed tops during snowfall and melting above 0 °C. Ice forms on still water and thaws. Item 2.
 - [ ] **T-G3 — Saplings.** Grow into their species' tree through the feature generator, respecting existing blocks. Item 2.
 - [ ] **T-G4 — Crops.** Wheat, carrots and potatoes with growth stages, affected by season and temperature. Item 2.
@@ -240,6 +259,7 @@ All six sandbox-physics slices (spec 25) are built and tested. One known shortcu
 ## J. Phase 8 — Scale and performance
 
 - [x] **T-J1 — Mesh time ≤3 ms on the reference fixture.** CPU profiling identified neighbour-region copying as a major cost; the 2026-10-19 pass then removed the remaining allocation and per-face object work. Node-22 visible-top fixture: 4.011 ms → 1.715 ms mean (passes 2.114 / 1.502 / 1.529), with the mesh SHA-256 unchanged at `803974a7770501157d9409fc8622d26838a45e03e5c06ed3661d8989843715ae`. What changed: per-state flat tables built once from the block registry, precomputed face/AO/UV/region offsets, quads written into growable typed arrays, reusable region and light scratch buffers, and 32-bit row copies in `buildRegion` with a 16-bit fallback. Existing light/mesher tests unchanged plus new cases for scratch reuse, transferable buffers, caller-provided region arrays, an unaligned chunk view and all 27 region offsets; full gameplay/GPU checks pass. This is the specified 50-chunk seed-1 reference measurement, not a guarantee for every world/hardware.
+- [~] **T-J14 — Dense-forest mesh budget.** Spec 50's extra fixture exceeded 3 ms. After spec 51 corrects world coordinates, all current strict guards pass: standard 1.193/1.137 ms generation/mesh; (240,-108) 2.268/1.926 ms; actual forest (216,-140) 2.471/1.268 ms. Worldgen changed geometry hashes, so this is not a like-for-like mesher optimization. Representative forest/owner hardware and current CI review remain; no thresholds relaxed.
 - [ ] **T-J2 — Section visibility culling** ("cave culling" via per-chunk face connectivity).
 - [ ] **T-J3 — Fewer draw calls** through batched buffers.
 - [ ] **T-J4 — Packed vertex format:** positions as bytes, packed light and colour.
@@ -259,24 +279,19 @@ All six sandbox-physics slices (spec 25) are built and tested. One known shortcu
 
 **`volumetric-tools.md` is fully built** — parts 1, 2 and 3 all landed (`World.setBlocks` at `src/world/world.ts:227`, `ToolKind` covering box/sphere/plane/wall/floor/roof/flatten at `src/player/buildTool.ts:23`, plus undo via `UNDO_LIMIT`). Nothing left from it. See T-L8.
 
-**`slabs-inventory-gui.md` is partially implemented.** Inventory access, Preact screens, theme tokens, focus styles and tooltips exist. Slabs are the largest remaining core change.
+**`slabs-inventory-gui.md` is partially implemented.** Slabs, inventory access, Preact screens, native/modal controls, theme tokens, focus styles and tooltips are implemented. Physical-browser acceptance remains open; Pixel Aero is separate.
 
-- [ ] **T-K1 — Slab shape.** `BlockShape` is `'cube' | 'cross'` (`src/world/blocks.ts:92`) and no `SLAB` constant exists in `src/config.ts`. Needs a `slab` with `bottom`/`top` halves at 0.15 m, via `metersToBlocks`.
-  - **Largest core change:** `isSolidAt` returns one yes/no per cell (`src/game.ts:263`), so a slab would block the whole cell. The sweep in `src/player/physics.ts` (`moveAndCollide`) needs each cell's solid height range (0–0.5 or 0.5–1 of the cell).
-  - A walker can already step onto a 0.15 m slab; the step-up limit is 0.6 m.
-  - `src/player/placementTarget.ts` does not exist yet and the plan puts placement logic there.
-  - Planned shortcut to accept or reject: slabs never cull neighbour faces and never block light.
-  - Approved scope in the plan: slabs for every cube block type, reusing the existing textures.
-- [ ] **T-K2 — Slab items and icons**, drawn with `drawBlockIcon`, stacking normally. Note the plan cites `src/ui/hud.ts`, which is now `src/ui/hud.tsx`.
+- [x] **T-K1 — Slabs through placement, collision and saves.** Spec 52 appends bottom/top states for every solid cube material, preserving old IDs. Shared player/item/body sweeps use actual vertical bounds; partial-cell rays and highlights/cracks match geometry. Side aim selects halves; complementary same-material halves merge; actual body overlap is rejected. Fluids/falls cannot replace slabs; support requires touching faces. Documented conservative shortcut: slabs do not hide neighbours or block sunlight; no waterlogging. Generated terrain is unchanged. Pure regressions and browser half-height landing/merge/ceiling checks pass; top slab restores from IndexedDB. Physical owner playtest remains T-C8.
+- [x] **T-K2 — Slab items and icons.** Every slab material appears in the creative picker with its reused textures and half-height icon. Held/dropped meshes retain correct height, horizontal log faces, climate tint and emission. Mined/picked top slabs normalize to the same material item; normal inventory stacking and name-based saves remain intact. Icon alpha/geometry/save roundtrips covered.
 - [~] **T-K3 — Inventory access root cause.** Audit correction 2026-10-18: E already works in the pause menu and pointer-lock refusal already shows a message. T-A2a fixed the reproduced ~20 s uncached-icon GPU readback stall. **HUD button implemented:** a real Inventory button shares `toggleInventory`, works without mouse capture over start/pause menus, and uses the existing focus ring and native Tab/Enter/Space activation. It is disabled before ready and while inventory is open. Closing restores the originating menu without requesting capture; opening from play retains the existing capture-on-close behaviour. Five lifecycle regressions pass. All 25 full smoke checks pass, including pointer-free HUD clicks, pause-overlay clicks, Tab/focus-ring, Enter/Space and E/Escape/Close returns to the originating menu. **Still open:** owner verification of the original physical-browser complaint (not closed by headless testing).
-- [~] **T-K4 — A proper GUI.** Preact menus/HUD/inventory, theme tokens, focus styles and item tooltips already exist. Audit the full plan against the UI before proposing more implementation; physical-browser acceptance remains open.
+- [~] **T-K4 — A proper GUI.** Existing Preact menus/HUD/inventory, theme tokens, focus styles and item tooltips audited against the plan. Spec 52 fixes native mouse/keyboard/touch slot activation, ignores right-click/repeat, adds modal focus entry/trap/return and short-window catalogue scrolling. Browser captures at 640×360, 1280×720, 1920×1080 and 1000×700; native touch/keyboard and modal Tab checks pass. Physical-browser acceptance remains open. Pixel Aero is a distinct unimplemented T-K8 track.
 
 - [ ] **T-K8 — Pixel Aero HUD proposal.** `docs/pixel-aero-hud/README_FOR_CODEX.md` adds a distinct HUD track: theme/pixel scaling, real vitality, inventory dock, context and accessibility, then screenshot acceptance. Preserve the nine-slot model and existing mechanics; do not invent energy rules or conflate this with the existing Preact GUI.
 
 From `ROADMAP.md` "Later":
 
-- [ ] **T-K5 — Building tools:** redo, copy and paste; stairs, doors; world export and import. Volume fill and undo are done; redo has no implementation.
-- [ ] **T-K6 — Input and platform:** gamepad, touch controls, PWA.
+- [~] **T-K5 — Building tools.** Volume fill/undo and **redo (spec 52)** are complete. Redo preserves expected-state conflicts, changed cells only, bounded histories and edit budgets; failed unloaded/busy replay keeps history. Ctrl/Cmd+Y or Ctrl/Cmd+Shift+Z, tool-panel counts and controls are wired. Quick chords retain keydown modifiers; stale commands clear on blur/capture. **Copy/paste and world export/import (spec 53) are complete:** bounded two-corner creative snapshots preserve state variants, omit air and use existing fill/undo/redo budgets. Accessible world-file controls export all live edits/metadata, strictly validate before confirmation, atomically replace saves and reject stale-tab writes. Browser checks cover actual shortcuts/download/file picker, source mutation, occupied destinations, undo, failed-write rollback and a second tab. **Remaining:** stairs and doors.
+- [~] **T-K6 — Input and platform.** **PWA/offline shell complete (spec 52):** production manifest/icon, versioned cache with both worker bundles, query/subpath navigation fallback, staged updates and cache cleanup; saves remain in IndexedDB. A real offline game/worker reload under `/voxel/` passes. Native inventory touch buttons work. **Remaining:** gamepad and in-world touch movement/look/build controls; physical installed-browser review. HTTPS/localhost and one completed online installation are required.
 - [ ] **T-K7 — Multiplayer.** Parked, no action.
 
 ---

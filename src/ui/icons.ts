@@ -1,5 +1,5 @@
 import { ATLAS_TILES, TILE_SIZE } from '../render/tiles';
-import { getBlockDef } from '../world/blocks';
+import { getBlockDef, slabBounds } from '../world/blocks';
 
 /** Pixels per side of a block icon. The views scale it up without smoothing. */
 export const ICON_PIXELS = 32;
@@ -15,7 +15,10 @@ export function drawBlockIcon(canvas: HTMLCanvasElement, atlas: HTMLCanvasElemen
   const tile = getBlockDef(state).tiles.side;
   const sx = (tile % ATLAS_TILES) * TILE_SIZE;
   const sy = Math.floor(tile / ATLAS_TILES) * TILE_SIZE;
-  ctx.drawImage(atlas, sx, sy, TILE_SIZE, TILE_SIZE, 0, 0, canvas.width, canvas.height);
+  const bounds = slabBounds(state);
+  const top = bounds ? (1 - bounds[1]) * canvas.height : 0;
+  const height = bounds ? (bounds[1] - bounds[0]) * canvas.height : canvas.height;
+  ctx.drawImage(atlas, sx, sy, TILE_SIZE, TILE_SIZE, 0, top, canvas.width, height);
 }
 
 const urls = new Map<number, string>();

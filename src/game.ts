@@ -1,6 +1,10 @@
+import { exportWorldArchive, parseWorldArchive, type WorldArchive } from './storage/worldArchive';
+import { BuildClipboard } from './player/clipboard';
+import { resolvePlacement } from './player/placementTarget';
+import { blockCollision, slabBounds, slabItemState } from './world/blocks';
 import { atmosphericFogStrength } from './world/atmosphere';
 import {
-  FOG_SAMPLE_INTERVAL_S, FOG_VALLEY_SAMPLE_M, FOG_GROUND_LAYER_M, metersToBlocks,
+  WORLD_FILE_MAX_BYTES, FOG_SAMPLE_INTERVAL_S, FOG_VALLEY_SAMPLE_M, FOG_GROUND_LAYER_M, metersToBlocks,
   AUTOSAVE_INTERVAL_S, BLOCK_SIZE_M, BREAK_REPEAT_S, DAY_LENGTH_S, DAYS_PER_SEASON, DEFAULT_MOUSE_SENSITIVITY, EYE_HEIGHT, FIXED_DT,
   FOOTSTEP_DISTANCE, FOOTSTEP_MIN_SPEED, GEN_BUDGET_MS, HOTBAR_SIZE, MAX_FRAME_DT, MESH_BUDGET_MS, REACH, SEA_LEVEL,
   SETTINGS_KEY, SPAWN_READY_RADIUS, START_TIME_OF_DAY, WORLD_LATITUDE_DEG, ITEM_SIZE, PLAYER_HEIGHT, WALK_SPEED,
@@ -16,7 +20,7 @@ import { LooseBodies } from './items/looseBodies';
 import { BlockBreaking } from './player/breaking';
 import { BuildTool, cornerFor, frameFor } from './player/buildTool';
 import { Inventory, type ItemStack } from './player/inventory';
-import { blockIntersectsBody, canBreak, placementTarget } from './player/interaction';
+import { blockIntersectsBody, canBreak } from './player/interaction';
 import type { Vec3 } from './player/physics';
 import { FireExposure, fluidContact, landingDamage, landingWaterDepth } from './player/fluidHazards';
 import { NO_CONTROLS, PLAYER_SHAPE, Player, type PlayerControls } from './player/player';
@@ -43,7 +47,7 @@ import { formatDebugLines } from './ui/debugText';
 import { Hud } from './ui/hud';
 import { InventoryScreen } from './ui/inventoryScreen';
 import { Menu, type MenuMode } from './ui/menu';
-import { BlockId, getBlockDef, isSolid, isWaterState, isLavaState, isFluidState } from './world/blocks';
+import { BlockId, getBlockDef, isWaterState, isLavaState, isFluidState } from './world/blocks';
 import { scheduleLeafDecay } from './world/ecology';
 import { scheduleFallChecks } from './world/falling';
 import { scheduleFlowChecks } from './world/flow';
@@ -124,6 +128,7 @@ export class Game {
 
   /** Debug hook (smoke test only): while true, simulation and rendering are skipped so another page can load. */
   private idle = false;
+  private readonly clipboard = new BuildClipboard();
 
   /** Frames rendered since the page opened; a frame-rate-independent way to see that the loop is running. */
   private frameCount = 0;
@@ -158,6 +163,7 @@ export class Game {
   private savingEnabled: boolean;
   private readonly worldStore: WorldStore;
   private readonly saver: WorldSaver;
+  private importing = false;
   private saveTimer = 0;
   /** Where the player was when the game was saved; used instead of the spawn search. */
   private readonly savedPlayer: SavedPlayer | null;
@@ -195,6 +201,7 @@ export class Game {
     this.calendar = new Calendar(DAYS_PER_SEASON, WORLD_LATITUDE_DEG);
     if (save.loaded && loaded) {
       this.world.loadEdits(save.loaded.edits);
+      this.world.loadTicks(loaded.scheduledTicks ?? [], loaded.gameTick ?? 0);
       this.inventory = new Inventory(loaded.inventory);
       this.inventory.select(loaded.selectedSlot);
       this.items.restore(loaded.items);
@@ -243,6 +250,8 @@ export class Game {
         },
         onSettingsChange: (s) => this.changeSettings(s),
         onNewWorld: () => this.newWorld(),
+        onExportWorld: () => this.downloadWorld(),
+        onImportWorld: save.persistent ? file => { void this.importFile(file); } : undefined,
         onInventory: () => this.openInventory(),
         onGameModeChange: (mode) => this.setGameMode(mode),
       },
@@ -300,8 +309,8 @@ export class Game {
   }
 
   /** Solid test used by physics. Unloaded chunks count as solid so the player can never fall into one. */
-  readonly isSolidAt = (x: number, y: number, z: number): boolean =>
-    !this.world.isLoadedAt(x, y, z) || isSolid(this.world.getBlock(x, y, z));
+  readonly isSolidAt = (x: number, y: number, z: number) =>
+    !this.world.isLoadedAt(x, y, z) || blockCollision(this.world.getBlock(x, y, z));
 
   readonly isWaterAt = (x: number, y: number, z: number): boolean => isWaterState(this.world.getBlock(x, y, z));
 
@@ -421,13 +430,58 @@ export class Game {
    */
   saveNow(): Promise<boolean> {
     if (!this.savingEnabled || !this.ready) return Promise.resolve(false);
-    return this.saver.save();
+    return this.saver.save().then(ok=>{
+      if(!ok && this.worldStore.stale) {
+        this.savingEnabled=false; this.playing=false; this.input.releasePointerLock();
+        this.menu.show('paused');
+        this.menu.setLockNote('This saved world was replaced in another tab. Export this session to keep it, then reload.');
+      }
+      return ok;
+    });
+  }
+
+  exportWorld(): string { if(!this.ready || this.edits.busy)throw Error('Wait for world loading or the current building action'); return exportWorldArchive(this.worldMeta(),this.world.edits); }
+
+  private downloadWorld(): void {
+    try {
+      const url=URL.createObjectURL(new Blob([this.exportWorld()],{type:'application/json'}));
+      const link=document.createElement('a');link.href=url;link.download=`voxel-world-${this.world.seed}.json`;
+      link.click();setTimeout(()=>URL.revokeObjectURL(url),0);
+      this.menu.setLockNote('World backup downloaded.');
+    } catch(error) {this.menu.setLockNote(error instanceof Error ? error.message : 'World export failed');}
+  }
+  private async importFile(file:File):Promise<void> {
+    try {
+      if(file.size>WORLD_FILE_MAX_BYTES)throw Error('World backup is too large');
+      const data=parseWorldArchive(await file.text());
+      if(this.importing)return;
+      if(!window.confirm(`Replace your saved world with seed ${data.meta.seed} (${data.chunks.length} edited chunks)? Export your current world first if you want to keep it.`))return;
+      if(!await this.restoreArchive(data))this.menu.setLockNote('World import failed; your previous save is unchanged.');
+    } catch(error) {this.menu.setLockNote(error instanceof Error ? error.message : 'World import failed');}
+  }
+  /** Debug/test path uses the same strict validation and atomic replacement as the file picker. */
+  async importWorld(text:string):Promise<boolean> {
+    try {return await this.restoreArchive(parseWorldArchive(text));} catch {return false;}
+  }
+  private async restoreArchive(data:WorldArchive):Promise<boolean> {
+    if(!this.savingEnabled || !this.ready || this.edits.busy || this.importing)return false;
+    this.importing=true;
+    const wasIdle=this.idle;this.idle=true;this.savingEnabled=false;
+    this.menu.setLockNote('Restoring world backup…');
+    this.menu.setBusy(true);
+    await this.saver.drain();
+    const ok=await this.worldStore.replace(data.meta,data.chunks);
+    if(ok) {window.location.href=window.location.pathname;return true;}
+    this.savingEnabled=true;this.idle=wasIdle;this.importing=false;this.menu.setBusy(false);
+    return false;
   }
 
   private worldMeta(): WorldMeta {
     const p = this.player;
     return {
       seed: this.world.seed,
+      scheduledTicks: this.world.snapshotTicks(),
+      gameTick: this.world.currentTick,
       player: { x: p.position.x, y: p.position.y, z: p.position.z, yaw: p.yaw, pitch: p.pitch, flying: p.flying },
       selectedSlot: this.inventory.selected,
       inventory: this.inventory.slots.map((s) => (s ? { ...s } : null)),
@@ -485,7 +539,7 @@ export class Game {
     if (this.playing && this.ready && !this.inventoryScreen.isOpen) this.handleBlockActions(frameDt, eye, look);
     this.itemMeshes.sync(this.items.items, this.clockS);
     this.bodyMeshes.sync(this.bodies.bodies);
-    this.breakOverlay.update(this.breaking.target, this.breaking.stage);
+    this.breakOverlay.update(this.breaking.target, this.breaking.stage, this.breaking.target ? slabBounds(this.world.getBlock(this.breaking.target.x, this.breaking.target.y, this.breaking.target.z)) : null);
     const walking = this.player.onGround ? Math.min(1, Math.hypot(this.player.velocity.x, this.player.velocity.z) / WALK_SPEED) : 0;
     this.held.setState(this.inventory.selectedBlock);
     this.held.update(frameDt, walking, this.breaking.target !== null);
@@ -591,9 +645,13 @@ export class Game {
 
   /** Deletes the save and reloads; with no save, the next start picks a new random seed. */
   private newWorld(): void {
-    this.savingEnabled = false; // otherwise 'pagehide' would write the old world back
-    void this.worldStore.clear().then(() => {
-      window.location.href = window.location.pathname;
+    if(this.importing)return;
+    const saving=this.savingEnabled,idle=this.idle;
+    this.importing=true;this.savingEnabled=false;this.idle=true;this.menu.setBusy(true);
+    void this.saver.drain().then(()=>this.worldStore.clear()).then(ok=>{
+      if(ok){window.location.href=window.location.pathname;return;}
+      this.savingEnabled=saving;this.idle=idle;this.importing=false;this.menu.setBusy(false);
+      this.menu.setLockNote('The world could not be cleared. Your saved world is unchanged; reload before retrying.');
     });
   }
 
@@ -626,7 +684,7 @@ export class Game {
     if (!canBreak(id)) return false;
     const ok = this.setBlock(x, y, z, BlockId.AIR);
     if (ok) {
-      this.items.spawn(id, 1, x + 0.5, y + (1 - ITEM_SIZE) / 2, z + 0.5, Math.random);
+      this.items.spawn(slabItemState(id), 1, x + 0.5, y + (1 - ITEM_SIZE) / 2, z + 0.5, Math.random);
       this.sounds.play('break');
     }
     return ok;
@@ -639,7 +697,7 @@ export class Game {
   private spawnBrokenBlocks(): void {
     for (const d of this.world.takeDrops()) {
       if (d.body && this.bodies.canAdd) this.bodies.spawn(d.id, d.x + 0.5, d.y, d.z + 0.5, Math.random);
-      else this.items.spawn(d.id, 1, d.x + 0.5, d.y + (1 - ITEM_SIZE) / 2, d.z + 0.5, Math.random);
+      else this.items.spawn(slabItemState(d.id), 1, d.x + 0.5, d.y + (1 - ITEM_SIZE) / 2, d.z + 0.5, Math.random);
     }
   }
 
@@ -662,7 +720,7 @@ export class Game {
   pickTarget(): boolean {
     const t = this.target;
     if (!t) return false;
-    this.inventory.pick(this.world.getBlock(t.x, t.y, t.z));
+    this.inventory.pick(slabItemState(this.world.getBlock(t.x, t.y, t.z)));
     return true;
   }
 
@@ -671,8 +729,9 @@ export class Game {
     const t = this.target;
     if (!t || this.inventory.selectedBlock === BlockId.AIR) return false;
     const block = this.inventory.selectedBlock;
-    const p = placementTarget(t, (x, y, z) => this.world.getBlock(x, y, z), block, this.player.position, PLAYER_SHAPE);
-    const ok = p !== null && this.setBlock(p.x, p.y, p.z, block);
+    const eye = this.player.eyePosition(1), look = this.player.lookDirection();
+    const p = resolvePlacement(t, (x, y, z) => this.world.getBlock(x, y, z), block, this.player.position, PLAYER_SHAPE, eye.y + look.y * t.distance);
+    const ok = p !== null && this.setBlock(p.x, p.y, p.z, p.state);
     if (ok) {
       this.inventory.consumeSelected();
       this.sounds.play('place');
@@ -694,7 +753,7 @@ export class Game {
 
   private updateTarget(eye: Vec3, look: Vec3): void {
     this.target = this.ready
-      ? raycastVoxels(eye.x, eye.y, eye.z, look.x, look.y, look.z, REACH, (x, y, z) => getBlockDef(this.world.getBlock(x, y, z)).targetable)
+      ? raycastVoxels(eye.x, eye.y, eye.z, look.x, look.y, look.z, REACH, (x, y, z) => { const state = this.world.getBlock(x, y, z); return getBlockDef(state).targetable ? slabBounds(state) ?? true : false; })
       : null;
     this.updatePreview(eye, look);
   }
@@ -765,14 +824,30 @@ export class Game {
     if (this.input.consumePressed('Comma')) t.adjustThickness(-1);
     if (this.input.consumePressed('Period')) t.adjustThickness(1);
     if (this.input.consumePressed('KeyG')) t.toggleHollow();
-    if (this.input.consumePressed('KeyC')) t.toggleDisc();
-    if (this.input.consumePressed('KeyX')) t.cancelFrame();
-    if (this.input.consumePressed('KeyZ') && (this.input.isDown('ControlLeft') || this.input.isDown('ControlRight'))) this.undoEdit();
+    if (this.input.consumeShortcut('KeyC')) this.copyTarget();
+    else if (this.input.consumePressed('KeyC')) t.toggleDisc();
+    if (this.input.consumeShortcut('KeyV')) this.pasteTarget();
+    if (this.input.consumePressed('KeyX')) { t.cancelFrame(); this.clipboard.cancel(); }
+    if (this.input.consumeShortcut('KeyZ')) this.undoEdit();
+    if (this.input.consumeShortcut('KeyZ', true) || this.input.consumeShortcut('KeyY')) this.redoEdit();
   }
 
   /** Ctrl+Z: undoes the last volume action (cells changed since then are left alone). */
   undoEdit(): boolean {
     return this.edits.undo();
+  }
+
+  redoEdit(): boolean { return this.edits.redo(); }
+
+  /** Copy two aimed corners; paste anchors the copied minimum corner to the aimed adjacent cell. */
+  copyTarget(): boolean {
+    if (!this.target || this.edits.busy || this.gameMode !== GAME_MODE_CREATIVE) return false;
+    return this.clipboard.select(this.target, this.world);
+  }
+  pasteTarget(): boolean {
+    const t = this.target;
+    if (!t || this.gameMode !== GAME_MODE_CREATIVE || this.clipboard.count === 0) return false;
+    return this.startEdit(this.clipboard.paste({x:t.x+t.nx,y:t.y+t.ny,z:t.z+t.nz}));
   }
 
   /** True while a volume action is still being applied over several frames. */
@@ -820,7 +895,7 @@ export class Game {
 
   /** Queues a volume action. Fills keep only the cells outside the player's body, so a volume never traps the player. */
   private startEdit(cells: EditCell[]): boolean {
-    const wanted = cells.filter((c) => c.clear || !blockIntersectsBody(c.x, c.y, c.z, this.player.position, PLAYER_SHAPE));
+    const wanted = cells.filter((c) => c.clear || !blockIntersectsBody(c.x, c.y, c.z, this.player.position, PLAYER_SHAPE, slabBounds(c.id)));
     const started = this.edits.start(wanted);
     if (started) {
       this.held.swing();
@@ -836,8 +911,10 @@ export class Game {
   private updatePreview(eye: Vec3, look: Vec3): void {
     const tool = this.tool;
     const t = this.target;
+    const selection=t ? this.clipboard.preview(t) : null;
+    if(selection) {this.highlight.showBox(selection);this.showToolRows(null);return;}
     if (tool.mode === 'single') {
-      this.highlight.update(t);
+      this.highlight.update(t, t ? slabBounds(this.world.getBlock(t.x, t.y, t.z)) : null);
       this.showToolRows(t ? 1 : null);
       return;
     }
@@ -848,7 +925,7 @@ export class Game {
         this.highlight.showBox(box);
         this.showToolRows(volumeOf(box));
       } else {
-        this.highlight.update(t);
+        this.highlight.update(t, t ? slabBounds(this.world.getBlock(t.x, t.y, t.z)) : null);
         this.showToolRows(null);
       }
       return;
@@ -882,6 +959,8 @@ export class Game {
         preview,
         block: selected ? getBlockDef(selected.state).name : 'empty',
         undo: this.edits.undoCount,
+        redo: this.edits.redoCount,
+        clipboard: this.gameMode === GAME_MODE_CREATIVE ? this.clipboard.status : 'Copy/paste requires creative mode',
       }),
     );
   }
@@ -1000,7 +1079,7 @@ export class Game {
       breakStageSeen: this.breakStageSeen,
       frames: this.frameCount,
       renderDistance: this.chunks.renderDistance,
-      workers: this.usingWorkers,
+      workers: this.chunks.usingWorkers,
       drawCalls: this.renderer.drawCalls,
       /** True when the 3x3x3 chunks around the player's feet are meshed. */
       areaMeshed: this.chunks.isAreaMeshed(p.position.x, p.position.y, p.position.z, SPAWN_READY_RADIUS),

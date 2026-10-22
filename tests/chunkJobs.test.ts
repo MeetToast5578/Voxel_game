@@ -124,3 +124,28 @@ describe('ChunkManager with ChunkJobs', () => {
     expect(manager.isMeshed(-1, 0, 1)).toBe(true);
   });
 });
+
+it.each(['tops', 'generate', 'mesh'])('recovers from rejected %s jobs through synchronous fallback', async failure => {
+  const world = new World(7), sink = new Sink();
+  const reject = () => Promise.reject(new Error('worker crashed'));
+  const manager = new ChunkManager(world, new FakeGenerator(() => 0), sink, 2,
+    { columnTops: (cx, cz) => failure === 'tops' ? reject() : Promise.resolve(new FakeGenerator(() => 0).columnTops(cx, cz)),
+      generate: (cx, cy, cz) => { if (failure === 'generate') return reject(); const c = new Chunk(cx, cy, cz); new FakeGenerator(() => 0).generateChunk(c); return Promise.resolve(c.blocks); },
+      mesh: (_cx, cy, _cz, neighbors, tops) => failure === 'mesh' ? reject() : Promise.resolve(buildChunkMesh(neighbors, tops, cy)) });
+  manager.update(8, 8, 8, 4, 4);
+  for (let i = 0; i < 30; i++) { manager.update(8, 8, 8, 4, 4); await new Promise(resolve => setTimeout(resolve, 0)); }
+  for (let i = 0; i < 10; i++) manager.update(8, 8, 8, Infinity, Infinity);
+  expect(sink.meshes.size).toBe(FULL);
+  expect(manager.stats.jobsInFlight).toBe(0);
+});
+
+it('transfers actual ground bounds with worker lighting tops under a dense canopy', async () => {
+  const world = new World(7), sink = new Sink(), jobs = new FakeJobs();
+  const manager = new ChunkManager(world, jobs.generator, sink, 2, {
+    columnTops: async () => ({ tops: new Int32Array(256).fill(64), groundMin: 0 }),
+    generate: (...args) => jobs.generate(...args), mesh: (...args) => jobs.mesh(...args),
+  });
+  for (let i = 0; i < 80; i++) { manager.update(8, 200, 8, 4, 4); await jobs.flush(); }
+  expect(manager.isMeshed(0, 0, 0)).toBe(true);
+  expect(manager.isMeshed(0, 4, 0)).toBe(true);
+});

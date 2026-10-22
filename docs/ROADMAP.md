@@ -2,6 +2,23 @@
 
 Last updated 2026-10-17, checked against the code. This replaces the backlog in `HANDOFF.md`. Phase 1 and 1b are merged (specs 1–10). Phases 2–7 are partly merged; each phase below says what is done, partial or not started. The owner's open choices are in `HANDOFF.md`, "Open decisions".
 
+Spec 53 building/backups (2026-10-22): creative two-corner copy/paste and validated portable
+world files are implemented, with atomic replacement and stale-tab save protection. Stairs,
+doors, gamepad/in-world touch and Pixel Aero remain open; see tasks.md and HANDOFF.md.
+
+Spec 52 building/interface/platforms (2026-10-22): slab states/items/partial-height physics,
+redo, native/modal inventory and production offline installation are implemented. Stairs/doors,
+gamepad, in-game touch and Pixel Aero remain open; see section K.
+
+Spec 51 terrain review (2026-10-22): centred region ownership, real lake beds, sparse saved-build
+bands and coordinated voxel/horizon fades are implemented. Coarse far coastlines, real river seam
+acceptance and owner visual approval remain open; see tasks.md and HANDOFF.md.
+
+Spec 50 engine audit (2026-10-21): dense-canopy terrain bounds, consistent horizon surface sampling,
+durable pending updates and worker failure fallback are implemented. Pending work pauses while
+unloaded; analytical ecology catch-up remains future work. Extra forest mesh performance and
+owner visual acceptance remain open; see tasks.md and HANDOFF.md for current evidence.
+
 Current implementation update (2026-10-21, specs 48/49): climate colours and surface biomes now resolve in world coordinates at cell/vertex resolution; biome flowers, reeds, supported boulders/logs, lily pads and moss are implemented with procedural art. The dated phase snapshots below are historical; `tasks.md` records current completion and validation.
 
 ## Vision

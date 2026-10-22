@@ -72,6 +72,10 @@ Status is checked against the code on 2026-10-17. "Open" means the spec's goal i
 
 | [48-coasts-horizon-flora.md](48-coasts-horizon-flora.md) | Coasts, horizon and climate vegetation | Done | T-D6/D7/E2/E3/E4; 599 tests, enabled worker budgets, GPU and all 30 gameplay smoke checks pass |
 | [49-surface-features-biomes.md](49-surface-features-biomes.md) | Supported surface features and cell biomes | Done | T-E5/E6/E7/E8/E10 and procedural art T-E9; deterministic features, horizontal logs, thin lake pads/moss and world-coordinate biome boundaries |
+| [50-engine-bug-audit.md](50-engine-bug-audit.md) | Terrain, durable ticks and worker recovery | Implemented; visual/performance follow-up open | Dense-canopy bounds, shared surface sampling, proxy ordering, pending updates, worker fallback and ecology notifications |
+| [51-terrain-visual-acceptance.md](51-terrain-visual-acceptance.md) | Terrain coordinates, lake basins and visual transitions | Partial acceptance | Region/lake/build visibility repairs; coarse far coastlines and owner/real-river review remain open. |
+| [52-building-interface-platforms.md](52-building-interface-platforms.md) | Slabs, redo, accessible inventory and offline installation | Implemented; owner review open | Partial-height collision/placement/items, conflict-safe redo, modal/native inventory and worker-backed offline subpath reload |
+| [53-building-copy-world-backups.md](53-building-copy-world-backups.md) | Creative copy/paste and portable world backups | Implemented | State snapshots, fill/undo/redo, strict files, atomic replacement and stale-tab protection; browser transfer/rollback verified |
 
 ### Known problems in the spec files
 

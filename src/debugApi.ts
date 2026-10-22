@@ -1,3 +1,4 @@
+import { parseBlockStateName } from './world/blocks';
 import type { Game } from './game';
 import type { ToolKind, ToolMode } from './player/buildTool';
 import { HEALTH_MAX, HUNGER_MAX, AIR_MAX_S } from './config';
@@ -9,6 +10,9 @@ export interface DebugApi {
   teleport(x: number, y: number, z: number): void;
   look(yaw: number, pitch: number): void;
   setFlying(flying: boolean): void;
+  /** Isolate voxel terrain without changing fog or camera range. */
+  setHorizonHidden(hidden: boolean): void;
+  blockState(name: string): number | null;
   getBlock(x: number, y: number, z: number): number;
   setBlock(x: number, y: number, z: number, id: number): boolean;
   breakTarget(): boolean;
@@ -28,6 +32,11 @@ export interface DebugApi {
   toolClick(add: boolean): void;
   /** Undoes the last volume action. False when there is none or one is still being applied. */
   undoEdit(): boolean;
+  redoEdit(): boolean;
+  copyTarget(): boolean;
+  pasteTarget(): boolean;
+  exportWorld(): string;
+  importWorld(text:string): Promise<boolean>;
   /** True while a volume action is still being applied. */
   readonly editsBusy: boolean;
   /** Game mode: 'survival' or 'creative'. */
@@ -66,6 +75,8 @@ export function installDebugApi(game: Game): void {
     setFlying: (flying) => {
       if (game.player.flying !== flying) game.player.toggleFlying();
     },
+    setHorizonHidden: hidden => game.horizon.setDebugHidden(hidden),
+    blockState: parseBlockStateName,
     getBlock: (x, y, z) => game.world.getBlock(x, y, z),
     setBlock: (x, y, z, id) => game.setBlock(x, y, z, id),
     breakTarget: () => game.breakTarget(),
@@ -85,6 +96,11 @@ export function installDebugApi(game: Game): void {
     },
     toolClick: (add) => game.toolClick(add),
     undoEdit: () => game.undoEdit(),
+    redoEdit: () => game.redoEdit(),
+    copyTarget: () => game.copyTarget(),
+    pasteTarget: () => game.pasteTarget(),
+    exportWorld: () => game.exportWorld(),
+    importWorld: text => game.importWorld(text),
     get editsBusy() {
       return game.editsBusy;
     },

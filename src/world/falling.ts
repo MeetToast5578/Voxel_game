@@ -1,8 +1,9 @@
-import { CHUNK_SIZE, GRAVITY_TICK_DELAY } from '../config';
-import { BlockId, getBlockDef, isFluidState } from './blocks';
+import { CHUNK_SIZE, GRAVITY_TICK_DELAY, SLAB_HEIGHT } from '../config';
+import { BlockId, getBlockDef, isFluidState, slabBounds, isPlantState } from './blocks';
 import type { Chunk } from './chunk';
 import type { Tick, TickResult } from './tick';
 import type { World } from './world';
+import { scheduleFlowChecks } from './flow';
 
 /** The tick reason for a fall check: "does the block at this cell fall, and where does it land". */
 export const FALL_REASON = 'fall';
@@ -12,7 +13,7 @@ export const FALL_REASON = 'fall';
  * fall.
  */
 export function canFallInto(id: number): boolean {
-  return id === BlockId.AIR || isFluidState(id) || getBlockDef(id).shape !== 'cube';
+  return id === BlockId.AIR || isFluidState(id) || isPlantState(id);
 }
 
 /**
@@ -27,8 +28,8 @@ export function scheduleFallChecks(world: World, x: number, y: number, z: number
 
 /**
  * Schedules a fall check for every falling block in a chunk that has room below it. Called when a chunk is loaded, so
- * a falling block that was saved mid-fall resumes its fall after a reload. Pending ticks are not saved; this scan
- * finds them again (shortcut: the scan costs one pass over the chunk's cells, upgrade if chunks grow much larger).
+ * old saves without scheduled work still resume their falls. Restored queues already contain exact remaining
+ * delays, so those cells are skipped rather than accelerated by this legacy recovery scan.
  */
 export function scheduleFallingBlocks(world: World, chunk: Chunk): void {
   const blocks = chunk.blocks;
@@ -42,7 +43,7 @@ export function scheduleFallingBlocks(world: World, chunk: Chunk): void {
     const x = chunk.cx * CHUNK_SIZE + lx;
     const y = chunk.cy * CHUNK_SIZE + ly;
     const z = chunk.cz * CHUNK_SIZE + lz;
-    if (canFallInto(world.getBlock(x, y - 1, z))) world.scheduleTick(x, y, z, due, FALL_REASON);
+    if (!world.hasScheduledTick(x, y, z, FALL_REASON) && (canFallInto(world.getBlock(x, y - 1, z)) || slabBounds(world.getBlock(x, y - 1, z))?.[1] === SLAB_HEIGHT)) world.scheduleTick(x, y, z, due, FALL_REASON);
   }
 }
 
@@ -54,11 +55,25 @@ export function handleFall(world: World, tick: Tick): TickResult {
   const { x, y, z } = tick;
   const id = world.getBlock(x, y, z);
   if (id === BlockId.AIR || !getBlockDef(id).falls) return 'handled';
-  if (!canFallInto(world.getBlock(x, y - 1, z))) return 'handled';
-  if (!world.setBlock(x, y - 1, z, id)) return 'handled';
+  const below = world.getBlock(x, y - 1, z);
+  if (slabBounds(below)?.[1] === SLAB_HEIGHT) {
+    // A full falling voxel cannot occupy the half-cell gap: drop its item on the slab.
+    if (world.setBlock(x, y, z, BlockId.AIR)) {
+      world.queueDrop(id, x, y, z, false);
+      scheduleFallChecks(world, x, y, z); scheduleFlowChecks(world, x, y, z);
+    }
+    return 'handled';
+  }
+  if (!canFallInto(below)) return 'handled';
+  if (!world.isLoadedAt(x, y - 1, z) || !world.setBlock(x, y - 1, z, id)) {
+    world.scheduleTick(x, y, z, world.currentTick + GRAVITY_TICK_DELAY, FALL_REASON);
+    return 'handled';
+  }
   world.setBlock(x, y, z, BlockId.AIR);
   // The block keeps falling from its new cell, and the cell it left may have freed the block above.
   world.scheduleTick(x, y - 1, z, world.currentTick + GRAVITY_TICK_DELAY, FALL_REASON);
   scheduleFallChecks(world, x, y, z);
+  scheduleFlowChecks(world, x, y, z);
+  scheduleFlowChecks(world, x, y - 1, z);
   return 'handled';
 }

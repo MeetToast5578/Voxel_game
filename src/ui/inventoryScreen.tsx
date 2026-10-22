@@ -60,7 +60,7 @@ function InventoryView(p: ViewProps) {
   ));
   return (
     <>
-      <div class="inventory-panel" role="dialog" aria-label="Inventory">
+      <div class="inventory-panel" role="dialog" aria-modal="true" aria-label="Inventory">
         <div class="inventory-head">
           <h2 class="inventory-title">{p.tab === 'blocks' ? 'Blocks' : 'Inventory'}</h2>
           <button type="button" class="menu-button small" onClick={p.onClose}>
@@ -129,6 +129,7 @@ export class InventoryScreen {
   private hovered: number | null = null;
   private tab: InventoryTab = 'inventory';
   private open = false;
+  private returnFocus: HTMLElement | null = null;
   private cursorEl: HTMLDivElement | null = null;
   private tipEl: HTMLDivElement | null = null;
 
@@ -143,6 +144,13 @@ export class InventoryScreen {
     this.root.className = 'inventory';
     this.root.style.display = 'none';
     parent.append(this.root);
+    this.root.addEventListener('keydown', event => {
+      if (event.key !== 'Tab' || !this.open) return;
+      const buttons = [...this.root.querySelectorAll<HTMLButtonElement>('button:not([disabled])')];
+      const first = buttons[0], last = buttons[buttons.length - 1];
+      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
+      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
+    });
     window.addEventListener('mousemove', (e) => {
       for (const el of [this.cursorEl, this.tipEl]) {
         if (!el) continue;
@@ -162,10 +170,12 @@ export class InventoryScreen {
   }
 
   show(): void {
+    this.returnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     this.open = true;
     this.tab = 'inventory';
     this.root.style.display = '';
     this.refresh();
+    this.root.querySelector<HTMLButtonElement>('button')?.focus();
   }
 
   /** Closes the screen. A stack still on the cursor goes back into the inventory; what does not fit is returned. */
@@ -180,6 +190,9 @@ export class InventoryScreen {
     this.open = false;
     this.root.style.display = 'none';
     this.draw();
+    const previous = this.returnFocus;
+    requestAnimationFrame(() => { if (!this.open && previous?.isConnected) previous.focus(); });
+    this.returnFocus = null;
     return leftover;
   }
 

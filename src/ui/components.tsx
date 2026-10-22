@@ -9,7 +9,7 @@ interface SlotProps {
   label: string;
   selected?: boolean;
   keyLabel?: string;
-  /** Inventory slots are buttons: a press (mouse down, or Enter or Space) calls this. Hotbar slots have none. */
+  /** Inventory slots are buttons: native pointer/touch clicks, Enter and Space call this. Hotbar slots have none. */
   onPress?: () => void;
   onHover?: (over: boolean) => void;
 }
@@ -36,16 +36,8 @@ export function Slot(p: SlotProps) {
       type="button"
       class={`${cls} inv-slot`}
       aria-label={p.label}
-      onMouseDown={(e) => {
-        e.preventDefault();
-        p.onPress?.();
-      }}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault();
-          p.onPress?.();
-        }
-      }}
+      onClick={() => p.onPress?.()}
+      onKeyDown={event => { if (event.repeat && (event.key === 'Enter' || event.key === ' ')) event.preventDefault(); }}
       onMouseEnter={() => p.onHover?.(true)}
       onMouseLeave={() => p.onHover?.(false)}
       onFocus={() => p.onHover?.(true)}

@@ -50,7 +50,7 @@ describe('atmospheric integration (T-F3/T-F4)',()=>{
   });
   it('keeps fog ranges ordered, retains underwater fog priority, and updates fog colour at night',()=>{
     const renderer=Object.create(Renderer.prototype) as Renderer;
-    Object.assign(renderer,{fog:new THREE.Fog(0,50,100),background:new THREE.Color(),skyColor:0x87ceeb,underwater:false,viewBlocks:128,atmosphericFog:0});
+    Object.assign(renderer,{fog:new THREE.Fog(0,50,100),background:new THREE.Color(),skyColor:0x87ceeb,underwater:false,viewBlocks:128,atmosphericFog:0,horizonDistance:0,terrainFade:{value:new THREE.Vector2()}});
     renderer.setAtmosphericFog(1);
     expect(renderer.fog.near).toBeGreaterThan(0);expect(renderer.fog.far).toBeGreaterThan(renderer.fog.near);
     expect(renderer.fog.far).toBeLessThan(128*0.95);

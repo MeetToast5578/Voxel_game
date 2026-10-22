@@ -1,6 +1,6 @@
 import { CHUNK_SIZE } from '../config';
 import { localIndex } from '../core/coords';
-import { BLOCK_REGISTRY, BlockId, EMISSION_TABLE, OPAQUE_TABLE, blockTopHeight, blockFaceTile } from '../world/blocks';
+import { BLOCK_REGISTRY, BlockId, EMISSION_TABLE, OPAQUE_TABLE, blockTopHeight, blockBottomHeight, blockFaceTile } from '../world/blocks';
 import {
   LIGHT_CURVE,
   REGION_SIZE,
@@ -52,6 +52,8 @@ const CROSS_TABLE = new Uint8Array(STATE_COUNT);
 const TINT_KIND = new Uint8Array(STATE_COUNT);
 const TRANSLUCENT_TABLE = new Uint8Array(STATE_COUNT);
 const CULL_SAME_TABLE = new Uint8Array(STATE_COUNT);
+const BOTTOM_HEIGHT_TABLE = new Float64Array(STATE_COUNT);
+const SLAB_TABLE = new Uint8Array(STATE_COUNT);
 const TOP_HEIGHT_TABLE = new Float64Array(STATE_COUNT);
 /** Tile index per state and axis: [top, side, bottom]. */
 const TILE_TABLE = new Uint8Array(STATE_COUNT * 3);
@@ -59,10 +61,13 @@ const FACE_TILES = new Uint8Array(STATE_COUNT * 6);
 for (let state = 0; state < STATE_COUNT; state++) {
   const def = BLOCK_REGISTRY.getBlockDef(state);
   FACES.forEach((face, f) => { FACE_TILES[state * 6 + f] = blockFaceTile(state, ...face.dir); });
-  TINT_KIND[state] = def.key === 'grass' ? 1 : def.key === 'leaves' ? 2 : def.key === 'water' || def.key === 'flowing_water' ? 3 : 0;
+  const tintKey = BLOCK_REGISTRY.getBlockDef(def.slabMaterial ?? state).key;
+  TINT_KIND[state] = tintKey === 'grass' ? 1 : tintKey === 'leaves' ? 2 : tintKey === 'water' || tintKey === 'flowing_water' ? 3 : 0;
   CROSS_TABLE[state] = def.shape === 'cross' ? CROSS_SHAPE : 0;
   TRANSLUCENT_TABLE[state] = def.layer === 'translucent' ? TRANSLUCENT_LAYER : 0;
   CULL_SAME_TABLE[state] = def.cullSame ? 1 : 0;
+  BOTTOM_HEIGHT_TABLE[state] = blockBottomHeight(state);
+  SLAB_TABLE[state] = def.shape === 'slab' ? 1 : 0;
   TOP_HEIGHT_TABLE[state] = blockTopHeight(state);
   TILE_TABLE[state * 3] = def.tiles.top;
   TILE_TABLE[state * 3 + 1] = def.tiles.side;
@@ -400,11 +405,13 @@ export function buildChunkMesh(neighbors: readonly Uint16Array[], tops: readonly
         const cullSame = CULL_SAME_TABLE[id] === 1;
         const emission = EMISSION_TABLE[id]!;
         const top = TOP_HEIGHT_TABLE[id]!;
+        const bottom = BOTTOM_HEIGHT_TABLE[id]!;
 
         for (let f = 0; f < 6; f++) {
           const n = i + FACE_NEIGHBOR[f]!;
           const nid = vol[n]!;
-          if (opaque[nid] === 1) continue;
+          // A slab's interior horizontal face is not covered by the neighbouring cell.
+          if (opaque[nid] === 1 && !(SLAB_TABLE[id] && ((FACES[f]!.dir[1] === 1 && top < 1) || (FACES[f]!.dir[1] === -1 && bottom > 0)))) continue;
           if (cullSame && nid === id) continue;
 
           const aoAt = f * 4 * 3;
@@ -450,14 +457,14 @@ export function buildChunkMesh(neighbors: readonly Uint16Array[], tops: readonly
             out.writePosition(
               positionOffset,
               lx + FACE_CORNERS[at * 3]!,
-              y + (cyCorner === 1 ? top : cyCorner),
+              y + (cyCorner === 1 ? top : bottom),
               lz + FACE_CORNERS[at * 3 + 2]!,
             );
             out.writeUV(uvOffset, FACE_UV_U[at] === 0 ? u0 : u1, FACE_UV_V[at] === 0 ? v0 : v1);
             const brightness = shade * AO_LEVELS[ao[k]!]!;
             const tint = TINT_KIND[id]!;
             if (tints && tint) {
-              tints.sample(lx + FACE_CORNERS[at * 3]!, y + (cyCorner === 1 ? top : cyCorner), lz + FACE_CORNERS[at * 3 + 2]!, tint as TintKind);
+              tints.sample(lx + FACE_CORNERS[at * 3]!, y + (cyCorner === 1 ? top : bottom), lz + FACE_CORNERS[at * 3 + 2]!, tint as TintKind);
               out.writeColor(positionOffset, brightness * tints.r, brightness * tints.g, brightness * tints.b);
             } else out.writeColor(positionOffset, brightness, brightness, brightness);
             out.writeLight(lightOffset, skyB, blkB);

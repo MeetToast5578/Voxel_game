@@ -10,6 +10,8 @@ const inventory: (ItemStack | null)[] = Array.from({ length: INVENTORY_SIZE }, (
 inventory[20] = { state: BlockId.GLASS, count: 1 };
 
 const sample: WorldMeta = {
+  scheduledTicks: [],
+  gameTick: 0,
   seed: 42,
   selectedSlot: 3,
   player: { x: 1.5, y: 60, z: -3.25, yaw: 0.5, pitch: -0.2, flying: false },

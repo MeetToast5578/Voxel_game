@@ -139,3 +139,17 @@ describe('falling blocks (spec 25, slice 3)', () => {
     expect(FALL_REASON).toBe('fall');
   });
 });
+
+it('resumes a fall when the lower chunk arrives after the first check', () => {
+  const world = new World(1);
+  world.addChunk(new Chunk(0, 0, 0));
+  world.installColumnTops(0, 0, new Int32Array(256).fill(-1000));
+  place(world, 5, 0, 5, BlockId.SAND);
+  settle(world, 4);
+  expect(world.getBlock(5, 0, 5)).toBe(BlockId.SAND);
+  world.addChunk(new Chunk(0, -1, 0));
+  world.setBlock(5, -3, 5, BlockId.STONE);
+  settle(world, 10);
+  expect(world.getBlock(5, -2, 5)).toBe(BlockId.SAND);
+  expect(world.getBlock(5, 0, 5)).toBe(BlockId.AIR);
+});
