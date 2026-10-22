@@ -70,12 +70,28 @@ Press **R** to cycle the mode: single block (the default), add volume, or remove
 | X or Esc | Cancel a wall, floor or roof you started (Esc also pauses) |
 | Ctrl/Cmd+Z | Undo the last volume action (the last 20 in this session) |
 | Ctrl/Cmd+Y or Ctrl/Cmd+Shift+Z | Redo the last undone volume action |
+| Ctrl/Cmd+C, twice | Creative: select two aimed corners to copy a building |
+| Ctrl/Cmd+V | Creative: paste the copied minimum corner against the aimed face |
+| X | Cancel the copy selection, keeping the previous clipboard |
 
 A wall, floor or roof takes two clicks: the first sets its corner, the second sets the far corner. A roof is a horizontal layer built upward from the aimed block.
 
 The **build tool panel** on the top left shows every setting at once: the mode, shape, size, thickness or outline, the frame state, the number of blocks the next action changes, the block used by add, and the undo/redo steps left. It shows the settings in single-block mode too, so you always know what is selected.
 
 **Blocks tab (creative):** press E, then the **Blocks (creative)** tab, and click any block in the game. A full stack of it goes into the selected hotbar slot. It is there for testing and is not limited by survival rules. A floor on a ceiling grows downward. Flatten works on either button: it fills the footprint up to the height of the aimed block and clears the blocks above it.
+
+Copy/paste snapshots non-air blocks, including slab halves, in a selection up to 32 blocks
+per edge. Paste fills air/water, preserves existing solid blocks and excludes your body;
+it supports the same undo/redo history. The clipboard lasts for this session.
+
+Start/pause menus have **World files** controls. **Export world** downloads a JSON backup
+of the current seed, player, inventory, clocks, pending block updates and all edited blocks,
+including unloaded chunks and dug holes. Generated terrain is recreated from the seed using
+the current generator. **Import world** is available in your saved world: choose a backup,
+then confirm replacement. Export first to keep the current world. Invalid or unsupported
+files are rejected before replacement; a failed write preserves the previous save. Other
+open tabs cannot save over a replaced world; export those sessions before reloading.
+Backups are limited to 16 MiB, 100,000 edited chunks and 500,000 edited blocks.
 
 The pause menu has a **New world** button that deletes the save and generates a new random world.
 
@@ -99,7 +115,7 @@ The pause menu has a **New world** button that deletes the save and generates a 
 
 Run performance and browser checks sequentially so GPU/CPU contention does not distort their results. The worker benchmark reports cold preparation separately from warm visible-surface generation/meshing, using 50 seed-1 chunks including canopy tops.
 
-CI (GitHub Actions) runs `npm run check`, worker budget guards, GPU regressions and `npm run smoke` on every pull request and every push to `main`.
+CI (GitHub Actions) runs `npm run check`, worker budget guards, GPU regressions, `npm run smoke`, offline/platform checks and world-file transfer checks on every pull request and every push to `main`.
 
 ### Layout
 

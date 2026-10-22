@@ -1,8 +1,10 @@
+import { exportWorldArchive, parseWorldArchive, type WorldArchive } from './storage/worldArchive';
+import { BuildClipboard } from './player/clipboard';
 import { resolvePlacement } from './player/placementTarget';
 import { blockCollision, slabBounds, slabItemState } from './world/blocks';
 import { atmosphericFogStrength } from './world/atmosphere';
 import {
-  FOG_SAMPLE_INTERVAL_S, FOG_VALLEY_SAMPLE_M, FOG_GROUND_LAYER_M, metersToBlocks,
+  WORLD_FILE_MAX_BYTES, FOG_SAMPLE_INTERVAL_S, FOG_VALLEY_SAMPLE_M, FOG_GROUND_LAYER_M, metersToBlocks,
   AUTOSAVE_INTERVAL_S, BLOCK_SIZE_M, BREAK_REPEAT_S, DAY_LENGTH_S, DAYS_PER_SEASON, DEFAULT_MOUSE_SENSITIVITY, EYE_HEIGHT, FIXED_DT,
   FOOTSTEP_DISTANCE, FOOTSTEP_MIN_SPEED, GEN_BUDGET_MS, HOTBAR_SIZE, MAX_FRAME_DT, MESH_BUDGET_MS, REACH, SEA_LEVEL,
   SETTINGS_KEY, SPAWN_READY_RADIUS, START_TIME_OF_DAY, WORLD_LATITUDE_DEG, ITEM_SIZE, PLAYER_HEIGHT, WALK_SPEED,
@@ -126,6 +128,7 @@ export class Game {
 
   /** Debug hook (smoke test only): while true, simulation and rendering are skipped so another page can load. */
   private idle = false;
+  private readonly clipboard = new BuildClipboard();
 
   /** Frames rendered since the page opened; a frame-rate-independent way to see that the loop is running. */
   private frameCount = 0;
@@ -160,6 +163,7 @@ export class Game {
   private savingEnabled: boolean;
   private readonly worldStore: WorldStore;
   private readonly saver: WorldSaver;
+  private importing = false;
   private saveTimer = 0;
   /** Where the player was when the game was saved; used instead of the spawn search. */
   private readonly savedPlayer: SavedPlayer | null;
@@ -246,6 +250,8 @@ export class Game {
         },
         onSettingsChange: (s) => this.changeSettings(s),
         onNewWorld: () => this.newWorld(),
+        onExportWorld: () => this.downloadWorld(),
+        onImportWorld: save.persistent ? file => { void this.importFile(file); } : undefined,
         onInventory: () => this.openInventory(),
         onGameModeChange: (mode) => this.setGameMode(mode),
       },
@@ -424,7 +430,50 @@ export class Game {
    */
   saveNow(): Promise<boolean> {
     if (!this.savingEnabled || !this.ready) return Promise.resolve(false);
-    return this.saver.save();
+    return this.saver.save().then(ok=>{
+      if(!ok && this.worldStore.stale) {
+        this.savingEnabled=false; this.playing=false; this.input.releasePointerLock();
+        this.menu.show('paused');
+        this.menu.setLockNote('This saved world was replaced in another tab. Export this session to keep it, then reload.');
+      }
+      return ok;
+    });
+  }
+
+  exportWorld(): string { if(!this.ready || this.edits.busy)throw Error('Wait for world loading or the current building action'); return exportWorldArchive(this.worldMeta(),this.world.edits); }
+
+  private downloadWorld(): void {
+    try {
+      const url=URL.createObjectURL(new Blob([this.exportWorld()],{type:'application/json'}));
+      const link=document.createElement('a');link.href=url;link.download=`voxel-world-${this.world.seed}.json`;
+      link.click();setTimeout(()=>URL.revokeObjectURL(url),0);
+      this.menu.setLockNote('World backup downloaded.');
+    } catch(error) {this.menu.setLockNote(error instanceof Error ? error.message : 'World export failed');}
+  }
+  private async importFile(file:File):Promise<void> {
+    try {
+      if(file.size>WORLD_FILE_MAX_BYTES)throw Error('World backup is too large');
+      const data=parseWorldArchive(await file.text());
+      if(this.importing)return;
+      if(!window.confirm(`Replace your saved world with seed ${data.meta.seed} (${data.chunks.length} edited chunks)? Export your current world first if you want to keep it.`))return;
+      if(!await this.restoreArchive(data))this.menu.setLockNote('World import failed; your previous save is unchanged.');
+    } catch(error) {this.menu.setLockNote(error instanceof Error ? error.message : 'World import failed');}
+  }
+  /** Debug/test path uses the same strict validation and atomic replacement as the file picker. */
+  async importWorld(text:string):Promise<boolean> {
+    try {return await this.restoreArchive(parseWorldArchive(text));} catch {return false;}
+  }
+  private async restoreArchive(data:WorldArchive):Promise<boolean> {
+    if(!this.savingEnabled || !this.ready || this.edits.busy || this.importing)return false;
+    this.importing=true;
+    const wasIdle=this.idle;this.idle=true;this.savingEnabled=false;
+    this.menu.setLockNote('Restoring world backup…');
+    this.menu.setBusy(true);
+    await this.saver.drain();
+    const ok=await this.worldStore.replace(data.meta,data.chunks);
+    if(ok) {window.location.href=window.location.pathname;return true;}
+    this.savingEnabled=true;this.idle=wasIdle;this.importing=false;this.menu.setBusy(false);
+    return false;
   }
 
   private worldMeta(): WorldMeta {
@@ -596,9 +645,13 @@ export class Game {
 
   /** Deletes the save and reloads; with no save, the next start picks a new random seed. */
   private newWorld(): void {
-    this.savingEnabled = false; // otherwise 'pagehide' would write the old world back
-    void this.worldStore.clear().then(() => {
-      window.location.href = window.location.pathname;
+    if(this.importing)return;
+    const saving=this.savingEnabled,idle=this.idle;
+    this.importing=true;this.savingEnabled=false;this.idle=true;this.menu.setBusy(true);
+    void this.saver.drain().then(()=>this.worldStore.clear()).then(ok=>{
+      if(ok){window.location.href=window.location.pathname;return;}
+      this.savingEnabled=saving;this.idle=idle;this.importing=false;this.menu.setBusy(false);
+      this.menu.setLockNote('The world could not be cleared. Your saved world is unchanged; reload before retrying.');
     });
   }
 
@@ -771,8 +824,10 @@ export class Game {
     if (this.input.consumePressed('Comma')) t.adjustThickness(-1);
     if (this.input.consumePressed('Period')) t.adjustThickness(1);
     if (this.input.consumePressed('KeyG')) t.toggleHollow();
-    if (this.input.consumePressed('KeyC')) t.toggleDisc();
-    if (this.input.consumePressed('KeyX')) t.cancelFrame();
+    if (this.input.consumeShortcut('KeyC')) this.copyTarget();
+    else if (this.input.consumePressed('KeyC')) t.toggleDisc();
+    if (this.input.consumeShortcut('KeyV')) this.pasteTarget();
+    if (this.input.consumePressed('KeyX')) { t.cancelFrame(); this.clipboard.cancel(); }
     if (this.input.consumeShortcut('KeyZ')) this.undoEdit();
     if (this.input.consumeShortcut('KeyZ', true) || this.input.consumeShortcut('KeyY')) this.redoEdit();
   }
@@ -783,6 +838,17 @@ export class Game {
   }
 
   redoEdit(): boolean { return this.edits.redo(); }
+
+  /** Copy two aimed corners; paste anchors the copied minimum corner to the aimed adjacent cell. */
+  copyTarget(): boolean {
+    if (!this.target || this.edits.busy || this.gameMode !== GAME_MODE_CREATIVE) return false;
+    return this.clipboard.select(this.target, this.world);
+  }
+  pasteTarget(): boolean {
+    const t = this.target;
+    if (!t || this.gameMode !== GAME_MODE_CREATIVE || this.clipboard.count === 0) return false;
+    return this.startEdit(this.clipboard.paste({x:t.x+t.nx,y:t.y+t.ny,z:t.z+t.nz}));
+  }
 
   /** True while a volume action is still being applied over several frames. */
   get editsBusy(): boolean {
@@ -845,6 +911,8 @@ export class Game {
   private updatePreview(eye: Vec3, look: Vec3): void {
     const tool = this.tool;
     const t = this.target;
+    const selection=t ? this.clipboard.preview(t) : null;
+    if(selection) {this.highlight.showBox(selection);this.showToolRows(null);return;}
     if (tool.mode === 'single') {
       this.highlight.update(t, t ? slabBounds(this.world.getBlock(t.x, t.y, t.z)) : null);
       this.showToolRows(t ? 1 : null);
@@ -892,6 +960,7 @@ export class Game {
         block: selected ? getBlockDef(selected.state).name : 'empty',
         undo: this.edits.undoCount,
         redo: this.edits.redoCount,
+        clipboard: this.gameMode === GAME_MODE_CREATIVE ? this.clipboard.status : 'Copy/paste requires creative mode',
       }),
     );
   }

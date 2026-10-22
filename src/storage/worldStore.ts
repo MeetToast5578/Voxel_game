@@ -12,10 +12,13 @@ export interface StoredWorld {
 /** Where the world is saved. Every method is async and never throws: failures resolve to a result to check. */
 export interface WorldStore {
   load(): Promise<StoredWorld>;
+  readonly stale?: boolean;
   /** Writes the meta and these chunk records (replacing records with the same key) in one transaction. */
   write(meta: MetaRecord, chunks: ChunkRecord[]): Promise<boolean>;
   /** Deletes the meta and every chunk record. */
   clear(): Promise<boolean>;
+  /** Atomically replaces the complete save; failure leaves the previous save intact. */
+  replace(meta: MetaRecord, chunks: ChunkRecord[]): Promise<boolean>;
 }
 
 /** Keeps the save in memory: for tests, ?nosave=1, ?seed=, and browsers without IndexedDB. */
@@ -36,6 +39,13 @@ export class MemoryWorldStore implements WorldStore {
     return Promise.resolve(true);
   }
 
+  replace(meta: MetaRecord, chunks: ChunkRecord[]): Promise<boolean> {
+    if (this.failWrites) return Promise.resolve(false);
+    const nextMeta=clone(meta),nextChunks=new Map(chunks.map(c=>[c.key,clone(c)]));
+    this.meta=nextMeta;this.chunks.clear();for(const [key,c] of nextChunks)this.chunks.set(key,c);
+    return Promise.resolve(true);
+  }
+
   clear(): Promise<boolean> {
     this.meta = null;
     this.chunks.clear();
@@ -51,10 +61,13 @@ function clone<T>(value: T): T {
 const META_STORE = 'meta';
 const CHUNK_STORE = 'chunks';
 const META_KEY = 'meta';
+const REVISION_KEY = 'world-revision';
 
 /** IndexedDB database `voxel-game`, schema version 1: object stores `meta` (one record) and `chunks` (by key). */
 export class IndexedDbWorldStore implements WorldStore {
-  private constructor(private readonly db: IDBDatabase) {}
+  private staleSession = false;
+  get stale():boolean { return this.staleSession; }
+  private constructor(private readonly db: IDBDatabase, private revision:number) {}
 
   /** Opens (or creates) the database; resolves to null when IndexedDB is unavailable, e.g. in private mode. */
   static open(): Promise<IndexedDbWorldStore | null> {
@@ -66,7 +79,18 @@ export class IndexedDbWorldStore implements WorldStore {
           if (!db.objectStoreNames.contains(META_STORE)) db.createObjectStore(META_STORE);
           if (!db.objectStoreNames.contains(CHUNK_STORE)) db.createObjectStore(CHUNK_STORE, { keyPath: 'key' });
         };
-        request.onsuccess = () => resolve(new IndexedDbWorldStore(request.result));
+        request.onsuccess = () => {
+          const db=request.result;
+          try {
+            const read=db.transaction(META_STORE,'readonly').objectStore(META_STORE).get(REVISION_KEY);
+            read.onsuccess=()=>{
+              const revision=read.result ?? 0;
+              if(!Number.isSafeInteger(revision)||revision<0){db.close();resolve(null);return;}
+              resolve(new IndexedDbWorldStore(db,revision));
+            };
+            read.onerror=()=>{db.close();resolve(null);};
+          } catch {db.close();resolve(null);}
+        };
         request.onerror = () => resolve(null);
         request.onblocked = () => resolve(null);
       } catch {
@@ -103,21 +127,36 @@ export class IndexedDbWorldStore implements WorldStore {
     return this.transaction((tx) => {
       tx.objectStore(META_STORE).clear();
       tx.objectStore(CHUNK_STORE).clear();
-    });
+    }, true);
   }
 
-  /** Runs `work` in a read-write transaction; resolves true once it has completed (is durable). */
-  private transaction(work: (tx: IDBTransaction) => void): Promise<boolean> {
-    return new Promise((resolve) => {
+  replace(meta: MetaRecord, chunks: ChunkRecord[]): Promise<boolean> {
+    return this.transaction(tx=>{
+      const records=tx.objectStore(CHUNK_STORE); records.clear();
+      tx.objectStore(META_STORE).put(meta,META_KEY);
+      for(const chunk of chunks)records.put(chunk);
+    }, true);
+  }
+
+  /** Check the opened world's generation inside every write transaction; stale tabs cannot resurrect old saves. */
+  private transaction(work: (tx: IDBTransaction) => void, replace=false): Promise<boolean> {
+    const expected=this.revision;
+    return new Promise(resolve=>{
+      let tx:IDBTransaction|undefined;
+      const abort=()=>{try{tx?.abort();}catch{/* inactive */}resolve(false);};
       try {
-        const tx = this.db.transaction([META_STORE, CHUNK_STORE], 'readwrite');
-        tx.oncomplete = () => resolve(true);
-        tx.onerror = () => resolve(false);
-        tx.onabort = () => resolve(false);
-        work(tx);
-      } catch {
-        resolve(false);
-      }
+        const current=this.db.transaction([META_STORE,CHUNK_STORE],'readwrite');tx=current;
+        current.oncomplete=()=>{if(replace)this.revision=expected+1;resolve(true);};
+        current.onerror=()=>resolve(false);current.onabort=()=>resolve(false);
+        const version=current.objectStore(META_STORE).get(REVISION_KEY);
+        version.onsuccess=()=>{
+          if((version.result ?? 0)!==expected){this.staleSession=true;abort();return;}
+          try {
+            work(current);
+            if(replace)current.objectStore(META_STORE).put(expected+1,REVISION_KEY);
+          } catch {abort();}
+        };
+      } catch {abort();}
     });
   }
 }

@@ -2,9 +2,13 @@
 
 Last updated 2026-10-17, checked against the code. This replaces the backlog in `HANDOFF.md`. Phase 1 and 1b are merged (specs 1–10). Phases 2–7 are partly merged; each phase below says what is done, partial or not started. The owner's open choices are in `HANDOFF.md`, "Open decisions".
 
+Spec 53 building/backups (2026-10-22): creative two-corner copy/paste and validated portable
+world files are implemented, with atomic replacement and stale-tab save protection. Stairs,
+doors, gamepad/in-world touch and Pixel Aero remain open; see tasks.md and HANDOFF.md.
+
 Spec 52 building/interface/platforms (2026-10-22): slab states/items/partial-height physics,
-redo, native/modal inventory and production offline installation are implemented. Copy/paste,
-stairs/doors/export/import, gamepad, in-game touch and Pixel Aero remain open; see section K.
+redo, native/modal inventory and production offline installation are implemented. Stairs/doors,
+gamepad, in-game touch and Pixel Aero remain open; see section K.
 
 Spec 51 terrain review (2026-10-22): centred region ownership, real lake beds, sparse saved-build
 bands and coordinated voxel/horizon fades are implemented. Coarse far coastlines, real river seam

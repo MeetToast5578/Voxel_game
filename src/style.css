@@ -611,3 +611,9 @@ body {
   font-weight: bold;
   pointer-events: none;
 }
+
+.menu-content { border: 0; padding: 0; margin: 0; min-width: 0; }
+
+.world-file-actions { flex-wrap: wrap; }
+.world-file-actions > .menu-button { flex: 1 1 160px; min-width: 0; }
+.world-file-actions input { display: block; width: 100%; max-width: 100%; box-sizing: border-box; }

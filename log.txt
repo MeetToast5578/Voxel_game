@@ -1132,3 +1132,43 @@ Release acceptance complete:
   copy/paste, stairs/doors, world export/import, gamepad and in-world touch remain open.
 - Dependencies/lockfile, old IDs, save version and worldgen mesh hash unchanged. Syntax and
   diff checks pass. Commit and non-force push to the authorized existing branch follow.
+
+2026-10-22 — Next building tasks (spec 53)
+- Continuing section K5: bounded two-corner copy/paste and portable world export/import.
+  Copy snapshots non-air block states (including slabs), previews selection, refuses unloaded/
+  oversized regions and keeps an old clipboard on failed copy. Paste uses the existing budgeted
+  edit/undo/redo path, preserves existing blocks and excludes the actual player's volume.
+  Creative mode only; Ctrl/Cmd+C twice, Ctrl/Cmd+V, X cancels selection.
+- Added versioned world JSON containing metadata and all edits, including unloaded chunks and
+  explicit air removals. Strict validation rejects repairs/dropped/duplicate records, unknown
+  states, malformed coordinates and oversized files instead of partially importing them.
+- Added export download and accessible import picker to menus. Validate before confirmation;
+  import only into persistent worlds, stop old autosaves, drain pending writes, replace metadata
+  and chunks in one transaction and reload. Busy controls prevent conflicting operations.
+  Synchronous transaction errors now abort pending clears/puts rather than committing partial data.
+- Unit regressions and browser verification in progress. Reviewing stale writes from other tabs
+  before calling backup replacement complete; no dependencies, IDs or save version changed.
+- Added a reserved revision key to the existing metadata store (no schema bump). Replacement
+  and deletion increment it; writes compare the opened revision within their transaction.
+  Stale sessions cannot resurrect the old save and get an export/reload message. New-world
+  deletion now also drains old saves, checks clear failure and prevents conflicting actions.
+- Full intermediate check PASS 680 tests / 80 files, typecheck/build. Browser transfer suite
+  PASS actual download, invalid-file rejection, forced second-chunk put failure with full
+  rollback, confirmed file-picker restore and stale second-tab save rejection. State variants,
+  later-edit removal and saved metadata/chunks verified through actual IndexedDB.
+- Focused copy/paste browser PASS actual Ctrl+C/Ctrl+V: top slab snapshot survives source edits,
+  an existing destination dirt block is preserved and paste undo removes copied cells.
+  Inspected both captures. Full gameplay plus offline/platform regression in progress.
+- Final verification PASS: npm run check, 680 tests / 80 files, typecheck and production
+  build (2.05 s), /tmp/next-final-check.log. Full 34-check gameplay smoke PASS,
+  /tmp/next-full-browser.log: 10 fps SwiftShader, 3136 loaded / 1773 meshed / 353 draw calls,
+  fully loaded 9432 ms after checks. Software results do not establish physical acceptance.
+- Rechecked final build: world transfer PASS /tmp/next-final-transfer.log; offline/platform
+  PASS /tmp/next-final-platform.log (four sizes, native/modal input and subpath workers offline).
+  Inspected final world-file controls capture; copy/paste capture previously inspected.
+- Updated README controls/world files, task completion/remaining priorities, spec index,
+  roadmap and latest handoff. Spec 53 implemented; stairs/doors, gamepad/in-world touch,
+  Pixel Aero and outstanding terrain/owner acceptance remain open. No generator/GPU benchmark
+  rerun because those implementations did not change; remote CI remains unrun.
+- Preparing authorized commit/push of this verified batch; dependencies, lockfile, old block
+  IDs, save/database schema versions and terrain generation remain unchanged.

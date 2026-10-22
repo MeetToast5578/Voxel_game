@@ -34,6 +34,11 @@ export class WorldSaver {
     return this.queued;
   }
 
+  /** Wait for already-requested writes without scheduling an extra old-world save. */
+  async drain(): Promise<void> {
+    while(this.running || this.queued) await (this.queued ?? this.running);
+  }
+
   private start(): Promise<boolean> {
     const keys = this.world.takeDirtyEdits();
     const chunks = keys.map((key) => chunkRecord(key, this.world.edits.get(key) ?? new Map()));

@@ -41,6 +41,7 @@ jobs:
       - run: node scripts/render-smoke.mjs
       - run: npm run smoke
       - run: node scripts/platform-smoke.mjs
+      - run: node scripts/world-transfer-smoke.mjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:

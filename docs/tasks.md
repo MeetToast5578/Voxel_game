@@ -1,6 +1,6 @@
 # Tasks: Voxel Game
 
-Originally compiled 2026-10-17 against `main` at **`adf5aba`**. Current execution status updated 2026-10-21; older dated evidence below is historical, not a claim about the current checkout.
+Originally compiled 2026-10-17 against `main` at **`adf5aba`**. Current execution status updated 2026-10-22; older dated evidence below is historical, not a claim about the current checkout.
 
 Sources: `README.md`, `docs/HANDOFF.md`, `docs/ROADMAP.md`, `docs/specs/README.md`, `docs/specs/*.md`, `docs/plans/*.md`, plus direct inspection of `src/` and `tests/`.
 
@@ -10,7 +10,7 @@ Status key: `[ ]` open · `[x]` done · `[~]` partial
 
 ---
 
-## Current execution queue — 2026-10-21
+## Current execution queue — 2026-10-22
 
 Completed and verified:
 - **T-A6 + T-D3:** stable mining/pickup fixture; deterministic local aquifers and negative-y caves (spec 46).
@@ -26,10 +26,20 @@ Bug audit follow-up (spec 50):
 - **T-G1 is complete.** Keep correctness/visual review ahead of decorative features. See spec 50 and the latest handoff for verification and remaining limitations.
 - **Open:** distant LOD appearance/transition acceptance, river seams, and dense-forest meshing performance. Standard worker guard passes; the extra forest guard remains slightly over 3 ms on this environment. No budgets were weakened.
 
+Building follow-up (specs 52/53, 2026-10-22):
+- Slabs, redo, native/modal inventory and offline installation are implemented (spec 52).
+- Creative two-corner copy/paste and portable world backups are implemented (spec 53).
+  Backups validate before replacement, use one atomic transaction, drain old saves and reject
+  stale-tab writes. All **680 tests / 80 files**, typecheck/build and **34 gameplay checks** pass.
+  Actual file download/import, forced transaction rollback and stale-tab rejection pass;
+  offline/platform regression passes. Physical-browser acceptance and remote CI remain open.
+- **Next building/platform work:** stairs/doors (T-K5), gamepad/in-world touch (T-K6), then
+  Pixel Aero (T-K8). Terrain acceptance/performance below remains an independent open track.
+
 Next priorities:
 1. Finish terrain/LOD visual acceptance and dense-forest performance follow-up before **T-F5 wind → T-F7 seasonal visuals → T-F8 smooth lighting → T-F14 lightning/thunder**. T-G1 pending-update persistence is complete.
 2. **T-C / T-E11b — Owner playtest and visual acceptance.** Remain open; do not block independent coding or claim physical-browser acceptance from headless tests. River-seam review (T-C6) still gates overall terrain-phase acceptance.
-3. Continue T-F → T-G → T-H → T-I in dependency order, including pending-fall persistence, snow/ice and currents. Address measured T-J bottlenecks throughout. Slabs and Pixel Aero remain separate tracks.
+3. Continue T-F → T-G → T-H → T-I in dependency order, including pending-fall persistence, snow/ice and currents. Address measured T-J bottlenecks throughout. Building/platform follow-ups and Pixel Aero remain separate tracks.
 
 For every batch: log decisions, changes, failures and results in `log.txt`; run focused tests and relevant regression checks sequentially; mark done only after acceptance passes. The owner authorized committing and pushing completed work. Checkpoints 2396e91, dd1d991 and spec 49 commit 0cd1097 are pushed on `codex/coasts-horizon-flora`; no merge or PR was created. Historical CI entries below do not establish the status of new commits.
 
@@ -269,7 +279,7 @@ All six sandbox-physics slices (spec 25) are built and tested. One known shortcu
 
 **`volumetric-tools.md` is fully built** — parts 1, 2 and 3 all landed (`World.setBlocks` at `src/world/world.ts:227`, `ToolKind` covering box/sphere/plane/wall/floor/roof/flatten at `src/player/buildTool.ts:23`, plus undo via `UNDO_LIMIT`). Nothing left from it. See T-L8.
 
-**`slabs-inventory-gui.md` is partially implemented.** Inventory access, Preact screens, theme tokens, focus styles and tooltips exist. Slabs are the largest remaining core change.
+**`slabs-inventory-gui.md` is partially implemented.** Slabs, inventory access, Preact screens, native/modal controls, theme tokens, focus styles and tooltips are implemented. Physical-browser acceptance remains open; Pixel Aero is separate.
 
 - [x] **T-K1 — Slabs through placement, collision and saves.** Spec 52 appends bottom/top states for every solid cube material, preserving old IDs. Shared player/item/body sweeps use actual vertical bounds; partial-cell rays and highlights/cracks match geometry. Side aim selects halves; complementary same-material halves merge; actual body overlap is rejected. Fluids/falls cannot replace slabs; support requires touching faces. Documented conservative shortcut: slabs do not hide neighbours or block sunlight; no waterlogging. Generated terrain is unchanged. Pure regressions and browser half-height landing/merge/ceiling checks pass; top slab restores from IndexedDB. Physical owner playtest remains T-C8.
 - [x] **T-K2 — Slab items and icons.** Every slab material appears in the creative picker with its reused textures and half-height icon. Held/dropped meshes retain correct height, horizontal log faces, climate tint and emission. Mined/picked top slabs normalize to the same material item; normal inventory stacking and name-based saves remain intact. Icon alpha/geometry/save roundtrips covered.
@@ -280,7 +290,7 @@ All six sandbox-physics slices (spec 25) are built and tested. One known shortcu
 
 From `ROADMAP.md` "Later":
 
-- [~] **T-K5 — Building tools.** Volume fill/undo and **redo (spec 52)** are complete. Redo preserves expected-state conflicts, changed cells only, bounded histories and edit budgets; failed unloaded/busy replay keeps history. Ctrl/Cmd+Y or Ctrl/Cmd+Shift+Z, tool-panel counts and controls are wired. Quick chords retain keydown modifiers; stale commands clear on blur/capture. **Remaining:** copy/paste, stairs, doors, world export/import.
+- [~] **T-K5 — Building tools.** Volume fill/undo and **redo (spec 52)** are complete. Redo preserves expected-state conflicts, changed cells only, bounded histories and edit budgets; failed unloaded/busy replay keeps history. Ctrl/Cmd+Y or Ctrl/Cmd+Shift+Z, tool-panel counts and controls are wired. Quick chords retain keydown modifiers; stale commands clear on blur/capture. **Copy/paste and world export/import (spec 53) are complete:** bounded two-corner creative snapshots preserve state variants, omit air and use existing fill/undo/redo budgets. Accessible world-file controls export all live edits/metadata, strictly validate before confirmation, atomically replace saves and reject stale-tab writes. Browser checks cover actual shortcuts/download/file picker, source mutation, occupied destinations, undo, failed-write rollback and a second tab. **Remaining:** stairs and doors.
 - [~] **T-K6 — Input and platform.** **PWA/offline shell complete (spec 52):** production manifest/icon, versioned cache with both worker bundles, query/subpath navigation fallback, staged updates and cache cleanup; saves remain in IndexedDB. A real offline game/worker reload under `/voxel/` passes. Native inventory touch buttons work. **Remaining:** gamepad and in-world touch movement/look/build controls; physical installed-browser review. HTTPS/localhost and one completed online installation are required.
 - [ ] **T-K7 — Multiplayer.** Parked, no action.
 

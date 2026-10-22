@@ -1,5 +1,49 @@
 # Handoff: Voxel Game (MeetToast5578/Voxel_game)
 
+## Latest building/backups batch — 2026-10-22 (spec 53)
+
+This section supersedes the priorities and remaining copy/paste/export/import items in the
+spec 52 record below. Branch: `codex/coasts-horizon-flora`; commits/pushes remain authorized.
+See [spec 53](specs/53-building-copy-world-backups.md), tasks.md section K and `log.txt`.
+
+**T-K5 advanced:** creative Ctrl/Cmd+C selects two aimed corners; Ctrl/Cmd+V pastes against
+the aimed face; X cancels the selection. Session snapshots preserve states after source edits,
+omit air, reject unloaded/oversized selections (32 blocks per edge), preserve occupied solid
+cells and use the existing player-volume exclusions, edit budgets and undo/redo history.
+No cut, rotation, replacement paste or operating-system clipboard integration.
+
+**World files implemented:** start/pause menu exports live metadata and all edits, including
+unloaded cells and explicit air removals. Generated terrain regenerates from the seed/current
+generator. Import requires a persistent saved world, strictly validates before confirmation,
+pauses old simulation/autosaves, drains pending writes and replaces metadata/chunks in one
+IndexedDB transaction. Synchronous put failures now abort earlier clears/writes. Failure
+preserves the old save and resumes the session. New-world deletion also drains saves and
+checks failure. Files are bounded to 16 MiB / 100,000 chunks / 500,000 edits; unknown or
+noncanonical states and repaired metadata are rejected rather than silently lost.
+
+A revision key in the existing metadata store increments on replacement/deletion. This
+build checks it inside every write transaction, preventing an old session in another tab
+from resurrecting the previous save. A stale tab pauses and offers export/reload guidance.
+Older client code cannot retroactively honor this guard. Database/save versions, old block
+IDs, dependencies, lockfile and terrain generation are unchanged.
+
+Validation: **680 tests / 80 files**, typecheck and production build PASS (2.05 s).
+Full gameplay smoke PASS **34 checks**, including actual copy/paste shortcuts, retained slab
+snapshot, occupied destination and undo. World-transfer smoke PASS actual download, invalid
+input rejection, forced second-chunk write failure/complete rollback, confirmed file-picker
+restore and stale second-tab rejection. Final platform suite PASS four sizes, native/modal
+inventory and real offline shell/worker reload under a subpath. Inspected captures
+`screenshots/building-copy-paste.png` and `screenshots/world-backup-import.png`.
+Logs: `/tmp/next-final-check.log`, `/tmp/next-full-browser.log`,
+`/tmp/next-final-transfer.log`, `/tmp/next-final-platform.log`. Final gameplay measurement:
+10 fps on SwiftShader, 3,136 chunks loaded / 1,773 meshed / 353 draw calls; this is not owner
+hardware acceptance. Generator/GPU benchmarks were not rerun for this UI/storage-only batch.
+CI now includes the transfer suite; remote CI has not been run.
+
+**Next:** stairs and doors (T-K5), gamepad/in-world touch (T-K6), Pixel Aero (T-K8).
+Physical GUI/PWA acceptance, coarse distant coastlines/real river seams and dense-forest
+performance remain open. Do not mark these complete from the automated results above.
+
 ## Latest building/interface/platform batch — 2026-10-22 (spec 52)
 
 This section supersedes the older implementation priorities below. Work remains on

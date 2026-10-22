@@ -153,3 +153,16 @@ it('redo observes edits made after undo and uses the same cell budget', () => {
   while(queue.busy) queue.step();
   expect(world.getBlock(0,1,0)).toBe(BlockId.DIRT);
 });
+
+it('pastes copied states without overwriting existing blocks, then undo restores replaced water',async()=>{
+  const {BuildClipboard}=await import('../src/player/clipboard');
+  const {slabState}=await import('../src/world/blocks');
+  const {world,queue}=setup(),clipboard=new BuildClipboard();
+  const upper=slabState(BlockId.STONE,true);
+  world.setBlock(1,1,1,BlockId.STONE);world.setBlock(2,1,1,upper);
+  clipboard.select({x:1,y:1,z:1},world);clipboard.select({x:2,y:1,z:1},world);
+  world.setBlock(2,1,1,BlockId.AIR);world.setBlock(5,1,1,BlockId.DIRT);world.setBlock(6,1,1,BlockId.WATER);
+  expect(queue.start(clipboard.paste({x:5,y:1,z:1}))).toBe(true);queue.step();
+  expect(world.getBlock(5,1,1)).toBe(BlockId.DIRT);expect(world.getBlock(6,1,1)).toBe(upper);
+  queue.undo();queue.step();expect(world.getBlock(6,1,1)).toBe(BlockId.WATER);
+});

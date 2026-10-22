@@ -33,6 +33,10 @@ export interface DebugApi {
   /** Undoes the last volume action. False when there is none or one is still being applied. */
   undoEdit(): boolean;
   redoEdit(): boolean;
+  copyTarget(): boolean;
+  pasteTarget(): boolean;
+  exportWorld(): string;
+  importWorld(text:string): Promise<boolean>;
   /** True while a volume action is still being applied. */
   readonly editsBusy: boolean;
   /** Game mode: 'survival' or 'creative'. */
@@ -93,6 +97,10 @@ export function installDebugApi(game: Game): void {
     toolClick: (add) => game.toolClick(add),
     undoEdit: () => game.undoEdit(),
     redoEdit: () => game.redoEdit(),
+    copyTarget: () => game.copyTarget(),
+    pasteTarget: () => game.pasteTarget(),
+    exportWorld: () => game.exportWorld(),
+    importWorld: text => game.importWorld(text),
     get editsBusy() {
       return game.editsBusy;
     },

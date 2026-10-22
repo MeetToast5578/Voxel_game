@@ -645,6 +645,43 @@ const CHECKS = [
     },
   },
   {
+    name: 'copy and paste preserves slab states, existing blocks and undo',
+    run: async page => {
+      const start=await page.evaluate(()=>window.__game.state());
+      const x=Math.floor(start.position[0]),z=Math.floor(start.position[2]),y=8310;
+      const aim=async dx=>{
+        await page.evaluate(([x,y,z,dx])=>{const g=window.__game;g.setFlying(true);g.teleport(x+dx+.5,y+8,z+.5);g.look(0,-Math.PI/2+.001);},[x,y,z,dx]);
+      };
+      try {
+        await aim(0);await page.waitForFunction(()=>window.__game.state().areaMeshed,null,{timeout:90000});
+        await page.evaluate(([x,y,z])=>{const g=window.__game;
+          for(let dx=-8;dx<=8;dx++)for(let dz=-8;dz<=8;dz++){g.setBlock(x+dx,y,z+dz,10);for(let k=1;k<=4;k++)g.setBlock(x+dx,y+k,z+dz,0);}
+          g.setBlock(x,y+1,z,1);g.setBlock(x+1,y+1,z,g.blockState('stone_slab#1'));g.setBlock(x+2,y+1,z,12);g.setBlock(x+6,y+1,z,2);
+        },[x,y,z]);
+        await page.waitForFunction(([x,y])=>{const t=window.__game.state().target;return t?.[0]===x&&t?.[1]===y+1;},[x,y]);
+        await page.keyboard.press('Control+c');await page.getByText(/First corner set;/).waitFor();
+        await aim(2);await page.waitForFunction(([x,y])=>{const t=window.__game.state().target;return t?.[0]===x+2&&t?.[1]===y+1;},[x,y]);
+        await page.keyboard.press('Control+c');await page.getByText(/3 blocks copied/).waitFor();
+        await page.evaluate(([x,y,z])=>window.__game.setBlock(x+1,y+1,z,0),[x,y,z]);
+        await aim(4);await page.waitForFunction(([x,y])=>{const t=window.__game.state().target;return t?.[0]===x+4&&t?.[1]===y;},[x,y]);
+        await page.keyboard.press('Control+v');
+        await page.waitForFunction(([x,y,z])=>window.__game.getBlock(x+5,y+1,z)===window.__game.blockState('stone_slab#1'),[x,y,z]);
+        const blocks=await page.evaluate(([x,y,z])=>[4,6].map(dx=>window.__game.getBlock(x+dx,y+1,z)),[x,y,z]);
+        if(blocks[0]!==1||blocks[1]!==2)throw Error(`paste overwrote existing structure or lost snapshot: ${blocks}`);
+        await page.screenshot({path:'screenshots/building-copy-paste.png'});
+        if(!await page.evaluate(()=>window.__game.undoEdit()))throw Error('paste undo refused');
+        await page.waitForFunction(()=>!window.__game.editsBusy);
+        if(await page.evaluate(([x,y,z])=>window.__game.getBlock(x+5,y+1,z),[x,y,z])!==0)throw Error('undo left a pasted slab');
+      } finally {
+        await page.evaluate(([x,y,z,start])=>{const g=window.__game;
+          for(let dx=-8;dx<=8;dx++)for(let dz=-8;dz<=8;dz++)for(let k=0;k<=4;k++)g.setBlock(x+dx,y+k,z+dz,0);
+          g.teleport(...start.position);g.setFlying(start.flying);g.look(start.yaw,start.pitch);
+        },[x,y,z,start]);
+        await page.waitForFunction(()=>window.__game.state().areaMeshed,null,{timeout:90000});
+      }
+    },
+  },
+  {
     name: 'volume tools add a box, and undo removes it',
     run: async (page) => {
       const waitMeshed = () => page.waitForFunction(() => window.__game.state().areaMeshed, null, { timeout: 60_000 });

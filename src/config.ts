@@ -639,3 +639,11 @@ export function terrainTransition(viewBlocks: number): { start: number; end: num
 // Slabs occupy half of one 0.3 m voxel.
 export const SLAB_HEIGHT_M = 0.15;
 export const SLAB_HEIGHT = metersToBlocks(SLAB_HEIGHT_M);
+
+// Portable building selections and world backups.
+export const CLIPBOARD_MAX_EDGE = VOLUME_MAX_SIZE;
+export const CLIPBOARD_MAX_CELLS = CLIPBOARD_MAX_EDGE ** 3;
+export const WORLD_FILE_MAX_BYTES = 16 * 1024 * 1024;
+export const WORLD_FILE_MAX_CHUNKS = 100_000;
+export const WORLD_FILE_MAX_EDITS = 500_000;
+export const WORLD_FILE_MAX_COORD = 1_000_000_000;
