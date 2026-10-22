@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { TerrainGenerator } from '../src/world/generator';
-import { BLOCK_SIZE_M } from '../src/config';
+import { BLOCK_SIZE_M, CHUNK_SIZE, MIN_RENDER_DISTANCE, MAX_RENDER_DISTANCE, terrainTransition } from '../src/config';
 import { buildHorizon, HorizonSampler, type HorizonSample } from '../src/world/horizon';
 import { HORIZON_RECENTER_BLOCKS, HORIZON_RING_CELLS, HORIZON_STEPS_BLOCKS } from '../src/config';
 const field = (x: number, z: number): HorizonSample => [Math.sin(x / 100) * 10 + z / 100, 0.2, 0.4, 0.1];
@@ -58,5 +58,15 @@ it('uses the same ground and water heights as voxels at near and distant coordin
     const expected = Math.max(surface.height, Math.floor(Math.max(0, surface.waterLevelM) / BLOCK_SIZE_M)) + 1 - 0.05;
     expect(sampler.at(x!, z!, 0, 0, 128)[0]).toBeCloseTo(expected, 8);
     expect(sampler.at(x!, z!, x!, z!, 32)).toEqual(sampler.at(x!, z!, 0, 0, 128));
+  }
+});
+
+it('finishes the proxy fade before fading voxels, and hides clipped features before the chunk edge', () => {
+  for (let r = MIN_RENDER_DISTANCE; r <= MAX_RENDER_DISTANCE; r++) {
+    const fade = terrainTransition(r * CHUNK_SIZE);
+    expect(fade.proxyStart).toBeGreaterThanOrEqual(0);
+    expect(fade.proxyStart).toBeLessThan(fade.start);
+    expect(fade.start).toBeLessThan(fade.end);
+    expect(fade.end).toBeLessThanOrEqual((r - 1) * CHUNK_SIZE);
   }
 });

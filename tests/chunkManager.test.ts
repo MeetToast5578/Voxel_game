@@ -62,6 +62,40 @@ describe('ChunkManager', () => {
     expect(manager.isAreaMeshed(8, 8, 8, 1)).toBe(true);
     expect(manager.stats).toMatchObject({ meshed: circle(2) * (2 * V + 1), pendingGen: 0, pendingMesh: 0 });
   });
+  it('renders saved structures in sparse vertical bands without losing ground or filling empty gaps', () => {
+    const { world, manager, sink } = setup(2);
+    world.loadEdits(new Map<string, Map<number, number>>([
+      ['0,20,0', new Map(Array.from({ length: CHUNK_SIZE ** 2 }, (_, i) => [i, BlockId.BRICK]))],
+      ['0,250,0', new Map([[0, BlockId.GLASS]])],
+      ['0,3000,0', new Map([[0, BlockId.AIR]])],
+    ]));
+    settle(manager, 8, 8, 8);
+    for (const cy of [-1, 0, 20, 250]) expect(manager.isMeshed(0, cy, 0)).toBe(true);
+    expect(world.getBlock(0, 320, 0)).toBe(BlockId.BRICK);
+    expect(world.getBlock(0, 4000, 0)).toBe(BlockId.GLASS);
+    expect(sink.meshes.has('0,250,0')).toBe(true);
+    for (const cy of [10, 100, 3000]) expect(world.hasChunk(0, cy, 0), `empty gap cy=${cy}`).toBe(false);
+    // Vertical movement must not evict an active edited band or its mesh neighbours.
+    settle(manager, 8, -640, 8);
+    for (const cy of [-1, 0, 20, 250]) expect(manager.isMeshed(0, cy, 0)).toBe(true);
+    expect(world.hasChunk(1, 251, 1)).toBe(true);
+    settle(manager, 640, 8, 8);
+    expect(world.hasChunk(0, 250, 0)).toBe(false);
+    settle(manager, 8, 8, 8);
+    expect(world.getBlock(0, 4000, 0)).toBe(BlockId.GLASS);
+    expect(manager.isMeshed(0, 250, 0)).toBe(true);
+  });
+
+  it('adds a new glass edit band even when lighting tops do not change', () => {
+    const { world, manager } = setup(2);
+    settle(manager, 8, 1600, 8);
+    expect(world.setBlock(0, 1600, 0, BlockId.GLASS)).toBe(true);
+    manager.onBlockChanged(0, 1600, 0, 0, 0);
+    settle(manager, 8, 8, 8);
+    expect(manager.isMeshed(0, 100, 0)).toBe(true);
+    expect(world.getBlock(0, 1600, 0)).toBe(BlockId.GLASS);
+  });
+
   it('makes progress every frame even with a zero time budget', () => {
     const { sink, manager } = setup(2);
     let frames = 0;

@@ -116,7 +116,7 @@ describe('supported surface features (spec 49)', () => {
   });
   it('retains real seed-1 rock, log, moss and lake fixtures used by worker browser smoke', () => {
     const g = new TerrainGenerator(1);
-    for (const [x, y, z, state] of [[3129, 152, -2168, 14], [3517, 161, -2163, 76], [3873, 186, -1690, 73], [4240, 223, -3020, 75]]) {
+    for (const [x, y, z, state] of [[3813, 202, -1759, 14], [3518, 273, -2162, 76], [3478, 268, -2228, 73], [4254, 223, -3024, 75]]) {
       const c = new Chunk(Math.floor(x! / 16), Math.floor(y! / 16), Math.floor(z! / 16)); g.generateChunk(c);
       expect(c.get((x! % 16 + 16) % 16, y! % 16, (z! % 16 + 16) % 16)).toBe(state);
       expect(g.getHeight(x!, z!)).toBeLessThan(y!);

@@ -603,13 +603,16 @@ export const REED_CHANCE = 0.12;
 export const REED_MIN_HEIGHT_M = 0.9;
 export const REED_MAX_HEIGHT_M = 1.8;
 export const REED_BANK_HEIGHT_M = 0.9;
-export const HORIZON_STEPS_BLOCKS = [8, 16, 32, 64, 128, 256, 512] as const;
-export const HORIZON_RING_CELLS = 16;
+export const HORIZON_STEPS_BLOCKS = [4, 8, 16, 32, 64, 128, 256] as const;
+export const HORIZON_RING_CELLS = 32;
 export const HORIZON_RECENTER_BLOCKS = 64;
 export const HORIZON_OVERLAP_BLOCKS = 32;
 export const HORIZON_NEAR_BLEND_BLOCKS = 128;
 export const HORIZON_REGION_BLEND_BLOCKS = 2048;
 export const HORIZON_BIAS_BLOCKS = 0.05;
+export const HORIZON_DETAIL_CONTRAST = 0.12;
+export const HORIZON_SLOPE_SHADE = 0.22;
+export const HORIZON_LIGHT_DIRECTION = [-0.4, 1, 0.3] as const;
 
 // Spec 49: small surface features. Distances are metres, converted once here.
 export const BOULDER_SPACING = roundBlocks(7.2);
@@ -624,3 +627,11 @@ export const LILY_PAD_MAX_DEPTH = roundBlocks(1.8);
 export const MOSS_CHANCE = 0.35;
 export const MOSS_MIN_PRECIPITATION_MM = 750;
 export const SURFACE_LAYER_HEIGHT = 0.015 / BLOCK_SIZE_M;
+
+// Fade complete voxel silhouettes before the circular chunk boundary; proxy is opaque first.
+export const TERRAIN_TRANSITION_START_RATIO = 0.65;
+export function terrainTransition(viewBlocks: number): { start: number; end: number; proxyStart: number } {
+  const end = Math.max(CHUNK_SIZE, viewBlocks - CHUNK_SIZE);
+  const start = end * TERRAIN_TRANSITION_START_RATIO;
+  return { start, end, proxyStart: Math.max(0, start - CHUNK_SIZE) };
+}

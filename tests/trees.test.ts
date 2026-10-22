@@ -151,8 +151,8 @@ describe('trees', () => {
       return column(cx, cz).get(x - cx * 16, y, z - cz * 16);
     };
     let crossing = 0;
-    for (let az = -20; az <= 20; az++)
-      for (let ax = -20; ax <= 20; ax++) {
+    for (let az = -163; az <= -123; az++)
+      for (let ax = -94; ax <= -54; ax++) {
         const ground = g.getHeight(ax, az);
         const surf = cell(ax, ground, az);
         // Only test trees that were actually placed: surface is plant-growing (not stone, not sand)
@@ -170,9 +170,9 @@ describe('trees', () => {
           if (b.y < 0 || b.y >= LEGACY_HEIGHT) continue;
           const got = cell(b.x, b.y, b.z);
           if (b.id === BlockId.LOG) {
-            if (got !== BlockId.AIR) expect(got).toBe(BlockId.LOG); // tree placed here: LOG must be present
-          } else if (got !== BlockId.AIR) {
-            expect(got).not.toBe(BlockId.AIR); // leaves fill air, so this cell must not be air
+            expect(got).toBe(BlockId.LOG); // placed trunks must survive chunk clipping
+          } else {
+            expect(got).not.toBe(BlockId.AIR); // leaves fill air; existing terrain or foliage may occupy it
           }
         }
       }

@@ -85,6 +85,31 @@ try {
     realGround.position.set(160,0,0);terrainScene.add(realGround);read(terrainScene,camera);
     check(pixels[(64*128+64)*4+2]>200&&pixels[(64*128+64)*4]<5,'coarse horizon occluded true voxel terrain');
     image(terrainScene,camera,'True terrain wins over higher horizon proxy');
+    // A near voxel must draw normally, then disappear into the proxy before the load edge.
+    // Alpha-test still cuts leaf texels before distance hashing; held items use the full shader.
+    const transitionScene=new THREE.Scene();transitionScene.background=new THREE.Color(0x0000ff);
+    const transitionGeometry=new THREE.PlaneGeometry(20,20).rotateX(-Math.PI/2);
+    transitionGeometry.setAttribute('aLight',new THREE.Float32BufferAttribute([1,0,1,0,1,0,1,0],2));
+    const transitionMaterial=new THREE.MeshBasicMaterial({color:0xff0000,alphaTest:0.5,alphaHash:true});
+    const fade={value:new THREE.Vector2(180,200)};
+    patchLightMaterial(transitionMaterial,uniforms,false,fade);
+    const transitionMesh=new THREE.Mesh(transitionGeometry,transitionMaterial);transitionMesh.position.x=160;transitionScene.add(transitionMesh);
+    const transitionCamera=new THREE.PerspectiveCamera(30,1,0.1,1000);
+    transitionCamera.position.set(0,100,0);transitionCamera.lookAt(160,0,0);
+    uniforms.uDaylight.value=1;read(transitionScene,transitionCamera);
+    check(center()>200&&pixels[(64*128+64)*4+2]<5,'near voxel did not render before transition');
+    fade.value.set(140,150);read(transitionScene,transitionCamera);
+    check(center()<5&&pixels[(64*128+64)*4+2]>200,'voxel perimeter did not fade into proxy/background');
+    fade.value.set(150,170);read(transitionScene,transitionCamera);
+    let redPixels=0,bluePixels=0;
+    for(let y=56;y<72;y++)for(let x=56;x<72;x++){
+      const i=(y*128+x)*4;if(pixels[i]>200)redPixels++;if(pixels[i+2]>200)bluePixels++;
+    }
+    check(redPixels>20&&bluePixels>20,`transition is a hard alpha-test cut: ${redPixels}/${bluePixels}`);
+    image(transitionScene,transitionCamera,'Hashed voxel/proxy transition');
+    fade.value.set(0,0);read(transitionScene,transitionCamera);
+    check(center()>200,'voxel-only fallback retained the horizon fade');
+    transitionGeometry.dispose();transitionMaterial.dispose();
     sky.dispose();geometry.dispose();material.dispose();dryMaterial.dispose();target.dispose();renderer.dispose();
     return {dry,wet,shelteredDry,shelteredWet,day,night,translated,moonLitPixels:counts};
   });

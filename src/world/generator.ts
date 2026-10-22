@@ -193,6 +193,10 @@ export class TerrainGenerator {
     // some bumpiness.
     const ampScale = sample.isRiver ? 0.2 : sample.isLake ? 0.35 : 1;
     let ampM = detailAmpMeters(fields) * ampScale;
+    if (sample.isLake) {
+      const waterRowM = Math.floor(sample.waterLevelM / BLOCK_SIZE_M) * BLOCK_SIZE_M;
+      ampM = Math.min(ampM, Math.max(0, waterRowM - offsetM));
+    }
     let exposure = 0, coastal = false, coastSlope = 0;
     if (!sample.isRiver && !sample.isLake && Math.abs(fields.continentalness) <= COAST_CONTINENTAL_BAND) {
       coastal = true;

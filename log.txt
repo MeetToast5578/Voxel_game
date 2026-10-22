@@ -1013,3 +1013,63 @@ Release acceptance complete:
 - git diff --check and script syntax checks PASS. Dependencies/lockfile and block IDs unchanged.
 - Updated tasks, handoff, roadmap, spec 25 note, spec index and new spec 50 with final evidence.
 - Commit and normal non-force push to the existing authorized feature branch follow.
+
+2026-10-22 — Terrain and visual acceptance (continuation, spec 51)
+- Compared the exact seed-1 elevated regression with and without only the proxy material,
+  preserving fog/camera range: near-boundary clipped crowns exist independently of the proxy.
+  Extended horizon fog makes that hard voxel boundary visible; proxy itself lacks surface detail.
+- Implementing coordinated voxel/proxy distance fades, finer stitched rings and world-space
+  shading/detail. Saved-build review also found sparse high/non-sky-blocking edits missing from
+  mesh bands, and tall opaque edits displacing the actual ground band. Added explicit sparse
+  edit ranges and retained active neighbour chunks during vertical movement.
+- Initial typecheck caught a shader string delimiter typo, corrected immediately. First new
+  band regression caught air-only saved cleanup entering sets before generated tops arrived;
+  unknown generated bounds now defer air-only ranges until the column is installed.
+- Focused prior geometry/manager checks passed; new regressions and browser review in progress.
+- Found the main terrain defect while inspecting the still-straight shoreline: regionIndexOf
+  used floor(world/core) even though simulation grids are centred on region*core. Negative
+  coordinates near zero and the last quarter of each selected core read outside the simulated
+  grid and silently clamped, producing enormous plateaus and rectangular water/cliff edges.
+  Select the centred ownership interval instead. New tests exercise actual RegionSampler
+  reads on a sloped height source across 50 X/Z ownership seams and cache eviction.
+- Corrected another exposed terrain bug: priority-flood heights used for drainage became solid
+  lake fill. Restore the actual basin bed after lake classification and cap lake detail amplitude
+  below the quantized water surface. Basin and generated-water tests cover this.
+- First full check after ownership correction: 641/647 tests passed. Failures: three stale
+  worldgen fixtures, one lake-bed bug, old cave 8% aggregate bound, unconstructed Renderer mock.
+  Updated mock initialization; cave aggregate now uses the existing spec-45 four-system 16%
+  limit (individual-system budgets unchanged). Surface fixtures were independently rediscovered
+  in real generated chunks, retaining water/support/cache assertions. No performance limits changed.
+- GPU suite passes the real-terrain occlusion regression and new near/mid/far alpha-hash
+  transition checks, including voxel-only fallback. Captured corrected elevated/recenter views:
+  the giant straight cliff is gone; the coarse distant coastline still approximates geometry.
+- The restored seed-42 tree-border fixture was outside the old forest after correcting terrain.
+  Rediscovered an actual hashed oak anchor (-74,-143), moved the bounded window there and
+  strengthened assertions: generated trunks must equal LOG and expected foliage cannot be AIR.
+  Focused 34 tree tests pass; no geometry/support assertion removed to accommodate worldgen.
+- Release npm run check PASS: 647 tests / 76 files, typecheck, production build 2.05 s.
+- Strict idle worker guards PASS: standard generation/mesh 1.193/1.137 ms;
+  previous extra forest (240,-108) 2.268/1.926 ms; current forest (216,-140) 2.471/1.268 ms.
+  An earlier extra-fixture measurement overlapped unit checks; repeated idle above for evidence.
+  Worldgen correction intentionally changes geometry hashes; thresholds remain 3 ms, unchanged.
+- Final GPU suite PASS, including proper midfade coverage after cutout alpha test, disabled
+  horizon fallback and true voxel ground below a raised proxy. Full gameplay/browser review running.
+- First full browser run stopped at volume-box setup: prior pick-block replaced slot 8 with
+  sand, and earlier fixtures left a target above the floor. Explicitly stock brick, clear
+  the build volume, use an anchored floor, and wait for that exact target. Retained all 27
+  placement/undo assertions. Rerun now passes this check and all tick/flow/collapse/lava checks.
+- Corrected-worldgen worker mesh hashes for future comparisons:
+  origin c4a03d2b1aaaa6a762ad9047c2e875e8216205ac749bf8ce215a9ba398975dd0
+  (240,-108) 96f6d4183abdcc10d64005397cde849fa771abe613ad4a9f3d5d111042e4aaee
+  (216,-140) d8ed4cb80d7ac90717d5e120037b0ddd2dcb573b7a1b9314f97823fe20d26d6a
+- Final full browser suite PASS all 32 checks. Final steady software-GPU measurement:
+  12 fps, 3213 loaded / 1773 meshed / 353 draw calls. Physical owner hardware is untested.
+- Final scripts/terrain-review.mjs PASS all five elevated/recenter/ground/forest/ridge views,
+  zero pending generation/mesh jobs and no browser errors. Inspected saved images: original
+  straight cliff removed, ground and trunks present. Forest/ridge still expose coarse
+  green/blue proxy triangles/coast aliasing and some separated faded perimeter crowns.
+  T-D7 stays partial; separate land/water meshes and vegetation-boundary treatment remain.
+  Synthetic 50-slope seams do not close the required real-river debug-map spike (T-C6).
+- Updated tasks, README compatibility note, roadmap, spec index, spec 51 and latest handoff.
+  Dependencies, block IDs, save version and mountain limits unchanged. Script syntax and
+  git diff --check PASS. Commit and normal push to the authorized existing branch follow.

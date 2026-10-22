@@ -220,6 +220,7 @@ export class ChunkManager {
     const ccx = worldToChunk(wx);
     const ccy = worldToChunk(wy);
     const ccz = worldToChunk(wz);
+    if (!this.meshSet.has(chunkKey(ccx, ccy, ccz))) this.setsStale = true;
     for (let dy = -1; dy <= 1; dy++)
       for (let dz = -1; dz <= 1; dz++)
         for (let dx = -1; dx <= 1; dx++) this.markDirty(chunkKey(ccx + dx, ccy + dy, ccz + dz), done);
@@ -249,6 +250,7 @@ export class ChunkManager {
       this.bumpVersion(key);
       if (this.meshed.has(key)) this.dirty.add(key);
     };
+    for (const c of effect.chunks) if (!this.meshSet.has(chunkKey(c.cx, c.cy, c.cz))) this.setsStale = true;
     for (const c of effect.chunks)
       for (let dy = -1; dy <= 1; dy++)
         for (let dz = -1; dz <= 1; dz++)
@@ -452,8 +454,9 @@ export class ChunkManager {
       minTop = Math.min(minTop, tops[i]!);
       maxTop = Math.max(maxTop, tops[i]!);
     }
-    minTop = Math.min(minTop, this.groundMin.get(key) ?? minTop);
-    const bandHi = worldToChunk(maxTop);
+    const generated = this.world.getGeneratedColumnTops(cx, cz);
+    minTop = Math.min(minTop, this.groundMin.get(key) ?? minTop, generated ? Math.min(...generated) : minTop);
+    const bandHi = worldToChunk(generated ? Math.max(...generated) : maxTop);
     const bandLo = Math.max(worldToChunk(minTop) - SURFACE_BAND, bandHi - MAX_BAND_CHUNKS);
     this.columns.set(key, { bandLo, bandHi, minTop: Math.max(minTop, maxTop - MAX_SURFACE_DISTANCE), maxTop });
     if (!isNew) this.setsStale = true;
@@ -468,7 +471,8 @@ export class ChunkManager {
     const info = this.columns.get(columnKey(cx, cz))!;
     const R = this.renderDistance;
     if ((cx - this.center.cx) ** 2 + (cz - this.center.cz) ** 2 > R * R) return; // only columns within R mesh
-    for (let cy = info.bandLo; cy <= info.bandHi; cy++) {
+    const ranges: [number, number][] = [[info.bandLo, info.bandHi], ...this.world.editedChunkYs(cx, cz).map(y => [y, y] as [number, number])];
+    for (const cy of rangeValues(ranges)) {
       const key = chunkKey(cx, cy, cz);
       if (this.meshSet.has(key)) continue;
       this.meshSet.add(key);
@@ -480,7 +484,7 @@ export class ChunkManager {
     }
     for (let dz = -1; dz <= 1; dz++)
       for (let dx = -1; dx <= 1; dx++)
-        for (let cy = info.bandLo - 1; cy <= info.bandHi + 1; cy++) {
+        for (const cy of rangeValues(ranges.map(([lo, hi]) => [lo - 1, hi + 1]))) {
           const key = chunkKey(cx + dx, cy, cz + dz);
           if (this.genSet.has(key)) continue;
           this.genSet.add(key);
@@ -530,6 +534,7 @@ export class ChunkManager {
       const ranges: [number, number][] = [[pcy - V, pcy + V]];
       const info = this.columns.get(c.key);
       if (info) ranges.push([info.bandLo, info.bandHi]);
+      for (const cy of this.world.editedChunkYs(c.cx, c.cz)) ranges.push([cy, cy]);
       meshRanges.set(c.key, ranges);
     }
 
@@ -636,8 +641,7 @@ export class ChunkManager {
     const meshR = R + MESH_KEEP_MARGIN;
     for (const p of [...this.meshed.values()]) {
       const far = horizontal(p.cx, p.cz) > meshR * meshR;
-      const outside = Math.abs(p.cy - pcy) > V + MESH_KEEP_MARGIN && !this.inBand(p.cx, p.cy, p.cz, 0);
-      if (far || outside || !this.meshSet.has(p.key)) {
+      if (far || !this.meshSet.has(p.key)) {
         this.sink.remove(p.cx, p.cy, p.cz);
         this.meshed.delete(p.key);
         this.dirty.delete(p.key);
@@ -649,7 +653,7 @@ export class ChunkManager {
       const far = horizontal(chunk.cx, chunk.cz) > dropR * dropR;
       // The band's neighbours (1 chunk) are loaded too; keep one more chunk of hysteresis around them.
       const outside = Math.abs(chunk.cy - pcy) > V + UNLOAD_MARGIN && !this.inBand(chunk.cx, chunk.cy, chunk.cz, 2);
-      if (far || outside) this.world.removeChunk(chunk.cx, chunk.cy, chunk.cz);
+      if (far || (outside && !this.genSet.has(chunkKey(chunk.cx, chunk.cy, chunk.cz)))) this.world.removeChunk(chunk.cx, chunk.cy, chunk.cz);
     }
 
     for (const key of this.world.columnKeys()) {

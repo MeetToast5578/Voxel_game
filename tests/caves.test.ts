@@ -25,7 +25,9 @@ describe('caves', () => {
     const fraction = air / underground;
     console.log(`cave fraction: ${(fraction * 100).toFixed(2)}%`);
     expect(fraction).toBeGreaterThan(0.005);
-    expect(fraction).toBeLessThan(0.08);
+    // Four systems (spec 45), plus natural density voids, share the existing 16% total budget.
+    // The old 8% bound predated cheese/noodles/ravines and depended on a clamped region strip.
+    expect(fraction).toBeLessThan(0.16);
   });
   it('never carves the lowest two rows of the terrain band (spec 46 replaces the sea-level floor)', () => {
     const bottom = new Chunk(0, TERRAIN_CHUNK_BOTTOM, 0);

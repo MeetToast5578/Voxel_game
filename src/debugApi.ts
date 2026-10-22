@@ -9,6 +9,8 @@ export interface DebugApi {
   teleport(x: number, y: number, z: number): void;
   look(yaw: number, pitch: number): void;
   setFlying(flying: boolean): void;
+  /** Isolate voxel terrain without changing fog or camera range. */
+  setHorizonHidden(hidden: boolean): void;
   getBlock(x: number, y: number, z: number): number;
   setBlock(x: number, y: number, z: number, id: number): boolean;
   breakTarget(): boolean;
@@ -66,6 +68,7 @@ export function installDebugApi(game: Game): void {
     setFlying: (flying) => {
       if (game.player.flying !== flying) game.player.toggleFlying();
     },
+    setHorizonHidden: hidden => game.horizon.setDebugHidden(hidden),
     getBlock: (x, y, z) => game.world.getBlock(x, y, z),
     setBlock: (x, y, z, id) => game.setBlock(x, y, z, id),
     breakTarget: () => game.breakTarget(),

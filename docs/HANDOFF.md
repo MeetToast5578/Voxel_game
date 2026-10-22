@@ -1,5 +1,66 @@
 # Handoff: Voxel Game (MeetToast5578/Voxel_game)
 
+## Latest terrain review — 2026-10-22 (spec 51)
+
+This section supersedes the spec-50 visual diagnosis below. Work remains on
+`codex/coasts-horizon-flora`; commit/push authorization remains in force.
+See [spec 51](specs/51-terrain-visual-acceptance.md) and `log.txt`.
+
+Repaired the main terrain cause: region grids are centred on multiples of 4096 blocks,
+but selection used unshifted floor division. Reads in the wrong region clamped beyond
+its simulated grid, creating enormous plateaus and rectangular water/cliff edges.
+Selection now matches the centred core; 50 synthetic X/Z ownership seams, negative
+coordinates and cache clearing are covered through the real sampler.
+Also repaired lakes filled with solid drainage heights: retain basin beds and bound
+lake detail below quantized water. Generated lake/source-water tests pass.
+
+Saved structures use sparse edit bands, independent of generated ground/canopy bands.
+A whole-column high roof no longer displaces ground; glass outside the immediate vertical
+cylinder remains visible. Keep active generation neighbours on vertical moves, reload edits
+after horizontal unloading, and exclude high air-only cleanup without filling empty gaps.
+
+Voxel silhouettes now fade before the loaded circle ends, after the proxy becomes opaque.
+Texture cutout alpha runs before distance hashing. Underwater/voxel-only paths disable the
+transition; held items stay fully visible. Stitched rings have 29,575 vertices over the
+same 2.46 km range, slope shading and stable world-space detail. Debug proxy-only hiding
+preserves camera/fog range; `scripts/terrain-review.mjs` captures reproducible views.
+
+Verified: **647 tests / 76 files**, typecheck/build PASS (2.05 s); GPU regressions PASS,
+including true ground below an intentionally raised proxy and near/mid/far voxel fading.
+Strict idle worker generation/mesh: origin **1.193/1.137 ms**; previous forest (240,-108)
+**2.268/1.926 ms**; actual forest (216,-140) **2.471/1.268 ms**. All pass unchanged 3 ms
+limits. Coordinate correction changes geometry hashes; this is not an isolated mesher
+optimization. T-J14 is partial pending representative hardware/current CI review.
+
+Full browser suite PASS: all **32 checks**, including tick save/reload, fall/flow/collapse,
+lava and real generated feature fixtures. Final steady measurement: 12 fps on SwiftShader,
+3213 loaded / 1773 meshed / 353 draw calls; this is not owner hardware. The first browser
+attempt exposed a volume fixture that assumed its slot still held bricks after pick-block
+and reused uncleared blocks. It now stocks bricks, clears/anchors its area and waits for
+the exact floor target; all placement/undo assertions remain.
+
+Final five-view capture PASS with zero pending jobs and no browser errors. Inspected ground
+and forest images as well as elevated/recenter/ridge views. Ground/trunks are present and
+the original straight cliff is gone. **Visual quality remains partial:** the forest/ridge
+views expose coarse green/blue triangles and distant coastline aliasing; faded crowns can
+still appear separate at the perimeter. Treat these captures as follow-up evidence, not
+owner acceptance. Next visual work should separate land/water geometry and handle vegetation
+at the LOD boundary instead of relying only on interpolated vertex colour/fades.
+
+Unedited terrain regenerates differently; existing saved edits remain and can float.
+Dependencies, block IDs, save version and mountain-height limits are unchanged.
+
+Resume with coarse far-coastline approximation and near/far visual quality. Physical owner
+acceptance (T-C5/T-C7/T-C9/T-E11b) remains open. T-C6 requires 50 **real river** seams on
+the debug map: synthetic slope seams prove coordinate correctness, not hydrological
+continuity between independently simulated basins. The horizon still omits far vegetation
+and saved structures. Do not mark all terrain/visual acceptance complete from readiness.
+
+Logs: `/tmp/terrain-release-check.log`, `/tmp/terrain-gpu-release.log`,
+`/tmp/terrain-budget.log`, `/tmp/terrain-forest-release.log`,
+`/tmp/terrain-forest-current.log`, `/tmp/terrain-release-smoke2.log`,
+`/tmp/terrain-review-release.log`.
+
 ## Latest implementation — 2026-10-21 (spec 50 bug audit)
 
 This section supersedes the older checkpoints below. Continue correctness/terrain review

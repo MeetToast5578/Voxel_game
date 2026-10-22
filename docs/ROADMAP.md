@@ -2,6 +2,10 @@
 
 Last updated 2026-10-17, checked against the code. This replaces the backlog in `HANDOFF.md`. Phase 1 and 1b are merged (specs 1–10). Phases 2–7 are partly merged; each phase below says what is done, partial or not started. The owner's open choices are in `HANDOFF.md`, "Open decisions".
 
+Spec 51 terrain review (2026-10-22): centred region ownership, real lake beds, sparse saved-build
+bands and coordinated voxel/horizon fades are implemented. Coarse far coastlines, real river seam
+acceptance and owner visual approval remain open; see tasks.md and HANDOFF.md.
+
 Spec 50 engine audit (2026-10-21): dense-canopy terrain bounds, consistent horizon surface sampling,
 durable pending updates and worker failure fallback are implemented. Pending work pauses while
 unloaded; analytical ecology catch-up remains future work. Extra forest mesh performance and

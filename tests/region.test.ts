@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
+  RegionSampler,
+  regionIndexOf,
   REGION_CELL_BLOCKS,
   REGION_CELLS,
   REGION_CORE_BLOCKS,
@@ -323,6 +325,7 @@ describe('simulateRegion', () => {
       // A lake only exists where filling genuinely raised the ground, and above sea level.
       expect(r.filledHeight[i]! - r.baseHeight[i]!).toBeGreaterThan(1);
       expect(r.lakeLevel[i]!).toBeGreaterThan(0);
+      expect(r.height[i]!).toBeLessThan(r.lakeLevel[i]!);
       // No river channel is cut through a lake, which would drain it.
       expect(r.river[i]).toBe(0);
     }
@@ -403,5 +406,41 @@ describe('grid geometry', () => {
 
   it('has a margin deeper than anything that reads across cells', () => {
     expect(REGION_HALF_BLOCKS).toBeGreaterThan(8 * REGION_CELL_BLOCKS);
+  });
+});
+
+describe('world-coordinate region sampling', () => {
+  const plane = (x: number, z: number) => 100 - x * 0.01 - z * 0.005;
+  it('selects the centred core for positive and negative coordinates', () => {
+    for (let r = -3; r <= 3; r++) {
+      const centre = r * REGION_CORE_BLOCKS;
+      expect(regionIndexOf(centre - REGION_CORE_BLOCKS / 2)).toBe(r);
+      expect(regionIndexOf(centre)).toBe(r);
+      expect(regionIndexOf(centre + REGION_CORE_BLOCKS / 2 - 1)).toBe(r);
+      expect(regionIndexOf(centre + REGION_CORE_BLOCKS / 2)).toBe(r + 1);
+    }
+  });
+  it('samples a sloped world without clamped flat strips or steps at 50 actual ownership seams', () => {
+    const sampler = new RegionSampler({ height: plane }, 64);
+    for (let rx = -2; rx <= 2; rx++) for (let rz = -2; rz <= 2; rz++) {
+      for (const axis of ['x', 'z']) {
+        const seam = (axis === 'x' ? rx + 0.5 : rz + 0.5) * REGION_CORE_BLOCKS;
+        const other = (axis === 'x' ? rz : rx) * REGION_CORE_BLOCKS + 137;
+        const values = [-1, 0, 1].map(d => {
+          const x = axis === 'x' ? seam + d : other;
+          const z = axis === 'z' ? seam + d : other;
+          const s = sampler.sample(x, z);
+          expect(s.isLake).toBe(false);
+          expect(s.offsetM).toBeCloseTo(plane(x * 0.3, z * 0.3), 3);
+          return s.offsetM;
+        });
+        expect(Math.abs(values[2]! - values[0]!)).toBeLessThan(0.01);
+      }
+    }
+    // The old selection flattened this whole strip into the far simulated border.
+    const before = sampler.sample(-26, 101);
+    expect(before.offsetM).toBeCloseTo(plane(-26 * 0.3, 101 * 0.3), 3);
+    sampler.clear();
+    expect(sampler.sample(-26, 101)).toEqual(before);
   });
 });

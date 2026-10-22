@@ -249,9 +249,9 @@ export class RegionSampler {
   }
 }
 
-/** Which region a block coordinate falls in. Floor division, so negative coordinates work. */
+/** Regions are centred on multiples of CORE_BLOCKS; ownership is their middle core. */
 export function regionIndexOf(wx: number): number {
-  return Math.floor(wx / REGION_CORE_BLOCKS);
+  return Math.floor((wx + REGION_CORE_BLOCKS / 2) / REGION_CORE_BLOCKS);
 }
 
 // ---- Simulation ----
@@ -308,6 +308,8 @@ export function simulateRegion(source: HeightSource, regionX: number, regionZ: n
   //    slight slope instead of a flat surface. Every cell of a basin drains to the same outlet,
   //    so this gives one exact level per basin.
   markLakes(baseHeight, filledHeight, downstream, lake, lakeLevel);
+  // Flood filling routes drainage; it must not replace a lake basin with solid rock.
+  for (let i = 0; i < CELL_COUNT; i++) if (lake[i]) height[i] = Math.min(height[i]!, baseHeight[i]!);
 
   // 7. Rivers along the drainage network. Lakes are skipped: a channel cut through a lake would
   //    drain it, and the lake's own outlet already carries the flow onward.

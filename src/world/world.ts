@@ -206,6 +206,25 @@ export class World {
     return this.tops.get(columnKey(cx, cz));
   }
 
+  /** Generated skyline before saved structures changed lighting tops. Do not modify. */
+  getGeneratedColumnTops(cx: number, cz: number): Int32Array | undefined {
+    return this.generatedTops.get(columnKey(cx, cz));
+  }
+
+  /** Sparse edited chunks worth rendering, without expanding empty gaps under high builds. */
+  editedChunkYs(cx: number, cz: number): number[] {
+    const col = columnKey(cx, cz);
+    const generated = this.generatedTops.get(col);
+    const top = generated ? Math.max(...generated) : -Infinity;
+    const ys: number[] = [];
+    for (const key of this.editedChunksByColumn.get(col) ?? []) {
+      const cy = Number(key.split(',')[1]);
+      // Air-only cleanup above generated terrain has no visible geometry.
+      if (cy * CHUNK_SIZE <= top || [...this.editMap.get(key)!.values()].some(id => id !== BlockId.AIR)) ys.push(cy);
+    }
+    return ys;
+  }
+
   /** World y of the highest sky-blocking block at (wx, wz), or undefined if that column has no tops yet. */
   topAt(wx: number, wz: number): number | undefined {
     return this.getColumnTops(worldToChunk(wx), worldToChunk(wz))?.[columnIndex(worldToLocal(wx), worldToLocal(wz))];

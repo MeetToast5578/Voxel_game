@@ -613,12 +613,19 @@ const CHECKS = [
       }, [x, z, floorY]);
       await waitMeshed();
       await page.evaluate(([x, z, y]) => {
-        for (let i = -3; i <= 3; i++) for (let j = -3; j <= 3; j++) window.__game.setBlock(x + i, y, z + j, 1); // stone floor
-        window.__game.selectSlot(8); // brick
+        for (let i = -3; i <= 3; i++) for (let j = -3; j <= 3; j++) {
+          for (let k = 1; k <= 6; k++) window.__game.setBlock(x + i, y + k, z + j, 0);
+          window.__game.setBlock(x + i, y, z + j, 10); // anchored floor
+        }
+        window.__game.setHotbarSlot(8, 12); // explicit brick stack; pick-block may have replaced it
+        window.__game.selectSlot(8);
         window.__game.setTool({ mode: 'add', kind: 'box', size: 3, thickness: 0 });
         window.__game.look(0, -Math.PI / 2 + 0.01); // straight down at the floor
       }, [x, z, floorY]);
-      await page.waitForFunction(() => window.__game.state().target !== null, null, { timeout: 10_000 });
+      await page.waitForFunction(([x, y, z]) => {
+        const target = window.__game.state().target;
+        return target && target[0] === x && target[1] === y && target[2] === z;
+      }, [x, floorY, z], { timeout: 10_000 });
       await page.evaluate(() => window.__game.toolClick(true));
       await page.waitForFunction(() => !window.__game.editsBusy, null, { timeout: 10_000 });
       const countBrick = () =>
@@ -949,10 +956,10 @@ const CHECKS = [
       const start = await page.evaluate(() => window.__game.state());
       try {
         await page.evaluate(() => {
-          window.__game.setFlying(true); window.__game.teleport(-384.5, 5, 16.5); window.__game.look(0.6, -0.4);
+          window.__game.setFlying(true); window.__game.teleport(-396.5, 5, 6.5); window.__game.look(0.6, -0.4);
         });
         await page.waitForFunction(() => window.__game.state().areaMeshed, null, { timeout: 60_000 });
-        const reed = await page.evaluate(() => window.__game.getBlock(-386, 1, 14));
+        const reed = await page.evaluate(() => window.__game.getBlock(-398, 1, 4));
         if (reed !== 72) throw new Error(`expected seed-1 bank reed, got ${reed}`);
         await page.screenshot({ path: 'screenshots/shoreline-reeds.png' });
       } finally {
@@ -969,8 +976,8 @@ const CHECKS = [
       const start = await page.evaluate(() => window.__game.state());
       try {
         for (const [name, x, y, z, state] of [
-          ['boulder', 3129, 152, -2168, 14], ['moss', 3517, 161, -2163, 76],
-          ['fallen-log', 3873, 186, -1690, 73], ['lily-pad', 4240, 223, -3020, 75],
+          ['boulder', 3813, 202, -1759, 14], ['moss', 3518, 273, -2162, 76],
+          ['fallen-log', 3478, 268, -2228, 73], ['lily-pad', 4254, 223, -3024, 75],
         ]) {
           await page.evaluate(([x, y, z]) => {
             window.__game.setFlying(true); window.__game.teleport(x + 3.5, y + 4, z + 5.5); window.__game.look(0.55, -0.55);
