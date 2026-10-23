@@ -13,6 +13,7 @@ A Minecraft-like voxel sandbox that runs in the browser, built with TypeScript, 
 - Scheduled block updates run at 20 Hz and survive chunk unloading and save/reload with their remaining delays. Terrain loading includes ground beneath dense canopies; failed workers fall back to main-thread loading.
 - Saved structures remain visible across vertical terrain bands, including glass and high roofs.
 - Terrain coordinate and lake-basin repairs regenerate unedited ground correctly; existing saved edits are preserved and may float relative to changed ground.
+- Crops: wheat, carrots and potatoes, planted on grass or dirt, grow through four stages under open sky. They grow fastest in warm weather and stall in the cold, so they follow the seasons; root crops tolerate more cold. A ripe crop drops three of what you plant. Breaking tall grass sometimes gives wheat; carrots and potatoes come from the creative Blocks tab for now.
 - Breaking or decaying leaves sometimes drops a sapling of the tree species that grows there. Planted on grass or dirt with open sky above, it grows into that species' tree, around whatever is already built.
 - Snow settles on exposed ground while it snows, building up to a full block in eight layers, and melts above 0 °C. Still water open to the sky freezes into walkable ice below 0 °C and thaws above it.
 - Wind follows the weather: leaves and plants sway, rain and snow fall at a slant, and clouds drift faster in strong wind.

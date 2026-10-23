@@ -1,13 +1,13 @@
 import { exportWorldArchive, parseWorldArchive, type WorldArchive } from './storage/worldArchive';
 import { BuildClipboard } from './player/clipboard';
 import { resolvePlacement } from './player/placementTarget';
-import { blockCollision, slabBounds, slabItemState } from './world/blocks';
+import { blockCollision, blockDrop, slabBounds, slabItemState } from './world/blocks';
 import { atmosphericFogStrength } from './world/atmosphere';
 import {
   WORLD_FILE_MAX_BYTES, FOG_SAMPLE_INTERVAL_S, FOG_VALLEY_SAMPLE_M, FOG_GROUND_LAYER_M, metersToBlocks,
   AUTOSAVE_INTERVAL_S, BLOCK_SIZE_M, BREAK_REPEAT_S, DAY_LENGTH_S, DAYS_PER_SEASON, DEFAULT_MOUSE_SENSITIVITY, EYE_HEIGHT, FIXED_DT,
   FOOTSTEP_DISTANCE, FOOTSTEP_MIN_SPEED, GEN_BUDGET_MS, HOTBAR_SIZE, MAX_FRAME_DT, MESH_BUDGET_MS, REACH, SEA_LEVEL,
-  SETTINGS_KEY, SPAWN_READY_RADIUS, START_TIME_OF_DAY, WORLD_LATITUDE_DEG, ITEM_SIZE, PLAYER_HEIGHT, WALK_SPEED,
+  SETTINGS_KEY, SPAWN_READY_RADIUS, START_TIME_OF_DAY, WORLD_LATITUDE_DEG, ITEM_SIZE, PLAYER_HEIGHT, WALK_SPEED, WHEAT_SEED_DROP_CHANCE,
   GAME_MODE_CREATIVE, GAME_MODE_SURVIVAL, HEALTH_MAX, HUNGER_MAX,
   DROWN_DAMAGE_PER_S, AIR_MAX_S, GAME_TICKS_PER_SECOND, LIGHTNING_SKY_BRIGHTEN, THUNDER_DELAY_MIN_S, THUNDER_DELAY_MAX_S,
   HUNGER_DRAIN_PER_S, STARVE_DAMAGE_PER_S, REGEN_MIN_HUNGER, REGEN_PER_S,
@@ -728,9 +728,12 @@ export class Game {
     if (!canBreak(id)) return false;
     const ok = this.setBlock(x, y, z, BlockId.AIR);
     if (ok) {
-      this.items.spawn(slabItemState(id), 1, x + 0.5, y + (1 - ITEM_SIZE) / 2, z + 0.5, Math.random);
+      const drop = blockDrop(id);
+      this.items.spawn(drop.state, drop.count, x + 0.5, y + (1 - ITEM_SIZE) / 2, z + 0.5, Math.random);
       const sapling = id === BlockId.LEAVES ? leafSapling(this.world, x, z, Math.random) : null;
       if (sapling !== null) this.items.spawn(sapling, 1, x + 0.5, y + (1 - ITEM_SIZE) / 2, z + 0.5, Math.random);
+      // Tall grass also gives wheat to plant (T-G4); carrots and potatoes come from the creative Blocks tab for now.
+      if (id === BlockId.TALL_GRASS && Math.random() < WHEAT_SEED_DROP_CHANCE) this.items.spawn(BlockId.WHEAT, 1, x + 0.5, y + (1 - ITEM_SIZE) / 2, z + 0.5, Math.random);
       this.sounds.play('break');
     }
     return ok;
@@ -743,7 +746,10 @@ export class Game {
   private spawnBrokenBlocks(): void {
     for (const d of this.world.takeDrops()) {
       if (d.body && this.bodies.canAdd) this.bodies.spawn(d.id, d.x + 0.5, d.y, d.z + 0.5, Math.random);
-      else this.items.spawn(slabItemState(d.id), 1, d.x + 0.5, d.y + (1 - ITEM_SIZE) / 2, d.z + 0.5, Math.random);
+      else {
+        const drop = blockDrop(d.id);
+        this.items.spawn(drop.state, drop.count, d.x + 0.5, d.y + (1 - ITEM_SIZE) / 2, d.z + 0.5, Math.random);
+      }
     }
   }
 

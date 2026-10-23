@@ -555,6 +555,31 @@ const CHECKS = [
     },
   },
   {
+    name: 'crops show each growth stage (T-G4)',
+    run: async (page) => {
+      const GRASS = 3, CROPS = [166, 170, 174]; // BlockId.WHEAT, CARROTS, POTATOES; + stage for later stages
+      const s = await page.evaluate(() => window.__game.state());
+      const [x, , z] = s.position.map(Math.floor);
+      await page.evaluate(([x, z, GRASS, CROPS]) => {
+        const g = window.__game;
+        // A small field 5..7 blocks south of the player: one row per crop, stages 0..3 left to right.
+        CROPS.forEach((crop, row) => {
+          for (let stage = 0; stage < 4; stage++) {
+            const cx = x - 2 + stage, cz = z + 5 + row;
+            let top = 8600;
+            while (top > 1 && g.getBlock(cx, top, cz) === 0) top--;
+            g.setBlock(cx, top, cz, GRASS);
+            g.setBlock(cx, top + 1, cz, crop + stage);
+          }
+        });
+        g.look(Math.PI, -0.45);
+      }, [x, z, GRASS, CROPS]);
+      await page.waitForTimeout(600);
+      await page.screenshot({ path: 'screenshots/crops.png', timeout: 60_000 });
+      await page.evaluate(() => window.__game.look(0, 0));
+    },
+  },
+  {
     name: 'glowstone lights up the night',
     run: async (page) => {
       const s = await page.evaluate(() => window.__game.state());

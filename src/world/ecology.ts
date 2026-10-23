@@ -1,8 +1,9 @@
 import { type World } from './world';
 import { type Tick, type TickResult } from './tick';
-import { BlockId, SNOW_LAYERS, blocksSky, getBlockDef, isSnowState, snowLayers, snowState } from './blocks';
+import { BlockId, SNOW_LAYERS, blocksSky, getBlockDef, isCropState, isSnowState, snowLayers, snowState } from './blocks';
 import { CHUNK_SIZE, ICE_FREEZE_CHANCE, ICE_THAW_CHANCE, SAPLING_DROP_CHANCE, SAPLING_GROW_CHANCE, SNOW_MELT_CHANCE, SNOW_SETTLE_CHANCE } from '../config';
 import { growSapling, isSaplingState, saplingState } from './saplings';
+import { growCrop } from './crops';
 import { floorDiv } from '../core/math';
 import { mulberry32 } from '../core/random';
 import { mixSeed } from './randomTick';
@@ -85,6 +86,7 @@ export function handleRandomTick(world: World, x: number, y: number, z: number, 
   if (id === BlockId.GRASS) spreadGrassFrom(world, x, y, z, rng);
   // A sapling grows only with open sky above it (it does not block the sky itself, so the top is its ground).
   else if (isSaplingState(id) && world.topAt(x, z) === y - 1 && rng() < SAPLING_GROW_CHANCE) growSapling(world, x, y, z);
+  else if (isCropState(id)) growCrop(world, x, y, z, rng);
   if (world.surfaceWeather) settleSnowAndIce(world, x, y, z, rng);
 }
 

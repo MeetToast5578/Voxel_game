@@ -60,7 +60,7 @@ Measure first (T-C3), then pick the J items that the measurements point at.
 
 - [x] **T-G2 — Snow layers.** Done: 8 snow layers that settle and melt, and ice that forms and thaws.
 - [x] **T-G3 — Saplings.** Done: leaves drop saplings, which grow into their species' tree.
-- [ ] **T-G4 — Crops.** Wheat, carrots and potatoes with growth stages, affected by season and temperature.
+- [x] **T-G4 — Crops.** Done: wheat, carrots and potatoes that grow by stage with the temperature.
 - [ ] **T-G5 — Plant succession** on bare ground.
 - [ ] **T-G6 — Autumn leaf litter.**
 - [ ] **T-G7 — Catch-up on reload.** A chunk reloaded after Δt applies expected outcomes directly (crops advanced by Δt × rate, snow set from current weather) instead of replaying ticks. Depends on T-G2 and T-G4.

@@ -1,5 +1,5 @@
 import { mulberry32 } from '../core/random';
-import { Tile } from '../world/blocks';
+import { CROP_STAGES, Tile } from '../world/blocks';
 import { ATLAS_SIZE, ATLAS_TILES, TILE_SIZE } from './tiles';
 
 type RGB = readonly [number, number, number];
@@ -171,7 +171,29 @@ const PAINTERS: Record<number, PixelFn> = {
   [Tile.DIAMOND_ORE]: orePainter([110, 180, 230]),
   [Tile.EMERALD_ORE]: orePainter([70, 190, 130]),
   [Tile.LAPIS_ORE]: orePainter([50, 90, 180]),
+  ...cropPainters(Tile.WHEAT, [205, 175, 70]),
+  ...cropPainters(Tile.CARROTS, [235, 125, 35]),
+  ...cropPainters(Tile.POTATOES, [225, 215, 160]),
 };
+
+/**
+ * One tile per crop growth stage (T-G4): green shoots that grow taller each stage, and at the ripe stage the crop's
+ * colour shows (wheat ears; carrot and potato tops near the soil).
+ */
+function cropPainters(first: number, ripe: RGB): Record<number, PixelFn> {
+  const painters: Record<number, PixelFn> = {};
+  for (let stage = 0; stage < CROP_STAGES; stage++) {
+    const top = 15 - Math.round((stage + 1) * 12 / CROP_STAGES); // image row where the shoots end
+    const ripeStage = stage === CROP_STAGES - 1;
+    painters[first + stage] = (x, y, r) => {
+      const shoot = (x % 5 === 1 || x % 5 === 3) && y >= top && x > 0 && x < 15;
+      if (!shoot) return [0, 0, 0, 0];
+      const head = ripeStage && (first === Tile.WHEAT ? y < top + 4 : y > 12);
+      return head ? shade(ripe, 0.85 + r() * 0.3) : shade([80, 150, 50], 0.8 + r() * 0.3);
+    };
+  }
+  return painters;
+}
 
 /** RGBA pixels for the whole atlas, row-major, row 0 = top of the image. */
 export function generateAtlasPixels(): Uint8ClampedArray<ArrayBuffer> {

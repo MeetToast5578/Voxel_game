@@ -303,6 +303,13 @@ export const ICE_THAW_CHANCE = 0.1; // above 0 °C: ice turns back into water
 // Saplings (T-G3).
 export const SAPLING_DROP_CHANCE = 0.05; // a broken or decayed leaf block also drops a sapling
 export const SAPLING_GROW_CHANCE = 0.1; // a random tick on a sapling with open sky above grows it into its tree
+// Crops (T-G4). A random tick on a crop under open sky advances it one stage with this chance, scaled by temperature.
+export const CROP_GROW_CHANCE = 0.25;
+/** Per crop: [coldest °C it grows at, °C from which it grows at full speed]. Root crops tolerate the cold better. */
+export const CROP_TEMPERATURES_C = { wheat: [5, 20], carrots: [3, 16], potatoes: [4, 17] } as const;
+export const CROP_HEAT_LIMIT_C = [32, 40] as const; // growth slows above the first and stops at the second
+export const CROP_HARVEST_YIELD = 3; // a ripe crop drops this many of what you plant; an unripe one drops one
+export const WHEAT_SEED_DROP_CHANCE = 0.125; // breaking tall grass also drops wheat to plant
 
 // ---- Ecology (spec 36) ----
 export const GRASS_SPREAD_CHANCE = 0.02; // chance per tick that grass spreads to adjacent lit dirt

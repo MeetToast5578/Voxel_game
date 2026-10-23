@@ -1,4 +1,4 @@
-import { LAVA_DENSITY, SURFACE_LAYER_HEIGHT, SLAB_HEIGHT, type TreeSpecies } from '../config';
+import { CROP_HARVEST_YIELD, LAVA_DENSITY, SURFACE_LAYER_HEIGHT, SLAB_HEIGHT, type TreeSpecies } from '../config';
 export const BlockId = {
   AIR: 0,
   STONE: 1,
@@ -51,6 +51,10 @@ export const BlockId = {
   SNOW: 143,
   ICE: 151,
   SAPLING: 152,
+  // Crops (T-G4), CROP_STAGES states each; variant 0 is what you plant.
+  WHEAT: 166,
+  CARROTS: 170,
+  POTATOES: 174,
 } as const;
 
 export const Tile = {
@@ -112,6 +116,10 @@ export const Tile = {
   SNOW: 55,
   ICE: 56,
   SAPLING: 57,
+  // CROP_STAGES tiles each, one per growth stage.
+  WHEAT: 58,
+  CARROTS: 62,
+  POTATOES: 66,
 } as const;
 
 export type RenderLayer = 'none' | 'opaque' | 'cutout' | 'translucent';
@@ -320,6 +328,9 @@ export const SAPLING_SPECIES: readonly TreeSpecies[] = [
   'oak', 'maple', 'spruce', 'fir', 'larch', 'pine', 'birch', 'jungle_giant', 'palm', 'acacia', 'baobab', 'willow', 'mangrove', 'bush',
 ];
 
+/** Growth stages of every crop; the last one is ripe. */
+export const CROP_STAGES = 4;
+
 /** Snow builds up in this many layers; a full stack is one block deep. */
 export const SNOW_LAYERS = 8;
 
@@ -406,6 +417,10 @@ export const BLOCK_REGISTRY = buildBlockRegistry([
   def('sapling', 'Sapling', all(Tile.SAPLING), {
     variants: SAPLING_SPECIES.length, solid: false, opaque: false, layer: 'cutout', shape: 'cross', hardness: 0, density: 300,
   }),
+  // Crops (T-G4): variant = growth stage, and each stage has its own tile (see blockFaceTile).
+  ...(['wheat', 'carrots', 'potatoes'] as const).map((key) => def(key, key[0]!.toUpperCase() + key.slice(1),
+    all(key === 'wheat' ? Tile.WHEAT : key === 'carrots' ? Tile.CARROTS : Tile.POTATOES),
+    { variants: CROP_STAGES, solid: false, opaque: false, layer: 'cutout', shape: 'cross', hardness: 0, density: 300 })),
 ]);
 
 // BlockId.X is variant 0 of the type whose key is x; keep the two lists in step.
@@ -490,6 +505,7 @@ export function blockFaceTile(state: number, dx: number, dy: number, dz: number)
   state = getBlockDef(state).slabMaterial ?? state;
   if ((state === BlockId.FALLEN_LOG_X && dx !== 0) || (state === BlockId.FALLEN_LOG_Z && dz !== 0)) return Tile.LOG_TOP;
   const tiles = getBlockDef(state).tiles;
+  if (isCropState(state)) return tiles.side + blockVariant(state); // one tile per growth stage
   return dy > 0 ? tiles.top : dy < 0 ? tiles.bottom : tiles.side;
 }
 
@@ -506,6 +522,11 @@ export function blockCollision(state: number): boolean | readonly [number, numbe
   return slabBounds(state) ?? isSolid(state);
 }
 
+/** True for every stage of every crop. */
+export function isCropState(state: number): boolean {
+  return state >= BlockId.WHEAT && state < BlockId.POTATOES + CROP_STAGES;
+}
+
 export function isSnowState(state: number): boolean {
   return state >= BlockId.SNOW && state < BlockId.SNOW + SNOW_LAYERS;
 }
@@ -520,6 +541,15 @@ export function snowState(layers: number): number {
   return BlockId.SNOW + layers - 1;
 }
 export function slabItemState(state: number): number { const d = getBlockDef(state); return d.shape === 'slab' ? d.id : state; }
+
+/** What a broken block drops. A crop drops what you plant (its first stage): CROP_HARVEST_YIELD of it when ripe. */
+export function blockDrop(state: number): { state: number; count: number } {
+  if (isCropState(state)) {
+    const ripe = blockVariant(state) === CROP_STAGES - 1;
+    return { state: getBlockDef(state).id, count: ripe ? CROP_HARVEST_YIELD : 1 };
+  }
+  return { state: slabItemState(state), count: 1 };
+}
 export function slabState(material: number, top = false): number {
   const d = BLOCKS.find(d => d.slabMaterial === material);
   if (!d) throw new Error(`No slab for material ${material}`);
