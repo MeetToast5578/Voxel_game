@@ -985,6 +985,7 @@ const CHECKS = [
           const g = window.__game;
           g.setBlock(x + 3, y + 1, z, 54); g.teleport(x + 3.5, y + 1, z + 0.5);
           g.setFlying(true); g.setGameMode('survival');
+          g.setHunger(10); // neither regenerating nor starving: health changes must come from the fire alone
         }, [x, y, z]);
         await page.waitForFunction(() => window.__game.state().burning && window.__game.state().health < 20, null, { timeout: 10_000 });
         await page.locator('.hazard-warning').waitFor({ state: 'visible', timeout: 5000 });
