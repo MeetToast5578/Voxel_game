@@ -51,7 +51,7 @@ Measure first (T-C3), then pick the J items that the measurements point at.
 
 - [x] **T-F5 — Wind.** Done: foliage sway, slanted rain and snow, wind-driven clouds.
 - [ ] **T-F7 — Seasonal visuals.** Foliage colour shifts through the year. Deciduous leaves render bare in winter through the shader, with no block changes. Grass browns in a dry summer.
-- [ ] **T-F8 — Smooth lighting.** Per-vertex light averaging in the mesher, done together with ambient occlusion. Mesher core, so build it directly.
+- [x] **T-F8 — Smooth lighting.** Done: per-corner light averaging with the AO samples.
 - [x] **T-F14 — Lightning flashes and delayed thunder.** Done in #40.
 
 ---

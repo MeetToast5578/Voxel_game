@@ -16,11 +16,11 @@ class RecordingSink implements MeshSink {
   remove(): void {}
 }
 
-/** Sky light (0..1, LIGHT_CURVE applied) of the quad whose 4 corners all match, or null. */
+/** Mean sky light (0..1, LIGHT_CURVE applied) of the quad whose 4 corners all match, or null. Corners differ with smooth lighting. */
 function quadSky(m: MeshData, match: (x: number, y: number, z: number) => boolean): number | null {
   for (let q = 0; q < m.positions.length / 12; q++) {
     const verts = [0, 1, 2, 3].map((k) => q * 4 + k);
-    if (verts.every((v) => match(m.positions[v * 3]!, m.positions[v * 3 + 1]!, m.positions[v * 3 + 2]!))) return m.light[verts[0]! * 2]!;
+    if (verts.every((v) => match(m.positions[v * 3]!, m.positions[v * 3 + 1]!, m.positions[v * 3 + 2]!))) return verts.reduce((sum, v) => sum + m.light[v * 2]!, 0) / 4;
   }
   return null;
 }
@@ -59,7 +59,12 @@ describe('relighting after edits', () => {
     expect(world.topAt(5, 5)).toBe(9); // the cave floor
     for (let i = 0; i < 3; i++) manager.update(8, 30, 8, Infinity, Infinity);
     const floor = sink.meshes.get('0,0,0')!.solid;
-    expect(quadSky(floor, (x, y, z) => y === 10 && x >= 5 && x <= 6 && z >= 5 && z <= 6)).toBe(1); // under the shaft
-    expect(floorAt6(floor)).toBeCloseTo(LIGHT_CURVE[14]!); // 1 block to the side
+    // Smooth lighting (T-F8) blends each corner with its neighbours: under the shaft is brightest, the side close behind.
+    const underShaft = quadSky(floor, (x, y, z) => y === 10 && x >= 5 && x <= 6 && z >= 5 && z <= 6)!;
+    const side = floorAt6(floor)!;
+    expect(underShaft).toBeGreaterThan(side);
+    expect(underShaft).toBeGreaterThan(LIGHT_CURVE[14]!);
+    expect(side).toBeGreaterThan(LIGHT_CURVE[13]!); // 1 block to the side
+    expect(side).toBeLessThan(LIGHT_CURVE[15]!);
   });
 });

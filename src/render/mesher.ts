@@ -98,6 +98,9 @@ const FACE_NEIGHBOR = new Int32Array(6);
 const FACE_SHADE = new Float64Array(6);
 /** Per face and vertex: the [side1, side2, corner] AO sample offsets, flat: ((face * 4) + vertex) * 3. */
 const FACE_AO = new Int32Array(6 * 4 * 3);
+/** The same samples as FACE_AO, as region-array offsets, for smooth lighting (T-F8). */
+const FACE_LIGHT_AO = new Int32Array(6 * 4 * 3);
+const REGION_AXIS_STRIDE = [1, REGION_SIZE * REGION_SIZE, REGION_SIZE] as const;
 /** Per face and vertex: corner position, flat: ((face * 4) + vertex) * 3. */
 const FACE_CORNERS = new Float64Array(6 * 4 * 3);
 /** Per face and vertex: which UV edge that corner takes (0 = u0/v0, 1 = u1/v1). */
@@ -128,6 +131,11 @@ for (let f = 0; f < 6; f++) {
     FACE_AO[at * 3] = su;
     FACE_AO[at * 3 + 1] = sv;
     FACE_AO[at * 3 + 2] = su + sv;
+    const lu = (corner[ua]! * 2 - 1) * REGION_AXIS_STRIDE[ua as 0 | 1 | 2];
+    const lv = (corner[va]! * 2 - 1) * REGION_AXIS_STRIDE[va as 0 | 1 | 2];
+    FACE_LIGHT_AO[at * 3] = lu;
+    FACE_LIGHT_AO[at * 3 + 1] = lv;
+    FACE_LIGHT_AO[at * 3 + 2] = lu + lv;
   }
 }
 
@@ -447,11 +455,10 @@ export function buildChunkMesh(neighbors: readonly Uint16Array[], tops: readonly
           const cornerd = opaque[vol[n + FACE_AO[aoAt + 11]!]!]!;
           ao[3] = side1d && side2d ? 0 : 3 - (side1d + side2d + cornerd);
 
-          // Flat lighting: the whole face uses the light of the cell it faces (always inside the region).
+          // Smooth lighting (T-F8): each corner averages the cell the face looks at with the side and corner cells
+          // around that corner (the AO samples), skipping opaque ones. All of them are inside the region.
           const rf = r + FACE_REGION_OFFSET[f]!;
-          const blk = blockLight[rf]! > emission ? blockLight[rf]! : emission; // glowing blocks are always fully lit
-          const skyB = LIGHT_CURVE[skyLight[rf]!]!;
-          const blkB = LIGHT_CURVE[blk]!;
+          const emissionB = LIGHT_CURVE[emission]!; // glowing blocks are always fully lit
 
           const tile = FACE_TILES[id * 6 + f]!;
           const u0 = UV_TABLE[tile * 4]!;
@@ -482,7 +489,27 @@ export function buildChunkMesh(neighbors: readonly Uint16Array[], tops: readonly
               tints.sample(lx + FACE_CORNERS[at * 3]!, y + (cyCorner === 1 ? top : bottom), lz + FACE_CORNERS[at * 3 + 2]!, tint as TintKind);
               out.writeColor(positionOffset, brightness * tints.r, brightness * tints.g, brightness * tints.b);
             } else out.writeColor(positionOffset, brightness, brightness, brightness);
-            out.writeLight(lightOffset, skyB, blkB);
+            const lo = at * 3;
+            const o1 = opaque[vol[n + FACE_AO[lo]!]!]!;
+            const o2 = opaque[vol[n + FACE_AO[lo + 1]!]!]!;
+            let skySum = LIGHT_CURVE[skyLight[rf]!]!;
+            let blkSum = LIGHT_CURVE[blockLight[rf]!]!;
+            let samples = 1;
+            if (!o1) {
+              const s = rf + FACE_LIGHT_AO[lo]!;
+              skySum += LIGHT_CURVE[skyLight[s]!]!; blkSum += LIGHT_CURVE[blockLight[s]!]!; samples++;
+            }
+            if (!o2) {
+              const s = rf + FACE_LIGHT_AO[lo + 1]!;
+              skySum += LIGHT_CURVE[skyLight[s]!]!; blkSum += LIGHT_CURVE[blockLight[s]!]!; samples++;
+            }
+            // Light does not leak through a corner closed off by both sides.
+            if (!(o1 && o2) && !opaque[vol[n + FACE_AO[lo + 2]!]!]) {
+              const s = rf + FACE_LIGHT_AO[lo + 2]!;
+              skySum += LIGHT_CURVE[skyLight[s]!]!; blkSum += LIGHT_CURVE[blockLight[s]!]!; samples++;
+            }
+            const blkB = blkSum / samples;
+            out.writeLight(lightOffset, skySum / samples, blkB > emissionB ? blkB : emissionB);
             out.writeSway(SWAY_TABLE[id]!);
             out.vertexCount++;
             positionOffset += 3;

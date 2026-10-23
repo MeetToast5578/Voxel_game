@@ -21,7 +21,7 @@ A Minecraft-like voxel sandbox that runs in the browser, built with TypeScript, 
 - Break and place blocks including gravel, clay and cactus. Water flows: the source block spreads, and it levels out.
 - Physics: sand and gravel fall, water flows and levels out (flowing water is shown at its level), and a big enough collapse makes the broken blocks tumble, float or sink by their density, and settle back into blocks Breaking takes time and shows cracks; the block drops as an item that you pick up by walking over it
 - 36-slot inventory (E) with a 9-slot hotbar and stacks of 64; the selected block is shown in your hand
-- Day/night cycle with lunar phases, sky and block lighting (glowstone), clouds, simple sound effects
+- Day/night cycle with lunar phases, smooth sky and block lighting (glowstone), clouds, simple sound effects
 - Rain and sleet darken exposed block tops; humid valleys gain fog around sunrise
 - Start/pause menu with render distance, field of view and mouse sensitivity
 - Automatic saving in the browser (IndexedDB), including the inventory, items on the ground and time of day
@@ -126,7 +126,7 @@ CI (GitHub Actions) runs `npm run check`, worker budget guards, GPU regressions,
 |--------|----------|
 | `src/core` | math, seeded random numbers, coordinates, fixed-timestep loop |
 | `src/world` | blocks, chunks, terrain generator, chunk streaming, lighting, day/night |
-| `src/render` | mesher (face culling + ambient occlusion), textures, three.js renderer, clouds |
+| `src/render` | mesher (face culling, ambient occlusion and smooth lighting), textures, three.js renderer, clouds |
 | `src/player` | physics, player controller, raycast, interaction rules, inventory, breaking |
 | `src/items` | dropped items: falling, pick-up, lifetime |
 | `src/ui`, `src/input`, `src/audio`, `src/storage` | HUD, menu, debug overlay, input, sounds, saves and settings |

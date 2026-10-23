@@ -45,6 +45,21 @@ describe('buildChunkMesh lighting', () => {
     }
     expect(found).toBe(true);
   });
+  it('smooths light across a face: the corner nearer a light is brighter (T-F8)', () => {
+    const w = ground(50).set(5, 51, 5, BlockId.GLOWSTONE);
+    const m = buildChunkMesh(w.neighbors(3), w.tops(), 3).solid;
+    // The ground's top face at x 7..8, z 5..6: block light falls by one level per block away from the glowstone.
+    const blockAt = (x: number, z: number) => {
+      for (let v = 0; v < m.positions.length / 3; v++) {
+        if (m.positions[v * 3] === x && m.positions[v * 3 + 1] === 51 - 48 && m.positions[v * 3 + 2] === z) return m.light[v * 2 + 1]!;
+      }
+      throw new Error(`no ground vertex at ${x}, ${z}`);
+    };
+    expect(blockAt(7, 5)).toBeGreaterThan(blockAt(8, 5));
+    expect(blockAt(8, 5)).toBeGreaterThan(blockAt(9, 5));
+    expect(blockAt(7, 5)).toBeLessThan(LIGHT_CURVE[14]!);
+    expect(blockAt(7, 5)).toBeGreaterThan(LIGHT_CURVE[12]!);
+  });
   // The setup generates the neighbourhood of 50 chunks, which can pass vitest's default 5 s under parallel load.
   it('meshes 50 surface chunks of seed 42 fast enough', { timeout: 30000 }, () => {
     const g = new TerrainGenerator(42);
