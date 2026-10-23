@@ -226,9 +226,9 @@ describe('mesh output is independent of the reusable scratch buffers', () => {
   it('returns arrays that own their buffers, so a mesh can be transferred between threads', () => {
     const w = new TestWorld((_x, y) => (y <= 50 ? BlockId.STONE : BlockId.AIR));
     const mesh = buildChunkMesh(w.neighbors(3), w.tops(), 3).solid;
-    const buffers = [mesh.positions, mesh.uvs, mesh.colors, mesh.light, mesh.sway, mesh.indices].map((a) => a.buffer);
-    expect(new Set(buffers).size).toBe(6);
-    for (const array of [mesh.positions, mesh.uvs, mesh.colors, mesh.light, mesh.sway, mesh.indices]) {
+    const buffers = [mesh.positions, mesh.uvs, mesh.colors, mesh.light, mesh.sway, mesh.season, mesh.indices].map((a) => a.buffer);
+    expect(new Set(buffers).size).toBe(7);
+    for (const array of [mesh.positions, mesh.uvs, mesh.colors, mesh.light, mesh.sway, mesh.season, mesh.indices]) {
       expect(array.byteOffset).toBe(0);
       expect(array.byteLength).toBe(array.buffer.byteLength);
     }

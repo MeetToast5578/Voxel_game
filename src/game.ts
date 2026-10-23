@@ -596,6 +596,7 @@ export class Game {
     );
     this.renderer.setWetness(this.weatherRenderer.wetness);
     this.renderer.setWind(weather.windSpeed, frameDt);
+    this.renderer.setSeason(this.calendar.timeOfYear);
     this.clouds.update(eye.x, eye.z, frameDt, daylightAt(this.timeOfDay), weather.windSpeed);
     this.updateThunder(frameDt);
     this.fogSampleTimer -= frameDt;

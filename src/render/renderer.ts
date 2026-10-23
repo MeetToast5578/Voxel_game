@@ -5,6 +5,7 @@ import {
 } from '../config';
 import { createAtlasCanvas, createAtlasTexture } from './atlas';
 import { patchLightMaterial, type LightUniforms } from './lightMaterial';
+import { foliageSeason } from '../world/calendar';
 
 export class Renderer {
   readonly webgl: THREE.WebGLRenderer;
@@ -21,7 +22,7 @@ export class Renderer {
   readonly crackMaterial: THREE.MeshBasicMaterial;
   readonly fog: THREE.Fog;
   /** Shared by both block materials; uDaylight is 1 at noon and MIN_DAYLIGHT at midnight. */
-  readonly lightUniforms: LightUniforms = { uDaylight: { value: 1 }, uWetness: { value: 0 }, uWind: { value: 0 }, uWindTime: { value: 0 } };
+  readonly lightUniforms: LightUniforms = { uDaylight: { value: 1 }, uWetness: { value: 0 }, uWind: { value: 0 }, uWindTime: { value: 0 }, uSeason: { value: new THREE.Vector3() } };
   private readonly background = new THREE.Color(SKY_COLOR);
   private skyColor = SKY_COLOR;
   private underwater = false;
@@ -125,6 +126,12 @@ export class Renderer {
   setWind(windSpeed: number, frameDt: number): void {
     this.lightUniforms.uWind.value = Math.max(0, Math.min(1, windSpeed / WIND_FULL_M_S));
     this.lightUniforms.uWindTime.value += frameDt;
+  }
+
+  /** Seasonal foliage (T-F7) for a time of year, 0 = spring equinox. */
+  setSeason(timeOfYear: number): void {
+    const s = foliageSeason(timeOfYear);
+    this.lightUniforms.uSeason.value.set(s.autumn, s.bare, s.summer);
   }
 
   setDaylight(daylight: number): void {

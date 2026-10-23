@@ -51,6 +51,7 @@ export class ChunkMeshes implements MeshSink {
     geometry.setAttribute('color', new THREE.BufferAttribute(data.colors, 3));
     geometry.setAttribute('aLight', new THREE.BufferAttribute(data.light, 2));
     geometry.setAttribute('aSway', new THREE.BufferAttribute(data.sway, 1));
+    geometry.setAttribute('aSeason', new THREE.BufferAttribute(data.season, 2));
     geometry.setIndex(new THREE.BufferAttribute(data.indices, 1));
     geometry.computeBoundingSphere();
     const mesh = new THREE.Mesh(geometry, material);
