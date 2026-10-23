@@ -1,9 +1,10 @@
 import { describe, expect, it, vi } from 'vitest';
-import { DAY_LENGTH_S, DAYS_PER_SEASON, FIXED_DT, GAME_MODE_CREATIVE, GAME_MODE_SURVIVAL, THUNDER_DELAY_MIN_S, WORLD_LATITUDE_DEG } from '../src/config';
+import { DAY_LENGTH_S, DAYS_PER_SEASON, FIXED_DT, FOOD_HUNGER, GAME_MODE_CREATIVE, GAME_MODE_SURVIVAL, THUNDER_DELAY_MIN_S, WORLD_LATITUDE_DEG } from '../src/config';
 import { Game } from '../src/game';
 import { BlockBreaking } from '../src/player/breaking';
 import { Inventory, startingSlots } from '../src/player/inventory';
 import { Calendar } from '../src/world/calendar';
+import { BlockId } from '../src/world/blocks';
 
 /** Exercise the real game methods without constructing WebGL, workers or browser UI in Node. */
 function call(game: Game, method: string, ...args: unknown[]) {
@@ -141,6 +142,7 @@ describe('smoke-test debug hooks', () => {
       breakHardness: () => 0.5, // grass: 10 crack stages over half a second
       breakCell: vi.fn(),
       placeTarget: vi.fn(),
+      eatSelected: () => false,
       placeTargetCheck: vi.fn(),
       setBlock: vi.fn(),
     });
@@ -231,5 +233,43 @@ describe('survival acquisition rules (T-I11)', () => {
     const before = JSON.stringify(changed.inventory.slots);
     changed.game.setGameMode(GAME_MODE_SURVIVAL);
     expect(JSON.stringify(changed.inventory.slots)).toBe(before);
+  });
+});
+
+function survivor(aimed: number | null) {
+  const game = Object.create(Game.prototype) as Game;
+  const inventory = new Inventory(new Array(startingSlots().length).fill(null));
+  inventory.setSlot(0, BlockId.POTATOES, 2);
+  const items = { spawn: vi.fn() };
+  const player = { position: { x: 1, y: 2, z: 3 }, setPosition: vi.fn() };
+  Object.assign(game, {
+    gameMode: GAME_MODE_SURVIVAL, inventory, items, player, hunger: 10, health: 0,
+    target: aimed === null ? null : { x: 0, y: 0, z: 0 }, world: { getBlock: () => aimed, topAt: () => 5 },
+    sounds: { play: vi.fn() }, fire: { reset: vi.fn() }, spawn: { x: 0, z: 0 }, spawnFeetY: 9,
+  });
+  return { game, inventory, items, player };
+}
+
+describe('eating crops (T-I8)', () => {
+  it('eats food in hand unless hunger is full or the aim is on grass or dirt', () => {
+    const { game, inventory } = survivor(BlockId.STONE);
+    expect(game.eatSelected()).toBe(true);
+    expect(game.hunger).toBe(10 + FOOD_HUNGER.potatoes);
+    expect(inventory.slots[0]?.count).toBe(1);
+    game.hunger = 20;
+    expect(game.eatSelected()).toBe(false);
+    expect(survivor(BlockId.GRASS).game.eatSelected()).toBe(false); // planted instead
+    expect(survivor(null).game.eatSelected()).toBe(true); // aiming at the sky
+  });
+});
+
+describe('death in survival', () => {
+  it('drops everything where the player died and respawns empty-handed', () => {
+    const { game, inventory, items, player } = survivor(null);
+    call(game, 'die');
+    expect(items.spawn).toHaveBeenCalledWith(BlockId.POTATOES, 2, 1, 3, 3, Math.random);
+    expect(inventory.slots.every((s) => s === null)).toBe(true);
+    expect(player.setPosition).toHaveBeenCalledWith(0, 9, 0);
+    expect(game.health).toBe(20);
   });
 });

@@ -56,6 +56,7 @@ Requires Node.js 20+.
 | F | Toggle flying |
 | Hold left click | Break block (it takes time; the cracks show progress) |
 | Right click | Place block (uses one from the stack; hold to repeat) |
+| Right click with a crop | Survival: eat it, or plant it when aimed at grass or dirt |
 | Middle click | Pick the targeted block into the hotbar |
 | 1–9, mouse wheel | Select hotbar slot |
 | E | Open or close the inventory; the HUD Inventory button also works without mouse capture |

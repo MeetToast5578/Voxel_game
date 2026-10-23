@@ -1,4 +1,4 @@
-import { CROP_HARVEST_YIELD, LAVA_DENSITY, SURFACE_LAYER_HEIGHT, SLAB_HEIGHT, type TreeSpecies } from '../config';
+import { CROP_HARVEST_YIELD, FOOD_HUNGER, LAVA_DENSITY, SURFACE_LAYER_HEIGHT, SLAB_HEIGHT, type TreeSpecies } from '../config';
 export const BlockId = {
   AIR: 0,
   STONE: 1,
@@ -525,6 +525,11 @@ export function blockCollision(state: number): boolean | readonly [number, numbe
 /** True for every stage of every crop. */
 export function isCropState(state: number): boolean {
   return state >= BlockId.WHEAT && state < BlockId.POTATOES + CROP_STAGES;
+}
+
+/** Hunger a block state restores when eaten (T-I8): the planted stage of a crop is food; anything else is 0. */
+export function foodValue(state: number): number {
+  return isCropState(state) && blockVariant(state) === 0 ? FOOD_HUNGER[getBlockDef(state).key as keyof typeof FOOD_HUNGER] : 0;
 }
 
 export function isSnowState(state: number): boolean {

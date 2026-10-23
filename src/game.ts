@@ -1,7 +1,7 @@
 import { exportWorldArchive, parseWorldArchive, type WorldArchive } from './storage/worldArchive';
 import { BuildClipboard } from './player/clipboard';
 import { resolvePlacement } from './player/placementTarget';
-import { blockCollision, blockDrop, slabBounds, slabItemState } from './world/blocks';
+import { blockCollision, blockDrop, foodValue, slabBounds, slabItemState } from './world/blocks';
 import { atmosphericFogStrength } from './world/atmosphere';
 import {
   WORLD_FILE_MAX_BYTES, FOG_SAMPLE_INTERVAL_S, FOG_VALLEY_SAMPLE_M, FOG_GROUND_LAYER_M, metersToBlocks,
@@ -423,7 +423,7 @@ export class Game {
     this.health = Math.min(HEALTH_MAX, this.health + amount);
   }
 
-  /** Die: drop inventory, reset health, respawn at spawn. */
+  /** Die: drop inventory, reset health, respawn empty-handed at spawn. */
   private die(): void {
     // Drop all inventory on the ground.
     const p = this.player.position;
@@ -433,7 +433,8 @@ export class Game {
         this.items.spawn(stack.state, stack.count, p.x, p.y + 1, p.z, Math.random);
       }
     }
-    this.inventory = new Inventory();
+    // Respawn with nothing: the dropped items wait where the player died.
+    this.inventory.slots.fill(null);
     this.inventory.select(0);
 
     // Reset health, hunger, air and transient fire.
@@ -792,6 +793,22 @@ export class Game {
     return ok;
   }
 
+  /**
+   * Survival right click with food in hand (T-I8): eats one unless hunger is full or the aim is on grass or dirt, where
+   * the crop is planted instead. Returns true if it was eaten.
+   */
+  eatSelected(): boolean {
+    const value = foodValue(this.inventory.selectedBlock);
+    if (this.gameMode !== GAME_MODE_SURVIVAL || value === 0 || this.hunger >= HUNGER_MAX) return false;
+    const t = this.target;
+    const aimed = t ? this.world.getBlock(t.x, t.y, t.z) : BlockId.AIR;
+    if (aimed === BlockId.GRASS || aimed === BlockId.DIRT) return false;
+    this.hunger = Math.min(HUNGER_MAX, this.hunger + value);
+    this.inventory.consumeSelected();
+    this.sounds.play('eat');
+    return true;
+  }
+
   /** A footstep sound every FOOTSTEP_DISTANCE walked on the ground. */
   private updateFootsteps(dt: number): void {
     const p = this.player;
@@ -853,7 +870,7 @@ export class Game {
     if (breakClicked || broken) this.held.swing();
     const placeClicked = this.input.consumeClick(2);
     if (placeClicked || (this.input.isMouseDown(2) && this.actionCooldown === 0)) {
-      this.placeTarget();
+      if (!this.eatSelected()) this.placeTarget();
       this.actionCooldown = BREAK_REPEAT_S;
       this.held.swing();
     }

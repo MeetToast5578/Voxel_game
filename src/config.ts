@@ -587,6 +587,8 @@ export const HUNGER_DRAIN_PER_S = HUNGER_MAX / (15 * 60); // a full bar lasts 15
 export const STARVE_DAMAGE_PER_S = 0.25; // at zero hunger: one point every 4 s, which can kill
 export const REGEN_MIN_HUNGER = 18; // health regenerates only while hunger is at least this (T-I3)
 export const REGEN_PER_S = 0.25; // one point every 4 s
+/** Hunger one eaten crop restores (T-I8). Raw grain fills least; a potato most. */
+export const FOOD_HUNGER = { wheat: 2, carrots: 3, potatoes: 4 } as const;
 export const FALL_DAMAGE_THRESHOLD_M_S = 6; // impact speed above this causes damage
 export const FALL_DAMAGE_MULTIPLIER = 2; // damage per m/s above threshold
 export const DROWN_DAMAGE_PER_S = 2; // damage per second when out of air

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { CROP_HARVEST_YIELD } from '../src/config';
+import { CROP_HARVEST_YIELD, FOOD_HUNGER } from '../src/config';
 import { localIndex } from '../src/core/coords';
-import { BlockId, CROP_STAGES, Tile, blockDrop, blockFaceTile, isCropState, slabState } from '../src/world/blocks';
+import { BlockId, CROP_STAGES, Tile, blockDrop, blockFaceTile, foodValue, isCropState, slabState } from '../src/world/blocks';
 import { Chunk } from '../src/world/chunk';
 import { cropGrowthFactor, growCrop } from '../src/world/crops';
 import { handleRandomTick } from '../src/world/ecology';
@@ -72,5 +72,15 @@ describe('crops (T-G4)', () => {
     expect(blockDrop(BlockId.POTATOES + CROP_STAGES - 1)).toEqual({ state: BlockId.POTATOES, count: CROP_HARVEST_YIELD });
     expect(blockDrop(BlockId.STONE)).toEqual({ state: BlockId.STONE, count: 1 });
     expect(blockDrop(slabState(BlockId.STONE, true))).toEqual({ state: slabState(BlockId.STONE), count: 1 });
+  });
+});
+
+describe('food (T-I8)', () => {
+  it('the planted stage of each crop restores its hunger value; other states are not food', () => {
+    expect(foodValue(BlockId.WHEAT)).toBe(FOOD_HUNGER.wheat);
+    expect(foodValue(BlockId.CARROTS)).toBe(FOOD_HUNGER.carrots);
+    expect(foodValue(BlockId.POTATOES)).toBe(FOOD_HUNGER.potatoes);
+    expect(foodValue(BlockId.POTATOES + CROP_STAGES - 1)).toBe(0); // a growing crop is a block, not an item
+    expect(foodValue(BlockId.GRASS)).toBe(0);
   });
 });

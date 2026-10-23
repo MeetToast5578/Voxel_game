@@ -1,4 +1,4 @@
-export type SoundName = 'break' | 'place' | 'step' | 'splash' | 'thunder';
+export type SoundName = 'break' | 'place' | 'step' | 'splash' | 'thunder' | 'eat';
 
 interface Preset {
   /** Low-pass filter cutoff in Hz: lower sounds duller. */
@@ -14,6 +14,7 @@ const PRESETS: Record<SoundName, Preset> = {
   step: { frequency: 500, volume: 0.15, duration: 0.06 },
   splash: { frequency: 700, volume: 0.3, duration: 0.35 },
   thunder: { frequency: 150, volume: 0.7, duration: 2.5 },
+  eat: { frequency: 1100, volume: 0.3, duration: 0.12 },
 };
 
 /** Tiny procedural sound effects: filtered white-noise bursts. No audio files needed. */
