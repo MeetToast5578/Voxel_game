@@ -243,8 +243,8 @@ All six sandbox-physics slices (spec 25) are built and tested. One known shortcu
 ## I. Phase 7 — Survival
 
 - [x] **T-I1 — UI to pick the game mode.** Landed in `38c07f8` (committed after this list was drafted, checkbox missed): a Creative/Survival picker (radio group) in the start and pause menu; switching to survival tops health and hunger back up; the mode persists through the save meta. Reviewed 2026-10-17, one follow-up fixed: `debugApi.setGameMode` assigned `game.gameMode` directly, bypassing the menu sync and the vitals top-up; it now delegates to `Game.setGameMode`.
-- [ ] **T-I2 — Make hunger change.** Set, saved, loaded and shown (`src/game.ts:111`, `:186`, `:392`), but no rule anywhere writes it. No food, no starvation.
-- [ ] **T-I3 — Health regeneration.** Item 2.
+- [x] **T-I2 — Make hunger change.** Closed 2026-10-23. In survival a full bar drains in 15 minutes (`HUNGER_DRAIN_PER_S`); at zero, starving deals one point every 4 s and can kill (owner decision: full starvation even before food exists). Respawn restores hunger. Hunger was not actually shown before: a survival-only `Health n/20 · Hunger n/20` HUD line now shows both (plain text until T-K8). Food is still T-I8.
+- [x] **T-I3 — Health regeneration.** Closed 2026-10-23. While hunger is at least `REGEN_MIN_HUNGER` (18), health regenerates one point every 4 s. Covered with T-I2 by `tests/fluidHazards.test.ts`.
 - [ ] **T-I4 — Body temperature.** Item 2. From biome, altitude, weather, season, wetness, shelter, fire and clothing; hypothermia and heatstroke. `ROADMAP.md:290` calls this where the whole simulation pays off.
 - [ ] **T-I5 — Tools.** Mining time from block hardness **and** tool. Tiers and durability. Items 3 and 5.
 - [ ] **T-I6 — Crafting.** 2×2 grid in the inventory, 3×3 crafting table, recipes as a data table. Item 5.
