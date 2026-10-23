@@ -1,5 +1,49 @@
 # Handoff: Voxel Game (MeetToast5578/Voxel_game)
 
+## Latest session — 2026-10-23 (Claude, PRs #36–#48)
+
+This section supersedes the priorities below. Everything is merged to `main` (last merge
+#48); no PRs are open. The task list lives in [OPEN-TASKS.md](OPEN-TASKS.md).
+
+**Merged this session:** CI fix and three frame-rate-independent smoke checks (#38);
+survival acquisition rules, T-I11 (#39); lightning and delayed thunder, T-F14 (#40); hunger,
+starvation and health regeneration, T-I2/T-I3 (#41); wind, T-F5 (#42); and, unified in #48,
+seasonal visuals T-F7, smooth lighting T-F8, snow layers and ice T-G2, saplings T-G3 and
+crops T-G4. Docs: #36 (state update) and #37 (OPEN-TASKS.md).
+
+**Owner decisions used:** deciduous vs evergreen leaves are chosen by local climate;
+leaves drop saplings; crops are planted on grass or dirt.
+
+**Save compatibility:** new block states are appended after the slab states (77..142):
+SNOW 143 (8 layers), ICE 151, SAPLING 152 (14 species), WHEAT 166, CARROTS 170,
+POTATOES 174 (4 stages each). `tests/blocks.test.ts` pins these IDs; append any new state
+after 177 and never renumber. Save version unchanged.
+
+**Where things live:** wind/season uniforms in `src/render/lightMaterial.ts` and
+`renderer.ts` (`setWind`, `setSeason`); per-vertex sway/season/smooth light in
+`src/render/mesher.ts`; `foliageSeason` in `src/world/calendar.ts`; climate weights in
+`src/world/climateTint.ts`; snow/ice/sapling/crop random ticks in `src/world/ecology.ts`
+with `saplings.ts` and `crops.ts`; tunables in `src/config.ts`; debug hooks
+`setTimeOfYear` and `growSapling` in `src/debugApi.ts`.
+
+**Validation:** 712 tests / 82 files pass on `main`; CI (check, budgets, GPU regressions,
+smoke) was green on #48. Smoke runs against the production build, so run `npm run build`
+before `npm run smoke` locally.
+
+**Open owner questions:**
+- Dying in survival still refills the starting kit. Suggested: respawn with an empty
+  inventory.
+- `claude/serene-brown-4izylj` holds 2 unmerged commits of 15 October handoff notes; keep
+  or delete.
+- 24 merged branches remain on GitHub. Claude sessions cannot delete branches (the git
+  proxy returns 403), so delete them on GitHub's Branches page and turn on Settings →
+  General → "Automatically delete head branches".
+
+**Next suggested tasks:** T-G7 catch-up on reload (crops and snow now exist), T-I8 food, starting with eating crops (so
+survival no longer ends in starvation), T-G6 autumn leaf litter, T-H1 wiring entities.
+Owner acceptance (section 1 of OPEN-TASKS.md) is still open; none of the new visuals have
+been checked on real hardware.
+
 ## Latest building/backups batch — 2026-10-22 (spec 53)
 
 This section supersedes the priorities and remaining copy/paste/export/import items in the
