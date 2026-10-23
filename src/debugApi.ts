@@ -31,6 +31,8 @@ export interface DebugApi {
   setTimeOfYear(t: number): void;
   /** Grows the sapling at a cell now, as a random tick would (T-G3). Returns whether it grew. */
   growSapling(x: number, y: number, z: number): boolean;
+  /** Turns snow settling and ice forming/thawing on or off (T-G2), so test platforms high in the sky stay as built. */
+  setWeatherEffects(on: boolean): void;
   /** The volume tools: sets any of their fields (mode, kind, size, thickness, disc) for the smoke test. */
   setTool(fields: { mode?: ToolMode; kind?: ToolKind; size?: number; thickness?: number; disc?: boolean }): void;
   /** One add or remove click at the aimed block with the volume tools. The change lands over the next frames. */
@@ -67,6 +69,7 @@ declare global {
 }
 
 export function installDebugApi(game: Game): void {
+  const surfaceWeather = game.world.surfaceWeather; // set in the Game constructor
   window.__game = {
     get ready() {
       return game.ready;
@@ -94,6 +97,9 @@ export function installDebugApi(game: Game): void {
     setIdle: (idle) => game.setIdle(idle),
     save: () => game.saveNow(),
     growSapling: (x, y, z) => growSapling(game.world, x, y, z),
+    setWeatherEffects: (on) => {
+      game.world.surfaceWeather = on ? surfaceWeather : undefined;
+    },
     setTimeOfDay: (t) => {
       game.timeOfDay = ((t % 1) + 1) % 1;
     },
