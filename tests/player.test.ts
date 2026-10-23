@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { PLAYER_HALF_WIDTH, TERMINAL_VELOCITY, metersToBlocks } from '../src/config';
 import { NO_CONTROLS, Player } from '../src/player/player';
 
 const DT = 1 / 60;
@@ -44,7 +45,7 @@ describe('Player', () => {
     run(b, 60, { ...NO_CONTROLS, forward: true, sprint: true });
     expect(b.position.z).toBeLessThan(a.position.z - 1);
   });
-  it('jumps between 1.15 and 1.4 blocks high', () => {
+  it('jumps about 1.35 m high', () => {
     const p = standing();
     p.update(DT, { ...NO_CONTROLS, jump: true }, ground);
     let maxY = p.position.y;
@@ -52,8 +53,8 @@ describe('Player', () => {
       p.update(DT, NO_CONTROLS, ground);
       maxY = Math.max(maxY, p.position.y);
     }
-    expect(maxY - 10).toBeGreaterThan(1.15);
-    expect(maxY - 10).toBeLessThan(1.4);
+    expect(maxY - 10).toBeGreaterThanOrEqual(metersToBlocks(1.2));
+    expect(maxY - 10).toBeLessThan(metersToBlocks(1.5));
     expect(p.onGround).toBe(true);
   });
   it('is stopped by a wall', () => {
@@ -61,17 +62,17 @@ describe('Player', () => {
     const p = standing();
     p.yaw = -Math.PI / 2; // facing +X
     run(p, 120, { ...NO_CONTROLS, forward: true }, wall);
-    expect(p.position.x).toBeLessThanOrEqual(5 - 0.3 + 1e-3);
-    expect(p.position.x).toBeGreaterThan(4.6);
+    expect(p.position.x).toBeLessThanOrEqual(5 - PLAYER_HALF_WIDTH + 1e-3);
+    expect(p.position.x).toBeGreaterThan(5 - PLAYER_HALF_WIDTH - 0.05);
   });
   it('flies up, hovers without input, and stops flying on landing', () => {
     const p = standing();
     p.toggleFlying();
     run(p, 60, { ...NO_CONTROLS, jump: true });
-    expect(p.position.y).toBeGreaterThan(18);
+    expect(p.position.y).toBeGreaterThan(10 + metersToBlocks(4.8));
     const y = p.position.y;
     run(p, 60);
-    expect(p.position.y).toBeLessThan(y + 1.5);
+    expect(p.position.y).toBeLessThan(y + metersToBlocks(0.9));
     expect(p.flying).toBe(true);
     run(p, 240, { ...NO_CONTROLS, descend: true });
     expect(p.flying).toBe(false);
@@ -104,6 +105,39 @@ describe('Player', () => {
     p.setPosition(0, 10, 0);
     p.position.x = 1;
     expect(p.eyePosition(0.5).x).toBeCloseTo(0.5);
-    expect(p.eyePosition(1).y).toBeCloseTo(10 + 1.62);
+    expect(p.eyePosition(1).y).toBeCloseTo(10 + metersToBlocks(1.62));
+  });
+
+  describe('body size (1 block = 0.3 m, player about 6 blocks tall)', () => {
+    it('fits a 2-wide, 6-high corridor', () => {
+      const corridor = (x: number, y: number) => y < 10 || y >= 16 || x === -1 || x === 2;
+      const p = new Player();
+      p.setPosition(1, 10, 0.5);
+      run(p, 5, NO_CONTROLS, corridor);
+      p.yaw = Math.PI; // facing +Z
+      run(p, 60, { ...NO_CONTROLS, forward: true }, corridor);
+      expect(p.position.z - 0.5).toBeGreaterThanOrEqual(3);
+      expect(p.position.x).toBeCloseTo(1, 9);
+      expect(p.position.y).toBeCloseTo(10, 3);
+      expect(p.onGround).toBe(true);
+    });
+    it('does not fit under a ceiling 4 blocks high', () => {
+      const lowCeiling = (_x: number, y: number, z: number) => y < 10 || (y === 14 && z >= 3);
+      const p = new Player();
+      p.setPosition(0.5, 10, 0.5);
+      run(p, 5, NO_CONTROLS, lowCeiling);
+      p.yaw = Math.PI; // facing +Z
+      run(p, 120, { ...NO_CONTROLS, forward: true }, lowCeiling);
+      expect(p.position.z).toBeCloseTo(3 - PLAYER_HALF_WIDTH, 3);
+    });
+    it('does not tunnel through a 1-block floor at terminal velocity', () => {
+      const thinFloor = (_x: number, y: number) => y === 0;
+      const p = new Player();
+      p.setPosition(0.5, 200, 0.5);
+      p.velocity.y = -TERMINAL_VELOCITY;
+      run(p, 600, NO_CONTROLS, thinFloor);
+      expect(p.onGround).toBe(true);
+      expect(p.position.y).toBeCloseTo(1, 3);
+    });
   });
 });

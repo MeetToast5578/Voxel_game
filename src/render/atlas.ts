@@ -6,7 +6,8 @@ export function createAtlasCanvas(): HTMLCanvasElement {
   const canvas = document.createElement('canvas');
   canvas.width = ATLAS_SIZE;
   canvas.height = ATLAS_SIZE;
-  const ctx = canvas.getContext('2d');
+  // Keep this canvas CPU-backed: late icon PNG readback must not flush the busy world-rendering GPU queue.
+  const ctx = canvas.getContext('2d', { willReadFrequently: true });
   if (!ctx) throw new Error('2D canvas not supported');
   ctx.putImageData(new ImageData(generateAtlasPixels(), ATLAS_SIZE, ATLAS_SIZE), 0, 0);
   return canvas;

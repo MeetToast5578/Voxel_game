@@ -1,134 +1,527 @@
 # Handoff: Voxel Game (MeetToast5578/Voxel_game)
 
-Last updated 2026-10-23. Checked against the code on that date: `npm run check` passes (118 tests in 28 files, build OK) and `npm run smoke` passes (14 checks).
+## Latest building/backups batch — 2026-10-22 (spec 53)
+
+This section supersedes the priorities and remaining copy/paste/export/import items in the
+spec 52 record below. Branch: `codex/coasts-horizon-flora`; commits/pushes remain authorized.
+See [spec 53](specs/53-building-copy-world-backups.md), tasks.md section K and `log.txt`.
+
+**T-K5 advanced:** creative Ctrl/Cmd+C selects two aimed corners; Ctrl/Cmd+V pastes against
+the aimed face; X cancels the selection. Session snapshots preserve states after source edits,
+omit air, reject unloaded/oversized selections (32 blocks per edge), preserve occupied solid
+cells and use the existing player-volume exclusions, edit budgets and undo/redo history.
+No cut, rotation, replacement paste or operating-system clipboard integration.
+
+**World files implemented:** start/pause menu exports live metadata and all edits, including
+unloaded cells and explicit air removals. Generated terrain regenerates from the seed/current
+generator. Import requires a persistent saved world, strictly validates before confirmation,
+pauses old simulation/autosaves, drains pending writes and replaces metadata/chunks in one
+IndexedDB transaction. Synchronous put failures now abort earlier clears/writes. Failure
+preserves the old save and resumes the session. New-world deletion also drains saves and
+checks failure. Files are bounded to 16 MiB / 100,000 chunks / 500,000 edits; unknown or
+noncanonical states and repaired metadata are rejected rather than silently lost.
+
+A revision key in the existing metadata store increments on replacement/deletion. This
+build checks it inside every write transaction, preventing an old session in another tab
+from resurrecting the previous save. A stale tab pauses and offers export/reload guidance.
+Older client code cannot retroactively honor this guard. Database/save versions, old block
+IDs, dependencies, lockfile and terrain generation are unchanged.
+
+Validation: **680 tests / 80 files**, typecheck and production build PASS (2.05 s).
+Full gameplay smoke PASS **34 checks**, including actual copy/paste shortcuts, retained slab
+snapshot, occupied destination and undo. World-transfer smoke PASS actual download, invalid
+input rejection, forced second-chunk write failure/complete rollback, confirmed file-picker
+restore and stale second-tab rejection. Final platform suite PASS four sizes, native/modal
+inventory and real offline shell/worker reload under a subpath. Inspected captures
+`screenshots/building-copy-paste.png` and `screenshots/world-backup-import.png`.
+Logs: `/tmp/next-final-check.log`, `/tmp/next-full-browser.log`,
+`/tmp/next-final-transfer.log`, `/tmp/next-final-platform.log`. Final gameplay measurement:
+10 fps on SwiftShader, 3,136 chunks loaded / 1,773 meshed / 353 draw calls; this is not owner
+hardware acceptance. Generator/GPU benchmarks were not rerun for this UI/storage-only batch.
+CI now includes the transfer suite; remote CI has not been run.
+
+**Next:** stairs and doors (T-K5), gamepad/in-world touch (T-K6), Pixel Aero (T-K8).
+Physical GUI/PWA acceptance, coarse distant coastlines/real river seams and dense-forest
+performance remain open. Do not mark these complete from the automated results above.
+
+## Latest building/interface/platform batch — 2026-10-22 (spec 52)
+
+This section supersedes the older implementation priorities below. Work remains on
+`codex/coasts-horizon-flora`; commits/pushes remain authorized. See
+[spec 52](specs/52-building-interface-platforms.md), section K in tasks.md and `log.txt`.
+
+**T-K1/T-K2 implemented:** every solid cube material has appended bottom/top slab states.
+Existing IDs 0..76 and save version 3 remain unchanged; fluids/plants are not slab materials.
+Slabs are 0.15 m / half a voxel. Side hit height chooses the half; floor/ceiling placement,
+complementary same-material merging and actual body-volume exclusion are handled before edits.
+Shared player/item/body collision supports real height intervals, fast sweeps and step-up;
+rays detect actual faces and skip empty halves, including the origin cell. Held/dropped
+geometry, icons, highlights/cracks, log face orientation, climate tint and emission follow
+the shape. Mined/picked top halves normalize to their material's slab item.
+
+Slabs cannot be replaced by fluid/falling plant rules. A falling full block over a bottom
+half drops its item rather than floating over the gap. Structural support requires actual
+contact, and collapsed slabs drop items rather than incorrect full-cube loose bodies.
+Approved conservative shortcut remains: slabs do not occlude neighbours or block sunlight;
+no waterlogging. Old saves load; older builds cannot recognize new slab names.
+
+**T-K5 partial:** redo is complete, with expected-state conflicts, changed cells only, bounded
+history and the same edit budgets. Ctrl/Cmd+Y and Ctrl/Cmd+Shift+Z redo; Ctrl/Cmd+Z undoes.
+Modifier state is captured at keydown so fast chords survive low frame rates, with stale
+presses discarded on blur/capture transitions. Panel counts and control hints are wired.
+Copy/paste, stairs, doors and world export/import remain open.
+
+**T-K4 partial:** native slot buttons support mouse, Enter, Space and touch without right-click
+or repeat activation. Inventory gets modal focus entry/Tab wrap/return and constrained
+scrolling for the enlarged block catalogue. Inspected 640×360/1280×720 captures; additional
+1920×1080 and 1000×700 captures pass. Physical owner GUI/inventory acceptance stays open.
+Pixel Aero (T-K8) remains a separate unimplemented design track.
+
+**T-K6 partial:** production manifest/icon plus a dependency-free, versioned shell service
+worker cache index/CSS/main and both terrain workers. Relative scope works under /voxel/;
+real offline worker-backed game reload passes. New versions wait for existing tabs to close;
+old shell caches are removed. Saves stay in IndexedDB. Requires HTTPS/localhost and a completed
+online installation. Gamepad, in-world touch controls and physical installed-browser review
+remain open. Native inventory touch is implemented; it is not a full mobile control scheme.
+
+Validation: full **665 tests / 78 files**, typecheck/build PASS (2.13 s); GPU regressions PASS;
+strict standard worker guards **1.157/1.128 ms** generation/mesh PASS with unchanged terrain
+mesh hash. Final platform suite PASS: four sizes, native touch/keyboard, Enter repeat, Space,
+modal Tab and offline worker reload under a subpath. CI now includes this suite after gameplay
+smoke, but remote CI has not been run. Dependencies/lockfile unchanged.
+
+Final gameplay smoke PASS all **33 checks**, including slab placement/half-height landing,
+merge/ceiling, actual IndexedDB top-slab restore, real Ctrl+Y redo, physics/ticks and inventory
+lifecycle. Final software-GPU measurement: 9 fps, 3213 loaded / 1773 meshed / 353 draw calls;
+this is not owner hardware acceptance. No browser errors. Physical owner playtest stays open.
+
+Next: finish category K's remaining building/platform tasks above, or return to terrain
+LOD land/water separation and vegetation boundaries, real-river seam spike and physical
+acceptance from spec 51. No claim that the entire category or all terrain bugs are complete.
+
+Logs: `/tmp/building-release3-check.log`, `/tmp/building-budget.log`, `/tmp/building-gpu.log`,
+`/tmp/building-platform-final.log`, `/tmp/building-final-browser.log`. Images:
+`screenshots/building-slabs.png` and `screenshots/building-interface-*.png` (ignored artifacts).
+
+## Latest terrain review — 2026-10-22 (spec 51)
+
+This section supersedes the spec-50 visual diagnosis below. Work remains on
+`codex/coasts-horizon-flora`; commit/push authorization remains in force.
+See [spec 51](specs/51-terrain-visual-acceptance.md) and `log.txt`.
+
+Repaired the main terrain cause: region grids are centred on multiples of 4096 blocks,
+but selection used unshifted floor division. Reads in the wrong region clamped beyond
+its simulated grid, creating enormous plateaus and rectangular water/cliff edges.
+Selection now matches the centred core; 50 synthetic X/Z ownership seams, negative
+coordinates and cache clearing are covered through the real sampler.
+Also repaired lakes filled with solid drainage heights: retain basin beds and bound
+lake detail below quantized water. Generated lake/source-water tests pass.
+
+Saved structures use sparse edit bands, independent of generated ground/canopy bands.
+A whole-column high roof no longer displaces ground; glass outside the immediate vertical
+cylinder remains visible. Keep active generation neighbours on vertical moves, reload edits
+after horizontal unloading, and exclude high air-only cleanup without filling empty gaps.
+
+Voxel silhouettes now fade before the loaded circle ends, after the proxy becomes opaque.
+Texture cutout alpha runs before distance hashing. Underwater/voxel-only paths disable the
+transition; held items stay fully visible. Stitched rings have 29,575 vertices over the
+same 2.46 km range, slope shading and stable world-space detail. Debug proxy-only hiding
+preserves camera/fog range; `scripts/terrain-review.mjs` captures reproducible views.
+
+Verified: **647 tests / 76 files**, typecheck/build PASS (2.05 s); GPU regressions PASS,
+including true ground below an intentionally raised proxy and near/mid/far voxel fading.
+Strict idle worker generation/mesh: origin **1.193/1.137 ms**; previous forest (240,-108)
+**2.268/1.926 ms**; actual forest (216,-140) **2.471/1.268 ms**. All pass unchanged 3 ms
+limits. Coordinate correction changes geometry hashes; this is not an isolated mesher
+optimization. T-J14 is partial pending representative hardware/current CI review.
+
+Full browser suite PASS: all **32 checks**, including tick save/reload, fall/flow/collapse,
+lava and real generated feature fixtures. Final steady measurement: 12 fps on SwiftShader,
+3213 loaded / 1773 meshed / 353 draw calls; this is not owner hardware. The first browser
+attempt exposed a volume fixture that assumed its slot still held bricks after pick-block
+and reused uncleared blocks. It now stocks bricks, clears/anchors its area and waits for
+the exact floor target; all placement/undo assertions remain.
+
+Final five-view capture PASS with zero pending jobs and no browser errors. Inspected ground
+and forest images as well as elevated/recenter/ridge views. Ground/trunks are present and
+the original straight cliff is gone. **Visual quality remains partial:** the forest/ridge
+views expose coarse green/blue triangles and distant coastline aliasing; faded crowns can
+still appear separate at the perimeter. Treat these captures as follow-up evidence, not
+owner acceptance. Next visual work should separate land/water geometry and handle vegetation
+at the LOD boundary instead of relying only on interpolated vertex colour/fades.
+
+Unedited terrain regenerates differently; existing saved edits remain and can float.
+Dependencies, block IDs, save version and mountain-height limits are unchanged.
+
+Resume with coarse far-coastline approximation and near/far visual quality. Physical owner
+acceptance (T-C5/T-C7/T-C9/T-E11b) remains open. T-C6 requires 50 **real river** seams on
+the debug map: synthetic slope seams prove coordinate correctness, not hydrological
+continuity between independently simulated basins. The horizon still omits far vegetation
+and saved structures. Do not mark all terrain/visual acceptance complete from readiness.
+
+Logs: `/tmp/terrain-release-check.log`, `/tmp/terrain-gpu-release.log`,
+`/tmp/terrain-budget.log`, `/tmp/terrain-forest-release.log`,
+`/tmp/terrain-forest-current.log`, `/tmp/terrain-release-smoke2.log`,
+`/tmp/terrain-review-release.log`.
+
+## Latest implementation — 2026-10-21 (spec 50 bug audit)
+
+This section supersedes the older checkpoints below. Continue correctness/terrain review
+before decorative features. Implementation and evidence: [spec 50](specs/50-engine-bug-audit.md).
+
+Repaired dense-canopy ground bounds in synchronous/worker loading, incomplete perimeter
+meshes, horizon/voxel height-model divergence and proxy depth ordering. Every horizon
+sample now uses shared exact coast/density parameters and remains independent of the
+camera. Coarse geometry between samples remains an approximation.
+**Visual acceptance is still open:** the exact elevated reproduction still shows broad
+flat proxy surfaces and partial-looking distant vegetation. Do not claim the owner's
+terrain complaint is fully resolved merely because sampling/occlusion tests pass.
+The final reproduction screenshot is `screenshots/terrain-regression.png` (ignored local artifact).
+
+**T-G1 complete:** pending scheduled work (all current reasons), remaining delays and
+simulation tick survive unload/save/reload. Unloaded queues pause. Optional save-v3 fields
+keep old saves compatible; legacy scans skip restored cells. Fixed worker failure stalls,
+random-tick sorting overhead, restored leaf support and collapse/border notifications.
+The clock remains 20 Hz for blocks and 60 Hz for bodies.
+Also repaired high-altitude skyline removal: a known-empty gap no longer exhausts the
+64-chunk downward scan and falsely discards the actual ground height. Fluid smoke fixtures
+now use sufficiently wide anchored floors and clean their sources before terrain review.
+
+Validation: final functional check **642 tests / 76 files**, typecheck/build PASS; GPU
+regressions PASS, including real terrain below a deliberately raised proxy. Full browser
+acceptance PASS: all **32 checks** after containing/cleaning fluid fixtures. It includes an actual IndexedDB
+pending-sand save/reload and the exact elevated terrain reproduction. No dependency,
+block-ID or save-version changes. No palette-cache experiments were retained.
+
+Standard worker guards PASS **1.556 ms generation / 1.692 ms mesh**. Extra forest fixture
+at chunk (240,-108): generation PASS **2.081 ms**, mesh **FAIL 3.057 ms** against 3 ms.
+This remains open **T-J14**; thresholds and geometry hashes are unchanged. Profiling and
+failed/reverted optimization attempts are logged; do not claim all performance checks pass.
+
+Resume priorities:
+1. Inspect `screenshots/terrain-regression.png` from the final browser run and review near/far
+   LOD transitions/river seams. Do not mistake geometry readiness for visual acceptance.
+2. Resolve T-J14 with measured changes. Keep generation/mesh hashes and strict budgets.
+3. Review saved edits/large structures outside the immediate surface band and remaining
+   manual acceptance; distant LOD still omits saved structures and vegetation.
+4. Only then resume visual/ecology/creature tasks from tasks.md. No claim of an exhaustive
+   proof that every game bug is fixed; physical-browser acceptance/current CI remain unrun.
+
+Logs: `/tmp/voxel-audit2-release-check.log`, `voxel-audit2-budget-final.log`,
+`voxel-audit2-forest-final.log`, `voxel-audit2-gpu-final.log`,
+`voxel-audit2-release-smoke.log` (all under `/tmp`). Use this checkout and branch
+`codex/coasts-horizon-flora`; commits/pushes remain authorized. Do not create a worktree.
+
+## Archived stop checkpoint — before spec 50
+
+Owner stopped this audit due to remaining session usage. Opened actual game in Chromium.
+**Terrain is NOT visually fixed:** fully loaded seed 1 at (101.5,245,-26.5), yaw -0.8,
+pitch -0.35 still shows giant flat green horizon surfaces, rectangular water strips and
+floating-looking tree silhouettes. Screenshot: `screenshots/terrain-audit.png` (local ignored).
+No pending generation/meshing/jobs remained, so this is not merely startup streaming.
+First follow-up: fix/replace inaccurate horizon sampling and near/far integration; compare
+this exact view before/after and add a visual regression. Avoid claiming geometry-ready
+smoke means visually correct terrain. A partial correction now uses circular camera fade
+at the voxel radius and fills the old snapped geometry hole, but is insufficient.
+
+Validation: full check PASS **622 tests / 74 files**, build, all **31 gameplay smoke checks**
+for physics/render-invalidation fixes. Subsequent horizon-only change: typecheck/build,
+**5 horizon tests**, focused distant-terrain browser smoke PASS, plus direct fully loaded
+visual inspection revealing the remaining defect above. No full-suite rerun after that
+small horizon change. Logs: `/tmp/voxel-bug-audit-{check-final,smoke-final,horizon,horizon-smoke,visual}.log`.
+Then complete T-G1 durable pending tick persistence; do not resume decorative features yet.
+
+## Latest bug audit — 2026-10-21
+
+Owner reported broken-looking terrain and physics and asked for a quick audit.
+Fixed missing remesh notifications for scheduled/random world writes, independently
+of save dirtiness. ChunkManager drains/coalesces changed chunks and top spans after
+each block tick and invalidates padded neighbours/lighting through the existing batch path.
+Fixed world-wide tick budgeting, rotating scheduled/random chunk fairness, duplicate
+cell/reason updates (earliest due wins), complete-volume collision sweeps at high speed,
+and retrying falls/flows at unloaded streaming interfaces. Falls also wake adjacent fluids.
+The existing 20 Hz block clock / 60 Hz body loop remain; this is not a new clock implementation.
+
+Regression coverage: high-speed floor and both-direction X/Z wall collisions; tick-driven
+remeshing independent of save dirty flags; shared budget/fairness; duplicate coalescing;
+fall/fluid continuation when neighbours arrive. Final results are in log.txt.
+
+**Still open:** pending ticks are not serialized (T-G1); chunk-load scans only recover
+some physics. This audit does not establish full Minecraft parity or resolve every
+terrain artifact in the owner's save. Reproduce the owner's exact scene, review LOD/near
+terrain overlap and startup streaming, and finish durable updates before more visual features.
+Keep this priority override above the older spec 49 queue below. No dependencies or
+save format changed. Commit/push is authorized. Use the existing checkout/branch.
+
+## Latest local batch — 2026-10-21 (spec 49)
+
+Completed T-E5/T-E6/T-E7/T-E8/T-E10 and procedural art T-E9: fully supported
+boulders, horizontal forest logs, thin unfrozen lake pads, damp moss and true per-cell
+surface biomes with world-coordinate boundary blending. New states 73..76 append;
+old IDs, saved edits, dependency versions and save format remain intact. Tree geometry
+and cell climate caches preserve generated bytes through eviction.
+
+Validation: typecheck/build, **613 tests / 74 files**, standard and forest worker budgets,
+GPU regressions, **all 31 gameplay smoke checks** and four inspected feature screenshots.
+Warm generation/mesh: origin 1.100/1.346 ms; forest 1.784/2.706 ms (3 ms guards).
+The forest initially exceeded generation budget at 3.902 ms; deterministic caching fixed it.
+Reproduce with BENCHMARK_CHUNK_X=240 BENCHMARK_CHUNK_Z=-108 and scripts/benchmark.mjs.
+
+Next five: T-G1 pending falls, T-F5 wind, T-F7 seasonal visuals, T-F8 smooth lighting,
+T-F14 lightning/thunder. Owner playtests/river seam acceptance and current CI remain
+unrun. Dynamic plant ecology stays separate. Horizon LOD still omits distant saved
+structures and workers=0; mountain heights remain capped. The owner authorized
+commits/pushes. Implementation commit **0cd1097** and validation/push record **6c39418**
+are pushed on **codex/coasts-horizon-flora**; local and remote HEAD matched and the working
+tree was clean at completion. No merge or PR was created. Use this existing checkout for
+continuation; preserve dependencies and saved edits. Historical notes below predate this batch.
+
+### Resume from here
+
+Read `docs/tasks.md` and spec 49, then start **T-G1 — Save pending falls**. Inspect the
+current chunk-load scan and tick/save interfaces before changing persistence. Continue
+with T-F5, T-F7, T-F8 and T-F14 after that. Log decisions, failures and verification in
+`log.txt`; update task status only after checks pass. Commit and push completed batches
+to the existing feature branch under the owner's authorization.
+
+Required regression commands (run worker/browser checks sequentially):
+
+```sh
+npm run check
+node scripts/benchmark.mjs --assert-generation-budget --assert-mesh-budget
+BENCHMARK_CHUNK_X=240 BENCHMARK_CHUNK_Z=-108 node scripts/benchmark.mjs --assert-generation-budget --assert-mesh-budget
+CHROMIUM_PATH=/usr/bin/chromium node scripts/render-smoke.mjs
+CHROMIUM_PATH=/usr/bin/chromium npm run smoke
+```
+
+Seed-1 generated fixtures, in world block coordinates:
+
+| Feature | x | y | z | State |
+|---|---:|---:|---:|---:|
+| Boulder | 3129 | 152 | -2168 | 14 |
+| Moss | 3517 | 161 | -2163 | 76 |
+| Fallen log (X) | 3873 | 186 | -1690 | 73 |
+| Lily pad | 4240 | 223 | -3020 | 75 |
+
+Screenshots: `screenshots/surface-{boulder,moss,fallen-log,lily-pad}.png` (local generated
+artifacts). Latest raw validation logs: `/tmp/voxel-b4-final-check2.log`,
+`/tmp/voxel-b4-final-{default,forest}-budget.log`, `/tmp/voxel-b4-final-render.log`,
+`/tmp/voxel-b4-final-smoke.log`. These local artifacts may not survive a fresh environment;
+the tracked tests and commands reproduce the checks.
+
+## Archived checkpoint — 2026-10-21 (specs 46–47)
+
+Earlier work completed T-A6/T-D3 and T-D4/T-G8/T-G9/T-G13/T-G14: mining fixture,
+aquifers, underground pools, lava/cooling, cushioned falls and survival fire. That
+checkpoint passed 584 tests / 68 files and all 28 gameplay smoke checks. It was later
+committed and pushed as 2396e91; specs 48/49 and the latest validation above supersede
+its former local/uncommitted status and next-task queue.
+
+## Session note — 2026-10-19 (reference gap map, PR #25)
+
+Worked on branch `claude/zealous-allen-odrdj5`. Merged into `main` as `d8bd22d`.
+
+- **Added `docs/REFERENCE-GAPS.md`.** Every open roadmap item is mapped against `nrz/Voxels`, a Java sandbox from 2016–17, with citations to its files. Three earlier claims in the doc were corrected: the reference's water flow is dormant, its dropped items are never picked up, and its jump and impact sounds are not played.
+- **Ideas only.** The reference is GPL. The repo has no licence file, and no reference code is copied. Copying code would need a licence decision first.
+- **Licence added, then removed.** `LICENSE` (GPL-3), the `package.json` licence field and a README section were added, then removed on the owner's request (`5833712`). Their commits remain in history, since the branch is not force-pushed.
+- **Dropped items were not kept.** A spec 23 dropped-items feature was built on this branch. `main` already had the same feature as spec 24 (`docs/specs/24-inventory-and-items.md`, `src/items/itemEntities.ts`), so the branch's copy was removed. Spec 23 on `main` is grass blocks.
+- **Local smoke is unreliable here.** On the merged tree, `npm run smoke` failed at different checks on two runs, at about 33 fps, while the code matched `main`. Treat local smoke results in this sandbox as weak evidence. GitHub CI is the real check.
+- **Open question for the owner.** Which of the remaining gaps should get a spec first: water levels, greedy meshing, or mobs. Dropped items are done on `main` (spec 24). The gap doc notes that greedy meshing needs measuring first, because per-vertex AO and light limit how many quads can merge.
+
+## Current handoff — 2026-10-19
+
+The user authorized autonomous implementation, testing, logging, task-list updates and pushes to `main`. This session is pinned to the branch `arena/f70f1800-voxel-game`, so work is committed there and offered to `main` through a pull request.
+
+**CI is green on the current batch.** PR #31 (`98706b2`, the CI repair) was merged into `main` as `697f926`. PR #32 carries `58ae409` (T-D2 plus the smoke-chain fixes); run 39259305015 on that commit passed both jobs — `check` 1m5s (meshing 1.243 ms, generation 1.256 ms, hash unchanged) and `smoke` 6m58s, all 25 checks. The earlier repair, kept for the record:
+
+The checkout was the one-commit snapshot `49bc873`. Both CI jobs were red at that commit, and both failures reproduced locally:
+
+- `check`: `npm run check` passed (533 tests), but the worker benchmark failed at a **mesh mean of 3.555 ms** against the strict 3 ms guard. The 2.787 ms figure in the previous handoff had only ~7 % headroom, so a slower runner tipped it. Fixed by real optimisation rather than a looser budget: per-state tables, precomputed face/AO/UV/region offsets, growable typed-array vertex buffers, reusable region/light scratch, and 32-bit row copies in `buildRegion`. Node 22 now measures **1.715 ms** (passes 2.114 / 1.502 / 1.529) with the mesh hash byte-identical (`803974a7770501157d9409fc8622d26838a45e03e5c06ed3661d8989843715ae`). The benchmark step now publishes its numbers as Actions notices/annotations; the 3 ms assertion is unchanged.
+- `smoke`: "no crack stage shown while breaking Grass" was a polling race (a 0.5 s block leaves stage 0 between two Playwright round trips on software rendering). The render loop now records `breakStageSeen`, exposed in `state()`, and the check reads it. Two further sequence-dependent failures were fixed: auxiliary pages now load while the primary game is `setIdle(true)` (a debug hook that pauses simulation and rendering only), and the smoke browser disables Chromium's background-tab `requestAnimationFrame` throttling, which had starved the mining check after tab switches. Full smoke passes all 25 checks locally; see `log.txt` for the timeline evidence.
+
+**Verification after the repair batch:** `npm run check` PASS (542 tests / 63 files, typecheck, build); Node-22 benchmark PASS with the hash above; full gameplay smoke PASS, 25 checks, 4,012 chunks loaded / 2,063 meshed / 340 draw calls / 20 fps on SwiftShader (software rendering, not owner hardware). The Playwright CDN is blocked here; smoke ran on Chromium 138 from the `@sparticuz/chromium` npm artifact with its AL2023 NSS libraries, unpacked under `/tmp` outside the repository, so no dependency or lockfile changed.
+
+**The slab work described in the previous handoff is not in this checkout.** There is no `stash@{0}` and no `/tmp/voxel-slab-before-ci.patch` here, and no slab code exists in `src/` (`BlockShape` is still `'cube' | 'cross'`, and `src/player/placementTarget.ts` does not exist). Treat `docs/plans/slabs-inventory-gui.md` as the source if that batch is restarted; the `?nosave=1` settings-persistence failure it mentions cannot be reproduced because the code is not present.
+
+**T-D2 (caves beyond noise) is done and verified on CI** in `58ae409`: four systems in `src/world/caves.ts` with tuning in `src/config.ts` (cheese caverns ~6 % of the underground, spaghetti ~3 %, noodles ~1 %, ravines ~1 %), a fading 4–24-block surface roof, cave mouths only from the cheese field, the spec 14 shore/river/lake roof still applied, and `TerrainGenerator` delegating to `caveKind`. Spec 45 documents the rules; tests cover per-system volume bands, the roof, ravine taper, determinism and the forced-open river/lake roof. The smoke suite also stopped depending on spawn history: see the T-D2 entry in `log.txt` for the five test-side fixes.
+
+The next intended work is engine-first, in this order: terrain generation (aquifers next, then lava pools), world physics, then gameplay. `docs/tasks.md` remains the live backlog and the recorded evidence of what is actually done.
+
+Baseline audited 2026-10-17 against `main` (`adf5aba`, eleven commits after `0322d20`); follow-up verification updated 2026-10-18 on the working branch. Baseline status below is supplemented by the dated task-batch results, checked in code, tests and smoke rather than only commit messages.
+
+## Latest autonomous batch (2026-10-18)
+
+Tree implementation committed and pushed to `main` as `bef031a`: all 16 species, habitat wiring, cactus blocks, conifer/palm/umbrella/wetland silhouettes, 515 passing tests and all 25 gameplay smoke checks. T-E11a and existing inventory-backed hotbar T-I10 are done. T-E11 remains partial for owner visual review.
+
+The follow-on rendering batch fixes sun/daylight alignment, clipped and position-dependent sky, precipitation altitude/units/roof culling, seasonal weather timing, and wetness overshoot. Moon phases (T-F1), wet tops (T-F3), humidity/dawn valley fog (T-F4) and their regression checks are implemented. `npm run check`: 527 tests / 62 files, typecheck and build PASS. Full gameplay smoke PASS; GPU regression script PASS with a cold Vite cache. An earlier concurrent-validation run failed at a HUD inventory state wait; diagnostics and auxiliary-page error collection were strengthened, with focused retest tracked in `log.txt`. Physical-browser acceptance remains open. Lightning flash/thunder wiring is still missing (T-F14).
+
+The riverbed batch completes T-D1 and T-D5: seeded sand/gravel/clay sediment, stable old block IDs, local-water-level cave roofs and no underwater terrestrial plants. Generation/registry/atlas tests and the full 25-check gameplay smoke pass.
+
+Performance follow-on completes T-A3/T-J1 and measurements T-J10–T-J12. A profiled three-line bulk region-copy change preserves all mesh bytes and brings the Node-22 reference fixture from 4.011 ms to 2.787 ms; isolated 3 ms guards are added to CI. Warm generation is 1.365 ms, while cold preparation remains outside that budget (T-J9 partial). Full checks: 533 tests / 63 files, GPU and all 25 gameplay checks PASS.
+
+The older phase summary below contains historical details; use `docs/tasks.md` and `log.txt` for the latest per-task evidence.
 
 ## Where things stand
 
-`main` contains:
-- the working browser voxel game (PR #1)
-- the owner's working-style skill (PR #2)
-- specs for the next batch of work (PR #3)
+Status key: **done** = in code and tested; **partial** = some of the item is in code; **not started** = no code.
 
-Nothing is in progress. `src/`, `tests/`, `scripts/` and `package.json` are unchanged since PR #1; PRs #2 and #3 only added docs and the skill. None of the four polish specs has been implemented: there is no `.github/` folder, `SAVE_VERSION` is still 1, there is no `STEP_HEIGHT`, and trees still only grow at local x/z 2–13.
+- **Phase 0 (groundwork):** CI (spec 1) done. The hand playtest is not done (owner).
+- **Phase 1 (foundation):** done in code, specs 2–8. The manual checks in "Waiting on the owner" are open.
+- **Phase 1b (meter scale):** blocks are 0.3 m (spec 10), and the save is version 3. Trees are 8–12 m (see "Decided" 1).
+- **Phase 2 (terrain):**
+  - done: debug map (spec 11), climate and shape fields (12), terrain from the fields (13), 3D density (14), strata, bare rock and deepslate (15, 20), ores (26), mountains capped at 60 m (22)
+  - done: region simulation (41), which sets the surface offset, carves river channels and lake basins, and sets moisture for the biome table. Whether rivers run without breaks at region seams is not yet checked by eye.
+  - partial: caves (basic noise caves only, no aquifers, lava pools or ravines); the riverbed gravel and clay wait for the rivers
+  - not started: coasts beyond the beach band (7), horizon LOD (8)
+- **Phase 3 (biomes and flora):**
+  - done: climate at block resolution (31), biome table (32), feature system (30, with trees as its only feature), tree species (37), tall grass, poppies, ferns, dandelions and mushrooms (18, 19, 21)
+  - partial: biome integration (35, 39): the generator uses the biome for surface and soil blocks, and for trees. Blending across biome borders is **not wired**: `blendSurfaceBlocks` exists in `src/world/biome.ts` and has no caller or test.
+  - not started: flowers by biome, reeds, boulders, fallen logs, lily pads, moss
+- **Phase 4 (sky, seasons, weather):**
+  - done: calendar and seasons with seasonal day length (29), sky dome with sun, moon and stars (33), weather model (32), weather particles and lightning (34)
+  - not started: moon phases; stars do not rotate; the wetness value is computed but nothing uses it, so wet darkening is missing; no morning valley fog (only the static distance fog); seasonal foliage colours; smooth lighting
+- **Phase 5 (living world):**
+  - done: tick queue (25, slice 1), random ticks with a time budget (38), grass spreading (36), leaf decay (40), player buoyancy and quadratic drag (16), wading and splash (17)
+  - **Sandbox physics (spec 25), all six slices are in code and tested:**
+    - slice 1, tick queue: fixed in this pass. A tick scheduled while the queue runs could be dropped or run twice.
+    - slice 2, rule fields: `falls`, `flows`, `supports` and `density` on every block type.
+    - slice 3, falling sand and gravel: one cell per tick into air, water or plants, and across chunk borders. Pending falls are not saved; a scan on chunk load resumes them (shortcut, spec says save the ticks).
+    - slice 4, flowing water: 8 levels with a falling flag, drains without a feed, the mesh stands at its level. Lava is not in the game, so water meeting lava is not built.
+    - slice 5, structural collapse: a removed block's neighbours check their support within 4 blocks. Terrain and long roofs are held up by the edge of the check. Leaves never collapse.
+    - block updates run at 20 game ticks a second, as in Minecraft: water moves one block every 5 ticks and falling blocks every 2 (`WATER_TICK_DELAY`, `GRAVITY_TICK_DELAY` in `src/config.ts`). They were running every frame, so a flow finished in a few frames.
+    - slice 6, loose bodies: a collapse of 2 or more blocks tumbles as bodies that float or sink by density, and settle back into blocks or items. Bodies are saved as items.
+  - not started: snow, crops and saplings; catch-up after reload; currents (flowing water pushing the player); fall damage from water; waterfalls and river flow
+- **Phase 6 (creatures):** partial. `src/world/entity.ts` is a pure entity system (spec 42) with gravity and collision, and the game does not use it yet. No animals, AI or pathfinding.
+- **Build tools and block menu (this pass):** the build tool panel on screen always shows every setting, including in single-block mode. The inventory's Blocks (creative) tab puts any block into the selected hotbar slot. A solid shell with no cavity left becomes solid, and roofs are a horizontal layer built upward.
+- **Phase 7 (survival):**
+  - done: survival and creative modes, health, fall damage, drowning, death and respawn with the inventory dropped (34); mining hardness and crack stages (24)
+  - partial: hunger is saved and shown, but nothing changes it (no food, no starvation)
+  - not started: tools, crafting, food, beds, healing
+- **Phase 8 (performance):** not started as a phase. Mesh time is 4.1 ms per surface chunk when run alone (target 3 ms; spec 28 is open).
 
-- No CI exists yet. Spec 1 adds it. Until then, verify locally with `npm run check` and `npm run smoke`.
-- The smoke test failed once on a first run with an unexplained `404` console error (the missing resource was not identified) and passed on three re-runs. If CI shows it, suspect a missing `favicon.ico` (`index.html` has no icon link), which would be an easy fix.
-- Not hand-tested with a real mouse and keyboard (pointer lock, mouse look, audio). It has only been tested headless. A 5–10 minute playtest is worth doing before new features; anything broken there should jump the queue.
+**Current follow-up batch (2026-10-18):** calendar advancement is wired into the fixed simulation update (T-F9), dead snags are leafless (T-E15), and the planned HUD Inventory button works through the shared toggle (T-K3). Start/pause menu inventory closes back to its originating menu; only inventory opened from play requests capture on close. Code review checked clock readiness/pause/save behaviour, deterministic connected tree bounds, and HUD/menu/inventory stacking. `npm run check` passes: typecheck, **487 tests in 58 files**, build. Full local browser smoke **passes all 25 checks** on Chromium 153, including pointer-free HUD access, pause-overlay clicks, visible keyboard focus and native Tab/Enter/Space activation. Final measurement: 3,967 loaded chunks, 340 draw calls, 6 fps on SwiftShader (not owner hardware). T-F9 and T-E15 are closed. T-K3 remains partial until the owner's physical-browser check; biome plants, wet-surface rendering and slabs are not part of this batch.
 
-## How the owner wants to work
+**Previous task-batch verification (2026-10-18):** `npm run check` passes locally: typecheck, **476 tests in 57 files**, production build. The inventory smoke failure was isolated to ~20 s GPU readback while creating an uncached icon; CPU-backed atlas/icon canvases reduce the same call to ~3 ms. After fixing later screenshot/mining/water timing races, **both CI jobs pass at `615c101`** ([run 39075601314](https://github.com/MeetToast5578/Voxel_game/actions/runs/39075601314)): `check` 55 s and full `smoke` 6m30s. The full local smoke also passed on Chromium 153 (4,012 loaded chunks, 339 draw calls, 7 fps on SwiftShader). T-A2a is closed; this does not substitute for the owner-only playtests. Stars now rotate (T-F2), and shrubland/steppe now generate their named bushes (T-E14). T-E11 is still partial: 13 of 16 tree species, with willow, mangrove, saguaro and silhouette review remaining.
 
-Read `.claude/skills/working-style/SKILL.md` first. In short:
-- Do exactly what is asked. A request for a plan or spec gets a plan or spec, not a build.
-- Ask before big decisions (scope, tech, plan detail, build vs plan).
-- Be token-conscious.
-- Specs meant for Claude Haiku 5.5 are prose only: requirements, acceptance criteria and test cases, with no implementation code unless asked.
+**Verification on 2026-10-17 (after the physics and tool pass):** `npm run check` passes: typecheck, **464 tests in 55 files**, and the build. The CI `check` job is green on `ubuntu-latest`. The CI `smoke` job, however, **fails** — see the "Known gaps" list. `npm run smoke` passes its checks in headless Chromium at about 8 fps (SwiftShader, so this number is not the owner's). The smoke test has an intermittent failure at the pick-block check: the player is standing above a cell that reads as air, and it is not yet explained. It also failed in the original code in one run.
 
-## Next up: the polish batch
+## Waiting on the owner (not code)
 
-Decided:
-- The next work is the polish batch.
-- Delivery is mixed:
-  - Small, self-contained items are given to Haiku as specs.
-  - Work touching the mesher, the lighting or the worker pipeline is built directly by Claude.
+- **Playtest.** 5–10 minutes with a real mouse and keyboard. Everything so far has only been tested headless.
+  - Check pointer lock, mouse look, audio, and stepping up 0.6 m ledges (2 blocks).
+  - Check that a 2 m high tunnel fits the player (1.75 m tall) and a 1.5 m high one doesn't.
+  - Anything broken here jumps the queue.
+- **Frame rate on the owner's machine.** Cubic chunks mean more draw calls. The smoke run loads about 3,900 chunks and draws 249 calls. The owner's machine has a slow CPU.
+- **Manual checks from the phase 1 PRs:**
+  - Dig a shaft 30 m (100 blocks) down: chunks keep appearing below and the sky shows above.
+  - From a valley, hills are visible to the full render distance.
+  - Pick a new block into the hotbar, dig 9 m (30 blocks) down, wait 10 s and reload: the hotbar, the hole and roughly the same time of day come back.
+- **Terrain after spec 22 and region simulation (spec 41).** Peaks are at most about 232 m. Check rivers, lakes and seams from a valley and from a ridge. Edits made in an existing save may float, because unedited ground regenerates.
+- **Look of the new rock and plants.** The limestone, slate, basalt, deepslate and mushroom textures were checked only as atlas code and in headless smoke, not by eye.
 
-The specs are in `docs/specs/`. Its `README.md` has the order and the rules every spec shares.
+## Decided (owner approved, 2026-10-17)
 
-| # | Spec | Size | Status |
-|---|------|------|--------|
-| 1 | CI (GitHub Actions: `check` and `smoke` jobs) | small | ready; do first |
-| 2 | Save hotbar contents and time of day | small | ready once decision B is confirmed |
-| 3 | Auto step-up onto 1-block ledges | medium | ready once decision A is confirmed |
-| 4 | Trees at chunk borders | medium | ready once decision C is confirmed |
+1. **Tree size.** Every species now sits inside the documented 8–12 m (27–40 blocks). Oak 27–40, spruce 30–40, birch 27–35, pine 30–40, jungle giant 36–40, acacia 27–32, dead snag 27–33. Bushes stay small. This changes the trees in every world.
+2. **Spec numbers.** The duplicates are renumbered: entity system is 42, weather model is 43, survival is 44. Specs 29 (calendar) and 30 (feature system) are written to match the code.
+3. **Biome borders.** Surface blocks dither into the neighbouring biome over `BIOME_BLEND_BLOCKS` (3) blocks from the border, with a weight that falls off with distance. Beaches and soil stay as they are.
+4. **F3 overlay.** Shows the biome, temperature, rain, season, day and weather at the player.
 
-Specs 2–4 are independent and can be done in any order after spec 1. Each spec gets its own branch and pull request.
+Resolved by spec 49 (2026-10-21): surface biomes now classify each block cell and blend at actual biome boundaries.
 
-### Open decisions (owner has not confirmed yet)
+## Decisions so far
 
-- **A. Spec 3, step-up style.** The spec uses physics step-up: the body rises as part of the move and the camera catches up over 0.12 s. The alternative is Minecraft-style auto-jump. If the owner prefers auto-jump, rewrite spec 3 before handing it off.
-- **B. Spec 2, save key.** The spec keeps the storage key `voxel-game-save-v1` and bumps the version field inside the save to 2, upgrading v1 saves on load. Renaming the key would orphan existing saves.
-- **C. Spec 4, existing worlds.** Existing worlds will gain trees in the formerly empty border lanes, including areas already explored. Player edits still win. The spec treats this as accepted.
-
-### Reviewing the Haiku pull requests
-
-Specs 3 and 4 are the trickiest. When reviewing them, check:
-
-- **Spec 3**
-  - `moveAndCollide` with no step height behaves exactly as before, and `tests/physics.test.ts` is unchanged.
-  - The camera offset is interpolated between ticks, so the eye never dips below its pre-step height.
-  - No stepping happens while flying, swimming or airborne.
-- **Spec 4**
-  - The generator stays stateless, with no caches.
-  - The new pure cave helper doesn't change carving (`tests/caves.test.ts` is unchanged).
-  - `getHeight` is called only for columns that pass the hash check.
-- **All specs**
-  - `package.json` and `package-lock.json` are not in the diff.
-
-### Deferred from the polish batch
-
-- **Smooth lighting.** It changes the mesher and interacts with AO, so it should be built directly.
-- **Torches.** They need a non-cube mesh, the same work as cross-shaped plants in the Variety backlog, so do them together.
+- **Scale.** 1 block = 0.3 m (spec 10). The player is 1.75 m: about 5.8 blocks tall and 1.6 blocks wide.
+- **Step-up.** Physics step-up, not auto-jump. Its height is 0.6 m (2 blocks).
+- **Height.** Cubic chunks with unlimited height. Terrain lives in the band −400 m to +2,600 m (spec 13). The surface stays under 232 m: mountains add at most 60 m (spec 22). Taller peaks would read as infinite walls until horizon LOD exists (phase 2 item 8).
+- **Sea level.** y = 0 m (spec 13).
+- **Terrain.** The shape fields set the large scale (spec 12). A 3D density gives the surface its shape (spec 14). Region simulation (spec 41) sets the surface offset, river channels and lakes.
+- **Water.** The player floats at about 80% under water (`PLAYER_DENSITY` 800 kg/m³ against 1000 for water). Swim speed comes from quadratic drag and a stroke: about 2.6 m/s (spec 16). Wading slows the walk by half the submerged fraction (spec 17).
+- **Plants.** Tall grass, ferns, poppies, dandelions and mushrooms grow on grass surfaces only, one per cell above the surface, by one hash per column (specs 18, 19, 21). Plants are walk-through and do not block the sun.
+- **Biomes.** Each column's biome comes from real temperature (°C, lapse rate applied) and precipitation (mm/year, from the region moisture). Trees grow only where the biome names a species and the surface is grass.
+- **Scope.** Everything on the roadmap: ecology, fluids, creatures and survival. Multiplayer is parked.
+- **Saves.** IndexedDB, block states stored by name. Save version 3 (spec 10). A save of another version is not loaded, and its chunk records are cleared on load. `voxel-game-save-v1` (the 128-high world) is never read, written or deleted.
 
 ## Stack (versions pinned on purpose)
 
-TypeScript 5.9.3, Vite 7.3.6, Vitest 4.0.18, three 0.186.0, simplex-noise 4.0.3, Playwright 1.56.1.
+TypeScript 5.9.3, Vite 7.3.6, Vitest 4.0.18, three 0.186.0, simplex-noise 4.0.3, Playwright 1.56.1, preact 10.29.8.
 - Do NOT upgrade Vitest to 4.1.x: `npm install` crashes ("Cannot read properties of null (reading 'edgesOut')").
-- Node 20+ works; the dev container runs Node 22, and spec 1 uses Node 22 in CI.
+- Node 20+ works; the dev container runs Node 22, and CI uses Node 22.
 
 ## Commands
 
 - `npm run dev`: opens http://localhost:5173; click Play.
-- `npm run check`: typecheck, 118 unit tests in 28 files, then build.
+- `npm run check`: typecheck, the unit tests (542 in 63 files; 2026-10-19 verification), then the build.
 - `npm run smoke`:
   - Builds, then opens `/?seed=1&autostart=1&nosave=1` in headless Chromium (SwiftShader WebGL).
-  - Runs 14 checks through `window.__game` and writes `screenshots/*.png`.
-  - Needs `npx playwright install chromium`, or set `CHROMIUM_PATH`.
+  - Runs 24 checks through `window.__game` and writes `screenshots/*.png`.
+  - Then logs a measurement: the time until everything is loaded, the FPS, and the chunk and draw-call counts.
+  - Needs `npx playwright install chromium`, or set `CHROMIUM_PATH`. In cloud sessions, use `CHROMIUM_PATH=/opt/pw-browsers/chromium-1194/chrome-linux/chrome`.
 
 ## Architecture
 
-- `src/config.ts`: every tunable constant (world size, physics, render, storage keys).
-- `src/core`:
-  - math (`floorDiv`/`mod`)
-  - seeded random (`mulberry32`, `hash2`)
-  - coords
-  - fixed-timestep loop (1/60 s steps, frames clamped to 0.25 s)
+- `src/config.ts`: every tunable constant (world size, physics, render, storage keys, tree species, weather, survival).
+- `src/core`: math (`floorDiv`/`mod`), seeded random (`mulberry32`, `hash2`), coords, fixed-timestep loop (1/60 s steps, frames clamped to 0.25 s).
 - `src/world`:
-  - `blocks.ts`: `BlockId`/`Tile` are objects, not enums. 14 ids (13 placeable blocks plus air). Ids run AIR 0, STONE 1, DIRT 2, GRASS 3, SAND 4, WATER 5, LOG 6, LEAVES 7, PLANKS 8, GLASS 9, BEDROCK 10, COBBLESTONE 11, BRICK 12, GLOWSTONE 13.
-  - `chunk.ts`: 16×128×16 `Uint8Array`, indexed `(y*16+lz)*16+lx`.
-  - `world.ts`: the chunk map plus the `edits` map, which is what gets saved.
+  - `blocks.ts`: `BlockId`/`Tile` are objects, not enums. Ids run AIR 0, STONE 1, DIRT 2, GRASS 3, SAND 4, WATER 5, LOG 6, LEAVES 7, PLANKS 8, GLASS 9, BEDROCK 10, COBBLESTONE 11, BRICK 12, GLOWSTONE 13, GRANITE 14, DIORITE 15, ANDESITE 16, SANDSTONE 17, TALL_GRASS 18, POPPY 19, FERN 20, DANDELION 21, LIMESTONE 22, SLATE 23, BASALT 24, DEEPSLATE 25, BROWN_MUSHROOM 26, RED_MUSHROOM 27, COAL_ORE 28, IRON_ORE 29, GOLD_ORE 30, REDSTONE_ORE 31, DIAMOND_ORE 32, EMERALD_ORE 33, LAPIS_ORE 34 (35 types including air). Each type has a `shape`: `'cube'` (default) or `'cross'` for plants.
+  - `chunk.ts`: 16×16×16 `Uint16Array` of block states, indexed `(ly*16+lz)*16+lx`, addressed by `(cx, cy, cz)`. No height limit.
+  - `world.ts`: the chunk map, the `edits` map (what gets saved), per-column **tops** (world y of the highest sky-blocking block per cell), kept exact on every edit, `tickStep` and `randomTickStep`.
+  - `shape.ts`: the climate fields and `heightMeters` (a spline of continentalness, plus mountains up to `MOUNTAIN_M` = 60 m), and `detailAmpMeters`.
+  - `climate.ts`: `blockTemperature` and `blockPrecipitation` at block resolution (spec 31).
+  - `biome.ts`: the Whittaker table `biomeAt`, `surfaceBlock`, `soilBlock`, `treeSpecies` (spec 32, 35). `blendSurfaceBlocks` dithers the surface across biome borders.
+  - `density.ts`: `TerrainDensity`. A block is solid where `offset − y + amp × noise > 0`, with two octaves of 3D simplex noise.
+  - `region.ts`: region simulation (spec 41). Regions of 128 cells of 32 blocks, with a margin on each side. Drainage, lakes, river cells, moisture.
   - `generator.ts`:
-    - fbm height map, beaches, sea at y = 40
-    - trees only at local x/z 2–13 (spec 4 changes this)
-    - spaghetti caves
-  - Also: `chunkManager.ts`, `light.ts`, `spawn.ts`, `time.ts`.
+    - the surface is the highest solid block of each column (`getHeight`), found by scanning the density down from above the offset
+    - the region sample sets the column offset, damps the detail noise inside river channels and lakes, and gives the water level
+    - sea level 0: air at or below it becomes water
+    - caves carved below the surface; trees (`trees.ts`) from anchors within reach through the feature registry
+    - rock: below the soil, a block's rock comes from its strata layer, bent by a 2D warp noise (spec 15). Below −100 m the rock is deepslate. Ores by depth and rock type (spec 26). Columns with a detail amplitude of at least 12 m are bare rock.
+    - plants: `plantAt` picks one plant per grass column from one hash, in bands (specs 18, 19, 21)
+    - `treeSpeciesAt` and `biomeKeyAt` are the accessors tools and tests use
+    - per-column data cached, `COLUMN_CACHE_LIMIT` = 2048 columns
+  - `trees.ts`: `treeBlocks(seed, ax, ground, az, species)`, pure. Heights come from the species table, inside 8–12 m.
+  - `feature.ts`: `FeatureRegistry`, the anchor system that keeps multi-chunk features seamless (spec 30). Trees are its only feature.
+  - `calendar.ts`: seasons, day of season, solar declination, day length by latitude (spec 29).
+  - `weather.ts`: the pure `WeatherModel` (spec 43).
+  - `tick.ts`, `randomTick.ts`, `ecology.ts`, `leafDecay.ts`: scheduled ticks, random ticks, grass spreading, and leaf decay (specs 25, 38, 36, 40).
+  - `entity.ts`: the pure entity system (spec 42). Not used by the game yet.
+  - `debugMap.ts`: the colouring for `?map=1`.
+  - Also: `chunkManager.ts`, `light.ts`, `spawn.ts`, `time.ts`, `editQueue.ts`.
 - `src/render`:
-  - `mesher.ts`: pure. Does face culling, per-vertex AO and lighting, and takes 9 neighbour chunks.
-  - Also: `faces.ts`, `tiles.ts`, `atlasPixels.ts` (procedural textures), `renderer.ts`, `chunkMeshes.ts`, `lightMaterial.ts`, `highlight.ts`, `clouds.ts`.
+  - `mesher.ts`: pure. Face culling, per-vertex AO and lighting, takes 27 neighbour chunks plus 9 column-top arrays. Cube blocks give faces; `shape: 'cross'` blocks (plants) give two diagonal quads.
+  - `sky.ts`, `skyMaterial.ts`: the sky dome with sun, moon and stars (spec 33).
+  - `weather.ts`: `WeatherRenderer`, particles and lightning (spec 34).
+  - Also: `faces.ts`, `tiles.ts`, `atlasPixels.ts` (procedural textures), `renderer.ts`, `chunkMeshes.ts`, `lightMaterial.ts`, `highlight.ts`, `clouds.ts`, `heldBlock.ts`, `itemMeshes.ts`, `blockGeometry.ts`.
 - `src/player`:
   - `physics.ts`: AABB sweep in the order Y → X → Z.
-  - `player.ts`: walk, sprint, jump, fly, swim.
+  - `player.ts`: walk, sprint, jump, fly, swim. Buoyancy and quadratic drag (spec 16); `submergedFraction`; wading (spec 17); `splashSpeed`.
   - `raycast.ts`: Amanatides–Woo.
-  - Also: `interaction.ts`, `hotbar.ts`.
-- `src/ui`: HUD, menu, F3 overlay.
+  - Also: `interaction.ts`, `inventory.ts` (36 slots, the hotbar is the first 9, spec 24), `breaking.ts` (timed breaking with crack stages), `buildTool.ts` and `volumes.ts` (volume tools and undo).
+- `src/items`: `itemEntities.ts`, dropped items: gravity, friction, lifetime, the cap of 256, pick-up (spec 24).
+- `src/ui`: HUD, menu, F3 overlay (`debugText.ts`).
 - `src/input`, `src/audio`: procedural noise SFX.
-- `src/storage`: settings, and save v1 in `localStorage`.
+- `src/storage`:
+  - settings in `localStorage`
+  - the world save in IndexedDB (`voxel-game`): one meta record (seed, player, hotbar, block states by name, time of day, game mode, health, hunger, air, dropped items) plus one record per edited chunk. Only chunks edited since the last write are written; `WorldSaver` never runs two writes at once.
+  - `main.ts` opens and loads the save before creating the `Game`; without IndexedDB the game runs on a memory store and the menu says so.
 - `src/workers`: `WorkerPool`, which implements `ChunkJobs`.
-- `src/game.ts` wires everything together. `src/debugApi.ts` exposes `window.__game`.
+- `src/game.ts` wires everything together, including survival (`updateSurvival`, `die`). `src/debugApi.ts` exposes `window.__game`.
 
 ### Key mechanics
 
 - **Pure modules.** `core`, `world`, `player`, the mesher, `storage` and `ui/debugText` must not import three or touch the DOM. They are unit-tested in Node.
 - **ChunkManager.**
-  - Generates chunks within renderDistance + 2.
-  - Meshes chunks within renderDistance once all 8 neighbours exist.
-  - Unloads chunks beyond renderDistance + 3.
-  - Time budgets apply on the main thread.
-  - With workers, at most 8 jobs are in flight, and a per-chunk version counter drops stale results.
+  - Loads column tops within renderDistance + 2, then chunks; one list sorted by distance from the eye.
+  - Meshes the near cylinder (renderDistance horizontally, `VERTICAL_RENDER_DISTANCE` = 4 up and down) plus each column's surface band, once all 26 neighbours and 9 column tops exist.
+  - Unloads with hysteresis (meshes beyond +1, blocks beyond +3; surface bands are kept).
+  - Time budgets apply on the main thread. With workers, at most 16 jobs are in flight, and a per-chunk version counter drops stale results.
 - **Lighting.**
-  - Sky light and block light are computed fresh for each mesh from the 3×3 chunk region. This is exact because light reaches at most 14 blocks.
-  - An edit remeshes its chunk immediately and marks the 8 neighbours dirty.
+  - Sky light and block light are computed fresh for each mesh from the 3×3×3 chunk region. This is exact because light reaches at most 14 blocks. Sunlight is seeded from the column tops.
+  - An edit remeshes its chunk (and any neighbour whose padded volume holds the block) immediately and marks the rest of the 3×3×3 dirty.
 - **Day/night.**
   - A shader patch (`onBeforeCompile`) multiplies colour by `max(aLight.sky * uDaylight, aLight.block)`.
   - Every chunk geometry MUST have an `aLight` attribute, or it renders black.
+- **Survival.** Fall damage uses `GRAVITY_M_S2` (config) for the impact speed. Drowning costs air, and damage starts when the air runs out. Death drops the inventory and respawns at the spawn point.
 - **Conventions.**
   - Y is up.
   - Yaw 0 looks toward −Z, and moving the mouse right decreases yaw.
@@ -136,8 +529,10 @@ TypeScript 5.9.3, Vite 7.3.6, Vitest 4.0.18, three 0.186.0, simplex-noise 4.0.3,
   - Player position is the centre of the feet.
 - **URL params.**
   - `?seed=N` also disables saving.
-  - `?nosave=1`, `?autostart=1`, `?workers=0`.
-- **Debug API.** `ready`, `state()`, `teleport`, `look`, `setFlying`, `getBlock`, `setBlock`, `breakTarget`, `placeTarget`, `pickTarget`, `selectSlot`, `save`, `setTimeOfDay`. Spec 2 adds `setHotbarSlot` and `state().hotbar`.
+  - `?nosave=1`, `?autostart=1`, `?workers=0`, `?map=1`.
+- **Debug API.**
+  - Methods: `ready`, `state()`, `teleport`, `look`, `setFlying`, `getBlock`, `setBlock`, `breakTarget`, `placeTarget`, `pickTarget`, `selectSlot`, `setHotbarSlot`, `holdButton` (presses a mouse button, for timed breaking), `save()` (returns a promise), `setTimeOfDay`, `setGameMode`, `setHealth`, `damage`, `setHunger`, `setAir`.
+  - `state()` also includes `hotbar`, `inventory`, `areaMeshed` (the 3×3×3 around the feet is meshed), `drawCalls`, the chunk and tick stats, and the survival fields.
 
 ### Gotchas
 
@@ -145,37 +540,25 @@ TypeScript 5.9.3, Vite 7.3.6, Vitest 4.0.18, three 0.186.0, simplex-noise 4.0.3,
 - `toEqual` treats −0 and 0 as different.
 - Catch `requestPointerLock()` rejections.
 - Create the worker as `new Worker(new URL('./chunkWorker.ts', import.meta.url), { type: 'module' })`.
+- `getHeight` is the highest **solid** block, not the top of the water. For the sky-blocking top (water counts), use `columnTops`.
+- The surface is not one height per column any more (spec 14), so do not assume the blocks under `getHeight` are all solid.
+- A plant is not solid and does not block the sky, so `solid`, `opaque` and `blocksSky` must all be checked for it, not one of them.
+- Changing a plant, rock or tree chance in `config.ts` changes every generated world, not only new ones.
+- `getHeight(x, z)` takes **block** coordinates, and `heightMeters` takes **meters**. A scan that mixes them looks at the wrong place (this caused a wrong 2.4 km reading during spec 22). Multiply blocks by `BLOCK_SIZE_M` to get meters.
+- Tests that need a mountain use `PEAK` in `tests/generator.test.ts`, a rugged point found by a field scan. If the shape changes, find a new point and update `PEAK` rather than loosening the assertion.
+- Tests that time the generator or mesher take the fastest of several runs, and the slow ones have explicit timeouts (spec 39 and `tests/spawn.test.ts`). Do not make them tighter to pass.
 
-## Known gaps
+## Known gaps and backlog
 
-- No CI (spec 1).
-- Hotbar contents (after pick-block) and time of day aren't saved (spec 2).
-- No auto step-up onto 1-block ledges (spec 3).
-- Tree-free lanes along chunk borders (spec 4).
-- Flat lighting, not smooth (deferred).
-- Each edit causes a ~20 ms main-thread remesh when lighting is on (figure from the original build, not re-measured).
-- Water is static; it doesn't flow.
-- World height is capped at 128.
-- Not hand-tested with a real mouse and keyboard.
-
-## Backlog (multiplayer is parked)
-
-1. **Polish:** CI, save hotbar + time, step-up, chunk-edge trees (all specced), smooth lighting, torches.
-2. **Variety:** biomes, ores and more blocks, plants (cross-shaped meshes), tree types, falling sand/gravel, structures, a taller world.
-3. **Survival:**
-   1. health, fall damage, drowning, respawn
-   2. mining time and a crack overlay
-   3. an inventory with drops
-   4. crafting and tools
-   5. hunger (optional)
-   6. a creative/survival toggle
-4. **Living world:** passive animals (needs an entity system), hostile mobs at night, flowing water.
-5. **Building tools:** undo/redo; fill, copy and paste; slabs, stairs and doors; world export/import and IndexedDB.
-6. **Visuals:**
-   - sun, moon and stars
-   - particles
-   - view bobbing, sprint FOV
-   - animated water, 3D clouds
-   - settings for gamma, invert, fullscreen and screenshots
-   - isometric hotbar icons
-7. **Platform/perf:** greedy meshing (conflicts with AO), far-terrain LOD, gamepad, touch controls, PWA.
+See `docs/ROADMAP.md` for the phase list, and the "Decided (owner approved)" above for choices the owner has already made.
+- **Testing.** No real mouse-and-keyboard playtest yet.
+- **Mesh time.** 4.1 ms per surface chunk when run alone (target 3 ms, spec 28).
+- **Cold column generation.** About 8.4 ms median in Node (last measured before region simulation; not re-measured).
+- **Spawn search.** `tests/spawn.test.ts` takes about 6 s for 30 seeds (about 200 ms per seed), so it needs its explicit timeout.
+- **Region simulation.** About 162 ms per region on seed 1337 (spec 41). Not re-measured.
+- **Biomes.** Spec 49 resolves cell biomes; specs 48/49 add biome flowers, reeds, boulders, fallen logs, lake pads and moss. Dynamic plant ecology remains open.
+- **Sky and weather.** No moon phases; stars do not rotate; no wet darkening; no morning valley fog; no seasonal foliage.
+- **Living world.** Snow layers, saplings, crops, catch-up on reload and lava are open. Fluid levels and currents exist but are not wired to bodies. Sandbox physics (spec 25) is complete: all six slices, see the phase 5 list above.
+- **Entities.** Not used by the game yet. No creatures.
+- **Survival.** Hunger does not change; no food, tools, crafting or beds.
+- **Edits.** An edit remeshes up to 8 chunks on the main thread at once, about 3 ms each.

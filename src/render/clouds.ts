@@ -1,12 +1,13 @@
 import { createNoise4D } from 'simplex-noise';
 import * as THREE from 'three';
+import { CLOUD_DRIFT_M_S, CLOUD_HEIGHT_M, CLOUD_PLANE_M, CLOUD_TEXEL_M, metersToBlocks } from '../config';
 import { mulberry32 } from '../core/random';
 
-const CLOUD_HEIGHT = 100;
+const CLOUD_HEIGHT = metersToBlocks(CLOUD_HEIGHT_M);
 const TEXTURE_SIZE = 64; // texels
-const BLOCKS_PER_TEXEL = 12;
-const PLANE_SIZE = 768; // blocks; beyond the fog anyway
-const DRIFT_SPEED = 1.5; // blocks per second toward +X
+const BLOCKS_PER_TEXEL = metersToBlocks(CLOUD_TEXEL_M);
+const PLANE_SIZE = metersToBlocks(CLOUD_PLANE_M); // beyond the fog anyway
+const DRIFT_SPEED = metersToBlocks(CLOUD_DRIFT_M_S); // blocks per second toward +X
 
 /** A flat layer of blocky clouds that drifts slowly and stays fixed relative to the world. */
 export class Clouds {

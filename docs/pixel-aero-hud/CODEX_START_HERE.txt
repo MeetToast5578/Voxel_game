@@ -1,0 +1,1 @@
+Read README_FOR_CODEX.md and SVG references. Inspect current code before changes. Implement stages A–D, preserve gameplay mechanics, test multiple sizes and capture screenshots. The reference SVGs are diagrams, not production texture atlases.

@@ -11,6 +11,8 @@
     "noFallthroughCasesInSwitch": true,
     "noImplicitOverride": true,
     "isolatedModules": true,
+    "jsx": "react-jsx",
+    "jsxImportSource": "preact",
     "verbatimModuleSyntax": true,
     "skipLibCheck": true,
     "noEmit": true

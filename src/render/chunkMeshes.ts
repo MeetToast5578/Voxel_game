@@ -23,16 +23,16 @@ export class ChunkMeshes implements MeshSink {
     return this.meshes.size;
   }
 
-  set(cx: number, cz: number, data: ChunkMeshData): void {
-    this.remove(cx, cz);
-    const solid = this.createMesh(data.solid, this.solidMaterial, cx, cz);
-    const water = this.createMesh(data.translucent, this.waterMaterial, cx, cz);
+  set(cx: number, cy: number, cz: number, data: ChunkMeshData): void {
+    this.remove(cx, cy, cz);
+    const solid = this.createMesh(data.solid, this.solidMaterial, cx, cy, cz);
+    const water = this.createMesh(data.translucent, this.waterMaterial, cx, cy, cz);
     if (water) water.renderOrder = 1; // draw water after all solid geometry
-    this.meshes.set(chunkKey(cx, cz), { solid, water });
+    this.meshes.set(chunkKey(cx, cy, cz), { solid, water });
   }
 
-  remove(cx: number, cz: number): void {
-    const key = chunkKey(cx, cz);
+  remove(cx: number, cy: number, cz: number): void {
+    const key = chunkKey(cx, cy, cz);
     const pair = this.meshes.get(key);
     if (!pair) return;
     for (const mesh of [pair.solid, pair.water]) {
@@ -43,7 +43,7 @@ export class ChunkMeshes implements MeshSink {
     this.meshes.delete(key);
   }
 
-  private createMesh(data: MeshData, material: THREE.Material, cx: number, cz: number): THREE.Mesh | null {
+  private createMesh(data: MeshData, material: THREE.Material, cx: number, cy: number, cz: number): THREE.Mesh | null {
     if (data.indices.length === 0) return null;
     const geometry = new THREE.BufferGeometry();
     geometry.setAttribute('position', new THREE.BufferAttribute(data.positions, 3));
@@ -53,7 +53,7 @@ export class ChunkMeshes implements MeshSink {
     geometry.setIndex(new THREE.BufferAttribute(data.indices, 1));
     geometry.computeBoundingSphere();
     const mesh = new THREE.Mesh(geometry, material);
-    mesh.position.set(cx * CHUNK_SIZE, 0, cz * CHUNK_SIZE);
+    mesh.position.set(cx * CHUNK_SIZE, cy * CHUNK_SIZE, cz * CHUNK_SIZE);
     mesh.matrixAutoUpdate = false;
     mesh.updateMatrix();
     this.scene.add(mesh);
