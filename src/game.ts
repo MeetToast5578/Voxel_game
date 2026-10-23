@@ -750,6 +750,7 @@ export class Game {
     this.chunks.renderDistance = s.renderDistance;
     this.renderer.setViewDistance(s.renderDistance);
     this.renderer.setFov(s.fov);
+    this.renderer.setResolution(s.resolution);
     this.mouseSensitivity = DEFAULT_MOUSE_SENSITIVITY * s.mouseSensitivity;
   }
 
