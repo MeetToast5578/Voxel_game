@@ -1,9 +1,29 @@
 # Handoff: Voxel Game (MeetToast5578/Voxel_game)
 
-## Latest session — 2026-10-23 (Claude, PRs #36–#48)
+## Latest session — 2026-10-23, second batch (Claude)
 
-This section supersedes the priorities below. Everything is merged to `main` (last merge
-#48); no PRs are open. The task list lives in [OPEN-TASKS.md](OPEN-TASKS.md).
+This section supersedes the priorities below. Branch `claude/zen-goodall-129e55`, one PR for the batch.
+
+**Done:** eating crops, the farming slice of T-I8 (right click with a crop in survival eats it unless aimed at grass
+or dirt, where it is planted; `FOOD_HUNGER`); respawn with an empty inventory (owner decision); T-G7 catch-up on
+reload (`catchUpChunk` in `ecology.ts`, chunk ages saved as `chunkAges`); T-G6 leaf litter (`leaf_litter`, state 178);
+T-I9 beds (`bed`, state 179, half height; saved as `bed`); T-J8 frame-time graph in F3; T-G12 currents (`flowVector`
+in `flow.ts`, `CURRENT_ACCEL`).
+
+**Save compatibility:** new states append after 177: LEAF_LITTER 178, BED 179; append the next one at 180. `chunkAges` and `bed` are written only
+when set, so older saves and backups round-trip unchanged. Save version unchanged.
+
+**Known limits:** beds cannot be obtained in survival until crafting (T-I6); generated rivers are source blocks and
+carry no current until T-G10; dropped items ignore currents; catch-up uses the weather at reload for the whole
+absence, and saplings and litter only change while loaded; sleeping does not advance crops in loaded chunks.
+
+**Next suggested tasks:** T-I6 crafting (makes beds obtainable), T-I5 tools, T-H1 wiring entities, T-G10 river flow
+direction (gives currents to rivers). Owner acceptance (section 1 of OPEN-TASKS.md) is still open, and none of the new
+visuals (leaf litter, beds, the F3 graph) have been checked on real hardware.
+
+## Earlier session — 2026-10-23 (Claude, PRs #36–#48)
+
+Everything here was merged to `main` (last merge #49). The task list lives in [OPEN-TASKS.md](OPEN-TASKS.md).
 
 **Merged this session:** CI fix and three frame-rate-independent smoke checks (#38);
 survival acquisition rules, T-I11 (#39); lightning and delayed thunder, T-F14 (#40); hunger,
@@ -34,8 +54,6 @@ ice off with `setWeatherEffects(false)` before each check (#49). Smoke runs agai
 production build, so run `npm run build` before `npm run smoke` locally.
 
 **Open owner questions:**
-- Dying in survival still refills the starting kit. Suggested: respawn with an empty
-  inventory.
 - `claude/serene-brown-4izylj` holds 2 unmerged commits of 15 October handoff notes; keep
   or delete.
 - 24 merged branches remain on GitHub. Claude sessions cannot delete branches (the git
