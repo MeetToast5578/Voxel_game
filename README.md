@@ -80,7 +80,7 @@ A wall, floor or roof takes two clicks: the first sets its corner, the second se
 
 The **build tool panel** on the top left shows every setting at once: the mode, shape, size, thickness or outline, the frame state, the number of blocks the next action changes, the block used by add, and the undo/redo steps left. It shows the settings in single-block mode too, so you always know what is selected.
 
-**Blocks tab (creative):** press E, then the **Blocks (creative)** tab, and click any block in the game. A full stack of it goes into the selected hotbar slot. It is there for testing and is not limited by survival rules. A floor on a ceiling grows downward. Flatten works on either button: it fills the footprint up to the height of the aimed block and clears the blocks above it.
+**Blocks tab (creative):** press E, then the **Blocks (creative)** tab, and click any block in the game. A full stack of it goes into the selected hotbar slot. The tab is hidden in survival, where pick-block (middle click) only selects a block you already carry. Switching a world that has not been played yet to survival empties the starting inventory. A floor on a ceiling grows downward. Flatten works on either button: it fills the footprint up to the height of the aimed block and clears the blocks above it.
 
 Copy/paste snapshots non-air blocks, including slab halves, in a selection up to 32 blocks
 per edge. Paste fills air/water, preserves existing solid blocks and excludes your body;

@@ -1,7 +1,8 @@
 import { describe, expect, it, vi } from 'vitest';
-import { DAY_LENGTH_S, DAYS_PER_SEASON, FIXED_DT, GAME_MODE_CREATIVE, THUNDER_DELAY_MIN_S, WORLD_LATITUDE_DEG } from '../src/config';
+import { DAY_LENGTH_S, DAYS_PER_SEASON, FIXED_DT, GAME_MODE_CREATIVE, GAME_MODE_SURVIVAL, THUNDER_DELAY_MIN_S, WORLD_LATITUDE_DEG } from '../src/config';
 import { Game } from '../src/game';
 import { BlockBreaking } from '../src/player/breaking';
+import { Inventory, startingSlots } from '../src/player/inventory';
 import { Calendar } from '../src/world/calendar';
 
 /** Exercise the real game methods without constructing WebGL, workers or browser UI in Node. */
@@ -195,5 +196,40 @@ describe('thunder after lightning (T-F14)', () => {
     } finally {
       random.mockRestore();
     }
+  });
+});
+
+function modeGame(startedFromSave: boolean) {
+  const game = Object.create(Game.prototype) as Game;
+  const inventory = new Inventory();
+  const screen = { setCreative: vi.fn() };
+  Object.assign(game, {
+    gameMode: GAME_MODE_CREATIVE, startedFromSave, inventory, inventoryScreen: screen,
+    fire: { reset: vi.fn() }, menu: { setGameMode: vi.fn() },
+  });
+  return { game, inventory, screen };
+}
+
+describe('survival acquisition rules (T-I11)', () => {
+  it('a world that has not been played yet starts survival with an empty inventory', () => {
+    const { game, inventory, screen } = modeGame(false);
+    game.setGameMode(GAME_MODE_SURVIVAL);
+    expect(inventory.slots.every((s) => s === null)).toBe(true);
+    expect(screen.setCreative).toHaveBeenLastCalledWith(false);
+    game.setGameMode(GAME_MODE_CREATIVE); // switching back never refills
+    expect(inventory.slots.every((s) => s === null)).toBe(true);
+    expect(screen.setCreative).toHaveBeenLastCalledWith(true);
+  });
+
+  it('keeps the inventory of a saved world, or one the player has already changed', () => {
+    const saved = modeGame(true);
+    saved.game.setGameMode(GAME_MODE_SURVIVAL);
+    expect(saved.inventory.slots).toEqual(startingSlots());
+
+    const changed = modeGame(false);
+    changed.inventory.consume(changed.inventory.slots[0]!.state, 1);
+    const before = JSON.stringify(changed.inventory.slots);
+    changed.game.setGameMode(GAME_MODE_SURVIVAL);
+    expect(JSON.stringify(changed.inventory.slots)).toBe(before);
   });
 });

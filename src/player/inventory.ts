@@ -133,16 +133,18 @@ export class Inventory {
   }
 
   /**
-   * "Pick block": select the hotbar slot holding `state`. Otherwise a full stack of it replaces the selected slot, and
-   * the stack that was there moves into the grid (if it does not fit, nothing is replaced).
+   * "Pick block": select the hotbar slot holding `state`. Otherwise, when `newStack` is true (creative), a full stack
+   * of it replaces the selected slot, and the stack that was there moves into the grid (if it does not fit, nothing is
+   * replaced). With `newStack` false (survival) a block that is not in the hotbar is ignored.
    */
-  pick(state: number): void {
+  pick(state: number, newStack = true): void {
     if (!validState(state)) return;
     const hotbar = this.slots.findIndex((s, i) => i < HOTBAR_SIZE && s?.state === state);
     if (hotbar >= 0) {
       this.selected = hotbar;
       return;
     }
+    if (!newStack) return;
     const old = this.slots[this.selected] ?? null;
     this.slots[this.selected] = null;
     const left = old ? this.fill(old.state, old.count, this.selected) : 0;

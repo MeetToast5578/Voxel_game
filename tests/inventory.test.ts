@@ -43,6 +43,17 @@ describe('Inventory', () => {
     expect(inv.slots[9]).toEqual({ state: BlockId.DIRT, count: STARTING_STACK });
   });
 
+  it('survival pick (no new stack) only selects a block already in the hotbar (T-I11)', () => {
+    const inv = new Inventory();
+    inv.select(8);
+    inv.pick(BlockId.DIRT, false);
+    expect(inv.selected).toBe(1);
+    const before = JSON.stringify(inv.slots);
+    inv.pick(BlockId.SAND, false); // not carried: nothing is created or moved
+    expect(JSON.stringify(inv.slots)).toBe(before);
+    expect(inv.selected).toBe(1);
+  });
+
   it('pick keeps the old stack when it does not fit in the grid', () => {
     const slots = empty();
     for (let i = 0; i < INVENTORY_SIZE; i++) slots[i] = { state: BlockId.STONE, count: 1 };

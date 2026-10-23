@@ -252,7 +252,7 @@ All six sandbox-physics slices (spec 25) are built and tested. One known shortcu
 - [ ] **T-I8 — Food.** Hunting, farming, cooking. Item 6.
 - [ ] **T-I9 — Beds** to sleep through the night and set a spawn point. Item 7.
 - [x] **T-I10 — Inventory-backed hotbar** in survival. Verified 2026-10-18: hotbar reads slots 0–8 of the same `Inventory`; placing consumes the selected stack and pickups refill inventory. Existing inventory tests and full baseline browser smoke pass. Survival-specific restrictions on the creative picker and pick-block are separate outstanding work (T-I11).
-- [ ] **T-I11 — Enforce survival acquisition rules.** The creative block tab and pick-block currently allow free stacks in survival; mode-specific gating and a survival starting-inventory policy are needed before claiming progression works.
+- [x] **T-I11 — Enforce survival acquisition rules.** Closed 2026-10-23. In survival the Blocks tab is hidden and ignores picks, and pick-block only selects a block already in the hotbar. Owner policy: switching a world that has not been played yet (no save loaded, inventory still the starting kit) to survival empties the inventory; later switches never change it. Covered by `tests/inventory.test.ts` and `tests/gameLifecycle.test.ts`.
 
 ---
 
