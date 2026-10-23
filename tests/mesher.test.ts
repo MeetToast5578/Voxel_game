@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CHUNK_VOLUME } from '../src/config';
+import { CHUNK_VOLUME, WIND_LEAF_SWAY_M, WIND_PLANT_SWAY_M, metersToBlocks } from '../src/config';
 import { localIndex } from '../src/core/coords';
 import { buildChunkMesh, buildPaddedVolume, padIndex, type MeshData } from '../src/render/mesher';
 import { BlockId } from '../src/world/blocks';
@@ -90,6 +90,22 @@ describe('buildChunkMesh', () => {
     const water = pair(BlockId.WATER);
     expect(quads(water.solid)).toBe(0);
     expect(quads(water.translucent)).toBe(10);
+  });
+  it('marks foliage for wind sway: leaves whole, plant tops only, never stone or mushrooms (T-F5)', () => {
+    const swayOf = (id: number) => {
+      const n = emptyNeighbors();
+      n[CENTER]![localIndex(5, 10, 5)] = id;
+      const m = mesh(n).solid;
+      expect(m.sway.length).toBe(m.positions.length / 3);
+      return m;
+    };
+    expect(swayOf(BlockId.STONE).sway.every((s) => s === 0)).toBe(true);
+    expect(swayOf(BlockId.RED_MUSHROOM).sway.every((s) => s === 0)).toBe(true);
+    expect(swayOf(BlockId.LEAVES).sway.every((s) => s === Math.fround(metersToBlocks(WIND_LEAF_SWAY_M)))).toBe(true);
+    const grass = swayOf(BlockId.TALL_GRASS);
+    for (let v = 0; v < grass.sway.length; v++) {
+      expect(grass.sway[v]).toBe(grass.positions[v * 3 + 1] === 11 ? Math.fround(metersToBlocks(WIND_PLANT_SWAY_M)) : 0);
+    }
   });
   it('uses top/side/bottom tiles: grass top uv differs from grass side uv', () => {
     const n = emptyNeighbors();
@@ -210,9 +226,9 @@ describe('mesh output is independent of the reusable scratch buffers', () => {
   it('returns arrays that own their buffers, so a mesh can be transferred between threads', () => {
     const w = new TestWorld((_x, y) => (y <= 50 ? BlockId.STONE : BlockId.AIR));
     const mesh = buildChunkMesh(w.neighbors(3), w.tops(), 3).solid;
-    const buffers = [mesh.positions, mesh.uvs, mesh.colors, mesh.light, mesh.indices].map((a) => a.buffer);
-    expect(new Set(buffers).size).toBe(5);
-    for (const array of [mesh.positions, mesh.uvs, mesh.colors, mesh.light, mesh.indices]) {
+    const buffers = [mesh.positions, mesh.uvs, mesh.colors, mesh.light, mesh.sway, mesh.indices].map((a) => a.buffer);
+    expect(new Set(buffers).size).toBe(6);
+    for (const array of [mesh.positions, mesh.uvs, mesh.colors, mesh.light, mesh.sway, mesh.indices]) {
       expect(array.byteOffset).toBe(0);
       expect(array.byteLength).toBe(array.buffer.byteLength);
     }

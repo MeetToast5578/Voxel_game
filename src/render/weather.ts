@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { type WeatherSample } from '../world/weather';
-import { WEATHER_WETNESS_RESPONSE_PER_S } from '../config';
+import { PRECIP_WIND_DRIFT, WEATHER_WETNESS_RESPONSE_PER_S, metersToBlocks } from '../config';
 
 /** Number of precipitation particles. */
 const PARTICLE_COUNT = 1500;
@@ -114,9 +114,12 @@ export class WeatherRenderer {
     }
     this.particles.visible = true;
 
-    // Move and cull particles.
+    // Move and cull particles. Wind (T-F5) carries them toward +X, so they fall at a slant.
+    const drift = metersToBlocks(sample.windSpeed * PRECIP_WIND_DRIFT);
     for (let i = 0; i < PARTICLE_COUNT; i++) {
-      this.particlePositions[i * 3] += this.particleVelocities[i * 3] * dt;
+      this.particlePositions[i * 3] += (this.particleVelocities[i * 3] + drift) * dt;
+      // Wrap around the box, so a steady wind does not empty it on the upwind side.
+      if (this.particlePositions[i * 3] > PARTICLE_SPREAD) this.particlePositions[i * 3] -= 2 * PARTICLE_SPREAD;
       this.particlePositions[i * 3 + 1] += this.particleVelocities[i * 3 + 1] * dt;
       this.particlePositions[i * 3 + 2] += this.particleVelocities[i * 3 + 2] * dt;
 

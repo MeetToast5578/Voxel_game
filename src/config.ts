@@ -192,7 +192,13 @@ export const WATER_OPACITY = 0.7;
 export const CLOUD_HEIGHT_M = 100;
 export const CLOUD_TEXEL_M = 12; // one cloud texel covers this much ground
 export const CLOUD_PLANE_M = 768; // beyond the fog anyway
-export const CLOUD_DRIFT_M_S = 1.5; // toward +X
+export const CLOUD_DRIFT_PER_WIND = 0.5; // cloud drift toward +X, in m/s per m/s of surface wind
+
+// Wind (T-F5). The weather sample's wind blows toward +X, like the weather fronts and clouds.
+export const WIND_FULL_M_S = 10; // at this wind speed or more, foliage sways its full amount
+export const WIND_PLANT_SWAY_M = 0.05; // how far the top of a plant moves at full wind
+export const WIND_LEAF_SWAY_M = 0.015; // how far a leaf block's corners move at full wind
+export const PRECIP_WIND_DRIFT = 0.15; // rain and snow drift sideways at this fraction of the wind speed
 
 // View ends, in meters. Fog near and far follow the view distance.
 export const CAMERA_FAR_M = 600;

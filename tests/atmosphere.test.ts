@@ -8,14 +8,15 @@ import { metersToBlocks, UNDERWATER_FAR_M } from '../src/config';
 
 function atmosphereGame() {
   const game=Object.create(Game.prototype) as Game;
-  const renderer={camera:new THREE.Object3D(),setSkyColor:vi.fn(),setDaylight:vi.fn(),setWetness:vi.fn(),setAtmosphericFog:vi.fn()};
-  const weather={precipitation:'rain',humidity:1,cloudCover:1,isStorm:false,pressure:0,windSpeed:0};
+  const renderer={camera:new THREE.Object3D(),setSkyColor:vi.fn(),setDaylight:vi.fn(),setWetness:vi.fn(),setAtmosphericFog:vi.fn(),setWind:vi.fn()};
+  const weather={precipitation:'rain',humidity:1,cloudCover:1,isStorm:false,pressure:0,windSpeed:6};
   const model={sample:vi.fn(()=>weather)};
   const particles={update:vi.fn(),wetness:0.5,strikes:0,getFlashIntensity:()=>0};
   const generator={sampleColumn:vi.fn((x:number,z:number)=>({offsetM:x===100&&z===-100?30:42}))};
-  Object.assign(game,{renderer,sky:{update:vi.fn()},weather:model,weatherRenderer:particles,world:{topAt:()=>123},generator,
+  const clouds={update:vi.fn()};
+  Object.assign(game,{renderer,clouds,sky:{update:vi.fn()},weather:model,weatherRenderer:particles,world:{topAt:()=>123},generator,
     timeOfDay:0,calendar:{timeOfYear:0.25},fogSampleTimer:0,fogValleyDepthM:0,seenStrikes:0,thunderDelays:[]});
-  return {game,renderer,model,particles,generator};
+  return {game,renderer,model,particles,generator,clouds};
 }
 function update(game:Game,dt:number) {
   Reflect.apply(Reflect.get(Game.prototype,'updateAtmosphere'),game,[{x:100,y:100,z:-100},dt]);
@@ -29,6 +30,11 @@ describe('atmospheric integration (T-F3/T-F4)',()=>{
     expect(renderer.setWetness).toHaveBeenCalledWith(0.5);
     expect(renderer.setSkyColor).toHaveBeenCalledWith(skyColorAt(0));
     expect(renderer.setAtmosphericFog.mock.calls[0]![0]).toBeGreaterThan(0.7);
+  });
+  it('passes the sampled wind to foliage sway and the clouds (T-F5)',()=>{
+    const {game,renderer,clouds}=atmosphereGame();update(game,0.1);
+    expect(renderer.setWind).toHaveBeenCalledWith(6,0.1);
+    expect(clouds.update.mock.calls[0]![4]).toBe(6);
   });
   it('clears valley fog when flying above the valley walls',()=>{
     const {game,renderer}=atmosphereGame();update(game,0.1);

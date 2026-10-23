@@ -458,6 +458,8 @@ const CHECKS = [
         await page.evaluate(() => window.__game.holdButton(0, false));
       }
       await page.screenshot({ path: 'screenshots/drop.png' }); // the dropped item, before anyone picks it up
+      // The 1 s poll above is wall time; at about 1 fps no frame may show cracks in it. The flag stays set until reset.
+      if (!sawStage) sawStage = await page.evaluate(() => window.__game.state().breakStageSeen);
       if (!sawStage && !PLANTS.includes(s.targetName)) throw new Error(`no crack stage shown while breaking ${s.targetName}`);
       // The item drops into the hole. Stand in the hole so the item is in pick-up reach, whether or not the player fell
       // in by itself, then poll: a loaded machine can take a while to collect it.

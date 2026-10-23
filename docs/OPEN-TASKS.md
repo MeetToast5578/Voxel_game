@@ -49,10 +49,10 @@ Measure first (T-C3), then pick the J items that the measurements point at.
 
 ## 3. Visuals and weather
 
-- [ ] **T-F5 — Wind.** Foliage sway in the vertex shader, slanted particles, drifting clouds.
+- [x] **T-F5 — Wind.** Done: foliage sway, slanted rain and snow, wind-driven clouds.
 - [ ] **T-F7 — Seasonal visuals.** Foliage colour shifts through the year. Deciduous leaves render bare in winter through the shader, with no block changes. Grass browns in a dry summer.
 - [ ] **T-F8 — Smooth lighting.** Per-vertex light averaging in the mesher, done together with ambient occlusion. Mesher core, so build it directly.
-- [ ] **T-F14 — Lightning flashes and delayed thunder.** The renderer computes flash intensity, but the game never uses it. Thunder is absent.
+- [x] **T-F14 — Lightning flashes and delayed thunder.** Done in #40.
 
 ---
 
@@ -90,7 +90,7 @@ Done when (roadmap): a meadow at dawn has grazing herds that flee when approache
 
 ## 6. Survival (Phase 7)
 
-- [ ] **T-I11 — Enforce survival acquisition rules.** The creative block tab and pick-block give free stacks in survival right now. Add mode gating and a survival starting-inventory policy. Do this before claiming progression works.
+- [x] **T-I11 — Enforce survival acquisition rules.** Done in #39. Open follow-up: dying in survival still refills the starting kit.
 - [x] **T-I2 — Make hunger change.** Done in #41: hunger drains, starvation damages, and a survival HUD line shows health and hunger. Food is T-I8.
 - [x] **T-I3 — Health regeneration.** Done in #41.
 - [ ] **T-I4 — Body temperature.** From biome, altitude, weather, season, wetness, shelter, fire and clothing. Hypothermia and heatstroke.
