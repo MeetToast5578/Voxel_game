@@ -19,7 +19,7 @@ import { ItemEntities } from './items/itemEntities';
 import { LooseBodies } from './items/looseBodies';
 import { BlockBreaking } from './player/breaking';
 import { BuildTool, cornerFor, frameFor } from './player/buildTool';
-import { Inventory, type ItemStack } from './player/inventory';
+import { Inventory, type ItemStack, startingSlots } from './player/inventory';
 import { blockIntersectsBody, canBreak } from './player/interaction';
 import type { Vec3 } from './player/physics';
 import { FireExposure, fluidContact, landingDamage, landingWaterDepth } from './player/fluidHazards';
@@ -114,6 +114,8 @@ export class Game {
   timeOfDay = START_TIME_OF_DAY;
   /** Game mode: 'creative' (current behaviour) or 'survival'. Defaults to creative for backwards compatibility. */
   gameMode = GAME_MODE_CREATIVE;
+  /** True when this session loaded a saved world; such a world has been played, so its inventory is never reset. */
+  private readonly startedFromSave: boolean;
   /** Player health, 0..HEALTH_MAX. 0 = dead. */
   health = HEALTH_MAX;
   /** Player hunger, 0..HUNGER_MAX. */
@@ -199,6 +201,7 @@ export class Game {
       this.world.scheduleTick(wx, wy, wz, this.world.currentTick + 1, 'grass-spread');
     };
     this.calendar = new Calendar(DAYS_PER_SEASON, WORLD_LATITUDE_DEG);
+    this.startedFromSave = Boolean(save.loaded && loaded);
     if (save.loaded && loaded) {
       this.world.loadEdits(save.loaded.edits);
       this.world.loadTicks(loaded.scheduledTicks ?? [], loaded.gameTick ?? 0);
@@ -238,6 +241,7 @@ export class Game {
     this.hud = new Hud(container, this.renderer.atlasCanvas, () => this.toggleInventory());
     this.debugOverlay = new DebugOverlay(container);
     this.inventoryScreen = new InventoryScreen(container, this.renderer.atlasCanvas, this.inventory, () => this.closeInventory());
+    this.inventoryScreen.setCreative(this.gameMode === GAME_MODE_CREATIVE);
     this.menu = new Menu(
       container,
       this.settings,
@@ -390,7 +394,12 @@ export class Game {
     if (mode === GAME_MODE_SURVIVAL) {
       this.health = HEALTH_MAX;
       this.hunger = HUNGER_MAX;
+      // A world that has not been played yet starts survival empty; later switches never touch the inventory (T-I11).
+      if (!this.startedFromSave && JSON.stringify(this.inventory.slots) === JSON.stringify(startingSlots())) {
+        this.inventory.slots.fill(null);
+      }
     }
+    this.inventoryScreen.setCreative(mode === GAME_MODE_CREATIVE);
     this.menu.setGameMode(mode);
   }
 
@@ -725,11 +734,11 @@ export class Game {
   }
 
 
-  /** Middle click: pick the targeted block type (see Inventory.pick). */
+  /** Middle click: pick the targeted block type (see Inventory.pick). Survival only selects a block already carried. */
   pickTarget(): boolean {
     const t = this.target;
     if (!t) return false;
-    this.inventory.pick(slabItemState(this.world.getBlock(t.x, t.y, t.z)));
+    this.inventory.pick(slabItemState(this.world.getBlock(t.x, t.y, t.z)), this.gameMode === GAME_MODE_CREATIVE);
     return true;
   }
 

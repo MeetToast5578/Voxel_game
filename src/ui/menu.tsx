@@ -31,7 +31,7 @@ interface ViewProps {
 
 const GAME_MODES: { key: string; label: string; blurb: string }[] = [
   { key: GAME_MODE_CREATIVE, label: 'Creative', blurb: 'Fly-free building, no damage, full hotbar.' },
-  { key: GAME_MODE_SURVIVAL, label: 'Survival', blurb: 'Fall damage, drowning and death.' },
+  { key: GAME_MODE_SURVIVAL, label: 'Survival', blurb: 'Fall damage, drowning and death. A new world starts with an empty inventory.' },
 ];
 
 /** The Creative / Survival picker. One button per mode, the active one highlighted. */
