@@ -1,5 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
-import { FIRE_DURATION_S, FIXED_DT, GAME_MODE_CREATIVE, GAME_MODE_SURVIVAL, HEALTH_MAX, PLAYER_HEIGHT } from '../src/config';
+import {
+  FIRE_DURATION_S, FIXED_DT, GAME_MODE_CREATIVE, GAME_MODE_SURVIVAL, HEALTH_MAX, HUNGER_DRAIN_PER_S, HUNGER_MAX, PLAYER_HEIGHT,
+} from '../src/config';
 import { FireExposure, fluidContact, landingDamage, landingWaterDepth } from '../src/player/fluidHazards';
 import { Player, PLAYER_SHAPE, NO_CONTROLS } from '../src/player/player';
 import { BlockId, flowingWaterState, flowingLavaState } from '../src/world/blocks';
@@ -21,7 +23,8 @@ function landing(depth: number, lava = false) {
 function survivalGame(blockAt: (x: number, y: number, z: number) => number) {
   const g = Object.create(Game.prototype) as Game;
   const p = new Player(); p.setPosition(0.5, 0, 0.5);
-  Object.assign(g, { player: p, health: HEALTH_MAX, hunger: 20, air: 15, gameMode: GAME_MODE_SURVIVAL,
+  // Hunger 10: neither regenerating (>= REGEN_MIN_HUNGER) nor starving, so health changes come only from the hazard under test.
+  Object.assign(g, { player: p, health: HEALTH_MAX, hunger: 10, air: 15, gameMode: GAME_MODE_SURVIVAL,
     fire: new FireExposure(), world: { getBlock: blockAt, topAt: () => 0 },
     menu: { setGameMode: vi.fn() }, inventory: new Inventory(), items: { spawn: vi.fn() },
     spawn: { x: 8, z: 8 }, spawnFeetY: 1,
@@ -97,5 +100,31 @@ describe('lava ignition and extinguishing (T-G14)', () => {
     survival(g, FIXED_DT);
     expect(g.health).toBe(HEALTH_MAX); expect(g.fire.remaining).toBe(0);
     expect(g.player.position).toEqual({ x: 8, y: 1, z: 8 }); expect(g.player.impactSpeedM_S).toBe(0);
+  });
+});
+
+describe('hunger and regeneration (T-I2/T-I3)', () => {
+  it('drains hunger so a full bar lasts 15 minutes', () => {
+    const g = survivalGame(() => BlockId.AIR); g.hunger = HUNGER_MAX;
+    survival(g, 60);
+    expect(g.hunger).toBeCloseTo(HUNGER_MAX - 60 * HUNGER_DRAIN_PER_S, 6);
+    expect(HUNGER_MAX / HUNGER_DRAIN_PER_S).toBeCloseTo(15 * 60, 6);
+  });
+  it('regenerates one point every 4 s while well fed, and not below the threshold', () => {
+    const fed = survivalGame(() => BlockId.AIR); fed.hunger = HUNGER_MAX; fed.health = 10;
+    survival(fed, 4);
+    expect(fed.health).toBeCloseTo(11, 6);
+    const peckish = survivalGame(() => BlockId.AIR); peckish.health = 10; // the stub's hunger 10 is below the threshold
+    survival(peckish, 4);
+    expect(peckish.health).toBe(10);
+  });
+  it('starving hurts, can kill, and respawn restores health and hunger', () => {
+    const g = survivalGame(() => BlockId.AIR); g.hunger = 0; g.health = 10;
+    survival(g, 2);
+    expect(g.health).toBeCloseTo(9.5, 6);
+    g.health = 0.5;
+    survival(g, 4); // dies of hunger
+    expect(g.health).toBe(HEALTH_MAX);
+    expect(g.hunger).toBe(HUNGER_MAX);
   });
 });
