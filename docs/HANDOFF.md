@@ -10,15 +10,21 @@ reload (`catchUpChunk` in `ecology.ts`, chunk ages saved as `chunkAges`); T-G6 l
 T-I9 beds (`bed`, state 179, half height; saved as `bed`); T-J8 frame-time graph in F3; T-G12 currents (`flowVector`
 in `flow.ts`, `CURRENT_ACCEL`).
 
-**Save compatibility:** new states append after 177: LEAF_LITTER 178, BED 179; append the next one at 180. `chunkAges` and `bed` are written only
+**Save compatibility:** new states append after 177: LEAF_LITTER 178, BED 179, CRAFTING_TABLE 180, STICK 181, then the tool states; tests pin the BlockIds. `chunkAges` and `bed` are written only
 when set, so older saves and backups round-trip unchanged. Save version unchanged.
 
-**Known limits:** beds cannot be obtained in survival until crafting (T-I6); generated rivers are source blocks and
+**Third batch (same PR):** T-I6 crafting (`src/player/crafting.ts`: 2×2 in the inventory, 3×3 at `crafting_table`),
+T-I5 tools (`src/player/tools.ts`: wooden and stone pickaxe, axe and shovel; wear is the state variant, so tools are
+states 182 onward), T-I4 body temperature (`src/player/bodyTemperature.ts`), T-G5 plant succession (`sprout` and
+`seedSapling` in `ecology.ts`), T-J7 quality presets (`QUALITY_PRESETS`, new `resolution` setting). Survival now runs
+log → planks → sticks → crafting table → wooden pickaxe → cobblestone → stone tools; iron needs furnaces (T-I7).
+
+**Known limits:** generated rivers are source blocks and
 carry no current until T-G10; dropped items ignore currents; catch-up uses the weather at reload for the whole
 absence, and saplings and litter only change while loaded; sleeping does not advance crops in loaded chunks.
 
-**Next suggested tasks:** T-I6 crafting (makes beds obtainable), T-I5 tools, T-H1 wiring entities, T-G10 river flow
-direction (gives currents to rivers). Owner acceptance (section 1 of OPEN-TASKS.md) is still open, and none of the new
+**Next suggested tasks:** T-I7 furnaces (then iron tools), T-H1 wiring entities, T-G10 river flow direction (gives
+currents to rivers), clothing for T-I4. CI: the smoke job hits its 15-minute limit (also on `main`); raising it to 30 is proposed on the PR. Owner acceptance (section 1 of OPEN-TASKS.md) is still open, and none of the new
 visuals (leaf litter, beds, the F3 graph) have been checked on real hardware.
 
 ## Earlier session — 2026-10-23 (Claude, PRs #36–#48)

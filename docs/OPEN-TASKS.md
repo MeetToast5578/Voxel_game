@@ -40,7 +40,7 @@ Headless tests cannot close these. Run them with `npm run dev` on your own machi
 - [ ] **T-J4 — Packed vertex format** (positions as bytes, packed light and colour).
 - [ ] **T-J5 — Palette compression** for chunk storage.
 - [ ] **T-J6 — Adaptive time budgets and memory caps.**
-- [ ] **T-J7 — Quality presets.**
+- [x] **T-J7 — Quality presets.** Done: Low, Medium and High set render distance and the new resolution setting.
 - [x] **T-J8 — Frame-time graph in F3.** Done: the last 120 frames as bars against the 60 and 30 fps budgets, plus average and worst.
 
 Measure first (T-C3), then pick the J items that the measurements point at.
@@ -61,7 +61,7 @@ Measure first (T-C3), then pick the J items that the measurements point at.
 - [x] **T-G2 — Snow layers.** Done: 8 snow layers that settle and melt, and ice that forms and thaws.
 - [x] **T-G3 — Saplings.** Done: leaves drop saplings, which grow into their species' tree.
 - [x] **T-G4 — Crops.** Done: wheat, carrots and potatoes that grow by stage with the temperature.
-- [ ] **T-G5 — Plant succession** on bare ground.
+- [x] **T-G5 — Plant succession.** Done: bare open grass regrows its natural plant; tall grass and ferns where trees grow become saplings.
 - [x] **T-G6 — Autumn leaf litter.** Done: leaves drop a thin litter layer in autumn where trees are deciduous; it rots after autumn and snow buries it.
 - [x] **T-G7 — Catch-up on reload.** Done: a reloaded surface or edited chunk advances crops by the expected stages and moves snow and ice toward the current weather. Shortcut: the weather at reload stands for the whole absence; saplings and litter wait until loaded.
 - [ ] **T-G10 — River flow direction** from the drainage simulation, used for animated flow textures.
@@ -93,12 +93,12 @@ Done when (roadmap): a meadow at dawn has grazing herds that flee when approache
 - [x] **T-I11 — Enforce survival acquisition rules.** Done in #39. Dying now respawns with an empty inventory (owner decision, 2026-10-23).
 - [x] **T-I2 — Make hunger change.** Done in #41: hunger drains, starvation damages, and a survival HUD line shows health and hunger. Food is T-I8.
 - [x] **T-I3 — Health regeneration.** Done in #41.
-- [ ] **T-I4 — Body temperature.** From biome, altitude, weather, season, wetness, shelter, fire and clothing. Hypothermia and heatstroke.
-- [ ] **T-I5 — Tools.** Mining time from block hardness and tool. Tiers and durability.
-- [ ] **T-I6 — Crafting.** 2×2 grid in the inventory, 3×3 crafting table, recipes as a data table.
+- [x] **T-I4 — Body temperature.** Done: climate, season, altitude, wind, wetness, a roof and nearby lava or light sources; hypothermia below 35 °C and heatstroke above 39.5 °C. No clothing yet, and the body temperature is not saved.
+- [x] **T-I5 — Tools.** Done: wooden and stone pickaxes, axes and shovels; the right tool divides break time by its tier; wear is the state variant. In survival stone-like blocks need a pickaxe to drop. Iron tools wait on furnaces (T-I7).
+- [x] **T-I6 — Crafting.** Done: 2×2 grid in the inventory, 3×3 at the crafting table, recipes in `src/player/crafting.ts`. Beds are now craftable (wheat over planks).
 - [ ] **T-I7 — Furnaces** that smelt, as a block entity with timers.
 - [~] **T-I8 — Food.** Farming slice done: in survival, right click with a crop eats it (wheat 2, carrots 3, potatoes 4 hunger) unless aimed at grass or dirt, where it is planted. Hunting and cooking wait on T-H7 and T-I7.
-- [x] **T-I9 — Beds.** Done: a half-height bed; right click sets the respawn point and, while the sun is down, sleeps to sunrise. Survival players cannot get one until crafting (T-I6) exists.
+- [x] **T-I9 — Beds.** Done: a half-height bed; right click sets the respawn point and, while the sun is down, sleeps to sunrise. Crafted from three wheat over three planks.
 
 Done when (roadmap): a new survival world is playable from punching a tree through to iron tools, and a winter is dangerous without shelter.
 
