@@ -9,7 +9,8 @@ import {
   FOOTSTEP_DISTANCE, FOOTSTEP_MIN_SPEED, GEN_BUDGET_MS, HOTBAR_SIZE, MAX_FRAME_DT, MESH_BUDGET_MS, REACH, SEA_LEVEL,
   SETTINGS_KEY, SPAWN_READY_RADIUS, START_TIME_OF_DAY, WORLD_LATITUDE_DEG, ITEM_SIZE, PLAYER_HEIGHT, WALK_SPEED,
   GAME_MODE_CREATIVE, GAME_MODE_SURVIVAL, HEALTH_MAX, HUNGER_MAX,
-  DROWN_DAMAGE_PER_S, AIR_MAX_S, GAME_TICKS_PER_SECOND, HUNGER_DRAIN_PER_S, STARVE_DAMAGE_PER_S, REGEN_MIN_HUNGER, REGEN_PER_S,
+  DROWN_DAMAGE_PER_S, AIR_MAX_S, GAME_TICKS_PER_SECOND, LIGHTNING_SKY_BRIGHTEN, THUNDER_DELAY_MIN_S, THUNDER_DELAY_MAX_S,
+  HUNGER_DRAIN_PER_S, STARVE_DAMAGE_PER_S, REGEN_MIN_HUNGER, REGEN_PER_S,
 } from './config';
 import { Sounds } from './audio/sounds';
 import { FixedStepLoop } from './core/loop';
@@ -58,7 +59,7 @@ import { ChunkManager } from './world/chunkManager';
 import { type EditCell, EditQueue } from './world/editQueue';
 import { TerrainGenerator } from './world/generator';
 import { findSpawnColumn, surfaceY } from './world/spawn';
-import { daylightAt, skyColorAt } from './world/time';
+import { daylightAt, lerpColor, skyColorAt } from './world/time';
 import { WorkerPool } from './workers/workerPool';
 import { World } from './world/world';
 import { Calendar } from './world/calendar';
@@ -175,6 +176,9 @@ export class Game {
   /** Weather model and renderer (spec 34). */
   readonly weather: WeatherModel;
   readonly weatherRenderer: WeatherRenderer;
+  /** Strikes already given a thunder clap, and the seconds left until each queued clap (T-F14). */
+  private seenStrikes = 0;
+  private readonly thunderDelays: number[] = [];
   private fogSampleTimer = 0;
   private fogValleyDepthM = 0;
   private fogGroundM = 0;
@@ -570,8 +574,10 @@ export class Game {
 
   /** Keep atmospheric sampling and visual clocks together; positions here are in blocks. */
   private updateAtmosphere(eye: { x: number; y: number; z: number }, frameDt: number): void {
-    this.renderer.setSkyColor(skyColorAt(this.timeOfDay));
-    this.renderer.setDaylight(daylightAt(this.timeOfDay));
+    // Lightning (T-F14): the current flash lights the world and whitens the sky colour.
+    const flash = this.weatherRenderer.getFlashIntensity();
+    this.renderer.setSkyColor(lerpColor(skyColorAt(this.timeOfDay), 0xffffff, flash * LIGHTNING_SKY_BRIGHTEN));
+    this.renderer.setDaylight(Math.max(daylightAt(this.timeOfDay), flash));
     this.sky.update(this.timeOfDay, this.calendar.timeOfYear, this.renderer.camera);
     // Weather: sample at the player's position and update particles/lightning.
     const weather = this.weather.sample(
@@ -590,6 +596,7 @@ export class Game {
       eye.y,
     );
     this.renderer.setWetness(this.weatherRenderer.wetness);
+    this.updateThunder(frameDt);
     this.fogSampleTimer -= frameDt;
     if (this.fogSampleTimer <= 0) {
       this.fogSampleTimer = FOG_SAMPLE_INTERVAL_S;
@@ -602,6 +609,19 @@ export class Game {
     }
     const aboveGround = Math.max(0, eye.y * BLOCK_SIZE_M - this.fogGroundM - FOG_GROUND_LAYER_M);
     this.renderer.setAtmosphericFog(atmosphericFogStrength(this.timeOfDay, weather.humidity, Math.max(0, this.fogValleyDepthM - aboveGround)));
+  }
+
+  /** Each new lightning strike queues one thunder clap after a random delay (T-F14). */
+  private updateThunder(dt: number): void {
+    for (; this.seenStrikes < this.weatherRenderer.strikes; this.seenStrikes++) {
+      this.thunderDelays.push(THUNDER_DELAY_MIN_S + Math.random() * (THUNDER_DELAY_MAX_S - THUNDER_DELAY_MIN_S));
+    }
+    for (let i = this.thunderDelays.length - 1; i >= 0; i--) {
+      this.thunderDelays[i]! -= dt;
+      if (this.thunderDelays[i]! > 0) continue;
+      this.thunderDelays.splice(i, 1);
+      this.sounds.play('thunder');
+    }
   }
 
   /** Where chunks are loaded around before the player is placed: the spawn point (or its column top). */

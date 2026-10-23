@@ -32,6 +32,9 @@ export class WeatherRenderer {
   /** Current wetness (0..1) for the current precipitation. Exposed for the game to use. */
   wetness = 0;
 
+  /** Lightning strikes so far. The game queues one thunder clap per strike. */
+  strikes = 0;
+
   constructor(scene: THREE.Scene) {
     this.scene = scene;
 
@@ -90,6 +93,7 @@ export class WeatherRenderer {
       if (this.lightningTimer <= 0) {
         if (Math.random() < LIGHTNING_CHANCE_PER_S * dt) {
           this.lightningFlash = LIGHTNING_FLASH_S;
+          this.strikes++;
         }
         this.lightningTimer = 0.5 + Math.random();
       }

@@ -51,3 +51,18 @@ describe('precipitation coordinates and roofs', () => {
     } finally { weather.dispose(); }
   });
 });
+
+describe('lightning (T-F14)', () => {
+  it('counts each new strike and reports a fading flash', () => {
+    const { weather } = fixture();
+    try {
+      vi.spyOn(Math, 'random').mockReturnValue(0); // a strike on the first check
+      const storm: WeatherSample = { ...rain, isStorm: true };
+      weather.update(0, 0, storm, 0.05, () => undefined, 0);
+      expect(weather.strikes).toBe(1);
+      expect(weather.getFlashIntensity()).toBeGreaterThan(0);
+      weather.update(0, 0, storm, 0.05, () => undefined, 0); // still flashing: no new strike
+      expect(weather.strikes).toBe(1);
+    } finally { weather.dispose(); }
+  });
+});
