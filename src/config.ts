@@ -314,6 +314,10 @@ export const ICE_THAW_CHANCE = 0.1; // above 0 °C: ice turns back into water
 export const LEAF_LITTER_CHANCE = 0.01;
 export const LEAF_LITTER_ROT_CHANCE = 0.02;
 export const LEAF_LITTER_REACH = 32; // blocks a falling leaf may drop through air and leaves to reach the ground
+// Plant succession (T-G5): a random tick on bare open grass regrows its natural ground cover with the first chance; one
+// on tall grass or a fern where trees grow turns it into a sapling with the second.
+export const PLANT_SPROUT_CHANCE = 0.02;
+export const SAPLING_SUCCESSION_CHANCE = 0.002;
 export const SAPLING_DROP_CHANCE = 0.05; // a broken or decayed leaf block also drops a sapling
 export const SAPLING_GROW_CHANCE = 0.1; // a random tick on a sapling with open sky above grows it into its tree
 // Crops (T-G4). A random tick on a crop under open sky advances it one stage with this chance, scaled by temperature.

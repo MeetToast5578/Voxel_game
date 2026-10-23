@@ -2,7 +2,7 @@ import { type World } from './world';
 import { type Tick, type TickResult } from './tick';
 import { BlockId, CROP_STAGES, SNOW_LAYERS, blocksSky, blockVariant, getBlockDef, isCropState, isSnowState, snowLayers, snowState } from './blocks';
 import { type Chunk } from './chunk';
-import { CHUNK_SIZE, CHUNK_VOLUME, CROP_GROW_CHANCE, ICE_FREEZE_CHANCE, LEAF_LITTER_CHANCE, LEAF_LITTER_REACH, LEAF_LITTER_ROT_CHANCE, RANDOM_TICKS_PER_CHUNK, ICE_THAW_CHANCE, SAPLING_DROP_CHANCE, SAPLING_GROW_CHANCE, SNOW_MELT_CHANCE, SNOW_SETTLE_CHANCE } from '../config';
+import { CHUNK_SIZE, CHUNK_VOLUME, CROP_GROW_CHANCE, ICE_FREEZE_CHANCE, LEAF_LITTER_CHANCE, LEAF_LITTER_REACH, LEAF_LITTER_ROT_CHANCE, PLANT_SPROUT_CHANCE, SAPLING_SUCCESSION_CHANCE, RANDOM_TICKS_PER_CHUNK, ICE_THAW_CHANCE, SAPLING_DROP_CHANCE, SAPLING_GROW_CHANCE, SNOW_MELT_CHANCE, SNOW_SETTLE_CHANCE } from '../config';
 import { growSapling, isSaplingState, saplingState } from './saplings';
 import { cropGrowthFactor, growCrop } from './crops';
 import { floorDiv } from '../core/math';
@@ -84,12 +84,34 @@ function handleLeafDecay(world: World, tick: Tick): TickResult {
  */
 export function handleRandomTick(world: World, x: number, y: number, z: number, rng: () => number): void {
   const id = world.getBlock(x, y, z);
-  if (id === BlockId.GRASS) spreadGrassFrom(world, x, y, z, rng);
+  if (id === BlockId.GRASS) {
+    spreadGrassFrom(world, x, y, z, rng);
+    sprout(world, x, y, z, rng);
+  } else if (id === BlockId.TALL_GRASS || id === BlockId.FERN) seedSapling(world, x, y, z, rng);
   // A sapling grows only with open sky above it (it does not block the sky itself, so the top is its ground).
   else if (isSaplingState(id) && world.topAt(x, z) === y - 1 && rng() < SAPLING_GROW_CHANCE) growSapling(world, x, y, z);
   else if (isCropState(id)) growCrop(world, x, y, z, rng);
   else if (id === BlockId.LEAVES || id === BlockId.LEAF_LITTER) leafLitter(world, id, x, y, z, rng);
   if (world.surfaceWeather) settleSnowAndIce(world, x, y, z, rng);
+}
+
+/**
+ * Plant succession (T-G5), first step: bare grass under open sky regrows the plant the generator would put there, so
+ * cleared ground slowly returns to its natural cover. Columns that are bare by nature stay bare.
+ */
+function sprout(world: World, x: number, y: number, z: number, roll: () => number): void {
+  if (!world.groundPlantAt || roll() >= PLANT_SPROUT_CHANCE) return;
+  if (world.getBlock(x, y + 1, z) !== BlockId.AIR || world.topAt(x, z) !== y) return;
+  const plant = world.groundPlantAt(x, z);
+  if (plant !== BlockId.AIR) world.setBlock(x, y + 1, z, plant);
+}
+
+/** Next step: tall grass or a fern where trees grow turns into a sapling of the local species, which grows into a tree. */
+function seedSapling(world: World, x: number, y: number, z: number, roll: () => number): void {
+  if (!world.treeSpeciesAt || roll() >= SAPLING_SUCCESSION_CHANCE || world.topAt(x, z) !== y - 1) return;
+  const species = world.treeSpeciesAt(x, z);
+  const sapling = species ? saplingState(species) : null;
+  if (sapling !== null) world.setBlock(x, y, z, sapling);
 }
 
 /**

@@ -66,6 +66,7 @@ import { daylightAt, lerpColor, skyColorAt } from './world/time';
 import { WorkerPool } from './workers/workerPool';
 import { World } from './world/world';
 import { Calendar, foliageSeason } from './world/calendar';
+import { groundCoverAt } from './world/groundCover';
 import { deciduousAt } from './world/climateTint';
 
 /** The world save the game starts with (opened and read by main.ts before the game is created). */
@@ -260,6 +261,7 @@ export class Game {
     this.sky = new Sky(this.renderer.scene);
     this.weather = new WeatherModel(seed);
     this.world.treeSpeciesAt = (x, z) => this.generator.treeSpeciesAt(x, z);
+    this.world.groundPlantAt = (x, z) => groundCoverAt(seed, x, z, this.generator.biomeKeyAt(x, z));
     this.world.leafFall = (x, y, z) => {
       const autumn = foliageSeason(this.calendar.timeOfYear).autumn;
       return autumn > 0 ? autumn * deciduousAt(seed, x, y, z) : 0;

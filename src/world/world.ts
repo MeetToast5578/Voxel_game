@@ -53,6 +53,8 @@ export class World {
   surfaceWeather?: (x: number, y: number, z: number) => SurfaceWeather;
   /** Set by the game: 0..1, how strongly leaves fall at a cell now (autumn × deciduous, T-G6). Without it, none do. */
   leafFall?: (x: number, y: number, z: number) => number;
+  /** Set by the game: the plant the generator puts on grass at a column (air for none), for regrowth (T-G5). */
+  groundPlantAt?: (x: number, z: number) => number;
   /** Set by the game: the tree species that grows at a column, for the saplings leaves drop (T-G3). */
   treeSpeciesAt?: (x: number, z: number) => TreeSpecies | null;
   private readonly chunkMap = new Map<string, Chunk>();
