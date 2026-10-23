@@ -16,6 +16,7 @@ export const CONTROL_SECTIONS: readonly { title: string; rows: readonly (readonl
       ['Left, hold', 'Break block (single mode)'],
       ['Right, hold', 'Place block (single mode)'],
       ['Right, with a crop', 'Survival: eat it, or plant it on grass or dirt'],
+      ['Right, on a bed', 'Set the respawn point; sleep through the night'],
       ['Middle click', 'Pick block'],
       ['1-9, wheel', 'Select block'],
       ['E', 'Inventory (also from the pause menu)'],

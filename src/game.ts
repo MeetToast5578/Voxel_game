@@ -10,7 +10,7 @@ import {
   SETTINGS_KEY, SPAWN_READY_RADIUS, START_TIME_OF_DAY, WORLD_LATITUDE_DEG, ITEM_SIZE, PLAYER_HEIGHT, WALK_SPEED, WHEAT_SEED_DROP_CHANCE,
   GAME_MODE_CREATIVE, GAME_MODE_SURVIVAL, HEALTH_MAX, HUNGER_MAX,
   DROWN_DAMAGE_PER_S, AIR_MAX_S, GAME_TICKS_PER_SECOND, LIGHTNING_SKY_BRIGHTEN, THUNDER_DELAY_MIN_S, THUNDER_DELAY_MAX_S,
-  HUNGER_DRAIN_PER_S, STARVE_DAMAGE_PER_S, REGEN_MIN_HUNGER, REGEN_PER_S,
+  HUNGER_DRAIN_PER_S, STARVE_DAMAGE_PER_S, REGEN_MIN_HUNGER, REGEN_PER_S, NOTICE_S, SLAB_HEIGHT,
 } from './config';
 import { Sounds } from './audio/sounds';
 import { FixedStepLoop } from './core/loop';
@@ -170,7 +170,13 @@ export class Game {
   private importing = false;
   private saveTimer = 0;
   /** Where the player was when the game was saved; used instead of the spawn search. */
-  private readonly savedPlayer: SavedPlayer | null;
+  /** Where the player stands until placed: the saved position, or a bed to respawn at. */
+  private savedPlayer: SavedPlayer | null;
+  /** The bed the player last used (T-I9): they respawn on it while it stands. */
+  bed: Cell | null = null;
+  /** A short message shown in the hazard line for NOTICE_S seconds (e.g. after using a bed). */
+  private notice = '';
+  private noticeS = 0;
   private readonly clouds: Clouds;
   /** The sky: dome, sun, moon, stars. */
   readonly sky: Sky;
@@ -220,6 +226,7 @@ export class Game {
       this.health = loaded.health ?? HEALTH_MAX;
       this.hunger = loaded.hunger ?? HUNGER_MAX;
       this.air = loaded.air ?? AIR_MAX_S;
+      this.bed = loaded.bed ?? null;
     }
     this.savedPlayer = loaded?.player ?? null;
     this.saver = new WorldSaver(this.worldStore, this.world, () => this.worldMeta());
@@ -449,6 +456,18 @@ export class Game {
     this.hunger = HUNGER_MAX;
     this.air = AIR_MAX_S;
 
+    // Respawn on the bed while it stands (an unloaded one is trusted); trySpawn places the player once it is meshed.
+    const bed = this.bed;
+    if (bed && this.world.isLoadedAt(bed.x, bed.y, bed.z) && this.world.getBlock(bed.x, bed.y, bed.z) !== BlockId.BED) {
+      this.bed = null;
+      this.showNotice('Your bed is missing');
+    }
+    if (this.bed) {
+      const { yaw, pitch } = this.player;
+      this.savedPlayer = { x: this.bed.x + 0.5, y: this.bed.y + SLAB_HEIGHT, z: this.bed.z + 0.5, yaw, pitch, flying: false };
+      this.ready = false;
+      return;
+    }
     // Respawn at spawn point.
     const spawnY = this.spawnFeetY ?? this.world.topAt(Math.floor(this.spawn.x), Math.floor(this.spawn.z)) ?? SEA_LEVEL;
     this.player.setPosition(this.spawn.x, spawnY, this.spawn.z);
@@ -528,6 +547,7 @@ export class Game {
       health: this.health,
       hunger: this.hunger,
       air: this.air,
+      ...(this.bed ? { bed: { ...this.bed } } : {}),
     };
   }
 
@@ -577,7 +597,9 @@ export class Game {
     if (frameDt > 0) this.fps += (1 / frameDt - this.fps) * 0.05;
     this.renderer.render();
     this.hud.update(this.inventory.slots, this.inventory.selected, frameDt, this.playing, this.ready && !this.inventoryScreen.isOpen);
-    this.hud.setHazard(this.gameMode === GAME_MODE_SURVIVAL && this.fire.remaining > 0 ? 'On fire · Enter water to extinguish' : '');
+    this.noticeS = Math.max(0, this.noticeS - frameDt);
+    this.hud.setHazard(this.gameMode === GAME_MODE_SURVIVAL && this.fire.remaining > 0 ? 'On fire · Enter water to extinguish'
+      : this.noticeS > 0 ? this.notice : '');
     // Round up so a sliver of health reads 1, not 0. Shortcut: plain text until the Pixel Aero HUD (T-K8) adds bars.
     this.hud.setVitals(this.gameMode === GAME_MODE_SURVIVAL
       ? `Health ${Math.ceil(this.health)}/${HEALTH_MAX} · Hunger ${Math.ceil(this.hunger)}/${HUNGER_MAX}` : '');
@@ -801,6 +823,27 @@ export class Game {
   }
 
   /**
+   * Right click on a bed (T-I9): it becomes the respawn point, and while the sun is down the player sleeps through to
+   * sunrise; the calendar moves on by the time skipped. Returns true if a bed was aimed at.
+   */
+  useBed(): boolean {
+    const t = this.target;
+    if (!t || this.world.getBlock(t.x, t.y, t.z) !== BlockId.BED) return false;
+    this.bed = { x: t.x, y: t.y, z: t.z };
+    if (Math.sin(2 * Math.PI * this.timeOfDay) < 0) {
+      this.calendar.advance((1 - this.timeOfDay) * DAY_LENGTH_S);
+      this.timeOfDay = 0;
+      this.showNotice('Slept through the night · Respawn point set');
+    } else this.showNotice('Respawn point set · You can only sleep at night');
+    return true;
+  }
+
+  private showNotice(text: string): void {
+    this.notice = text;
+    this.noticeS = NOTICE_S;
+  }
+
+  /**
    * Survival right click with food in hand (T-I8): eats one unless hunger is full or the aim is on grass or dirt, where
    * the crop is planted instead. Returns true if it was eaten.
    */
@@ -877,7 +920,7 @@ export class Game {
     if (breakClicked || broken) this.held.swing();
     const placeClicked = this.input.consumeClick(2);
     if (placeClicked || (this.input.isMouseDown(2) && this.actionCooldown === 0)) {
-      if (!this.eatSelected()) this.placeTarget();
+      if (!this.useBed() && !this.eatSelected()) this.placeTarget();
       this.actionCooldown = BREAK_REPEAT_S;
       this.held.swing();
     }

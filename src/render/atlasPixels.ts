@@ -49,6 +49,9 @@ const PAINTERS: Record<number, PixelFn> = {
     if (r() < 0.3) return [0, 0, 0, 0];
     return shade(LITTER_COLOURS[(r() * LITTER_COLOURS.length) | 0]!, 0.75 + r() * 0.35);
   },
+  // Bed (T-I9): a red blanket with a white pillow at one end; the sides are a blanket edge over a wooden frame.
+  [Tile.BED_TOP]: (x, y, r) => shade(y < 4 ? [232, 228, 220] : [168, 38, 42], (x === 0 || x === 15 ? 0.8 : 1) + (r() - 0.5) * 0.1),
+  [Tile.BED_SIDE]: (_x, y, r) => shade(y < 6 ? [150, 32, 36] : [150, 112, 66], 0.9 + r() * 0.15),
   [Tile.CACTUS_SIDE]: (x, y, r) => {
     if (x % 4 === 0 && y % 5 === 0) return shade([222, 209, 146], 1);
     return shade([55, 122, 52], (x % 4 === 0 ? 0.65 : 1) + (r() - 0.5) * 0.15);

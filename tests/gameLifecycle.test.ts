@@ -143,6 +143,7 @@ describe('smoke-test debug hooks', () => {
       breakCell: vi.fn(),
       placeTarget: vi.fn(),
       eatSelected: () => false,
+      useBed: () => false,
       placeTargetCheck: vi.fn(),
       setBlock: vi.fn(),
     });
@@ -271,5 +272,46 @@ describe('death in survival', () => {
     expect(inventory.slots.every((s) => s === null)).toBe(true);
     expect(player.setPosition).toHaveBeenCalledWith(0, 9, 0);
     expect(game.health).toBe(20);
+  });
+});
+
+describe('beds (T-I9)', () => {
+  function sleeper(timeOfDay: number, aimed: number) {
+    const game = Object.create(Game.prototype) as Game;
+    const calendar = new Calendar(DAYS_PER_SEASON, WORLD_LATITUDE_DEG);
+    Object.assign(game, { timeOfDay, calendar, bed: null, target: { x: 4, y: 7, z: -2 }, world: { getBlock: () => aimed } });
+    return { game, calendar };
+  }
+
+  it('at night a bed sleeps through to sunrise and sets the respawn point', () => {
+    const { game, calendar } = sleeper(0.75, BlockId.BED);
+    expect(game.useBed()).toBe(true);
+    expect(game.timeOfDay).toBe(0);
+    expect(calendar.timeOfYear).toBeCloseTo(0.25 * DAY_LENGTH_S / (DAY_LENGTH_S * 4 * DAYS_PER_SEASON), 12);
+    expect(game.bed).toEqual({ x: 4, y: 7, z: -2 });
+  });
+
+  it('by day it only sets the respawn point; anything but a bed is ignored', () => {
+    const { game } = sleeper(0.3, BlockId.BED);
+    expect(game.useBed()).toBe(true);
+    expect(game.timeOfDay).toBe(0.3);
+    expect(game.bed).toEqual({ x: 4, y: 7, z: -2 });
+    expect(sleeper(0.75, BlockId.STONE).game.useBed()).toBe(false);
+  });
+
+  it('death respawns on a standing bed, and forgets a broken one', () => {
+    const standing = survivor(null);
+    Object.assign(standing.game, { bed: { x: 4, y: 7, z: -2 }, ready: true });
+    Object.assign(standing.game.world, { isLoadedAt: () => true, getBlock: () => BlockId.BED });
+    call(standing.game, 'die');
+    expect(standing.game.ready).toBe(false); // trySpawn places the player on the bed once it is meshed
+    expect(Reflect.get(standing.game, 'savedPlayer')).toMatchObject({ x: 4.5, z: -1.5 });
+
+    const broken = survivor(null);
+    Object.assign(broken.game, { bed: { x: 4, y: 7, z: -2 } });
+    Object.assign(broken.game.world, { isLoadedAt: () => true, getBlock: () => BlockId.AIR });
+    call(broken.game, 'die');
+    expect(broken.game.bed).toBeNull();
+    expect(broken.player.setPosition).toHaveBeenCalledWith(0, 9, 0);
   });
 });

@@ -598,6 +598,7 @@ export const FALL_DAMAGE_THRESHOLD_M_S = 6; // impact speed above this causes da
 export const FALL_DAMAGE_MULTIPLIER = 2; // damage per m/s above threshold
 export const DROWN_DAMAGE_PER_S = 2; // damage per second when out of air
 export const AIR_MAX_S = 15; // seconds the player can hold their breath
+export const NOTICE_S = 4; // seconds a short message (such as after using a bed) stays on screen
 
 // ---- Underground pools and fluid hazards (spec 47) ----
 export const LAVA_TICK_DELAY = 20;

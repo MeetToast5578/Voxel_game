@@ -41,6 +41,8 @@ export interface WorldMeta {
   hunger: number;
   /** Seconds of air remaining, 0..AIR_MAX_S. */
   air: number;
+  /** The bed the player respawns on (T-I9), if any. */
+  bed?: { x: number; y: number; z: number };
 }
 
 /** A stack as stored: the block's name and the count. */
@@ -67,6 +69,7 @@ export interface MetaRecord {
   health: number;
   hunger: number;
   air: number;
+  bed?: { x: number; y: number; z: number };
 }
 
 /** One chunk's player edits: chunk key "cx,cy,cz" and [localIndex 0..4095, state name] pairs. */
@@ -101,6 +104,7 @@ export function metaRecord(meta: WorldMeta): MetaRecord {
     health: meta.health,
     hunger: meta.hunger,
     air: meta.air,
+    ...(meta.bed ? { bed: { ...meta.bed } } : {}), // only when set, so older saves and backups round-trip unchanged
   };
 }
 
@@ -109,6 +113,8 @@ export function chunkRecord(key: string, edits: ReadonlyMap<number, number>): Ch
 }
 
 const isNum = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v);
+const isCell = (v: unknown): v is { x: number; y: number; z: number } => typeof v === 'object' && v !== null &&
+  [(v as { x?: unknown }).x, (v as { y?: unknown }).y, (v as { z?: unknown }).z].every(Number.isSafeInteger);
 
 /** Wraps a time of day into [0, 1); anything that is not a finite number becomes START_TIME_OF_DAY. Never -0. */
 export function repairTimeOfDay(t: unknown): number {
@@ -222,6 +228,7 @@ export function parseMeta(raw: unknown): WorldMeta | null {
     health: isNum(d.health) ? Math.max(0, Math.min(HEALTH_MAX, d.health)) : HEALTH_MAX,
     hunger: isNum(d.hunger) ? Math.max(0, Math.min(HUNGER_MAX, d.hunger)) : HUNGER_MAX,
     air: isNum(d.air) ? Math.max(0, Math.min(AIR_MAX_S, d.air)) : AIR_MAX_S,
+    ...(isCell(d.bed) ? { bed: { x: d.bed.x, y: d.bed.y, z: d.bed.z } } : {}),
   };
 }
 
