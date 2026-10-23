@@ -1,6 +1,6 @@
 import { render } from 'preact';
 import { GAME_MODE_CREATIVE, GAME_MODE_SURVIVAL, MAX_FOV, MAX_RENDER_DISTANCE, MIN_FOV, MIN_RENDER_DISTANCE } from '../config';
-import { MAX_SENSITIVITY, MIN_SENSITIVITY, type Settings } from '../storage/settings';
+import { MAX_SENSITIVITY, MIN_RESOLUTION, MIN_SENSITIVITY, QUALITY_PRESETS, presetOf, type QualityPreset, type Settings } from '../storage/settings';
 import { Section } from './components';
 import { CONTROL_SECTIONS } from './controls';
 
@@ -111,6 +111,15 @@ function MenuView({ mode, busy, settings, notes, callbacks, onSetting, gameMode 
       </div>
       <ModePicker gameMode={gameMode} onPick={callbacks.onGameModeChange} />
       <Section title="Settings">
+        <div class="menu-mode" role="radiogroup" aria-label="Quality">
+          {(Object.keys(QUALITY_PRESETS) as QualityPreset[]).map((name) => (
+            <button key={name} type="button" role="radio" aria-checked={presetOf(settings) === name}
+              class={`menu-button small${presetOf(settings) === name ? ' primary' : ''}`}
+              onClick={() => { for (const [key, value] of Object.entries(QUALITY_PRESETS[name])) onSetting(key as keyof Settings, value); }}>
+              {name}
+            </button>
+          ))}
+        </div>
         <div class="menu-settings">
           <Slider
             label="Render distance"
@@ -120,6 +129,15 @@ function MenuView({ mode, busy, settings, notes, callbacks, onSetting, gameMode 
             step={1}
             format={(v) => `${v} chunks`}
             onInput={(v) => onSetting('renderDistance', v)}
+          />
+          <Slider
+            label="Resolution"
+            value={settings.resolution}
+            min={MIN_RESOLUTION}
+            max={1}
+            step={0.05}
+            format={(v) => `${Math.round(v * 100)}%`}
+            onInput={(v) => onSetting('resolution', v)}
           />
           <Slider
             label="Field of view"

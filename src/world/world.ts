@@ -3,8 +3,9 @@ import { chunkKey, columnIndex, columnKey, localIndex, worldToChunk, worldToLoca
 import { BlockId, blocksSky } from './blocks';
 import { Chunk } from './chunk';
 import { type PendingTick, type TickHandoff } from './tick';
-import { handleTick, handleRandomTick } from './ecology';
+import { catchUpChunk, handleTick, handleRandomTick } from './ecology';
 import { forEachRandomCell } from './randomTick';
+import { floorDiv } from '../core/math';
 
 /** Generates the blocks of a chunk synchronously (without player edits). */
 export type ChunkFallback = (cx: number, cy: number, cz: number) => Uint16Array;
@@ -50,6 +51,10 @@ export class World {
   readonly seed: number;
   /** Set by the game: the weather at a position in blocks. Without it, snow and ice never change. */
   surfaceWeather?: (x: number, y: number, z: number) => SurfaceWeather;
+  /** Set by the game: 0..1, how strongly leaves fall at a cell now (autumn × deciduous, T-G6). Without it, none do. */
+  leafFall?: (x: number, y: number, z: number) => number;
+  /** Set by the game: the plant the generator puts on grass at a column (air for none), for regrowth (T-G5). */
+  groundPlantAt?: (x: number, z: number) => number;
   /** Set by the game: the tree species that grows at a column, for the saplings leaves drop (T-G3). */
   treeSpeciesAt?: (x: number, z: number) => TreeSpecies | null;
   private readonly chunkMap = new Map<string, Chunk>();
@@ -72,6 +77,19 @@ export class World {
     return this.orderedTickChunks ??= this.chunks().sort((a, b) => a.cx - b.cx || a.cy - b.cy || a.cz - b.cz);
   }
   private readonly dormantTicks = new Map<string, Map<string, PendingTick>>();
+  /** chunkKey -> tick a surface or edited chunk unloaded at, so it catches up on the time it missed (T-G7). */
+  private readonly unloadedAt = new Map<string, number>();
+
+  /** Ticks since each unloaded chunk with edits left; saved so the catch-up survives a reload of the game. */
+  snapshotChunkAges(): [string, number][] {
+    return [...this.unloadedAt].filter(([key]) => this.editMap.has(key)).map(([key, tick]) => [key, this.tickCounter - tick]);
+  }
+
+  /** Call after loadTicks, which sets the tick the ages count back from. */
+  loadChunkAges(ages: readonly (readonly [string, number])[]): void {
+    this.unloadedAt.clear();
+    for (const [key, age] of ages) this.unloadedAt.set(key, this.tickCounter - age);
+  }
 
   /** Snapshot both active and unloaded work with relative delays, independent of wall-clock time. */
   snapshotTicks(): PendingTick[] {
@@ -167,14 +185,21 @@ export class World {
       chunk.ticks.schedule({ x: t.x, y: t.y, z: t.z, reason: t.reason, dueTick: this.tickCounter + t.delay }, chunk.cx, chunk.cy, chunk.cz);
     const col = columnKey(chunk.cx, chunk.cz);
     this.loadedPerColumn.set(col, (this.loadedPerColumn.get(col) ?? 0) + 1);
+    const since = this.unloadedAt.get(key);
+    this.unloadedAt.delete(key);
+    if (since !== undefined) catchUpChunk(this, chunk, this.tickCounter - since);
   }
 
   removeChunk(cx: number, cy: number, cz: number): void {
     const chunk = this.getChunk(cx, cy, cz);
     if (!chunk) return;
     for (const t of chunk.ticks.snapshot()) this.parkTick({ x: t.x, y: t.y, z: t.z, reason: t.reason, delay: Math.max(0, t.dueTick - this.tickCounter) });
-    this.chunkMap.delete(chunkKey(cx, cy, cz));
+    const key = chunkKey(cx, cy, cz);
+    this.chunkMap.delete(key);
     this.orderedTickChunks = null;
+    // Only a chunk that holds a column top or edits can change while away; deep chunks are not worth remembering.
+    const tops = this.tops.get(columnKey(cx, cz));
+    if (this.editMap.has(key) || tops?.some((top) => floorDiv(top, CHUNK_SIZE) === cy)) this.unloadedAt.set(key, this.tickCounter);
     const col = columnKey(cx, cz);
     const n = (this.loadedPerColumn.get(col) ?? 1) - 1;
     if (n > 0) this.loadedPerColumn.set(col, n);

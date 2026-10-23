@@ -21,6 +21,8 @@ export interface WorldMeta {
   /** Optional for compatibility with saves made before scheduled update persistence. */
   scheduledTicks?: PendingTick[];
   gameTick?: number;
+  /** [chunk key, ticks since it unloaded] for unloaded chunks with edits, so they catch up when loaded (T-G7). */
+  chunkAges?: [string, number][];
   player: SavedPlayer;
   selectedSlot: number;
   /** INVENTORY_SIZE slots: the hotbar first, then the grid. */
@@ -39,6 +41,8 @@ export interface WorldMeta {
   hunger: number;
   /** Seconds of air remaining, 0..AIR_MAX_S. */
   air: number;
+  /** The bed the player respawns on (T-I9), if any. */
+  bed?: { x: number; y: number; z: number };
 }
 
 /** A stack as stored: the block's name and the count. */
@@ -54,6 +58,7 @@ export interface MetaRecord {
   /** Optional for compatibility with saves made before scheduled update persistence. */
   scheduledTicks?: PendingTick[];
   gameTick?: number;
+  chunkAges?: [string, number][];
   player: SavedPlayer;
   selectedSlot: number;
   inventory: (StoredStack | null)[];
@@ -64,6 +69,7 @@ export interface MetaRecord {
   health: number;
   hunger: number;
   air: number;
+  bed?: { x: number; y: number; z: number };
 }
 
 /** One chunk's player edits: chunk key "cx,cy,cz" and [localIndex 0..4095, state name] pairs. */
@@ -86,6 +92,8 @@ export function metaRecord(meta: WorldMeta): MetaRecord {
     seed: meta.seed,
     scheduledTicks: meta.scheduledTicks?.map(t => ({ ...t })) ?? [],
     gameTick: meta.gameTick ?? 0,
+    // Only when there are some, so a save or backup written before T-G7 round-trips unchanged.
+    ...(meta.chunkAges?.length ? { chunkAges: meta.chunkAges.map(([key, age]) => [key, age] as [string, number]) } : {}),
     player: { ...meta.player },
     selectedSlot: meta.selectedSlot,
     inventory: meta.inventory.map((s) => (s ? { name: blockStateName(s.state), count: s.count } : null)),
@@ -96,6 +104,7 @@ export function metaRecord(meta: WorldMeta): MetaRecord {
     health: meta.health,
     hunger: meta.hunger,
     air: meta.air,
+    ...(meta.bed ? { bed: { ...meta.bed } } : {}), // only when set, so older saves and backups round-trip unchanged
   };
 }
 
@@ -104,6 +113,8 @@ export function chunkRecord(key: string, edits: ReadonlyMap<number, number>): Ch
 }
 
 const isNum = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v);
+const isCell = (v: unknown): v is { x: number; y: number; z: number } => typeof v === 'object' && v !== null &&
+  [(v as { x?: unknown }).x, (v as { y?: unknown }).y, (v as { z?: unknown }).z].every(Number.isSafeInteger);
 
 /** Wraps a time of day into [0, 1); anything that is not a finite number becomes START_TIME_OF_DAY. Never -0. */
 export function repairTimeOfDay(t: unknown): number {
@@ -173,6 +184,13 @@ export function repairTicks(raw: unknown): PendingTick[] {
   });
 }
 
+/** Keeps the [chunk key, age] pairs with a valid key and a non-negative integer age; drops the rest. */
+export function repairChunkAges(raw: unknown): [string, number][] {
+  if (!Array.isArray(raw)) return [];
+  return raw.filter((v): v is [string, number] => Array.isArray(v) && v.length === 2 && typeof v[0] === 'string' &&
+    CHUNK_KEY.test(v[0]) && Number.isSafeInteger(v[1]) && v[1] >= 0).map(([key, age]) => [key, age]);
+}
+
 /**
  * Parses a stored meta (an object, or its JSON text). Returns null when it is missing, corrupt or of another
  * version, or when the seed, player or selected slot is invalid. The inventory, items and time of day are repaired,
@@ -197,6 +215,7 @@ export function parseMeta(raw: unknown): WorldMeta | null {
     seed: d.seed,
     scheduledTicks: repairTicks(d.scheduledTicks),
     gameTick: Number.isSafeInteger(d.gameTick) && (d.gameTick as number) >= 0 ? d.gameTick as number : 0,
+    ...(d.chunkAges === undefined ? {} : { chunkAges: repairChunkAges(d.chunkAges) }),
     player: { x: p.x, y: p.y, z: p.z, yaw: p.yaw, pitch: p.pitch, flying: p.flying },
     selectedSlot: d.selectedSlot,
     inventory: repairInventory(d.inventory, d.hotbar),
@@ -209,6 +228,7 @@ export function parseMeta(raw: unknown): WorldMeta | null {
     health: isNum(d.health) ? Math.max(0, Math.min(HEALTH_MAX, d.health)) : HEALTH_MAX,
     hunger: isNum(d.hunger) ? Math.max(0, Math.min(HUNGER_MAX, d.hunger)) : HUNGER_MAX,
     air: isNum(d.air) ? Math.max(0, Math.min(AIR_MAX_S, d.air)) : AIR_MAX_S,
+    ...(isCell(d.bed) ? { bed: { x: d.bed.x, y: d.bed.y, z: d.bed.z } } : {}),
   };
 }
 

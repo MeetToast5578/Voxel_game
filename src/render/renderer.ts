@@ -149,6 +149,11 @@ export class Renderer {
     this.lightUniforms.uWetness.value = Math.max(0, Math.min(1, wetness));
   }
 
+  /** Renders at this share of the screen's pixel density (at most 2), for the resolution setting (T-J7). */
+  setResolution(scale: number): void {
+    this.webgl.setPixelRatio(Math.min(window.devicePixelRatio, 2) * scale);
+  }
+
   setFov(fov: number): void {
     this.camera.fov = fov;
     this.camera.updateProjectionMatrix();

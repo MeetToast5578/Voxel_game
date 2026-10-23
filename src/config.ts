@@ -169,6 +169,9 @@ export const WATER_DRAG_PER_M = 0.9; // quadratic drag in water: a = -k |v| v, i
 /** The same drag in blocks: a = -WATER_DRAG |v| v with v in blocks per second. */
 export const WATER_DRAG = WATER_DRAG_PER_M * BLOCK_SIZE_M;
 export const SWIM_THRUST = metersToBlocks(6); // swim stroke, m/s^2 in the wish direction
+// Currents (T-G12): flowing fluid pushes a fully submerged body this hard along its flow, so a swimmer can still beat
+// it upstream (the stroke is 6 m/s²); falling water pushes down.
+export const CURRENT_ACCEL = metersToBlocks(4);
 export const SWIM_UP_ACCEL = metersToBlocks(6); // extra upward push while holding jump in water, m/s^2
 export const WADE_SLOWDOWN = 0.5; // walking speed lost per unit of submerged fraction, while not swimming (spec 17)
 export const SPLASH_MIN_SPEED = metersToBlocks(4); // downward speed (m/s) that makes a splash on entering water
@@ -233,6 +236,11 @@ export const HOTBAR_SIZE = 9;
 // ---- Inventory, held block and dropped items (spec 24) ----
 export const INVENTORY_SIZE = 36; // 9 hotbar slots, then 27 in the grid
 export const MAX_STACK = 64;
+// Tools (T-I5): each tier mines this many times faster than a hand with the right kind of tool, and lasts this many uses.
+export const TOOL_TIERS = { wooden: { speed: 2, uses: 60 }, stone: { speed: 4, uses: 132 } } as const;
+export const TOOL_KINDS = ['pickaxe', 'axe', 'shovel'] as const;
+/** A block that needs a pickaxe takes this many times longer by hand, and drops nothing. */
+export const NO_PICKAXE_SLOWDOWN = 3;
 export const STARTING_STACK = 64; // each default hotbar block starts with this many
 export const ITEM_SIZE_M = 0.15; // edge of a dropped item (about half a block)
 export const ITEM_SIZE = metersToBlocks(ITEM_SIZE_M);
@@ -301,6 +309,15 @@ export const SNOW_MELT_CHANCE = 0.1; // above 0 °C: remove one layer
 export const ICE_FREEZE_CHANCE = 0.05; // below 0 °C: still water at the top freezes
 export const ICE_THAW_CHANCE = 0.1; // above 0 °C: ice turns back into water
 // Saplings (T-G3).
+// Leaf litter (T-G6). A random tick on a leaf block in autumn drops litter to the ground below with this chance, scaled
+// by how deciduous the place is; out of autumn a random tick on litter rots it away with the second chance.
+export const LEAF_LITTER_CHANCE = 0.01;
+export const LEAF_LITTER_ROT_CHANCE = 0.02;
+export const LEAF_LITTER_REACH = 32; // blocks a falling leaf may drop through air and leaves to reach the ground
+// Plant succession (T-G5): a random tick on bare open grass regrows its natural ground cover with the first chance; one
+// on tall grass or a fern where trees grow turns it into a sapling with the second.
+export const PLANT_SPROUT_CHANCE = 0.02;
+export const SAPLING_SUCCESSION_CHANCE = 0.002;
 export const SAPLING_DROP_CHANCE = 0.05; // a broken or decayed leaf block also drops a sapling
 export const SAPLING_GROW_CHANCE = 0.1; // a random tick on a sapling with open sky above grows it into its tree
 // Crops (T-G4). A random tick on a crop under open sky advances it one stage with this chance, scaled by temperature.
@@ -587,10 +604,26 @@ export const HUNGER_DRAIN_PER_S = HUNGER_MAX / (15 * 60); // a full bar lasts 15
 export const STARVE_DAMAGE_PER_S = 0.25; // at zero hunger: one point every 4 s, which can kill
 export const REGEN_MIN_HUNGER = 18; // health regenerates only while hunger is at least this (T-I3)
 export const REGEN_PER_S = 0.25; // one point every 4 s
+/** Hunger one eaten crop restores (T-I8). Raw grain fills least; a potato most. */
+export const FOOD_HUNGER = { wheat: 2, carrots: 3, potatoes: 4 } as const;
 export const FALL_DAMAGE_THRESHOLD_M_S = 6; // impact speed above this causes damage
 export const FALL_DAMAGE_MULTIPLIER = 2; // damage per m/s above threshold
 export const DROWN_DAMAGE_PER_S = 2; // damage per second when out of air
 export const AIR_MAX_S = 15; // seconds the player can hold their breath
+// Body temperature (T-I4). Felt temperature: wind chill per m/s outside, and fixed changes for wet, roofed and fire.
+export const FELT_WIND_C_PER_M_S = 0.5;
+export const FELT_WET_C = 6;
+export const FELT_SHELTER_C = 8;
+export const FELT_HEAT_SOURCE_C = 20;
+export const HEAT_SOURCE_RADIUS = 3; // blocks: lava or a light-giving block this close warms the player
+export const BODY_TEMP_NORMAL_C = 37;
+export const BODY_TEMP_COMFORT_C = [5, 30] as const; // felt °C where the body stays normal
+export const BODY_TEMP_SLOPE = 0.15; // body °C per felt degree outside the comfort band
+export const BODY_TEMP_RATE_PER_S = 1 / 90; // the body closes about 1/90 of the gap each second
+export const HYPOTHERMIA_BELOW_C = 35; // survival damage below this body temperature, and above the next
+export const HEATSTROKE_ABOVE_C = 39.5;
+export const BODY_TEMP_DAMAGE_PER_S = 0.25;
+export const NOTICE_S = 4; // seconds a short message (such as after using a bed) stays on screen
 
 // ---- Underground pools and fluid hazards (spec 47) ----
 export const LAVA_TICK_DELAY = 20;

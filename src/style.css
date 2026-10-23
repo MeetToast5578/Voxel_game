@@ -304,12 +304,25 @@ body {
   position: fixed;
   top: 8px;
   left: 8px;
-  margin: 0;
   padding: 6px 8px;
   background: rgba(0, 0, 0, 0.6);
   color: #fff;
   font: 12px/1.4 ui-monospace, monospace;
   pointer-events: none;
+}
+
+.debug-text {
+  margin: 0;
+  font: inherit;
+}
+
+/* Frame-time graph (T-J8): one pixel per frame, scaled up crisply. */
+.debug-graph {
+  display: block;
+  width: 240px;
+  height: 100px;
+  margin-top: 4px;
+  image-rendering: pixelated;
 }
 
 /* ---------- Menus ---------- */
@@ -629,3 +642,23 @@ body {
 .world-file-actions { flex-wrap: wrap; }
 .world-file-actions > .menu-button { flex: 1 1 160px; min-width: 0; }
 .world-file-actions input { display: block; width: 100%; max-width: 100%; box-sizing: border-box; }
+
+/* Crafting (T-I6): the grid, an arrow and the result, above the inventory grid. */
+.crafting {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-bottom: 12px;
+  flex-shrink: 0;
+}
+
+.crafting-grid {
+  display: grid;
+  gap: 4px;
+}
+
+.crafting-arrow {
+  font-size: 22px;
+  color: var(--muted);
+}

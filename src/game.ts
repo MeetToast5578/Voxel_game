@@ -1,7 +1,7 @@
 import { exportWorldArchive, parseWorldArchive, type WorldArchive } from './storage/worldArchive';
 import { BuildClipboard } from './player/clipboard';
 import { resolvePlacement } from './player/placementTarget';
-import { blockCollision, blockDrop, slabBounds, slabItemState } from './world/blocks';
+import { blockCollision, blockDrop, foodValue, slabBounds, slabItemState } from './world/blocks';
 import { atmosphericFogStrength } from './world/atmosphere';
 import {
   WORLD_FILE_MAX_BYTES, FOG_SAMPLE_INTERVAL_S, FOG_VALLEY_SAMPLE_M, FOG_GROUND_LAYER_M, metersToBlocks,
@@ -10,7 +10,8 @@ import {
   SETTINGS_KEY, SPAWN_READY_RADIUS, START_TIME_OF_DAY, WORLD_LATITUDE_DEG, ITEM_SIZE, PLAYER_HEIGHT, WALK_SPEED, WHEAT_SEED_DROP_CHANCE,
   GAME_MODE_CREATIVE, GAME_MODE_SURVIVAL, HEALTH_MAX, HUNGER_MAX,
   DROWN_DAMAGE_PER_S, AIR_MAX_S, GAME_TICKS_PER_SECOND, LIGHTNING_SKY_BRIGHTEN, THUNDER_DELAY_MIN_S, THUNDER_DELAY_MAX_S,
-  HUNGER_DRAIN_PER_S, STARVE_DAMAGE_PER_S, REGEN_MIN_HUNGER, REGEN_PER_S,
+  HUNGER_DRAIN_PER_S, STARVE_DAMAGE_PER_S, REGEN_MIN_HUNGER, REGEN_PER_S, NOTICE_S, SLAB_HEIGHT,
+  BODY_TEMP_DAMAGE_PER_S, BODY_TEMP_NORMAL_C, HEAT_SOURCE_RADIUS, HEATSTROKE_ABOVE_C, HYPOTHERMIA_BELOW_C,
 } from './config';
 import { Sounds } from './audio/sounds';
 import { FixedStepLoop } from './core/loop';
@@ -22,6 +23,8 @@ import { BlockBreaking } from './player/breaking';
 import { BuildTool, cornerFor, frameFor } from './player/buildTool';
 import { Inventory, type ItemStack, startingSlots } from './player/inventory';
 import { blockIntersectsBody, canBreak } from './player/interaction';
+import { afterUse, breakSeconds, dropsWhenMined } from './player/tools';
+import { feltTemperature, stepBodyTemperature, type Exposure } from './player/bodyTemperature';
 import type { Vec3 } from './player/physics';
 import { FireExposure, fluidContact, landingDamage, landingWaterDepth } from './player/fluidHazards';
 import { NO_CONTROLS, PLAYER_SHAPE, Player, type PlayerControls } from './player/player';
@@ -51,7 +54,7 @@ import { Menu, type MenuMode } from './ui/menu';
 import { BlockId, getBlockDef, isWaterState, isLavaState, isFluidState } from './world/blocks';
 import { leafSapling, scheduleLeafDecay } from './world/ecology';
 import { scheduleFallChecks } from './world/falling';
-import { scheduleFlowChecks } from './world/flow';
+import { flowVector, scheduleFlowChecks, type Flow } from './world/flow';
 import type { LooseBody } from './items/looseBodies';
 import { collapsible, scheduleSupportChecks } from './world/collapse';
 import { Chunk } from './world/chunk';
@@ -62,7 +65,9 @@ import { findSpawnColumn, surfaceY } from './world/spawn';
 import { daylightAt, lerpColor, skyColorAt } from './world/time';
 import { WorkerPool } from './workers/workerPool';
 import { World } from './world/world';
-import { Calendar } from './world/calendar';
+import { Calendar, foliageSeason } from './world/calendar';
+import { groundCoverAt } from './world/groundCover';
+import { deciduousAt } from './world/climateTint';
 
 /** The world save the game starts with (opened and read by main.ts before the game is created). */
 export interface GameSave {
@@ -121,6 +126,13 @@ export class Game {
   health = HEALTH_MAX;
   /** Player hunger, 0..HUNGER_MAX. */
   hunger = HUNGER_MAX;
+  /**
+   * Core body temperature in °C (T-I4), following the felt temperature, which is sampled once a second.
+   * shortcut: not saved, so a reload starts at normal; save it if players exploit that to warm up.
+   */
+  bodyTempC = BODY_TEMP_NORMAL_C;
+  private feltC = BODY_TEMP_NORMAL_C;
+  private exposureTimer = 0;
 
   /**
    * True when a crack stage has been shown for the current mining attempt. The render loop sets it, so the smoke test
@@ -169,7 +181,13 @@ export class Game {
   private importing = false;
   private saveTimer = 0;
   /** Where the player was when the game was saved; used instead of the spawn search. */
-  private readonly savedPlayer: SavedPlayer | null;
+  /** Where the player stands until placed: the saved position, or a bed to respawn at. */
+  private savedPlayer: SavedPlayer | null;
+  /** The bed the player last used (T-I9): they respawn on it while it stands. */
+  bed: Cell | null = null;
+  /** A short message shown in the hazard line for NOTICE_S seconds (e.g. after using a bed). */
+  private notice = '';
+  private noticeS = 0;
   private readonly clouds: Clouds;
   /** The sky: dome, sun, moon, stars. */
   readonly sky: Sky;
@@ -209,6 +227,7 @@ export class Game {
     if (save.loaded && loaded) {
       this.world.loadEdits(save.loaded.edits);
       this.world.loadTicks(loaded.scheduledTicks ?? [], loaded.gameTick ?? 0);
+      this.world.loadChunkAges(loaded.chunkAges ?? []);
       this.inventory = new Inventory(loaded.inventory);
       this.inventory.select(loaded.selectedSlot);
       this.items.restore(loaded.items);
@@ -218,6 +237,7 @@ export class Game {
       this.health = loaded.health ?? HEALTH_MAX;
       this.hunger = loaded.hunger ?? HUNGER_MAX;
       this.air = loaded.air ?? AIR_MAX_S;
+      this.bed = loaded.bed ?? null;
     }
     this.savedPlayer = loaded?.player ?? null;
     this.saver = new WorldSaver(this.worldStore, this.world, () => this.worldMeta());
@@ -241,6 +261,11 @@ export class Game {
     this.sky = new Sky(this.renderer.scene);
     this.weather = new WeatherModel(seed);
     this.world.treeSpeciesAt = (x, z) => this.generator.treeSpeciesAt(x, z);
+    this.world.groundPlantAt = (x, z) => groundCoverAt(seed, x, z, this.generator.biomeKeyAt(x, z));
+    this.world.leafFall = (x, y, z) => {
+      const autumn = foliageSeason(this.calendar.timeOfYear).autumn;
+      return autumn > 0 ? autumn * deciduousAt(seed, x, y, z) : 0;
+    };
     this.world.surfaceWeather = (x, y, z) => {
       const w = this.weather.sample(x * BLOCK_SIZE_M, z * BLOCK_SIZE_M, this.timeOfDay, this.calendar.timeOfYear, y * BLOCK_SIZE_M);
       return { temperatureC: w.temperatureC, snowing: w.precipitation === 'snow' };
@@ -328,12 +353,13 @@ export class Game {
   readonly isWaterAt = (x: number, y: number, z: number): boolean => isWaterState(this.world.getBlock(x, y, z));
 
   readonly isLavaAt = (x: number, y: number, z: number): boolean => isLavaState(this.world.getBlock(x, y, z));
+  readonly flowAt = (x: number, y: number, z: number): Flow => flowVector((bx, by, bz) => this.world.getBlock(bx, by, bz), x, y, z);
 
   private fixedUpdate(dt: number): void {
     if (!this.ready || this.idle) return;
     this.timeOfDay = (this.timeOfDay + dt / DAY_LENGTH_S) % 1;
     this.calendar.advance(dt); // Both clocks follow simulation time, including the existing menu-time behaviour.
-    this.player.update(dt, this.playing ? this.readControls() : NO_CONTROLS, this.isSolidAt, this.isWaterAt, this.isLavaAt);
+    this.player.update(dt, this.playing ? this.readControls() : NO_CONTROLS, this.isSolidAt, this.isWaterAt, this.isLavaAt, this.flowAt);
     this.items.step(dt, this.isSolidAt);
     // Block updates run at a fixed rate of game ticks, so a flow or a fall takes several ticks, as in Minecraft.
     this.tickTimer += dt;
@@ -341,7 +367,7 @@ export class Game {
       this.tickTimer -= 1 / GAME_TICKS_PER_SECOND;
       this.chunks.tick();
     }
-    for (const body of this.bodies.step(dt, this.isSolidAt, this.isWaterAt, (state) => getBlockDef(state).density, this.isLavaAt)) {
+    for (const body of this.bodies.step(dt, this.isSolidAt, this.isWaterAt, (state) => getBlockDef(state).density, this.isLavaAt, this.flowAt)) {
       this.settleBody(body);
     }
     this.edits.step();
@@ -385,10 +411,33 @@ export class Game {
     if (this.hunger <= 0) this.damage(STARVE_DAMAGE_PER_S * dt);
     else if (this.hunger >= REGEN_MIN_HUNGER) this.heal(REGEN_PER_S * dt);
 
+    // Body temperature (T-I4): too cold or too hot hurts.
+    this.exposureTimer -= dt;
+    if (this.exposureTimer <= 0) {
+      this.exposureTimer = 1;
+      this.feltC = feltTemperature(this.exposure());
+    }
+    this.bodyTempC = stepBodyTemperature(this.bodyTempC, this.feltC, dt);
+    if (this.bodyTempC < HYPOTHERMIA_BELOW_C || this.bodyTempC > HEATSTROKE_ABOVE_C) this.damage(BODY_TEMP_DAMAGE_PER_S * dt);
+
     // Death: respawn at spawn point, drop inventory.
     if (this.health <= 0) {
       this.die();
     }
+  }
+
+  /** The player's surroundings for body temperature: weather at the player, a roof, wetness and a fire nearby. */
+  private exposure(): Exposure {
+    const p = this.player.position;
+    const w = this.weather.sample(p.x * BLOCK_SIZE_M, p.z * BLOCK_SIZE_M, this.timeOfDay, this.calendar.timeOfYear, p.y * BLOCK_SIZE_M);
+    const x = Math.floor(p.x), y = Math.floor(p.y), z = Math.floor(p.z);
+    const sheltered = (this.world.topAt(x, z) ?? -Infinity) >= Math.floor(p.y + PLAYER_HEIGHT);
+    let nearHeat = false;
+    const r = HEAT_SOURCE_RADIUS;
+    for (let dx = -r; dx <= r && !nearHeat; dx++) for (let dy = -r; dy <= r && !nearHeat; dy++) for (let dz = -r; dz <= r; dz++) {
+      if (getBlockDef(this.world.getBlock(x + dx, y + dy, z + dz)).lightEmission > 0) { nearHeat = true; break; }
+    }
+    return { airC: w.temperatureC, windSpeed: w.windSpeed, wet: this.player.inWater || (w.precipitation === 'rain' && !sheltered), sheltered, nearHeat };
   }
 
   /**
@@ -403,6 +452,7 @@ export class Game {
     if (mode === GAME_MODE_SURVIVAL) {
       this.health = HEALTH_MAX;
       this.hunger = HUNGER_MAX;
+      this.bodyTempC = this.feltC = BODY_TEMP_NORMAL_C;
       // A world that has not been played yet starts survival empty; later switches never touch the inventory (T-I11).
       if (!this.startedFromSave && JSON.stringify(this.inventory.slots) === JSON.stringify(startingSlots())) {
         this.inventory.slots.fill(null);
@@ -423,7 +473,7 @@ export class Game {
     this.health = Math.min(HEALTH_MAX, this.health + amount);
   }
 
-  /** Die: drop inventory, reset health, respawn at spawn. */
+  /** Die: drop inventory, reset health, respawn empty-handed at spawn. */
   private die(): void {
     // Drop all inventory on the ground.
     const p = this.player.position;
@@ -433,7 +483,8 @@ export class Game {
         this.items.spawn(stack.state, stack.count, p.x, p.y + 1, p.z, Math.random);
       }
     }
-    this.inventory = new Inventory();
+    // Respawn with nothing: the dropped items wait where the player died.
+    this.inventory.slots.fill(null);
     this.inventory.select(0);
 
     // Reset health, hunger, air and transient fire.
@@ -441,7 +492,20 @@ export class Game {
     this.health = HEALTH_MAX;
     this.hunger = HUNGER_MAX;
     this.air = AIR_MAX_S;
+    this.bodyTempC = this.feltC = BODY_TEMP_NORMAL_C;
 
+    // Respawn on the bed while it stands (an unloaded one is trusted); trySpawn places the player once it is meshed.
+    const bed = this.bed;
+    if (bed && this.world.isLoadedAt(bed.x, bed.y, bed.z) && this.world.getBlock(bed.x, bed.y, bed.z) !== BlockId.BED) {
+      this.bed = null;
+      this.showNotice('Your bed is missing');
+    }
+    if (this.bed) {
+      const { yaw, pitch } = this.player;
+      this.savedPlayer = { x: this.bed.x + 0.5, y: this.bed.y + SLAB_HEIGHT, z: this.bed.z + 0.5, yaw, pitch, flying: false };
+      this.ready = false;
+      return;
+    }
     // Respawn at spawn point.
     const spawnY = this.spawnFeetY ?? this.world.topAt(Math.floor(this.spawn.x), Math.floor(this.spawn.z)) ?? SEA_LEVEL;
     this.player.setPosition(this.spawn.x, spawnY, this.spawn.z);
@@ -506,6 +570,7 @@ export class Game {
       seed: this.world.seed,
       scheduledTicks: this.world.snapshotTicks(),
       gameTick: this.world.currentTick,
+      chunkAges: this.world.snapshotChunkAges(),
       player: { x: p.position.x, y: p.position.y, z: p.position.z, yaw: p.yaw, pitch: p.pitch, flying: p.flying },
       selectedSlot: this.inventory.selected,
       inventory: this.inventory.slots.map((s) => (s ? { ...s } : null)),
@@ -520,6 +585,7 @@ export class Game {
       health: this.health,
       hunger: this.hunger,
       air: this.air,
+      ...(this.bed ? { bed: { ...this.bed } } : {}),
     };
   }
 
@@ -569,10 +635,15 @@ export class Game {
     if (frameDt > 0) this.fps += (1 / frameDt - this.fps) * 0.05;
     this.renderer.render();
     this.hud.update(this.inventory.slots, this.inventory.selected, frameDt, this.playing, this.ready && !this.inventoryScreen.isOpen);
-    this.hud.setHazard(this.gameMode === GAME_MODE_SURVIVAL && this.fire.remaining > 0 ? 'On fire · Enter water to extinguish' : '');
+    this.noticeS = Math.max(0, this.noticeS - frameDt);
+    const survival = this.gameMode === GAME_MODE_SURVIVAL;
+    this.hud.setHazard(survival && this.fire.remaining > 0 ? 'On fire · Enter water to extinguish'
+      : survival && this.bodyTempC < HYPOTHERMIA_BELOW_C + 0.5 ? 'Freezing · Find shelter or a fire'
+      : survival && this.bodyTempC > HEATSTROKE_ABOVE_C - 0.5 ? 'Overheating · Find shade or water'
+      : this.noticeS > 0 ? this.notice : '');
     // Round up so a sliver of health reads 1, not 0. Shortcut: plain text until the Pixel Aero HUD (T-K8) adds bars.
     this.hud.setVitals(this.gameMode === GAME_MODE_SURVIVAL
-      ? `Health ${Math.ceil(this.health)}/${HEALTH_MAX} · Hunger ${Math.ceil(this.hunger)}/${HUNGER_MAX}` : '');
+      ? `Health ${Math.ceil(this.health)}/${HEALTH_MAX} · Hunger ${Math.ceil(this.hunger)}/${HUNGER_MAX} · Body ${this.bodyTempC.toFixed(1)} °C` : '');
     this.debugOverlay.update(frameDt, () => formatDebugLines(this.debugState()));
   }
 
@@ -679,6 +750,7 @@ export class Game {
     this.chunks.renderDistance = s.renderDistance;
     this.renderer.setViewDistance(s.renderDistance);
     this.renderer.setFov(s.fov);
+    this.renderer.setResolution(s.resolution);
     this.mouseSensitivity = DEFAULT_MOUSE_SENSITIVITY * s.mouseSensitivity;
   }
 
@@ -729,8 +801,12 @@ export class Game {
     if (!canBreak(id)) return false;
     const ok = this.setBlock(x, y, z, BlockId.AIR);
     if (ok) {
+      const held = this.inventory.selectedBlock;
+      const survival = this.gameMode === GAME_MODE_SURVIVAL;
+      if (survival) this.wearSelectedTool();
       const drop = blockDrop(id);
-      this.items.spawn(drop.state, drop.count, x + 0.5, y + (1 - ITEM_SIZE) / 2, z + 0.5, Math.random);
+      // Survival (T-I5): stone-like blocks broken without a pickaxe give nothing.
+      if (!survival || dropsWhenMined(id, held)) this.items.spawn(drop.state, drop.count, x + 0.5, y + (1 - ITEM_SIZE) / 2, z + 0.5, Math.random);
       const sapling = id === BlockId.LEAVES ? leafSapling(this.world, x, z, Math.random) : null;
       if (sapling !== null) this.items.spawn(sapling, 1, x + 0.5, y + (1 - ITEM_SIZE) / 2, z + 0.5, Math.random);
       // Tall grass also gives wheat to plant (T-G4); carrots and potatoes come from the creative Blocks tab for now.
@@ -738,6 +814,17 @@ export class Game {
       this.sounds.play('break');
     }
     return ok;
+  }
+
+  /** One use of the tool in hand (T-I5): it moves to its next wear state, and the last use breaks it. */
+  private wearSelectedTool(): void {
+    const stack = this.inventory.selectedStack;
+    if (!stack) return;
+    const next = afterUse(stack.state);
+    if (next === null) {
+      this.inventory.slots[this.inventory.selected] = null;
+      this.sounds.play('break');
+    } else stack.state = next;
   }
 
   /**
@@ -777,11 +864,17 @@ export class Game {
     return true;
   }
 
+  /** The block that placing and the volume tools build with: the selected one, or air for an item such as a tool. */
+  private get buildBlock(): number {
+    const state = this.inventory.selectedBlock;
+    return getBlockDef(state).item ? BlockId.AIR : state;
+  }
+
   /** Places the selected block against the targeted face, using one from its stack. Returns true if it was placed. */
   placeTarget(): boolean {
     const t = this.target;
-    if (!t || this.inventory.selectedBlock === BlockId.AIR) return false;
-    const block = this.inventory.selectedBlock;
+    if (!t || this.buildBlock === BlockId.AIR) return false;
+    const block = this.buildBlock;
     const eye = this.player.eyePosition(1), look = this.player.lookDirection();
     const p = resolvePlacement(t, (x, y, z) => this.world.getBlock(x, y, z), block, this.player.position, PLAYER_SHAPE, eye.y + look.y * t.distance);
     const ok = p !== null && this.setBlock(p.x, p.y, p.z, p.state);
@@ -790,6 +883,51 @@ export class Game {
       this.sounds.play('place');
     }
     return ok;
+  }
+
+  /**
+   * Right click on a bed (T-I9): it becomes the respawn point, and while the sun is down the player sleeps through to
+   * sunrise; the calendar moves on by the time skipped. Returns true if a bed was aimed at.
+   */
+  useBed(): boolean {
+    const t = this.target;
+    if (!t || this.world.getBlock(t.x, t.y, t.z) !== BlockId.BED) return false;
+    this.bed = { x: t.x, y: t.y, z: t.z };
+    if (Math.sin(2 * Math.PI * this.timeOfDay) < 0) {
+      this.calendar.advance((1 - this.timeOfDay) * DAY_LENGTH_S);
+      this.timeOfDay = 0;
+      this.showNotice('Slept through the night · Respawn point set');
+    } else this.showNotice('Respawn point set · You can only sleep at night');
+    return true;
+  }
+
+  /** Right click on a crafting table (T-I6) opens the inventory with the 3×3 grid. Returns true if one was aimed at. */
+  useCraftingTable(): boolean {
+    const t = this.target;
+    if (!t || this.world.getBlock(t.x, t.y, t.z) !== BlockId.CRAFTING_TABLE) return false;
+    this.openInventory(3);
+    return true;
+  }
+
+  private showNotice(text: string): void {
+    this.notice = text;
+    this.noticeS = NOTICE_S;
+  }
+
+  /**
+   * Survival right click with food in hand (T-I8): eats one unless hunger is full or the aim is on grass or dirt, where
+   * the crop is planted instead. Returns true if it was eaten.
+   */
+  eatSelected(): boolean {
+    const value = foodValue(this.inventory.selectedBlock);
+    if (this.gameMode !== GAME_MODE_SURVIVAL || value === 0 || this.hunger >= HUNGER_MAX) return false;
+    const t = this.target;
+    const aimed = t ? this.world.getBlock(t.x, t.y, t.z) : BlockId.AIR;
+    if (aimed === BlockId.GRASS || aimed === BlockId.DIRT) return false;
+    this.hunger = Math.min(HUNGER_MAX, this.hunger + value);
+    this.inventory.consumeSelected();
+    this.sounds.play('eat');
+    return true;
   }
 
   /** A footstep sound every FOOTSTEP_DISTANCE walked on the ground. */
@@ -853,7 +991,7 @@ export class Game {
     if (breakClicked || broken) this.held.swing();
     const placeClicked = this.input.consumeClick(2);
     if (placeClicked || (this.input.isMouseDown(2) && this.actionCooldown === 0)) {
-      this.placeTarget();
+      if (!this.useBed() && !this.useCraftingTable() && !this.eatSelected()) this.placeTarget();
       this.actionCooldown = BREAK_REPEAT_S;
       this.held.swing();
     }
@@ -864,7 +1002,7 @@ export class Game {
     const t = this.target;
     if (!t) return null;
     const id = this.world.getBlock(t.x, t.y, t.z);
-    return canBreak(id) ? getBlockDef(id).hardness : null;
+    return canBreak(id) ? breakSeconds(id, this.inventory.selectedBlock, this.gameMode === GAME_MODE_SURVIVAL) : null;
   }
 
   /** Tool keys: R mode, Q shape, [ ] size, , . thickness, G solid or shell, C square or disc, X cancels a wall or floor. */
@@ -920,7 +1058,7 @@ export class Game {
    */
   private volumeClick(add: boolean, eye: Vec3, look: Vec3): void {
     const tool = this.tool;
-    if (add && this.inventory.selectedBlock === BlockId.AIR) return;
+    if (add && this.buildBlock === BlockId.AIR) return;
     if (tool.twoClick) {
       if (!tool.frame) {
         if (this.target) tool.frame = frameFor(tool.kind, this.target, look, add);
@@ -937,12 +1075,12 @@ export class Game {
   private flattenAt(): void {
     const t = this.target;
     if (!t) return;
-    this.startEdit(this.tool.cellsFlatten(t, (x, z) => this.world.topAt(x, z), this.inventory.selectedBlock));
+    this.startEdit(this.tool.cellsFlatten(t, (x, z) => this.world.topAt(x, z), this.buildBlock));
   }
 
   /** Cells for an add (filled with the selected block) or a remove (cleared). */
   private editCells(cells: Cell[], add: boolean): EditCell[] {
-    const id = add ? this.inventory.selectedBlock : BlockId.AIR;
+    const id = add ? this.buildBlock : BlockId.AIR;
     return cells.map((c) => ({ x: c.x, y: c.y, z: c.z, id, clear: !add }));
   }
 
@@ -993,7 +1131,7 @@ export class Game {
       this.previewKey = key;
       if (tool.kind === 'flatten') {
         this.previewBox = boundsOf(tool.footprint(t));
-        this.previewCount = tool.cellsFlatten(t, (x, z) => this.world.topAt(x, z), this.inventory.selectedBlock).length;
+        this.previewCount = tool.cellsFlatten(t, (x, z) => this.world.topAt(x, z), this.buildBlock).length;
       } else {
         const cells = tool.cellsAt(t, tool.mode === 'add');
         this.previewBox = boundsOf(cells);
@@ -1025,17 +1163,16 @@ export class Game {
   }
 
   /** Frees the pointer and shows the inventory, remembering the originating menu when not playing. */
-  private openInventory(): void {
+  private openInventory(craftSize: 2 | 3 = 2): void {
     this.inventoryReturnMenu = this.playing ? null : this.menu.currentMode;
     this.menu.hide();
-    this.inventoryScreen.show();
+    this.inventoryScreen.show(craftSize);
     this.input.releasePointerLock();
   }
 
   /** Closes the inventory. Restore its originating menu, or request pointer capture to return to play. */
   private closeInventory(): void {
-    const leftover = this.inventoryScreen.hide();
-    if (leftover) this.dropStack(leftover);
+    for (const stack of this.inventoryScreen.hide()) this.dropStack(stack);
     if (this.inventoryReturnMenu !== null) {
       const mode = this.inventoryReturnMenu;
       this.inventoryReturnMenu = null;
@@ -1116,6 +1253,7 @@ export class Game {
       burning: this.fire.remaining > 0,
       inLava: this.player.inLava,
       hunger: this.hunger,
+      bodyTempC: Math.round(this.bodyTempC * 10) / 10,
       air: Math.round(this.air * 100) / 100,
       target: this.target ? [this.target.x, this.target.y, this.target.z] : null,
       targetName: this.target ? getBlockDef(this.world.getBlock(this.target.x, this.target.y, this.target.z)).name : null,

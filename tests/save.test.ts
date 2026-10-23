@@ -139,3 +139,11 @@ describe('chunk records', () => {
     expect(readSave(null, [])).toBeNull();
   });
 });
+
+describe('bed respawn point (T-I9)', () => {
+  it('round-trips a bed, leaves it out when unset, and drops a malformed one', () => {
+    expect(parseMeta(metaRecord({ ...sample, bed: { x: 4, y: -7, z: 2 } }))?.bed).toEqual({ x: 4, y: -7, z: 2 });
+    expect('bed' in metaRecord(sample)).toBe(false);
+    expect(parseMeta({ ...metaRecord(sample), bed: { x: 1.5, y: 0, z: 0 } })?.bed).toBeUndefined();
+  });
+});

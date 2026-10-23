@@ -1,4 +1,4 @@
-import { CROP_HARVEST_YIELD, LAVA_DENSITY, SURFACE_LAYER_HEIGHT, SLAB_HEIGHT, type TreeSpecies } from '../config';
+import { CROP_HARVEST_YIELD, FOOD_HUNGER, TOOL_KINDS, TOOL_TIERS, LAVA_DENSITY, SURFACE_LAYER_HEIGHT, SLAB_HEIGHT, type TreeSpecies } from '../config';
 export const BlockId = {
   AIR: 0,
   STONE: 1,
@@ -55,6 +55,10 @@ export const BlockId = {
   WHEAT: 166,
   CARROTS: 170,
   POTATOES: 174,
+  LEAF_LITTER: 178,
+  BED: 179,
+  CRAFTING_TABLE: 180,
+  STICK: 181,
 } as const;
 
 export const Tile = {
@@ -120,6 +124,14 @@ export const Tile = {
   WHEAT: 58,
   CARROTS: 62,
   POTATOES: 66,
+  LEAF_LITTER: 70,
+  BED_TOP: 71,
+  BED_SIDE: 72,
+  CRAFTING_TOP: 73,
+  CRAFTING_SIDE: 74,
+  STICK: 75,
+  // One tile per tool: TOOL_KINDS within TOOL_TIERS order (pickaxe, axe, shovel; wooden then stone).
+  TOOLS: 76,
 } as const;
 
 export type RenderLayer = 'none' | 'opaque' | 'cutout' | 'translucent';
@@ -165,6 +177,10 @@ export interface BlockDef {
   supports: boolean;
   /** Mass per cubic metre, in kg, for a loose body of this block (spec 25, slice 6). */
   density: number;
+  /** An item, not a block: it is never placed in the world (sticks and tools, T-I5). */
+  item?: boolean;
+  /** Most of one state in a slot; MAX_STACK when unset. Tools stack to 1. */
+  maxStack?: number;
 }
 
 /** What a registry is built from: a type without its assigned first state or derived flags. */
@@ -319,6 +335,8 @@ function def(
 }
 
 const all = (t: number) => ({ top: t, side: t, bottom: t });
+/** Items are drawn flat like plants, and can be neither placed nor hit in the world. */
+const ITEM = { item: true, solid: false, opaque: false, layer: 'cutout', shape: 'cross', hardness: 0, density: 600 } as const;
 
 /**
  * The species a sapling can be, by variant. Every tree species with leaves; cacti and dead snags have none to drop one.
@@ -421,6 +439,19 @@ export const BLOCK_REGISTRY = buildBlockRegistry([
   ...(['wheat', 'carrots', 'potatoes'] as const).map((key) => def(key, key[0]!.toUpperCase() + key.slice(1),
     all(key === 'wheat' ? Tile.WHEAT : key === 'carrots' ? Tile.CARROTS : Tile.POTATOES),
     { variants: CROP_STAGES, solid: false, opaque: false, layer: 'cutout', shape: 'cross', hardness: 0, density: 300 })),
+  // Fallen autumn leaves (T-G6): a thin layer like moss, which rots away once autumn is over.
+  def('leaf_litter', 'Leaf litter', all(Tile.LEAF_LITTER), { solid: false, opaque: false, layer: 'cutout', shape: 'layer', hardness: 0 }),
+  // A bed (T-I9): half a block high, like a bottom slab of its own. Right click sets the respawn point and sleeps at night.
+  def('bed', 'Bed', { top: Tile.BED_TOP, side: Tile.BED_SIDE, bottom: Tile.PLANKS },
+    { shape: 'slab', opaque: false, cullSame: false, hardness: 0.2, density: 600 }),
+  // Crafting (T-I6): right click opens the 3×3 grid.
+  def('crafting_table', 'Crafting table', { top: Tile.CRAFTING_TOP, side: Tile.CRAFTING_SIDE, bottom: Tile.PLANKS },
+    { hardness: 1.5, density: 600 }),
+  def('stick', 'Stick', all(Tile.STICK), ITEM),
+  // Tools (T-I5): the variant counts uses, so a worn tool needs no extra save data; the last use breaks it.
+  ...Object.entries(TOOL_TIERS).flatMap(([tier, { uses }], t) => TOOL_KINDS.map((kind, k) =>
+    def(`${tier}_${kind}`, `${tier[0]!.toUpperCase()}${tier.slice(1)} ${kind}`, all(Tile.TOOLS + t * TOOL_KINDS.length + k),
+      { ...ITEM, variants: uses, maxStack: 1 }))),
 ]);
 
 // BlockId.X is variant 0 of the type whose key is x; keep the two lists in step.
@@ -474,7 +505,7 @@ export function isFallingWater(state: number): boolean {
 /** Top face height: fluid level, thin plant layer, or a full cube. */
 export function blockTopHeight(state: number): number {
   if (getBlockDef(state).shape === 'slab') return blockVariant(state) === 0 ? SLAB_HEIGHT : 1;
-  if (state === BlockId.LILY_PAD || state === BlockId.MOSS) return SURFACE_LAYER_HEIGHT;
+  if (state === BlockId.LILY_PAD || state === BlockId.MOSS || state === BlockId.LEAF_LITTER) return SURFACE_LAYER_HEIGHT;
   if (isSnowState(state)) return snowLayers(state) / SNOW_LAYERS;
   return isFlowingWaterState(state) ? waterLevel(state) / WATER_LEVELS : isFlowingLavaState(state) ? lavaLevel(state) / WATER_LEVELS : 1;
 }
@@ -525,6 +556,11 @@ export function blockCollision(state: number): boolean | readonly [number, numbe
 /** True for every stage of every crop. */
 export function isCropState(state: number): boolean {
   return state >= BlockId.WHEAT && state < BlockId.POTATOES + CROP_STAGES;
+}
+
+/** Hunger a block state restores when eaten (T-I8): the planted stage of a crop is food; anything else is 0. */
+export function foodValue(state: number): number {
+  return isCropState(state) && blockVariant(state) === 0 ? FOOD_HUNGER[getBlockDef(state).key as keyof typeof FOOD_HUNGER] : 0;
 }
 
 export function isSnowState(state: number): boolean {

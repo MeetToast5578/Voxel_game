@@ -1,9 +1,10 @@
 import { describe, expect, it, vi } from 'vitest';
-import { DAY_LENGTH_S, DAYS_PER_SEASON, FIXED_DT, GAME_MODE_CREATIVE, GAME_MODE_SURVIVAL, THUNDER_DELAY_MIN_S, WORLD_LATITUDE_DEG } from '../src/config';
+import { DAY_LENGTH_S, DAYS_PER_SEASON, FIXED_DT, FOOD_HUNGER, GAME_MODE_CREATIVE, GAME_MODE_SURVIVAL, THUNDER_DELAY_MIN_S, WORLD_LATITUDE_DEG } from '../src/config';
 import { Game } from '../src/game';
 import { BlockBreaking } from '../src/player/breaking';
 import { Inventory, startingSlots } from '../src/player/inventory';
 import { Calendar } from '../src/world/calendar';
+import { BlockId } from '../src/world/blocks';
 
 /** Exercise the real game methods without constructing WebGL, workers or browser UI in Node. */
 function call(game: Game, method: string, ...args: unknown[]) {
@@ -67,7 +68,7 @@ function inventoryGame(playing: boolean, mode: 'start' | 'paused') {
   const screen = {
     isOpen: false,
     show: vi.fn(() => { screen.isOpen = true; }),
-    hide: vi.fn(() => { screen.isOpen = false; return null as { state: number; count: number } | null; }),
+    hide: vi.fn(() => { screen.isOpen = false; return [] as { state: number; count: number }[]; }),
   };
   const menu = { currentMode: mode, hide: vi.fn(), show: vi.fn() };
   const input = {
@@ -119,7 +120,7 @@ describe('inventory open/close lifecycle (T-K3)', () => {
   it('drops only the cursor remainder that did not fit when the screen closes', () => {
     const { game, screen, dropStack } = inventoryGame(false, 'paused');
     call(game, 'toggleInventory');
-    screen.hide.mockImplementationOnce(() => { screen.isOpen = false; return { state: 1, count: 3 }; });
+    screen.hide.mockImplementationOnce(() => { screen.isOpen = false; return [{ state: 1, count: 3 }]; });
     call(game, 'toggleInventory');
     expect(dropStack).toHaveBeenCalledExactlyOnceWith({ state: 1, count: 3 });
   });
@@ -141,6 +142,9 @@ describe('smoke-test debug hooks', () => {
       breakHardness: () => 0.5, // grass: 10 crack stages over half a second
       breakCell: vi.fn(),
       placeTarget: vi.fn(),
+      eatSelected: () => false,
+      useBed: () => false,
+      useCraftingTable: () => false,
       placeTargetCheck: vi.fn(),
       setBlock: vi.fn(),
     });
@@ -231,5 +235,84 @@ describe('survival acquisition rules (T-I11)', () => {
     const before = JSON.stringify(changed.inventory.slots);
     changed.game.setGameMode(GAME_MODE_SURVIVAL);
     expect(JSON.stringify(changed.inventory.slots)).toBe(before);
+  });
+});
+
+function survivor(aimed: number | null) {
+  const game = Object.create(Game.prototype) as Game;
+  const inventory = new Inventory(new Array(startingSlots().length).fill(null));
+  inventory.setSlot(0, BlockId.POTATOES, 2);
+  const items = { spawn: vi.fn() };
+  const player = { position: { x: 1, y: 2, z: 3 }, setPosition: vi.fn() };
+  Object.assign(game, {
+    gameMode: GAME_MODE_SURVIVAL, inventory, items, player, hunger: 10, health: 0,
+    target: aimed === null ? null : { x: 0, y: 0, z: 0 }, world: { getBlock: () => aimed, topAt: () => 5 },
+    sounds: { play: vi.fn() }, fire: { reset: vi.fn() }, spawn: { x: 0, z: 0 }, spawnFeetY: 9,
+  });
+  return { game, inventory, items, player };
+}
+
+describe('eating crops (T-I8)', () => {
+  it('eats food in hand unless hunger is full or the aim is on grass or dirt', () => {
+    const { game, inventory } = survivor(BlockId.STONE);
+    expect(game.eatSelected()).toBe(true);
+    expect(game.hunger).toBe(10 + FOOD_HUNGER.potatoes);
+    expect(inventory.slots[0]?.count).toBe(1);
+    game.hunger = 20;
+    expect(game.eatSelected()).toBe(false);
+    expect(survivor(BlockId.GRASS).game.eatSelected()).toBe(false); // planted instead
+    expect(survivor(null).game.eatSelected()).toBe(true); // aiming at the sky
+  });
+});
+
+describe('death in survival', () => {
+  it('drops everything where the player died and respawns empty-handed', () => {
+    const { game, inventory, items, player } = survivor(null);
+    call(game, 'die');
+    expect(items.spawn).toHaveBeenCalledWith(BlockId.POTATOES, 2, 1, 3, 3, Math.random);
+    expect(inventory.slots.every((s) => s === null)).toBe(true);
+    expect(player.setPosition).toHaveBeenCalledWith(0, 9, 0);
+    expect(game.health).toBe(20);
+  });
+});
+
+describe('beds (T-I9)', () => {
+  function sleeper(timeOfDay: number, aimed: number) {
+    const game = Object.create(Game.prototype) as Game;
+    const calendar = new Calendar(DAYS_PER_SEASON, WORLD_LATITUDE_DEG);
+    Object.assign(game, { timeOfDay, calendar, bed: null, target: { x: 4, y: 7, z: -2 }, world: { getBlock: () => aimed } });
+    return { game, calendar };
+  }
+
+  it('at night a bed sleeps through to sunrise and sets the respawn point', () => {
+    const { game, calendar } = sleeper(0.75, BlockId.BED);
+    expect(game.useBed()).toBe(true);
+    expect(game.timeOfDay).toBe(0);
+    expect(calendar.timeOfYear).toBeCloseTo(0.25 * DAY_LENGTH_S / (DAY_LENGTH_S * 4 * DAYS_PER_SEASON), 12);
+    expect(game.bed).toEqual({ x: 4, y: 7, z: -2 });
+  });
+
+  it('by day it only sets the respawn point; anything but a bed is ignored', () => {
+    const { game } = sleeper(0.3, BlockId.BED);
+    expect(game.useBed()).toBe(true);
+    expect(game.timeOfDay).toBe(0.3);
+    expect(game.bed).toEqual({ x: 4, y: 7, z: -2 });
+    expect(sleeper(0.75, BlockId.STONE).game.useBed()).toBe(false);
+  });
+
+  it('death respawns on a standing bed, and forgets a broken one', () => {
+    const standing = survivor(null);
+    Object.assign(standing.game, { bed: { x: 4, y: 7, z: -2 }, ready: true });
+    Object.assign(standing.game.world, { isLoadedAt: () => true, getBlock: () => BlockId.BED });
+    call(standing.game, 'die');
+    expect(standing.game.ready).toBe(false); // trySpawn places the player on the bed once it is meshed
+    expect(Reflect.get(standing.game, 'savedPlayer')).toMatchObject({ x: 4.5, z: -1.5 });
+
+    const broken = survivor(null);
+    Object.assign(broken.game, { bed: { x: 4, y: 7, z: -2 } });
+    Object.assign(broken.game.world, { isLoadedAt: () => true, getBlock: () => BlockId.AIR });
+    call(broken.game, 'die');
+    expect(broken.game.bed).toBeNull();
+    expect(broken.player.setPosition).toHaveBeenCalledWith(0, 9, 0);
   });
 });

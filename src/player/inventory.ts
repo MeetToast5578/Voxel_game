@@ -1,6 +1,6 @@
 import { HOTBAR_SIZE, INVENTORY_SIZE, MAX_STACK, STARTING_STACK } from '../config';
 import { mod } from '../core/math';
-import { BLOCK_STATE_COUNT, BlockId } from '../world/blocks';
+import { BLOCK_STATE_COUNT, BlockId, getBlockDef } from '../world/blocks';
 
 export const DEFAULT_HOTBAR: readonly number[] = [
   BlockId.STONE,
@@ -18,6 +18,11 @@ export const DEFAULT_HOTBAR: readonly number[] = [
 export interface ItemStack {
   state: number;
   count: number;
+}
+
+/** Most of a state one slot holds: MAX_STACK, or less for items such as tools (T-I5). */
+export function maxStackOf(state: number): number {
+  return getBlockDef(state).maxStack ?? MAX_STACK;
 }
 
 /** The slots of a new world: the default hotbar, a full stack of each block, and an empty grid. */
@@ -66,7 +71,7 @@ export class Inventory {
   setSlot(index: number, state: number, count = MAX_STACK): void {
     if (!Number.isInteger(index) || index < 0 || index >= INVENTORY_SIZE) return;
     if (!validState(state)) return;
-    this.slots[index] = { state, count: Math.min(count, MAX_STACK) };
+    this.slots[index] = { state, count: Math.min(count, maxStackOf(state)) };
   }
 
   /** Adds count items of a block state, filling existing stacks first. Returns how many did not fit. */
@@ -113,23 +118,7 @@ export class Inventory {
    */
   clickSlot(index: number, cursor: ItemStack | null): ItemStack | null {
     if (!Number.isInteger(index) || index < 0 || index >= INVENTORY_SIZE) return cursor;
-    const slot = this.slots[index] ?? null;
-    if (!cursor) {
-      this.slots[index] = null;
-      return slot;
-    }
-    if (!slot) {
-      this.slots[index] = cursor;
-      return null;
-    }
-    if (slot.state !== cursor.state) {
-      this.slots[index] = cursor;
-      return slot;
-    }
-    const moved = Math.min(cursor.count, MAX_STACK - slot.count);
-    slot.count += moved;
-    const rest = cursor.count - moved;
-    return rest > 0 ? { state: cursor.state, count: rest } : null;
+    return clickStack(this.slots, index, cursor);
   }
 
   /**
@@ -152,7 +141,7 @@ export class Inventory {
       this.slots[this.selected] = { state: old!.state, count: left };
       return;
     }
-    this.slots[this.selected] = { state, count: MAX_STACK };
+    this.slots[this.selected] = { state, count: maxStackOf(state) };
   }
 
   /** Adds to existing stacks of the state, then to empty slots (not slot `skip`). Returns the leftover. */
@@ -160,19 +149,44 @@ export class Inventory {
     let left = count;
     for (let i = 0; i < INVENTORY_SIZE && left > 0; i++) {
       const s = this.slots[i];
-      if (i === skip || !s || s.state !== state || s.count >= MAX_STACK) continue;
-      const moved = Math.min(left, MAX_STACK - s.count);
+      if (i === skip || !s || s.state !== state || s.count >= maxStackOf(state)) continue;
+      const moved = Math.min(left, maxStackOf(state) - s.count);
       s.count += moved;
       left -= moved;
     }
     for (let i = 0; i < INVENTORY_SIZE && left > 0; i++) {
       if (i === skip || this.slots[i]) continue;
-      const moved = Math.min(left, MAX_STACK);
+      const moved = Math.min(left, maxStackOf(state));
       this.slots[i] = { state, count: moved };
       left -= moved;
     }
     return left;
   }
+}
+
+/**
+ * A click on slot `index` of `slots` while `cursor` is held (or null); returns the new cursor. Shared by the inventory
+ * and the crafting grid (T-I6): an empty cursor takes the stack; a cursor puts down into an empty slot, merges into
+ * the same state up to its stack limit (the rest stays held), or swaps with a different one.
+ */
+export function clickStack(slots: (ItemStack | null)[], index: number, cursor: ItemStack | null): ItemStack | null {
+  const slot = slots[index] ?? null;
+  if (!cursor) {
+    slots[index] = null;
+    return slot;
+  }
+  if (!slot) {
+    slots[index] = cursor;
+    return null;
+  }
+  if (slot.state !== cursor.state) {
+    slots[index] = cursor;
+    return slot;
+  }
+  const moved = Math.min(cursor.count, maxStackOf(slot.state) - slot.count);
+  slot.count += moved;
+  const rest = cursor.count - moved;
+  return rest > 0 ? { state: cursor.state, count: rest } : null;
 }
 
 function validState(state: number): boolean {
