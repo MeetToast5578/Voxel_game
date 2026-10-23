@@ -59,6 +59,12 @@ const PAINTERS: Record<number, PixelFn> = {
   [Tile.WATER]: noisy([48, 96, 200], 0.1),
   [Tile.LAVA]: (x, y, r) => shade((x * 3 + y * 5) % 11 < 3 ? [255, 211, 55] : [239, 76, 12], 0.85 + r() * 0.15),
   [Tile.OBSIDIAN]: noisy([36, 25, 49], 0.5),
+  [Tile.SAPLING]: (x, y, r) => {
+    // A thin stem with a few leaves near the top; image row 0 is the top of the tile.
+    const stem = x === 7 && y >= 6;
+    const leaf = y >= 2 && y <= 7 && Math.abs(x - 7.5) + Math.abs(y - 4.5) <= 3.2 && r() < 0.8;
+    return stem ? shade(BARK, 0.9 + r() * 0.2) : leaf ? shade([70, 140, 45], 0.85 + r() * 0.3) : [0, 0, 0, 0];
+  },
   [Tile.REED]: (x, y, r) => {
     const stem = x === 5 || x === 10 || (y % 6 === 0 && x >= 4 && x <= 11);
     return stem ? shade([132, 163, 65], 0.85 + r() * 0.15) : [0, 0, 0, 0];

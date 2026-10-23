@@ -528,6 +528,33 @@ const CHECKS = [
     },
   },
   {
+    name: 'a sapling on grass grows into a tree (T-G3)',
+    run: async (page) => {
+      const GRASS = 3, SAPLING = 152; // BlockId.SAPLING is the oak sapling
+      const s = await page.evaluate(() => window.__game.state());
+      const [x, , z] = s.position.map(Math.floor);
+      const spot = await page.evaluate(([x, z, GRASS, SAPLING]) => {
+        const g = window.__game;
+        // Open ground 8 blocks south of the player, cleared up to the sky.
+        let top = 8600;
+        while (top > 1 && g.getBlock(x, top, z + 8) === 0) top--;
+        g.setBlock(x, top, z + 8, GRASS);
+        g.setBlock(x, top + 1, z + 8, SAPLING);
+        g.look(Math.PI, 0.2);
+        return [x, top + 1, z + 8];
+      }, [x, z, GRASS, SAPLING]);
+      await page.waitForTimeout(400);
+      await page.screenshot({ path: 'screenshots/sapling.png', timeout: 60_000 });
+      const grew = await page.evaluate(([x, y, z]) => window.__game.growSapling(x, y, z), spot);
+      if (!grew) throw new Error(`the sapling at ${spot} did not grow`);
+      const log = await page.evaluate(([x, y, z]) => window.__game.getBlock(x, y, z), spot);
+      if (log !== 6) throw new Error(`expected a log where the sapling was, found ${log}`);
+      await page.waitForTimeout(1500); // the tree's chunks remesh over a few frames
+      await page.screenshot({ path: 'screenshots/sapling-tree.png', timeout: 60_000 });
+      await page.evaluate(() => window.__game.look(0, 0));
+    },
+  },
+  {
     name: 'glowstone lights up the night',
     run: async (page) => {
       const s = await page.evaluate(() => window.__game.state());

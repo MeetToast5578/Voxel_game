@@ -1,4 +1,4 @@
-import { LAVA_DENSITY, SURFACE_LAYER_HEIGHT, SLAB_HEIGHT } from '../config';
+import { LAVA_DENSITY, SURFACE_LAYER_HEIGHT, SLAB_HEIGHT, type TreeSpecies } from '../config';
 export const BlockId = {
   AIR: 0,
   STONE: 1,
@@ -50,6 +50,7 @@ export const BlockId = {
   // Appended after the slab types (states 77..142), so saved worlds keep their states.
   SNOW: 143,
   ICE: 151,
+  SAPLING: 152,
 } as const;
 
 export const Tile = {
@@ -110,6 +111,7 @@ export const Tile = {
   MOSS: 54,
   SNOW: 55,
   ICE: 56,
+  SAPLING: 57,
 } as const;
 
 export type RenderLayer = 'none' | 'opaque' | 'cutout' | 'translucent';
@@ -310,6 +312,14 @@ function def(
 
 const all = (t: number) => ({ top: t, side: t, bottom: t });
 
+/**
+ * The species a sapling can be, by variant. Every tree species with leaves; cacti and dead snags have none to drop one.
+ * Append-only: other block types follow the sapling's states, so a new species needs a new block type.
+ */
+export const SAPLING_SPECIES: readonly TreeSpecies[] = [
+  'oak', 'maple', 'spruce', 'fir', 'larch', 'pine', 'birch', 'jungle_giant', 'palm', 'acacia', 'baobab', 'willow', 'mangrove', 'bush',
+];
+
 /** Snow builds up in this many layers; a full stack is one block deep. */
 export const SNOW_LAYERS = 8;
 
@@ -392,6 +402,10 @@ export const BLOCK_REGISTRY = buildBlockRegistry([
   }),
   // Translucent like water, so it still counts as the column top; walkable.
   def('ice', 'Ice', all(Tile.ICE), { opaque: false, cullSame: true, layer: 'translucent', hardness: 0.5, density: 917 }),
+  // Saplings (T-G3): one variant per species in SAPLING_SPECIES. They grow into that species' tree.
+  def('sapling', 'Sapling', all(Tile.SAPLING), {
+    variants: SAPLING_SPECIES.length, solid: false, opaque: false, layer: 'cutout', shape: 'cross', hardness: 0, density: 300,
+  }),
 ]);
 
 // BlockId.X is variant 0 of the type whose key is x; keep the two lists in step.

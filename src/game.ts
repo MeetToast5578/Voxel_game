@@ -49,7 +49,7 @@ import { Hud } from './ui/hud';
 import { InventoryScreen } from './ui/inventoryScreen';
 import { Menu, type MenuMode } from './ui/menu';
 import { BlockId, getBlockDef, isWaterState, isLavaState, isFluidState } from './world/blocks';
-import { scheduleLeafDecay } from './world/ecology';
+import { leafSapling, scheduleLeafDecay } from './world/ecology';
 import { scheduleFallChecks } from './world/falling';
 import { scheduleFlowChecks } from './world/flow';
 import type { LooseBody } from './items/looseBodies';
@@ -240,6 +240,7 @@ export class Game {
     this.clouds = new Clouds(this.renderer.scene, seed);
     this.sky = new Sky(this.renderer.scene);
     this.weather = new WeatherModel(seed);
+    this.world.treeSpeciesAt = (x, z) => this.generator.treeSpeciesAt(x, z);
     this.world.surfaceWeather = (x, y, z) => {
       const w = this.weather.sample(x * BLOCK_SIZE_M, z * BLOCK_SIZE_M, this.timeOfDay, this.calendar.timeOfYear, y * BLOCK_SIZE_M);
       return { temperatureC: w.temperatureC, snowing: w.precipitation === 'snow' };
@@ -728,6 +729,8 @@ export class Game {
     const ok = this.setBlock(x, y, z, BlockId.AIR);
     if (ok) {
       this.items.spawn(slabItemState(id), 1, x + 0.5, y + (1 - ITEM_SIZE) / 2, z + 0.5, Math.random);
+      const sapling = id === BlockId.LEAVES ? leafSapling(this.world, x, z, Math.random) : null;
+      if (sapling !== null) this.items.spawn(sapling, 1, x + 0.5, y + (1 - ITEM_SIZE) / 2, z + 0.5, Math.random);
       this.sounds.play('break');
     }
     return ok;

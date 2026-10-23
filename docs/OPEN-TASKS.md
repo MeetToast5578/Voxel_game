@@ -59,7 +59,7 @@ Measure first (T-C3), then pick the J items that the measurements point at.
 ## 4. Living world
 
 - [x] **T-G2 — Snow layers.** Done: 8 snow layers that settle and melt, and ice that forms and thaws.
-- [ ] **T-G3 — Saplings.** Grow into their species' tree through the feature generator, respecting existing blocks.
+- [x] **T-G3 — Saplings.** Done: leaves drop saplings, which grow into their species' tree.
 - [ ] **T-G4 — Crops.** Wheat, carrots and potatoes with growth stages, affected by season and temperature.
 - [ ] **T-G5 — Plant succession** on bare ground.
 - [ ] **T-G6 — Autumn leaf litter.**

@@ -300,6 +300,9 @@ export const SNOW_SETTLE_CHANCE = 0.05; // while snowing: add one layer of snow
 export const SNOW_MELT_CHANCE = 0.1; // above 0 °C: remove one layer
 export const ICE_FREEZE_CHANCE = 0.05; // below 0 °C: still water at the top freezes
 export const ICE_THAW_CHANCE = 0.1; // above 0 °C: ice turns back into water
+// Saplings (T-G3).
+export const SAPLING_DROP_CHANCE = 0.05; // a broken or decayed leaf block also drops a sapling
+export const SAPLING_GROW_CHANCE = 0.1; // a random tick on a sapling with open sky above grows it into its tree
 
 // ---- Ecology (spec 36) ----
 export const GRASS_SPREAD_CHANCE = 0.02; // chance per tick that grass spreads to adjacent lit dirt
