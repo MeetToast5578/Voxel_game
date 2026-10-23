@@ -304,12 +304,25 @@ body {
   position: fixed;
   top: 8px;
   left: 8px;
-  margin: 0;
   padding: 6px 8px;
   background: rgba(0, 0, 0, 0.6);
   color: #fff;
   font: 12px/1.4 ui-monospace, monospace;
   pointer-events: none;
+}
+
+.debug-text {
+  margin: 0;
+  font: inherit;
+}
+
+/* Frame-time graph (T-J8): one pixel per frame, scaled up crisply. */
+.debug-graph {
+  display: block;
+  width: 240px;
+  height: 100px;
+  margin-top: 4px;
+  image-rendering: pixelated;
 }
 
 /* ---------- Menus ---------- */
