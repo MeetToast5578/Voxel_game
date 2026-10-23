@@ -1,6 +1,8 @@
 import { render } from 'preact';
 import { HOTBAR_SIZE, INVENTORY_SIZE, MAX_STACK } from '../config';
 import type { Inventory, ItemStack } from '../player/inventory';
+import { CraftingGrid } from '../player/crafting';
+import { usesLeft } from '../player/tools';
 import { BLOCKS, BlockId, blockStateName, getBlockDef } from '../world/blocks';
 import { Slot } from './components';
 
@@ -21,6 +23,9 @@ interface ViewProps {
   creative: boolean;
   cursor: ItemStack | null;
   hovered: number | null;
+  crafting: CraftingGrid;
+  onCraftCell: (index: number) => void;
+  onCraftResult: () => void;
   onTab: (tab: InventoryTab) => void;
   onPress: (index: number) => void;
   onPick: (state: number) => void;
@@ -30,8 +35,14 @@ interface ViewProps {
   tipRef: (el: HTMLDivElement | null) => void;
 }
 
+/** A state's name; a tool's says how many uses it has left (T-I5). */
+function itemName(state: number): string {
+  const uses = usesLeft(state);
+  return uses === null ? getBlockDef(state).name : `${getBlockDef(state).name} (${uses} uses left)`;
+}
+
 function slotLabel(stack: ItemStack | null): string {
-  return stack ? `${getBlockDef(stack.state).name}, ${stack.count}` : 'empty';
+  return stack ? `${itemName(stack.state)}, ${stack.count}` : 'empty';
 }
 
 function InventoryView(p: ViewProps) {
@@ -47,8 +58,13 @@ function InventoryView(p: ViewProps) {
     />
   );
   const hovered = p.hovered !== null ? (p.inventory.slots[p.hovered] ?? null) : null;
-  const tip = hovered && !p.cursor ? getBlockDef(hovered.state).name : '';
+  const tip = hovered && !p.cursor ? itemName(hovered.state) : '';
   const grid = Array.from({ length: INVENTORY_SIZE - HOTBAR_SIZE }, (_, k) => slot(HOTBAR_SIZE + k));
+  const size = p.crafting.size, result = p.crafting.result;
+  const craftCells = Array.from({ length: size * size }, (_, i) => (
+    <Slot key={i} stack={p.crafting.cells[i] ?? null} atlas={p.atlas} label={`Crafting cell ${i + 1}: ${slotLabel(p.crafting.cells[i] ?? null)}`}
+      onPress={() => p.onCraftCell(i)} />
+  ));
   const bar = Array.from({ length: HOTBAR_SIZE }, (_, k) => slot(k));
   const picks = ALL_BLOCK_STATES.map((state) => (
     <Slot
@@ -103,6 +119,12 @@ function InventoryView(p: ViewProps) {
         ) : (
           <>
             <p class="inventory-hint">Click a slot to pick up or put down a stack. Esc or E closes.</p>
+            <div class="crafting" aria-label={size === 3 ? 'Crafting table' : 'Crafting'}>
+              <div class="crafting-grid" style={{ gridTemplateColumns: `repeat(${size}, 44px)` }}>{craftCells}</div>
+              <span class="crafting-arrow" aria-hidden="true">→</span>
+              <Slot stack={result} atlas={p.atlas} label={result ? `Craft ${slotLabel(result)}` : 'Nothing to craft'}
+                onPress={p.onCraftResult} />
+            </div>
             <div class="inventory-grid">{grid}</div>
           </>
         )}
@@ -131,6 +153,8 @@ export class InventoryScreen {
   private readonly root: HTMLDivElement;
   private cursor: ItemStack | null = null;
   private hovered: number | null = null;
+  /** The crafting grid (T-I6): 2×2 from the inventory, 3×3 when opened at a crafting table. */
+  readonly crafting = new CraftingGrid();
   private tab: InventoryTab = 'inventory';
   private creative = true;
   private open = false;
@@ -174,8 +198,10 @@ export class InventoryScreen {
     return this.tab;
   }
 
-  show(): void {
+  /** Opens on the inventory tab; `craftSize` 3 gives the crafting table's grid. */
+  show(craftSize: 2 | 3 = 2): void {
     this.returnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    this.crafting.size = craftSize;
     this.open = true;
     this.tab = 'inventory';
     this.root.style.display = '';
@@ -183,12 +209,15 @@ export class InventoryScreen {
     this.root.querySelector<HTMLButtonElement>('button')?.focus();
   }
 
-  /** Closes the screen. A stack still on the cursor goes back into the inventory; what does not fit is returned. */
-  hide(): ItemStack | null {
-    let leftover: ItemStack | null = null;
-    if (this.cursor) {
-      const left = this.inventory.add(this.cursor.state, this.cursor.count);
-      leftover = left > 0 ? { state: this.cursor.state, count: left } : null;
+  /**
+   * Closes the screen. The stack on the cursor and whatever is left in the crafting grid go back into the inventory;
+   * what does not fit is returned, for the game to drop.
+   */
+  hide(): ItemStack[] {
+    const leftover: ItemStack[] = [];
+    for (const stack of [...(this.cursor ? [this.cursor] : []), ...this.crafting.clear()]) {
+      const left = this.inventory.add(stack.state, stack.count);
+      if (left > 0) leftover.push({ state: stack.state, count: left });
     }
     this.cursor = null;
     this.hovered = null;
@@ -228,6 +257,15 @@ export class InventoryScreen {
         creative={this.creative}
         cursor={this.cursor}
         hovered={this.hovered}
+        crafting={this.crafting}
+        onCraftCell={(i) => {
+          this.cursor = this.crafting.click(i, this.cursor);
+          this.draw();
+        }}
+        onCraftResult={() => {
+          this.cursor = this.crafting.take(this.cursor);
+          this.draw();
+        }}
         onTab={(tab) => this.setTab(tab)}
         onPress={(i) => {
           this.cursor = this.inventory.clickSlot(i, this.cursor);

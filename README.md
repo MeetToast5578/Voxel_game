@@ -58,6 +58,7 @@ Requires Node.js 20+.
 | Right click | Place block (uses one from the stack; hold to repeat) |
 | Right click with a crop | Survival: eat it, or plant it when aimed at grass or dirt |
 | Right click on a bed | Set the respawn point; at night, sleep through to sunrise |
+| Right click on a crafting table | Craft on a 3×3 grid; the inventory (E) has a 2×2 grid |
 | Middle click | Pick the targeted block into the hotbar |
 | 1–9, mouse wheel | Select hotbar slot |
 | E | Open or close the inventory; the HUD Inventory button also works without mouse capture |

@@ -1,4 +1,5 @@
 import { mulberry32 } from '../core/random';
+import { TOOL_KINDS } from '../config';
 import { CROP_STAGES, Tile } from '../world/blocks';
 import { ATLAS_SIZE, ATLAS_TILES, TILE_SIZE } from './tiles';
 
@@ -34,7 +35,33 @@ function crackPainter(stage: number): PixelFn {
 
 const LITTER_COLOURS: readonly (readonly [number, number, number])[] = [[176, 92, 32], [196, 140, 46], [140, 52, 30], [112, 78, 40]];
 
+const HANDLE: RGB = [120, 86, 50];
+const onHandle = (x: number, y: number) => x + y === 15 && x >= 1 && x <= 12;
+/**
+ * A tool sprite (T-I5): a handle on the diagonal and a head at its top end, by kind. Pickaxe: a bar across the handle;
+ * axe: a blade on one side; shovel: a round blade at the tip.
+ */
+function toolPainter(kind: string, head: RGB): PixelFn {
+  const inHead = (x: number, y: number) => {
+    const along = x + y, across = x - y;
+    if (kind === 'pickaxe') return Math.abs(across - 7) <= 1 && Math.abs(along - 15) <= 6;
+    if (kind === 'axe') return along >= 14 && along <= 19 && across >= 5 && across <= 10;
+    return Math.hypot(x - 12.5, y - 2.5) <= 2.6;
+  };
+  return (x, y, r) => inHead(x, y) ? shade(head, 0.85 + r() * 0.3) : onHandle(x, y) ? shade(HANDLE, 0.9 + r() * 0.2) : [0, 0, 0, 0];
+}
+const TOOL_HEADS: readonly RGB[] = [[162, 130, 78], [125, 125, 125]]; // wooden, stone
+
 const PAINTERS: Record<number, PixelFn> = {
+  ...Object.fromEntries(TOOL_HEADS.flatMap((head, t) => TOOL_KINDS.map((kind, k) =>
+    [Tile.TOOLS + t * TOOL_KINDS.length + k, toolPainter(kind, head)]))),
+  [Tile.STICK]: (x, y, r) => (x + y === 15 && x >= 2 && x <= 13 ? shade(HANDLE, 0.9 + r() * 0.2) : [0, 0, 0, 0]),
+  // Crafting table (T-I6): a planked top ruled into a 3×3 grid, and sides with hanging tools.
+  [Tile.CRAFTING_TOP]: (x, y, r) => shade([162, 130, 78], (x % 5 === 0 || y % 5 === 0 ? 0.55 : 1) + (r() - 0.5) * 0.1),
+  [Tile.CRAFTING_SIDE]: (x, y, r) => {
+    const tool = (x === 4 || x === 11) && y >= 3 && y <= 9;
+    return shade(tool ? [110, 110, 110] : [150, 116, 70], (y === 0 || y === 15 ? 0.65 : 1) + (r() - 0.5) * 0.1);
+  },
   [Tile.LILY_PAD]: (x, y, r) => {
     const dx = x - 7.5, dz = y - 7.5;
     if (Math.hypot(dx, dz) > 7 || dz > 0 && Math.abs(dx) < dz * 0.45) return [0, 0, 0, 0];

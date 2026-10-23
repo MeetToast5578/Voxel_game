@@ -68,7 +68,7 @@ function inventoryGame(playing: boolean, mode: 'start' | 'paused') {
   const screen = {
     isOpen: false,
     show: vi.fn(() => { screen.isOpen = true; }),
-    hide: vi.fn(() => { screen.isOpen = false; return null as { state: number; count: number } | null; }),
+    hide: vi.fn(() => { screen.isOpen = false; return [] as { state: number; count: number }[]; }),
   };
   const menu = { currentMode: mode, hide: vi.fn(), show: vi.fn() };
   const input = {
@@ -120,7 +120,7 @@ describe('inventory open/close lifecycle (T-K3)', () => {
   it('drops only the cursor remainder that did not fit when the screen closes', () => {
     const { game, screen, dropStack } = inventoryGame(false, 'paused');
     call(game, 'toggleInventory');
-    screen.hide.mockImplementationOnce(() => { screen.isOpen = false; return { state: 1, count: 3 }; });
+    screen.hide.mockImplementationOnce(() => { screen.isOpen = false; return [{ state: 1, count: 3 }]; });
     call(game, 'toggleInventory');
     expect(dropStack).toHaveBeenCalledExactlyOnceWith({ state: 1, count: 3 });
   });
@@ -144,6 +144,7 @@ describe('smoke-test debug hooks', () => {
       placeTarget: vi.fn(),
       eatSelected: () => false,
       useBed: () => false,
+      useCraftingTable: () => false,
       placeTargetCheck: vi.fn(),
       setBlock: vi.fn(),
     });

@@ -22,6 +22,7 @@ import { BlockBreaking } from './player/breaking';
 import { BuildTool, cornerFor, frameFor } from './player/buildTool';
 import { Inventory, type ItemStack, startingSlots } from './player/inventory';
 import { blockIntersectsBody, canBreak } from './player/interaction';
+import { afterUse, breakSeconds, dropsWhenMined } from './player/tools';
 import type { Vec3 } from './player/physics';
 import { FireExposure, fluidContact, landingDamage, landingWaterDepth } from './player/fluidHazards';
 import { NO_CONTROLS, PLAYER_SHAPE, Player, type PlayerControls } from './player/player';
@@ -760,8 +761,12 @@ export class Game {
     if (!canBreak(id)) return false;
     const ok = this.setBlock(x, y, z, BlockId.AIR);
     if (ok) {
+      const held = this.inventory.selectedBlock;
+      const survival = this.gameMode === GAME_MODE_SURVIVAL;
+      if (survival) this.wearSelectedTool();
       const drop = blockDrop(id);
-      this.items.spawn(drop.state, drop.count, x + 0.5, y + (1 - ITEM_SIZE) / 2, z + 0.5, Math.random);
+      // Survival (T-I5): stone-like blocks broken without a pickaxe give nothing.
+      if (!survival || dropsWhenMined(id, held)) this.items.spawn(drop.state, drop.count, x + 0.5, y + (1 - ITEM_SIZE) / 2, z + 0.5, Math.random);
       const sapling = id === BlockId.LEAVES ? leafSapling(this.world, x, z, Math.random) : null;
       if (sapling !== null) this.items.spawn(sapling, 1, x + 0.5, y + (1 - ITEM_SIZE) / 2, z + 0.5, Math.random);
       // Tall grass also gives wheat to plant (T-G4); carrots and potatoes come from the creative Blocks tab for now.
@@ -769,6 +774,17 @@ export class Game {
       this.sounds.play('break');
     }
     return ok;
+  }
+
+  /** One use of the tool in hand (T-I5): it moves to its next wear state, and the last use breaks it. */
+  private wearSelectedTool(): void {
+    const stack = this.inventory.selectedStack;
+    if (!stack) return;
+    const next = afterUse(stack.state);
+    if (next === null) {
+      this.inventory.slots[this.inventory.selected] = null;
+      this.sounds.play('break');
+    } else stack.state = next;
   }
 
   /**
@@ -808,11 +824,17 @@ export class Game {
     return true;
   }
 
+  /** The block that placing and the volume tools build with: the selected one, or air for an item such as a tool. */
+  private get buildBlock(): number {
+    const state = this.inventory.selectedBlock;
+    return getBlockDef(state).item ? BlockId.AIR : state;
+  }
+
   /** Places the selected block against the targeted face, using one from its stack. Returns true if it was placed. */
   placeTarget(): boolean {
     const t = this.target;
-    if (!t || this.inventory.selectedBlock === BlockId.AIR) return false;
-    const block = this.inventory.selectedBlock;
+    if (!t || this.buildBlock === BlockId.AIR) return false;
+    const block = this.buildBlock;
     const eye = this.player.eyePosition(1), look = this.player.lookDirection();
     const p = resolvePlacement(t, (x, y, z) => this.world.getBlock(x, y, z), block, this.player.position, PLAYER_SHAPE, eye.y + look.y * t.distance);
     const ok = p !== null && this.setBlock(p.x, p.y, p.z, p.state);
@@ -836,6 +858,14 @@ export class Game {
       this.timeOfDay = 0;
       this.showNotice('Slept through the night · Respawn point set');
     } else this.showNotice('Respawn point set · You can only sleep at night');
+    return true;
+  }
+
+  /** Right click on a crafting table (T-I6) opens the inventory with the 3×3 grid. Returns true if one was aimed at. */
+  useCraftingTable(): boolean {
+    const t = this.target;
+    if (!t || this.world.getBlock(t.x, t.y, t.z) !== BlockId.CRAFTING_TABLE) return false;
+    this.openInventory(3);
     return true;
   }
 
@@ -921,7 +951,7 @@ export class Game {
     if (breakClicked || broken) this.held.swing();
     const placeClicked = this.input.consumeClick(2);
     if (placeClicked || (this.input.isMouseDown(2) && this.actionCooldown === 0)) {
-      if (!this.useBed() && !this.eatSelected()) this.placeTarget();
+      if (!this.useBed() && !this.useCraftingTable() && !this.eatSelected()) this.placeTarget();
       this.actionCooldown = BREAK_REPEAT_S;
       this.held.swing();
     }
@@ -932,7 +962,7 @@ export class Game {
     const t = this.target;
     if (!t) return null;
     const id = this.world.getBlock(t.x, t.y, t.z);
-    return canBreak(id) ? getBlockDef(id).hardness : null;
+    return canBreak(id) ? breakSeconds(id, this.inventory.selectedBlock, this.gameMode === GAME_MODE_SURVIVAL) : null;
   }
 
   /** Tool keys: R mode, Q shape, [ ] size, , . thickness, G solid or shell, C square or disc, X cancels a wall or floor. */
@@ -988,7 +1018,7 @@ export class Game {
    */
   private volumeClick(add: boolean, eye: Vec3, look: Vec3): void {
     const tool = this.tool;
-    if (add && this.inventory.selectedBlock === BlockId.AIR) return;
+    if (add && this.buildBlock === BlockId.AIR) return;
     if (tool.twoClick) {
       if (!tool.frame) {
         if (this.target) tool.frame = frameFor(tool.kind, this.target, look, add);
@@ -1005,12 +1035,12 @@ export class Game {
   private flattenAt(): void {
     const t = this.target;
     if (!t) return;
-    this.startEdit(this.tool.cellsFlatten(t, (x, z) => this.world.topAt(x, z), this.inventory.selectedBlock));
+    this.startEdit(this.tool.cellsFlatten(t, (x, z) => this.world.topAt(x, z), this.buildBlock));
   }
 
   /** Cells for an add (filled with the selected block) or a remove (cleared). */
   private editCells(cells: Cell[], add: boolean): EditCell[] {
-    const id = add ? this.inventory.selectedBlock : BlockId.AIR;
+    const id = add ? this.buildBlock : BlockId.AIR;
     return cells.map((c) => ({ x: c.x, y: c.y, z: c.z, id, clear: !add }));
   }
 
@@ -1061,7 +1091,7 @@ export class Game {
       this.previewKey = key;
       if (tool.kind === 'flatten') {
         this.previewBox = boundsOf(tool.footprint(t));
-        this.previewCount = tool.cellsFlatten(t, (x, z) => this.world.topAt(x, z), this.inventory.selectedBlock).length;
+        this.previewCount = tool.cellsFlatten(t, (x, z) => this.world.topAt(x, z), this.buildBlock).length;
       } else {
         const cells = tool.cellsAt(t, tool.mode === 'add');
         this.previewBox = boundsOf(cells);
@@ -1093,17 +1123,16 @@ export class Game {
   }
 
   /** Frees the pointer and shows the inventory, remembering the originating menu when not playing. */
-  private openInventory(): void {
+  private openInventory(craftSize: 2 | 3 = 2): void {
     this.inventoryReturnMenu = this.playing ? null : this.menu.currentMode;
     this.menu.hide();
-    this.inventoryScreen.show();
+    this.inventoryScreen.show(craftSize);
     this.input.releasePointerLock();
   }
 
   /** Closes the inventory. Restore its originating menu, or request pointer capture to return to play. */
   private closeInventory(): void {
-    const leftover = this.inventoryScreen.hide();
-    if (leftover) this.dropStack(leftover);
+    for (const stack of this.inventoryScreen.hide()) this.dropStack(stack);
     if (this.inventoryReturnMenu !== null) {
       const mode = this.inventoryReturnMenu;
       this.inventoryReturnMenu = null;

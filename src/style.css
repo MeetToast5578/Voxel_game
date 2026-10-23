@@ -642,3 +642,23 @@ body {
 .world-file-actions { flex-wrap: wrap; }
 .world-file-actions > .menu-button { flex: 1 1 160px; min-width: 0; }
 .world-file-actions input { display: block; width: 100%; max-width: 100%; box-sizing: border-box; }
+
+/* Crafting (T-I6): the grid, an arrow and the result, above the inventory grid. */
+.crafting {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-bottom: 12px;
+  flex-shrink: 0;
+}
+
+.crafting-grid {
+  display: grid;
+  gap: 4px;
+}
+
+.crafting-arrow {
+  font-size: 22px;
+  color: var(--muted);
+}

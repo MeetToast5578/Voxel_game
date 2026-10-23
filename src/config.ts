@@ -236,6 +236,11 @@ export const HOTBAR_SIZE = 9;
 // ---- Inventory, held block and dropped items (spec 24) ----
 export const INVENTORY_SIZE = 36; // 9 hotbar slots, then 27 in the grid
 export const MAX_STACK = 64;
+// Tools (T-I5): each tier mines this many times faster than a hand with the right kind of tool, and lasts this many uses.
+export const TOOL_TIERS = { wooden: { speed: 2, uses: 60 }, stone: { speed: 4, uses: 132 } } as const;
+export const TOOL_KINDS = ['pickaxe', 'axe', 'shovel'] as const;
+/** A block that needs a pickaxe takes this many times longer by hand, and drops nothing. */
+export const NO_PICKAXE_SLOWDOWN = 3;
 export const STARTING_STACK = 64; // each default hotbar block starts with this many
 export const ITEM_SIZE_M = 0.15; // edge of a dropped item (about half a block)
 export const ITEM_SIZE = metersToBlocks(ITEM_SIZE_M);
