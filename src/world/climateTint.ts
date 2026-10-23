@@ -62,6 +62,12 @@ function samplerFor(seed: number): ClimateTintSampler {
   return sampler;
 }
 
+/** How deciduous the trees at a cell are, 0..1 (see seasonalWeights), with the same altitude cooling as the mesher. */
+export function deciduousAt(seed: number, x: number, y: number, z: number): number {
+  const [temperatureC, humidity] = samplerFor(seed).fields(x, z);
+  return seasonalWeights(temperatureC - y * BLOCK_SIZE_M / 1000 * TEMPERATURE_LAPSE_C_PER_KM, humidity)[0];
+}
+
 /** Precompute climate for the chunk's vertex columns; only altitude/palette arithmetic remains per vertex. */
 export class MeshTints {
   private readonly temperatures = new Float64Array((CHUNK_SIZE + 1) ** 2);

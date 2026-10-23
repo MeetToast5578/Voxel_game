@@ -62,7 +62,8 @@ import { findSpawnColumn, surfaceY } from './world/spawn';
 import { daylightAt, lerpColor, skyColorAt } from './world/time';
 import { WorkerPool } from './workers/workerPool';
 import { World } from './world/world';
-import { Calendar } from './world/calendar';
+import { Calendar, foliageSeason } from './world/calendar';
+import { deciduousAt } from './world/climateTint';
 
 /** The world save the game starts with (opened and read by main.ts before the game is created). */
 export interface GameSave {
@@ -242,6 +243,10 @@ export class Game {
     this.sky = new Sky(this.renderer.scene);
     this.weather = new WeatherModel(seed);
     this.world.treeSpeciesAt = (x, z) => this.generator.treeSpeciesAt(x, z);
+    this.world.leafFall = (x, y, z) => {
+      const autumn = foliageSeason(this.calendar.timeOfYear).autumn;
+      return autumn > 0 ? autumn * deciduousAt(seed, x, y, z) : 0;
+    };
     this.world.surfaceWeather = (x, y, z) => {
       const w = this.weather.sample(x * BLOCK_SIZE_M, z * BLOCK_SIZE_M, this.timeOfDay, this.calendar.timeOfYear, y * BLOCK_SIZE_M);
       return { temperatureC: w.temperatureC, snowing: w.precipitation === 'snow' };

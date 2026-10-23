@@ -55,6 +55,7 @@ export const BlockId = {
   WHEAT: 166,
   CARROTS: 170,
   POTATOES: 174,
+  LEAF_LITTER: 178,
 } as const;
 
 export const Tile = {
@@ -120,6 +121,7 @@ export const Tile = {
   WHEAT: 58,
   CARROTS: 62,
   POTATOES: 66,
+  LEAF_LITTER: 70,
 } as const;
 
 export type RenderLayer = 'none' | 'opaque' | 'cutout' | 'translucent';
@@ -421,6 +423,8 @@ export const BLOCK_REGISTRY = buildBlockRegistry([
   ...(['wheat', 'carrots', 'potatoes'] as const).map((key) => def(key, key[0]!.toUpperCase() + key.slice(1),
     all(key === 'wheat' ? Tile.WHEAT : key === 'carrots' ? Tile.CARROTS : Tile.POTATOES),
     { variants: CROP_STAGES, solid: false, opaque: false, layer: 'cutout', shape: 'cross', hardness: 0, density: 300 })),
+  // Fallen autumn leaves (T-G6): a thin layer like moss, which rots away once autumn is over.
+  def('leaf_litter', 'Leaf litter', all(Tile.LEAF_LITTER), { solid: false, opaque: false, layer: 'cutout', shape: 'layer', hardness: 0 }),
 ]);
 
 // BlockId.X is variant 0 of the type whose key is x; keep the two lists in step.
@@ -474,7 +478,7 @@ export function isFallingWater(state: number): boolean {
 /** Top face height: fluid level, thin plant layer, or a full cube. */
 export function blockTopHeight(state: number): number {
   if (getBlockDef(state).shape === 'slab') return blockVariant(state) === 0 ? SLAB_HEIGHT : 1;
-  if (state === BlockId.LILY_PAD || state === BlockId.MOSS) return SURFACE_LAYER_HEIGHT;
+  if (state === BlockId.LILY_PAD || state === BlockId.MOSS || state === BlockId.LEAF_LITTER) return SURFACE_LAYER_HEIGHT;
   if (isSnowState(state)) return snowLayers(state) / SNOW_LAYERS;
   return isFlowingWaterState(state) ? waterLevel(state) / WATER_LEVELS : isFlowingLavaState(state) ? lavaLevel(state) / WATER_LEVELS : 1;
 }

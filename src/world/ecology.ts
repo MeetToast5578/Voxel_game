@@ -2,7 +2,7 @@ import { type World } from './world';
 import { type Tick, type TickResult } from './tick';
 import { BlockId, CROP_STAGES, SNOW_LAYERS, blocksSky, blockVariant, getBlockDef, isCropState, isSnowState, snowLayers, snowState } from './blocks';
 import { type Chunk } from './chunk';
-import { CHUNK_SIZE, CHUNK_VOLUME, CROP_GROW_CHANCE, ICE_FREEZE_CHANCE, RANDOM_TICKS_PER_CHUNK, ICE_THAW_CHANCE, SAPLING_DROP_CHANCE, SAPLING_GROW_CHANCE, SNOW_MELT_CHANCE, SNOW_SETTLE_CHANCE } from '../config';
+import { CHUNK_SIZE, CHUNK_VOLUME, CROP_GROW_CHANCE, ICE_FREEZE_CHANCE, LEAF_LITTER_CHANCE, LEAF_LITTER_REACH, LEAF_LITTER_ROT_CHANCE, RANDOM_TICKS_PER_CHUNK, ICE_THAW_CHANCE, SAPLING_DROP_CHANCE, SAPLING_GROW_CHANCE, SNOW_MELT_CHANCE, SNOW_SETTLE_CHANCE } from '../config';
 import { growSapling, isSaplingState, saplingState } from './saplings';
 import { cropGrowthFactor, growCrop } from './crops';
 import { floorDiv } from '../core/math';
@@ -88,7 +88,29 @@ export function handleRandomTick(world: World, x: number, y: number, z: number, 
   // A sapling grows only with open sky above it (it does not block the sky itself, so the top is its ground).
   else if (isSaplingState(id) && world.topAt(x, z) === y - 1 && rng() < SAPLING_GROW_CHANCE) growSapling(world, x, y, z);
   else if (isCropState(id)) growCrop(world, x, y, z, rng);
+  else if (id === BlockId.LEAVES || id === BlockId.LEAF_LITTER) leafLitter(world, id, x, y, z, rng);
   if (world.surfaceWeather) settleSnowAndIce(world, x, y, z, rng);
+}
+
+/**
+ * Leaf litter (T-G6). In autumn a leaf block drops a leaf straight down through air and other leaves; it lands as litter
+ * on grass or dirt with open air above. Out of autumn (no leaf fall at the cell), litter rots away.
+ */
+function leafLitter(world: World, id: number, x: number, y: number, z: number, roll: () => number): void {
+  const fall = world.leafFall?.(x, y, z) ?? 0;
+  if (id === BlockId.LEAF_LITTER) {
+    if (fall === 0 && roll() < LEAF_LITTER_ROT_CHANCE) world.setBlock(x, y, z, BlockId.AIR);
+    return;
+  }
+  if (fall === 0 || roll() >= LEAF_LITTER_CHANCE * fall) return;
+  for (let ly = y - 1; ly >= y - LEAF_LITTER_REACH; ly--) {
+    const below = world.getBlock(x, ly, z);
+    if (below === BlockId.AIR || below === BlockId.LEAVES) continue;
+    if ((below === BlockId.GRASS || below === BlockId.DIRT) && world.getBlock(x, ly + 1, z) === BlockId.AIR) {
+      world.setBlock(x, ly + 1, z, BlockId.LEAF_LITTER);
+    }
+    return;
+  }
 }
 
 /**
@@ -131,7 +153,9 @@ function settleSnowAndIce(world: World, x: number, y: number, z: number, roll: (
     return;
   }
   const def = getBlockDef(ground);
-  if (above === BlockId.AIR && weather.snowing && def.solid && def.shape === 'cube' && roll() < SNOW_SETTLE_CHANCE) {
+  // Snow buries leaf litter, replacing it.
+  const open = above === BlockId.AIR || above === BlockId.LEAF_LITTER;
+  if (open && weather.snowing && def.solid && def.shape === 'cube' && roll() < SNOW_SETTLE_CHANCE) {
     world.setBlock(x, top + 1, z, snowState(1));
   }
 }

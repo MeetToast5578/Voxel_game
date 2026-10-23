@@ -32,6 +32,8 @@ function crackPainter(stage: number): PixelFn {
   return (x, y) => (CRACK_RANK[y * TILE_SIZE + x]! < limit ? shade(CRACK_SHADE, 1, 255) : [0, 0, 0, 0]);
 }
 
+const LITTER_COLOURS: readonly (readonly [number, number, number])[] = [[176, 92, 32], [196, 140, 46], [140, 52, 30], [112, 78, 40]];
+
 const PAINTERS: Record<number, PixelFn> = {
   [Tile.LILY_PAD]: (x, y, r) => {
     const dx = x - 7.5, dz = y - 7.5;
@@ -41,6 +43,11 @@ const PAINTERS: Record<number, PixelFn> = {
   [Tile.MOSS]: (x, y, r) => {
     if ((x < 2 || y < 2 || x > 13 || y > 13) && r() < 0.5) return [0, 0, 0, 0];
     return shade([72, 110, 42], 0.8 + r() * 0.4);
+  },
+  // Scattered leaves in autumn colours over bare ground showing through (T-G6).
+  [Tile.LEAF_LITTER]: (_x, _y, r) => {
+    if (r() < 0.3) return [0, 0, 0, 0];
+    return shade(LITTER_COLOURS[(r() * LITTER_COLOURS.length) | 0]!, 0.75 + r() * 0.35);
   },
   [Tile.CACTUS_SIDE]: (x, y, r) => {
     if (x % 4 === 0 && y % 5 === 0) return shade([222, 209, 146], 1);
