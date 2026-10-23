@@ -12,7 +12,7 @@ Each spec gives the goal, requirements, acceptance criteria and test cases. None
 
 Do spec 1 first so the other three get CI. Specs 2, 3 and 4 touch different files and can be done in any order.
 
-Written against `main` at commit `04dbb25`.
+Written against `main` at commit `04dbb25`. Re-checked on 2026-10-23: the code is unchanged since then, so the specs still match it.
 
 ## Rules for every spec
 

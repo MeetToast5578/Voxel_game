@@ -1,6 +1,6 @@
 # Handoff: Voxel Game (MeetToast5578/Voxel_game)
 
-Last updated 2026-10-13.
+Last updated 2026-10-23. Checked against the code on that date: `npm run check` passes (118 tests in 28 files, build OK) and `npm run smoke` passes (14 checks).
 
 ## Where things stand
 
@@ -9,9 +9,10 @@ Last updated 2026-10-13.
 - the owner's working-style skill (PR #2)
 - specs for the next batch of work (PR #3)
 
-Nothing is in progress, and no code has changed since PR #1.
+Nothing is in progress. `src/`, `tests/`, `scripts/` and `package.json` are unchanged since PR #1; PRs #2 and #3 only added docs and the skill. None of the four polish specs has been implemented: there is no `.github/` folder, `SAVE_VERSION` is still 1, there is no `STEP_HEIGHT`, and trees still only grow at local x/z 2–13.
 
 - No CI exists yet. Spec 1 adds it. Until then, verify locally with `npm run check` and `npm run smoke`.
+- The smoke test failed once on a first run with an unexplained `404` console error (the missing resource was not identified) and passed on three re-runs. If CI shows it, suspect a missing `favicon.ico` (`index.html` has no icon link), which would be an easy fix.
 - Not hand-tested with a real mouse and keyboard (pointer lock, mouse look, audio). It has only been tested headless. A 5–10 minute playtest is worth doing before new features; anything broken there should jump the queue.
 
 ## How the owner wants to work
@@ -91,7 +92,7 @@ TypeScript 5.9.3, Vite 7.3.6, Vitest 4.0.18, three 0.186.0, simplex-noise 4.0.3,
   - coords
   - fixed-timestep loop (1/60 s steps, frames clamped to 0.25 s)
 - `src/world`:
-  - `blocks.ts`: `BlockId`/`Tile` are objects, not enums. Ids run AIR 0, STONE 1, DIRT 2, GRASS 3, SAND 4, WATER 5, LOG 6, LEAVES 7, PLANKS 8, GLASS 9, BEDROCK 10, COBBLESTONE 11, BRICK 12, GLOWSTONE 13.
+  - `blocks.ts`: `BlockId`/`Tile` are objects, not enums. 14 ids (13 placeable blocks plus air). Ids run AIR 0, STONE 1, DIRT 2, GRASS 3, SAND 4, WATER 5, LOG 6, LEAVES 7, PLANKS 8, GLASS 9, BEDROCK 10, COBBLESTONE 11, BRICK 12, GLOWSTONE 13.
   - `chunk.ts`: 16×128×16 `Uint8Array`, indexed `(y*16+lz)*16+lx`.
   - `world.ts`: the chunk map plus the `edits` map, which is what gets saved.
   - `generator.ts`:
@@ -152,7 +153,7 @@ TypeScript 5.9.3, Vite 7.3.6, Vitest 4.0.18, three 0.186.0, simplex-noise 4.0.3,
 - No auto step-up onto 1-block ledges (spec 3).
 - Tree-free lanes along chunk borders (spec 4).
 - Flat lighting, not smooth (deferred).
-- Each edit causes a ~20 ms main-thread remesh when lighting is on.
+- Each edit causes a ~20 ms main-thread remesh when lighting is on (figure from the original build, not re-measured).
 - Water is static; it doesn't flow.
 - World height is capped at 128.
 - Not hand-tested with a real mouse and keyboard.
