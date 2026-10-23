@@ -26,6 +26,8 @@ export interface DebugApi {
   /** Resolves once the write has completed (true) or failed or was skipped (false). */
   save(): Promise<boolean>;
   setTimeOfDay(t: number): void;
+  /** 0..1 wraps; 0 = spring equinox. For checking seasonal visuals (T-F7). */
+  setTimeOfYear(t: number): void;
   /** The volume tools: sets any of their fields (mode, kind, size, thickness, disc) for the smoke test. */
   setTool(fields: { mode?: ToolMode; kind?: ToolKind; size?: number; thickness?: number; disc?: boolean }): void;
   /** One add or remove click at the aimed block with the volume tools. The change lands over the next frames. */
@@ -90,6 +92,9 @@ export function installDebugApi(game: Game): void {
     save: () => game.saveNow(),
     setTimeOfDay: (t) => {
       game.timeOfDay = ((t % 1) + 1) % 1;
+    },
+    setTimeOfYear: (t) => {
+      game.calendar.timeOfYear = ((t % 1) + 1) % 1;
     },
     setTool: (fields) => {
       Object.assign(game.tool, fields);

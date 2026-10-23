@@ -13,6 +13,7 @@ A Minecraft-like voxel sandbox that runs in the browser, built with TypeScript, 
 - Scheduled block updates run at 20 Hz and survive chunk unloading and save/reload with their remaining delays. Terrain loading includes ground beneath dense canopies; failed workers fall back to main-thread loading.
 - Saved structures remain visible across vertical terrain bands, including glass and high roofs.
 - Terrain coordinate and lake-basin repairs regenerate unedited ground correctly; existing saved edits are preserved and may float relative to changed ground.
+- The seasons show on plants: in temperate places leaves turn orange and red in autumn and fall in winter, then grow back green in spring. Cold and tropical forests stay evergreen. Grass browns in hot, dry summers.
 - Wind follows the weather: leaves and plants sway, rain and snow fall at a slant, and clouds drift faster in strong wind.
 - Storms bring lightning: each flash briefly lights the world and brightens the sky, and thunder follows 1 to 6 seconds later.
 - Build bottom/top slabs from every solid cube material. Aim at the upper/lower half of a side to select the half; matching complementary slabs merge into a full block. Slabs are 0.15 m tall and have matching collision, targeting and item icons.

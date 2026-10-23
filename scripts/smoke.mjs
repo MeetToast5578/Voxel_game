@@ -496,6 +496,29 @@ const CHECKS = [
     },
   },
   {
+    name: 'leaves change with the seasons (T-F7)',
+    run: async (page) => {
+      // A leaf wall in front of the player, screenshotted in summer, autumn and winter. How much a place shows the
+      // seasons depends on its climate, so this records the look; the shader itself is checked in render-smoke.
+      const s = await page.evaluate(() => window.__game.state());
+      const [x, y, z] = s.position.map(Math.floor);
+      await page.evaluate(([x, y, z]) => {
+        for (let i = -3; i <= 3; i++) for (let k = 0; k <= 4; k++) window.__game.setBlock(x + i, y + k, z + 4, 7);
+        window.__game.look(Math.PI, 0.1);
+      }, [x, y, z]);
+      for (const [name, t] of [['summer', 0.4], ['autumn', 0.6], ['winter', 0.85]]) {
+        await page.evaluate((t) => window.__game.setTimeOfYear(t), t);
+        await page.waitForTimeout(400);
+        await page.screenshot({ path: `screenshots/leaves-${name}.png`, timeout: 60_000 });
+      }
+      await page.evaluate(([x, y, z]) => {
+        window.__game.setTimeOfYear(0);
+        for (let i = -3; i <= 3; i++) for (let k = 0; k <= 4; k++) window.__game.setBlock(x + i, y + k, z + 4, 0);
+        window.__game.look(0, 0);
+      }, [x, y, z]);
+    },
+  },
+  {
     name: 'glowstone lights up the night',
     run: async (page) => {
       const s = await page.evaluate(() => window.__game.state());

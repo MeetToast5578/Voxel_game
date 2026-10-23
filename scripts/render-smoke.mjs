@@ -29,7 +29,7 @@ try {
     const renderer=new THREE.WebGLRenderer({preserveDrawingBuffer:true});renderer.setSize(128,128);renderer.setClearColor(0);
     const target=new THREE.WebGLRenderTarget(128,128);const pixels=new Uint8Array(128*128*4);
     const camera=new THREE.OrthographicCamera(-1.2,1.2,1.2,-1.2,0.1,2000);
-    const uniforms={uDaylight:{value:1},uWetness:{value:0},uWind:{value:0},uWindTime:{value:0}};
+    const uniforms={uDaylight:{value:1},uWetness:{value:0},uWind:{value:0},uWindTime:{value:0},uSeason:{value:new THREE.Vector3()}};
     const check=(condition,message)=>{if(!condition)throw Error(message);};
     const image=(scene,camera,label)=>{
       renderer.setRenderTarget(null);renderer.render(scene,camera);
@@ -120,9 +120,28 @@ try {
     uniforms.uWind.value=1;uniforms.uWindTime.value=3;read(swayScene,camera);const windy=litColumn();image(swayScene,camera,'Foliage in full wind');
     check(still>60&&still<68&&windy-still>8,`wind sway failed: ${still} -> ${windy}`);
     swayGeometry.dispose();swayMaterial.dispose();
+    // Seasons (T-F7): deciduous leaves turn orange in autumn and mostly fall in winter; dry grass browns in summer.
+    const seasonScene=new THREE.Scene();const seasonGeometry=new THREE.PlaneGeometry(2,2).rotateX(-Math.PI/2);
+    seasonGeometry.setAttribute('aLight',new THREE.Float32BufferAttribute([1,0,1,0,1,0,1,0],2));
+    seasonGeometry.setAttribute('aSway',new THREE.Float32BufferAttribute([0,0,0,0],1));
+    const seasonWeights=new THREE.Float32BufferAttribute([1,0,1,0,1,0,1,0],2);seasonGeometry.setAttribute('aSeason',seasonWeights);
+    const seasonMaterial=new THREE.MeshBasicMaterial({color:0x3a8026});patchLightMaterial(seasonMaterial,uniforms,false,undefined,true);
+    seasonScene.add(new THREE.Mesh(seasonGeometry,seasonMaterial));
+    const colour=()=>{let r=0,g=0,n=0;for(let i=0;i<pixels.length;i+=4)if(pixels[i]+pixels[i+1]+pixels[i+2]>0){r+=pixels[i];g+=pixels[i+1];n++;}return {r:r/Math.max(n,1),g:g/Math.max(n,1),n};};
+    uniforms.uWind.value=0;uniforms.uSeason.value.set(0,0,0);read(seasonScene,camera);const green=colour();
+    uniforms.uSeason.value.set(1,0,0);read(seasonScene,camera);const autumn=colour();image(seasonScene,camera,'Deciduous leaves in autumn');
+    uniforms.uSeason.value.set(0,1,0);read(seasonScene,camera);const bare=colour();image(seasonScene,camera,'Deciduous leaves in winter');
+    check(green.g>green.r&&autumn.r>autumn.g,`autumn colour failed: ${JSON.stringify([green,autumn])}`);
+    check(bare.n<green.n*0.3&&bare.n>green.n*0.03,`leaf fall failed: ${green.n} -> ${bare.n} pixels`);
+    seasonWeights.array.set([0,1,0,1,0,1,0,1]);seasonWeights.needsUpdate=true;
+    uniforms.uSeason.value.set(1,1,0);read(seasonScene,camera);const evergreenGrass=colour();
+    check(evergreenGrass.n===green.n&&Math.abs(evergreenGrass.r-green.r)<1,'grass changed with the leaf seasons');
+    uniforms.uSeason.value.set(0,0,1);read(seasonScene,camera);const dryGrass=colour();image(seasonScene,camera,"Dry grass in summer");
+    check(dryGrass.r/dryGrass.g>green.r/green.g*1.3,`dry grass did not brown: ${JSON.stringify([green,dryGrass])}`);
+    uniforms.uSeason.value.set(0,0,0);seasonGeometry.dispose();seasonMaterial.dispose();
     transitionGeometry.dispose();transitionMaterial.dispose();
     sky.dispose();geometry.dispose();material.dispose();dryMaterial.dispose();target.dispose();renderer.dispose();
-    return {still,windy,dry,wet,shelteredDry,shelteredWet,day,night,translated,moonLitPixels:counts};
+    return {still,windy,seasonPixels:[green.n,bare.n],dry,wet,shelteredDry,shelteredWet,day,night,translated,moonLitPixels:counts};
   });
   if(errors.length)throw Error(errors.join('\n'));
   mkdirSync('screenshots',{recursive:true});await page.screenshot({path:'screenshots/render-regressions.png',fullPage:true});

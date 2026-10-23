@@ -8,7 +8,7 @@ import { metersToBlocks, UNDERWATER_FAR_M } from '../src/config';
 
 function atmosphereGame() {
   const game=Object.create(Game.prototype) as Game;
-  const renderer={camera:new THREE.Object3D(),setSkyColor:vi.fn(),setDaylight:vi.fn(),setWetness:vi.fn(),setAtmosphericFog:vi.fn(),setWind:vi.fn()};
+  const renderer={camera:new THREE.Object3D(),setSkyColor:vi.fn(),setDaylight:vi.fn(),setWetness:vi.fn(),setAtmosphericFog:vi.fn(),setWind:vi.fn(),setSeason:vi.fn()};
   const weather={precipitation:'rain',humidity:1,cloudCover:1,isStorm:false,pressure:0,windSpeed:6};
   const model={sample:vi.fn(()=>weather)};
   const particles={update:vi.fn(),wetness:0.5,strikes:0,getFlashIntensity:()=>0};
@@ -34,6 +34,7 @@ describe('atmospheric integration (T-F3/T-F4)',()=>{
   it('passes the sampled wind to foliage sway and the clouds (T-F5)',()=>{
     const {game,renderer,clouds}=atmosphereGame();update(game,0.1);
     expect(renderer.setWind).toHaveBeenCalledWith(6,0.1);
+    expect(renderer.setSeason).toHaveBeenCalledWith(0.25);
     expect(clouds.update.mock.calls[0]![4]).toBe(6);
   });
   it('clears valley fog when flying above the valley walls',()=>{

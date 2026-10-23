@@ -36,6 +36,30 @@ export function dayLengthMinutes(latitudeDeg: number, declinationDeg: number): n
   return hours * 60;
 }
 
+function smoothstep(a: number, b: number, x: number): number {
+  const t = clamp((x - a) / (b - a), 0, 1);
+  return t * t * (3 - 2 * t);
+}
+
+/** How far the year has turned foliage, each 0..1 (T-F7). Spring starts at 0; see seasonName. */
+export interface FoliageSeason {
+  /** Deciduous leaves turn orange and red: from early autumn until they have fallen. */
+  autumn: number;
+  /** Deciduous leaves have fallen: from mid autumn, through winter, until they bud again at the end of winter. */
+  bare: number;
+  /** High summer: dry grass browns. */
+  summer: number;
+}
+
+export function foliageSeason(timeOfYear: number): FoliageSeason {
+  const t = ((timeOfYear % 1) + 1) % 1;
+  return {
+    autumn: smoothstep(0.5, 0.6, t) * (1 - smoothstep(0.9, 0.95, t)),
+    bare: smoothstep(0.62, 0.75, t) * (1 - smoothstep(0.95, 1, t)),
+    summer: smoothstep(0.25, 0.33, t) * (1 - smoothstep(0.45, 0.55, t)),
+  };
+}
+
 /** A year clock: timeOfYear advances independently of timeOfDay. */
 export class Calendar {
   timeOfYear = 0;
