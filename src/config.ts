@@ -606,6 +606,19 @@ export const FALL_DAMAGE_THRESHOLD_M_S = 6; // impact speed above this causes da
 export const FALL_DAMAGE_MULTIPLIER = 2; // damage per m/s above threshold
 export const DROWN_DAMAGE_PER_S = 2; // damage per second when out of air
 export const AIR_MAX_S = 15; // seconds the player can hold their breath
+// Body temperature (T-I4). Felt temperature: wind chill per m/s outside, and fixed changes for wet, roofed and fire.
+export const FELT_WIND_C_PER_M_S = 0.5;
+export const FELT_WET_C = 6;
+export const FELT_SHELTER_C = 8;
+export const FELT_HEAT_SOURCE_C = 20;
+export const HEAT_SOURCE_RADIUS = 3; // blocks: lava or a light-giving block this close warms the player
+export const BODY_TEMP_NORMAL_C = 37;
+export const BODY_TEMP_COMFORT_C = [5, 30] as const; // felt °C where the body stays normal
+export const BODY_TEMP_SLOPE = 0.15; // body °C per felt degree outside the comfort band
+export const BODY_TEMP_RATE_PER_S = 1 / 90; // the body closes about 1/90 of the gap each second
+export const HYPOTHERMIA_BELOW_C = 35; // survival damage below this body temperature, and above the next
+export const HEATSTROKE_ABOVE_C = 39.5;
+export const BODY_TEMP_DAMAGE_PER_S = 0.25;
 export const NOTICE_S = 4; // seconds a short message (such as after using a bed) stays on screen
 
 // ---- Underground pools and fluid hazards (spec 47) ----

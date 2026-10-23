@@ -11,6 +11,7 @@ import {
   GAME_MODE_CREATIVE, GAME_MODE_SURVIVAL, HEALTH_MAX, HUNGER_MAX,
   DROWN_DAMAGE_PER_S, AIR_MAX_S, GAME_TICKS_PER_SECOND, LIGHTNING_SKY_BRIGHTEN, THUNDER_DELAY_MIN_S, THUNDER_DELAY_MAX_S,
   HUNGER_DRAIN_PER_S, STARVE_DAMAGE_PER_S, REGEN_MIN_HUNGER, REGEN_PER_S, NOTICE_S, SLAB_HEIGHT,
+  BODY_TEMP_DAMAGE_PER_S, BODY_TEMP_NORMAL_C, HEAT_SOURCE_RADIUS, HEATSTROKE_ABOVE_C, HYPOTHERMIA_BELOW_C,
 } from './config';
 import { Sounds } from './audio/sounds';
 import { FixedStepLoop } from './core/loop';
@@ -23,6 +24,7 @@ import { BuildTool, cornerFor, frameFor } from './player/buildTool';
 import { Inventory, type ItemStack, startingSlots } from './player/inventory';
 import { blockIntersectsBody, canBreak } from './player/interaction';
 import { afterUse, breakSeconds, dropsWhenMined } from './player/tools';
+import { feltTemperature, stepBodyTemperature, type Exposure } from './player/bodyTemperature';
 import type { Vec3 } from './player/physics';
 import { FireExposure, fluidContact, landingDamage, landingWaterDepth } from './player/fluidHazards';
 import { NO_CONTROLS, PLAYER_SHAPE, Player, type PlayerControls } from './player/player';
@@ -123,6 +125,13 @@ export class Game {
   health = HEALTH_MAX;
   /** Player hunger, 0..HUNGER_MAX. */
   hunger = HUNGER_MAX;
+  /**
+   * Core body temperature in °C (T-I4), following the felt temperature, which is sampled once a second.
+   * shortcut: not saved, so a reload starts at normal; save it if players exploit that to warm up.
+   */
+  bodyTempC = BODY_TEMP_NORMAL_C;
+  private feltC = BODY_TEMP_NORMAL_C;
+  private exposureTimer = 0;
 
   /**
    * True when a crack stage has been shown for the current mining attempt. The render loop sets it, so the smoke test
@@ -400,10 +409,33 @@ export class Game {
     if (this.hunger <= 0) this.damage(STARVE_DAMAGE_PER_S * dt);
     else if (this.hunger >= REGEN_MIN_HUNGER) this.heal(REGEN_PER_S * dt);
 
+    // Body temperature (T-I4): too cold or too hot hurts.
+    this.exposureTimer -= dt;
+    if (this.exposureTimer <= 0) {
+      this.exposureTimer = 1;
+      this.feltC = feltTemperature(this.exposure());
+    }
+    this.bodyTempC = stepBodyTemperature(this.bodyTempC, this.feltC, dt);
+    if (this.bodyTempC < HYPOTHERMIA_BELOW_C || this.bodyTempC > HEATSTROKE_ABOVE_C) this.damage(BODY_TEMP_DAMAGE_PER_S * dt);
+
     // Death: respawn at spawn point, drop inventory.
     if (this.health <= 0) {
       this.die();
     }
+  }
+
+  /** The player's surroundings for body temperature: weather at the player, a roof, wetness and a fire nearby. */
+  private exposure(): Exposure {
+    const p = this.player.position;
+    const w = this.weather.sample(p.x * BLOCK_SIZE_M, p.z * BLOCK_SIZE_M, this.timeOfDay, this.calendar.timeOfYear, p.y * BLOCK_SIZE_M);
+    const x = Math.floor(p.x), y = Math.floor(p.y), z = Math.floor(p.z);
+    const sheltered = (this.world.topAt(x, z) ?? -Infinity) >= Math.floor(p.y + PLAYER_HEIGHT);
+    let nearHeat = false;
+    const r = HEAT_SOURCE_RADIUS;
+    for (let dx = -r; dx <= r && !nearHeat; dx++) for (let dy = -r; dy <= r && !nearHeat; dy++) for (let dz = -r; dz <= r; dz++) {
+      if (getBlockDef(this.world.getBlock(x + dx, y + dy, z + dz)).lightEmission > 0) { nearHeat = true; break; }
+    }
+    return { airC: w.temperatureC, windSpeed: w.windSpeed, wet: this.player.inWater || (w.precipitation === 'rain' && !sheltered), sheltered, nearHeat };
   }
 
   /**
@@ -418,6 +450,7 @@ export class Game {
     if (mode === GAME_MODE_SURVIVAL) {
       this.health = HEALTH_MAX;
       this.hunger = HUNGER_MAX;
+      this.bodyTempC = this.feltC = BODY_TEMP_NORMAL_C;
       // A world that has not been played yet starts survival empty; later switches never touch the inventory (T-I11).
       if (!this.startedFromSave && JSON.stringify(this.inventory.slots) === JSON.stringify(startingSlots())) {
         this.inventory.slots.fill(null);
@@ -457,6 +490,7 @@ export class Game {
     this.health = HEALTH_MAX;
     this.hunger = HUNGER_MAX;
     this.air = AIR_MAX_S;
+    this.bodyTempC = this.feltC = BODY_TEMP_NORMAL_C;
 
     // Respawn on the bed while it stands (an unloaded one is trusted); trySpawn places the player once it is meshed.
     const bed = this.bed;
@@ -600,11 +634,14 @@ export class Game {
     this.renderer.render();
     this.hud.update(this.inventory.slots, this.inventory.selected, frameDt, this.playing, this.ready && !this.inventoryScreen.isOpen);
     this.noticeS = Math.max(0, this.noticeS - frameDt);
-    this.hud.setHazard(this.gameMode === GAME_MODE_SURVIVAL && this.fire.remaining > 0 ? 'On fire · Enter water to extinguish'
+    const survival = this.gameMode === GAME_MODE_SURVIVAL;
+    this.hud.setHazard(survival && this.fire.remaining > 0 ? 'On fire · Enter water to extinguish'
+      : survival && this.bodyTempC < HYPOTHERMIA_BELOW_C + 0.5 ? 'Freezing · Find shelter or a fire'
+      : survival && this.bodyTempC > HEATSTROKE_ABOVE_C - 0.5 ? 'Overheating · Find shade or water'
       : this.noticeS > 0 ? this.notice : '');
     // Round up so a sliver of health reads 1, not 0. Shortcut: plain text until the Pixel Aero HUD (T-K8) adds bars.
     this.hud.setVitals(this.gameMode === GAME_MODE_SURVIVAL
-      ? `Health ${Math.ceil(this.health)}/${HEALTH_MAX} · Hunger ${Math.ceil(this.hunger)}/${HUNGER_MAX}` : '');
+      ? `Health ${Math.ceil(this.health)}/${HEALTH_MAX} · Hunger ${Math.ceil(this.hunger)}/${HUNGER_MAX} · Body ${this.bodyTempC.toFixed(1)} °C` : '');
     this.debugOverlay.update(frameDt, () => formatDebugLines(this.debugState()));
   }
 
@@ -1213,6 +1250,7 @@ export class Game {
       burning: this.fire.remaining > 0,
       inLava: this.player.inLava,
       hunger: this.hunger,
+      bodyTempC: Math.round(this.bodyTempC * 10) / 10,
       air: Math.round(this.air * 100) / 100,
       target: this.target ? [this.target.x, this.target.y, this.target.z] : null,
       targetName: this.target ? getBlockDef(this.world.getBlock(this.target.x, this.target.y, this.target.z)).name : null,
