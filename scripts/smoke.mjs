@@ -90,10 +90,13 @@ const CHECKS = [
     run: async (page) => {
       const before = await page.evaluate(() => window.__game.state());
       await page.evaluate(([x, y, z]) => window.__game.teleport(x, y + 8, z), before.position);
-      await page.waitForTimeout(2000);
-      const after = await page.evaluate(() => window.__game.state());
-      if (!after.onGround || Math.abs(after.position[1] - before.position[1]) > 0.05)
-        throw new Error(`did not land: ${JSON.stringify(after)}`);
+      // Wait for the landing, not a fixed time: on a loaded runner long frames are clamped (MAX_FRAME_DT), so game time lags wall time.
+      await page
+        .waitForFunction((y) => {
+          const s = window.__game.state();
+          return s.onGround && Math.abs(s.position[1] - y) <= 0.05;
+        }, before.position[1], { timeout: 20_000, polling: 100 })
+        .catch(async () => { throw new Error(`did not land: ${JSON.stringify(await page.evaluate(() => window.__game.state()))}`); });
     },
   },
   {
@@ -879,14 +882,18 @@ const CHECKS = [
         .catch(() => { throw new Error('pause-menu Inventory button did not open inventory'); });
       if (await pausePage.locator('.menu-overlay').isVisible()) throw new Error('the pause menu should be hidden with the inventory open');
       await pausePage.keyboard.press('Escape');
-      await pausePage.waitForFunction(() => !window.__game.state().inventoryOpen, null, { timeout: 10_000, polling: 100 })
+      // Keys are read once per rendered frame, and one software-rendered frame can take over 10 s on a loaded runner.
+      await pausePage.waitForFunction(() => !window.__game.state().inventoryOpen, null, { timeout: 30_000, polling: 100 })
         .catch(() => { throw new Error('Escape did not close pause-menu inventory'); });
       if (!(await pausePage.locator('.menu-overlay').isVisible())) throw new Error('Escape should return to the pause menu');
       // Only the HUD button, not the whole HUD, must sit above the pause overlay.
       await pausePage.locator('.hud-inventory').click();
-      await pausePage.waitForFunction(() => window.__game.state().inventoryOpen, null, { timeout: 5_000 });
+      // Interval polling like the waits above: under software rendering an animation frame can take seconds.
+      await pausePage.waitForFunction(() => window.__game.state().inventoryOpen, null, { timeout: 10_000, polling: 100 })
+        .catch(() => { throw new Error('HUD Inventory button did not open inventory over the pause menu'); });
       await pausePage.keyboard.press('Escape');
-      await pausePage.waitForFunction(() => !window.__game.state().inventoryOpen, null, { timeout: 5_000 });
+      await pausePage.waitForFunction(() => !window.__game.state().inventoryOpen, null, { timeout: 30_000, polling: 100 })
+        .catch(() => { throw new Error('Escape did not close the HUD-opened inventory'); });
       if ((await pausePage.locator('.menu-title').innerText()) !== 'Paused') throw new Error('HUD inventory must return to the pause menu');
       if (await pausePage.evaluate(() => document.pointerLockElement !== null)) throw new Error('HUD inventory should leave the pause-menu pointer free');
       });
@@ -900,7 +907,8 @@ const CHECKS = [
       let phase = 'initial HUD click';
       const waitState = async (open) => {
         try {
-          await hudPage.waitForFunction((open) => window.__game.state().inventoryOpen === open, open, { timeout: 5_000 });
+          // Keys and HUD state are handled once per rendered frame, which can take many seconds under software rendering.
+          await hudPage.waitForFunction((open) => window.__game.state().inventoryOpen === open, open, { timeout: 30_000, polling: 100 });
         } catch (error) {
           const snapshot = await hudPage.evaluate(() => ({
             open: window.__game.state().inventoryOpen,
@@ -918,7 +926,7 @@ const CHECKS = [
       await button.click(); // A real hit-test: must work above the start-menu overlay.
       await waitOpen();
       if (await hudPage.locator('.menu-overlay').isVisible()) throw new Error('inventory must hide the start menu');
-      await hudPage.waitForFunction(() => document.querySelector('.hud-inventory')?.disabled, null, { timeout: 5_000 });
+      await hudPage.waitForFunction(() => document.querySelector('.hud-inventory')?.disabled, null, { timeout: 30_000, polling: 100 });
       phase = 'E returns to the start menu';
       await hudPage.keyboard.press('KeyE');
       await waitClosed();
