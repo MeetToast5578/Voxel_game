@@ -5,7 +5,24 @@ import {
   dayOfSeason,
   solarDeclination,
   dayLengthMinutes,
+  foliageSeason,
 } from '../src/world/calendar';
+
+describe('foliageSeason (T-F7)', () => {
+  it('is green in spring, dry in high summer, coloured in early autumn and bare in winter', () => {
+    expect(foliageSeason(0.1)).toEqual({ autumn: 0, bare: 0, summer: 0 });
+    expect(foliageSeason(0.38)).toEqual({ autumn: 0, bare: 0, summer: 1 });
+    expect(foliageSeason(0.6)).toMatchObject({ autumn: 1, bare: 0, summer: 0 });
+    expect(foliageSeason(0.85)).toMatchObject({ bare: 1, summer: 0 });
+  });
+  it('wraps smoothly from the end of winter into spring, when the leaves come back green', () => {
+    expect(foliageSeason(1)).toEqual(foliageSeason(0));
+    expect(foliageSeason(0.96).autumn).toBe(0); // already bare while the colour fades, so new leaves are green
+    expect(foliageSeason(0.93).bare).toBe(1);
+    expect(foliageSeason(0.995).bare).toBeLessThan(0.05);
+    expect(foliageSeason(-0.15)).toEqual(foliageSeason(0.85));
+  });
+});
 
 describe('seasonName', () => {
   it('maps quarters of the year to seasons', () => {

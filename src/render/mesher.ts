@@ -22,6 +22,8 @@ export interface MeshData {
   light: Float32Array;
   /** Per vertex: how far wind moves it at full strength, in blocks (T-F5). 0 for everything but foliage. */
   sway: Float32Array;
+  /** Per vertex: [deciduous leaf, dry grass] weights 0..1, from the climate (T-F7). The shader applies the season. */
+  season: Float32Array;
   indices: Uint32Array;
 }
 
@@ -222,6 +224,7 @@ class MeshBuilder {
   private colors = new Float32Array(0);
   private light = new Float32Array(0);
   private sway = new Float32Array(0);
+  private season = new Float32Array(0);
   private indices = new Uint32Array(0);
 
   reset(): void {
@@ -240,6 +243,7 @@ class MeshBuilder {
       this.colors = grow(this.colors, capacity * 3);
       this.light = grow(this.light, capacity * 2);
       this.sway = grow(this.sway, capacity);
+      this.season = grow(this.season, capacity * 2);
       this.indices = growIndices(this.indices, Math.max(capacity * 6, this.indexCount + indices));
       this.capacity = capacity;
     } else if (this.indexCount + indices > this.indices.length) {
@@ -292,6 +296,12 @@ class MeshBuilder {
     this.sway[this.vertexCount] = sway;
   }
 
+  /** Seasonal weights for the next vertex. Always written, like the sway. */
+  writeSeason(deciduous: number, dryness: number): void {
+    this.season[this.vertexCount * 2] = deciduous;
+    this.season[this.vertexCount * 2 + 1] = dryness;
+  }
+
   writeIndices(offset: number, i0: number, i1: number, i2: number, i3: number, i4: number, i5: number): void {
     const p = this.indices;
     p[offset] = i0;
@@ -309,6 +319,7 @@ class MeshBuilder {
       colors: this.colors.slice(0, this.vertexCount * 3),
       light: this.light.slice(0, this.vertexCount * 2),
       sway: this.sway.slice(0, this.vertexCount),
+      season: this.season.slice(0, this.vertexCount * 2),
       indices: this.indices.slice(0, this.indexCount),
     };
   }
@@ -397,6 +408,7 @@ export function buildChunkMesh(neighbors: readonly Uint16Array[], tops: readonly
               solid.writeColor(positionOffset, 1, 1, 1);
               solid.writeLight(lightOffset, skyB, blkB);
               solid.writeSway(c[1] === 1 ? SWAY_TABLE[id]! : 0);
+              solid.writeSeason(0, 0);
               solid.vertexCount++;
               positionOffset += 3;
               uvOffset += 2;
@@ -481,7 +493,11 @@ export function buildChunkMesh(neighbors: readonly Uint16Array[], tops: readonly
             if (tints && tint) {
               tints.sample(lx + FACE_CORNERS[at * 3]!, y + (cyCorner === 1 ? top : bottom), lz + FACE_CORNERS[at * 3 + 2]!, tint as TintKind);
               out.writeColor(positionOffset, brightness * tints.r, brightness * tints.g, brightness * tints.b);
-            } else out.writeColor(positionOffset, brightness, brightness, brightness);
+              out.writeSeason(tints.deciduous, tints.dryness);
+            } else {
+              out.writeColor(positionOffset, brightness, brightness, brightness);
+              out.writeSeason(0, 0);
+            }
             out.writeLight(lightOffset, skyB, blkB);
             out.writeSway(SWAY_TABLE[id]!);
             out.vertexCount++;

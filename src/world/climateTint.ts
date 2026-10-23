@@ -14,6 +14,22 @@ export function climateTint(temperatureC: number, humidity: number, kind: TintKi
   return kind === 2 ? [r * 0.9, g * 0.95, b] : [r, g, b];
 }
 
+function smoothstep(a: number, b: number, x: number): number {
+  const t = clamp((x - a) / (b - a), 0, 1);
+  return t * t * (3 - 2 * t);
+}
+
+/**
+ * How strongly a place shows the seasons (T-F7), from its climate: [deciduous, dryness], each 0..1. All trees share one
+ * leaves block, so the climate decides: cold boreal and hot tropical places stay evergreen, temperate ones go bare in
+ * winter. Grass browns in summer where it is warm and dry.
+ */
+export function seasonalWeights(temperatureC: number, humidity: number): readonly [number, number] {
+  const deciduous = smoothstep(-4, 2, temperatureC) * (1 - smoothstep(18, 24, temperatureC));
+  const dryness = (1 - smoothstep(0.3, 0.6, humidity)) * smoothstep(5, 20, temperatureC);
+  return [deciduous, dryness];
+}
+
 /** Sparse world grid, never chunk IDs. Cached and fresh sampling are interchangeable. */
 export class ClimateTintSampler {
   private readonly climate: ClimateSampler;
@@ -51,6 +67,8 @@ export class MeshTints {
   private readonly temperatures = new Float64Array((CHUNK_SIZE + 1) ** 2);
   private readonly humidity = new Float64Array((CHUNK_SIZE + 1) ** 2);
   r = 1; g = 1; b = 1;
+  /** Seasonal weights of the last sample (see seasonalWeights); 0 for water. */
+  deciduous = 0; dryness = 0;
   constructor(seed: number, cx: number, private readonly cy: number, cz: number) {
     const sampler = samplerFor(seed);
     for (let z = 0; z <= CHUNK_SIZE; z++) for (let x = 0; x <= CHUNK_SIZE; x++) {
@@ -60,8 +78,12 @@ export class MeshTints {
   }
   sample(x: number, y: number, z: number, kind: TintKind): void {
     const i = z * (CHUNK_SIZE + 1) + x;
-    const t = clamp((this.temperatures[i]! - (this.cy * CHUNK_SIZE + y) * BLOCK_SIZE_M / 1000 * TEMPERATURE_LAPSE_C_PER_KM + 20) / 55, 0, 1);
+    const temperatureC = this.temperatures[i]! - (this.cy * CHUNK_SIZE + y) * BLOCK_SIZE_M / 1000 * TEMPERATURE_LAPSE_C_PER_KM;
+    const t = clamp((temperatureC + 20) / 55, 0, 1);
     const h = this.humidity[i]!;
+    const [deciduous, dryness] = kind === 3 ? [0, 0] : seasonalWeights(temperatureC, h);
+    this.deciduous = kind === 2 ? deciduous : 0;
+    this.dryness = kind === 1 ? dryness : 0;
     if (kind === 3) { this.r = 0.7 + 0.2 * t; this.g = 0.85 + 0.1 * h; this.b = 1 - 0.2 * t; }
     else {
       this.r = (1 - 0.35 * h) * (0.8 + 0.2 * t) * (kind === 2 ? 0.9 : 1);
