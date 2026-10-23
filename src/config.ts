@@ -295,6 +295,21 @@ export const ENTITY_FRICTION = 8; // per second: how fast an entity slows down o
 // ---- Random ticks (spec 38) ----
 export const RANDOM_TICKS_PER_CHUNK = 3; // random cells drawn per loaded chunk per tick step
 export const RANDOM_TICK_BUDGET_MS = 1; // max time per frame spent on the random-tick pass
+// Snow and ice (T-G2): the chance that a random tick reaching an exposed column top changes it.
+export const SNOW_SETTLE_CHANCE = 0.05; // while snowing: add one layer of snow
+export const SNOW_MELT_CHANCE = 0.1; // above 0 °C: remove one layer
+export const ICE_FREEZE_CHANCE = 0.05; // below 0 °C: still water at the top freezes
+export const ICE_THAW_CHANCE = 0.1; // above 0 °C: ice turns back into water
+// Saplings (T-G3).
+export const SAPLING_DROP_CHANCE = 0.05; // a broken or decayed leaf block also drops a sapling
+export const SAPLING_GROW_CHANCE = 0.1; // a random tick on a sapling with open sky above grows it into its tree
+// Crops (T-G4). A random tick on a crop under open sky advances it one stage with this chance, scaled by temperature.
+export const CROP_GROW_CHANCE = 0.25;
+/** Per crop: [coldest °C it grows at, °C from which it grows at full speed]. Root crops tolerate the cold better. */
+export const CROP_TEMPERATURES_C = { wheat: [5, 20], carrots: [3, 16], potatoes: [4, 17] } as const;
+export const CROP_HEAT_LIMIT_C = [32, 40] as const; // growth slows above the first and stops at the second
+export const CROP_HARVEST_YIELD = 3; // a ripe crop drops this many of what you plant; an unripe one drops one
+export const WHEAT_SEED_DROP_CHANCE = 0.125; // breaking tall grass also drops wheat to plant
 
 // ---- Ecology (spec 36) ----
 export const GRASS_SPREAD_CHANCE = 0.02; // chance per tick that grass spreads to adjacent lit dirt

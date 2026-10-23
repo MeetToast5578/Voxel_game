@@ -519,6 +519,90 @@ const CHECKS = [
     },
   },
   {
+    name: 'snow layers and ice render, and the player stands on deep snow (T-G2)',
+    run: async (page) => {
+      const SNOW = 143, ICE = 151; // BlockId.SNOW (1 layer; + n - 1 for n layers) and BlockId.ICE
+      const s = await page.evaluate(() => window.__game.state());
+      const [px, pz] = [Math.floor(s.position[0]), Math.floor(s.position[2])];
+      const py = 8390; // the same clean platform the physics checks use
+      await page.evaluate(([x, z, y]) => {
+        window.__game.setFlying(true);
+        window.__game.teleport(x + 0.5, y + 10, z + 0.5);
+      }, [px, pz, py]);
+      await page.waitForFunction(() => window.__game.state().areaMeshed, null, { timeout: 60_000, polling: 100 });
+      await page.evaluate(([x, z, y, SNOW, ICE]) => {
+        const g = window.__game;
+        for (let i = -1; i <= 9; i++) for (let j = -1; j <= 4; j++) { g.setBlock(x + i, y, z + j, 10); for (let k = 1; k <= 4; k++) g.setBlock(x + i, y + k, z + j, 0); }
+        for (let n = 1; n <= 8; n++) g.setBlock(x + n, y + 1, z + 3, SNOW + n - 1); // 1 to 8 layers in a row
+        g.setBlock(x, y, z + 3, ICE);
+        g.setBlock(x, y + 1, z, SNOW + 7); // a full block of snow to stand on
+        g.setFlying(false);
+        g.teleport(x + 0.5, y + 4, z + 0.5);
+      }, [px, pz, py, SNOW, ICE]);
+      await page
+        .waitForFunction((y) => {
+          const s = window.__game.state();
+          return s.onGround && Math.abs(s.position[1] - (y + 2)) <= 0.05;
+        }, py, { timeout: 20_000, polling: 100 })
+        .catch(async () => { throw new Error(`did not land on the snow: ${JSON.stringify(await page.evaluate(() => window.__game.state()))}`); });
+      await page.evaluate(() => window.__game.look(Math.PI + 0.93, -0.9)); // toward the row of layers
+      await page.waitForTimeout(400);
+      await page.screenshot({ path: 'screenshots/snow.png', timeout: 60_000 });
+    },
+  },
+  {
+    name: 'a sapling on grass grows into a tree (T-G3)',
+    run: async (page) => {
+      const GRASS = 3, SAPLING = 152; // BlockId.SAPLING is the oak sapling
+      const s = await page.evaluate(() => window.__game.state());
+      const [x, , z] = s.position.map(Math.floor);
+      const spot = await page.evaluate(([x, z, GRASS, SAPLING]) => {
+        const g = window.__game;
+        // Open ground 8 blocks south of the player, cleared up to the sky.
+        let top = 8600;
+        while (top > 1 && g.getBlock(x, top, z + 8) === 0) top--;
+        g.setBlock(x, top, z + 8, GRASS);
+        g.setBlock(x, top + 1, z + 8, SAPLING);
+        g.look(Math.PI, 0.2);
+        return [x, top + 1, z + 8];
+      }, [x, z, GRASS, SAPLING]);
+      await page.waitForTimeout(400);
+      await page.screenshot({ path: 'screenshots/sapling.png', timeout: 60_000 });
+      const grew = await page.evaluate(([x, y, z]) => window.__game.growSapling(x, y, z), spot);
+      if (!grew) throw new Error(`the sapling at ${spot} did not grow`);
+      const log = await page.evaluate(([x, y, z]) => window.__game.getBlock(x, y, z), spot);
+      if (log !== 6) throw new Error(`expected a log where the sapling was, found ${log}`);
+      await page.waitForTimeout(1500); // the tree's chunks remesh over a few frames
+      await page.screenshot({ path: 'screenshots/sapling-tree.png', timeout: 60_000 });
+      await page.evaluate(() => window.__game.look(0, 0));
+    },
+  },
+  {
+    name: 'crops show each growth stage (T-G4)',
+    run: async (page) => {
+      const GRASS = 3, CROPS = [166, 170, 174]; // BlockId.WHEAT, CARROTS, POTATOES; + stage for later stages
+      const s = await page.evaluate(() => window.__game.state());
+      const [x, , z] = s.position.map(Math.floor);
+      await page.evaluate(([x, z, GRASS, CROPS]) => {
+        const g = window.__game;
+        // A small field 5..7 blocks south of the player: one row per crop, stages 0..3 left to right.
+        CROPS.forEach((crop, row) => {
+          for (let stage = 0; stage < 4; stage++) {
+            const cx = x - 2 + stage, cz = z + 5 + row;
+            let top = 8600;
+            while (top > 1 && g.getBlock(cx, top, cz) === 0) top--;
+            g.setBlock(cx, top, cz, GRASS);
+            g.setBlock(cx, top + 1, cz, crop + stage);
+          }
+        });
+        g.look(Math.PI, -0.45);
+      }, [x, z, GRASS, CROPS]);
+      await page.waitForTimeout(600);
+      await page.screenshot({ path: 'screenshots/crops.png', timeout: 60_000 });
+      await page.evaluate(() => window.__game.look(0, 0));
+    },
+  },
+  {
     name: 'glowstone lights up the night',
     run: async (page) => {
       const s = await page.evaluate(() => window.__game.state());

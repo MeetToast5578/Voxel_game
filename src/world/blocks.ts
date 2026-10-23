@@ -1,4 +1,4 @@
-import { LAVA_DENSITY, SURFACE_LAYER_HEIGHT, SLAB_HEIGHT } from '../config';
+import { CROP_HARVEST_YIELD, LAVA_DENSITY, SURFACE_LAYER_HEIGHT, SLAB_HEIGHT, type TreeSpecies } from '../config';
 export const BlockId = {
   AIR: 0,
   STONE: 1,
@@ -47,6 +47,14 @@ export const BlockId = {
   FALLEN_LOG_Z: 74,
   LILY_PAD: 75,
   MOSS: 76,
+  // Appended after the slab types (states 77..142), so saved worlds keep their states.
+  SNOW: 143,
+  ICE: 151,
+  SAPLING: 152,
+  // Crops (T-G4), CROP_STAGES states each; variant 0 is what you plant.
+  WHEAT: 166,
+  CARROTS: 170,
+  POTATOES: 174,
 } as const;
 
 export const Tile = {
@@ -105,6 +113,13 @@ export const Tile = {
   REED: 52,
   LILY_PAD: 53,
   MOSS: 54,
+  SNOW: 55,
+  ICE: 56,
+  SAPLING: 57,
+  // CROP_STAGES tiles each, one per growth stage.
+  WHEAT: 58,
+  CARROTS: 62,
+  POTATOES: 66,
 } as const;
 
 export type RenderLayer = 'none' | 'opaque' | 'cutout' | 'translucent';
@@ -305,6 +320,20 @@ function def(
 
 const all = (t: number) => ({ top: t, side: t, bottom: t });
 
+/**
+ * The species a sapling can be, by variant. Every tree species with leaves; cacti and dead snags have none to drop one.
+ * Append-only: other block types follow the sapling's states, so a new species needs a new block type.
+ */
+export const SAPLING_SPECIES: readonly TreeSpecies[] = [
+  'oak', 'maple', 'spruce', 'fir', 'larch', 'pine', 'birch', 'jungle_giant', 'palm', 'acacia', 'baobab', 'willow', 'mangrove', 'bush',
+];
+
+/** Growth stages of every crop; the last one is ripe. */
+export const CROP_STAGES = 4;
+
+/** Snow builds up in this many layers; a full stack is one block deep. */
+export const SNOW_LAYERS = 8;
+
 /** Flowing water has 8 levels, and each level comes in a falling and a non-falling variant. Variant v: level v % 8 + 1. */
 export const WATER_LEVELS = 8;
 export const FLOWING_WATER_VARIANTS = 2 * WATER_LEVELS;
@@ -378,6 +407,20 @@ export const BLOCK_REGISTRY = buildBlockRegistry([
     ...d, key: `${d.key}_slab`, name: `${d.name} slab`, variants: 2,
     shape: 'slab' as const, slabMaterial: d.id, opaque: false, cullSame: false, falls: false, flows: false,
   })),
+  // Snow layers (T-G2): variant v is v + 1 eighths of a block deep. A layer: thin, sunlight passes, water washes it away.
+  def('snow', 'Snow', all(Tile.SNOW), {
+    variants: SNOW_LAYERS, solid: false, opaque: false, shape: 'layer', hardness: 0.1, supports: false, density: 300,
+  }),
+  // Translucent like water, so it still counts as the column top; walkable.
+  def('ice', 'Ice', all(Tile.ICE), { opaque: false, cullSame: true, layer: 'translucent', hardness: 0.5, density: 917 }),
+  // Saplings (T-G3): one variant per species in SAPLING_SPECIES. They grow into that species' tree.
+  def('sapling', 'Sapling', all(Tile.SAPLING), {
+    variants: SAPLING_SPECIES.length, solid: false, opaque: false, layer: 'cutout', shape: 'cross', hardness: 0, density: 300,
+  }),
+  // Crops (T-G4): variant = growth stage, and each stage has its own tile (see blockFaceTile).
+  ...(['wheat', 'carrots', 'potatoes'] as const).map((key) => def(key, key[0]!.toUpperCase() + key.slice(1),
+    all(key === 'wheat' ? Tile.WHEAT : key === 'carrots' ? Tile.CARROTS : Tile.POTATOES),
+    { variants: CROP_STAGES, solid: false, opaque: false, layer: 'cutout', shape: 'cross', hardness: 0, density: 300 })),
 ]);
 
 // BlockId.X is variant 0 of the type whose key is x; keep the two lists in step.
@@ -432,6 +475,7 @@ export function isFallingWater(state: number): boolean {
 export function blockTopHeight(state: number): number {
   if (getBlockDef(state).shape === 'slab') return blockVariant(state) === 0 ? SLAB_HEIGHT : 1;
   if (state === BlockId.LILY_PAD || state === BlockId.MOSS) return SURFACE_LAYER_HEIGHT;
+  if (isSnowState(state)) return snowLayers(state) / SNOW_LAYERS;
   return isFlowingWaterState(state) ? waterLevel(state) / WATER_LEVELS : isFlowingLavaState(state) ? lavaLevel(state) / WATER_LEVELS : 1;
 }
 
@@ -461,6 +505,7 @@ export function blockFaceTile(state: number, dx: number, dy: number, dz: number)
   state = getBlockDef(state).slabMaterial ?? state;
   if ((state === BlockId.FALLEN_LOG_X && dx !== 0) || (state === BlockId.FALLEN_LOG_Z && dz !== 0)) return Tile.LOG_TOP;
   const tiles = getBlockDef(state).tiles;
+  if (isCropState(state)) return tiles.side + blockVariant(state); // one tile per growth stage
   return dy > 0 ? tiles.top : dy < 0 ? tiles.bottom : tiles.side;
 }
 
@@ -472,8 +517,39 @@ export function slabBounds(state: number): readonly [number, number] | null {
   return getBlockDef(state).shape === 'slab' ? (blockVariant(state) === 0 ? BOTTOM_SLAB_BOUNDS : TOP_SLAB_BOUNDS) : null;
 }
 export function blockBottomHeight(state: number): number { return slabBounds(state)?.[0] ?? 0; }
-export function blockCollision(state: number): boolean | readonly [number, number] { return slabBounds(state) ?? isSolid(state); }
+export function blockCollision(state: number): boolean | readonly [number, number] {
+  if (isSnowState(state)) return [0, snowLayers(state) / SNOW_LAYERS];
+  return slabBounds(state) ?? isSolid(state);
+}
+
+/** True for every stage of every crop. */
+export function isCropState(state: number): boolean {
+  return state >= BlockId.WHEAT && state < BlockId.POTATOES + CROP_STAGES;
+}
+
+export function isSnowState(state: number): boolean {
+  return state >= BlockId.SNOW && state < BlockId.SNOW + SNOW_LAYERS;
+}
+
+/** How many layers (1..SNOW_LAYERS) a snow state has. */
+export function snowLayers(state: number): number {
+  return state - BlockId.SNOW + 1;
+}
+
+/** The snow state with `layers` layers (1..SNOW_LAYERS). */
+export function snowState(layers: number): number {
+  return BlockId.SNOW + layers - 1;
+}
 export function slabItemState(state: number): number { const d = getBlockDef(state); return d.shape === 'slab' ? d.id : state; }
+
+/** What a broken block drops. A crop drops what you plant (its first stage): CROP_HARVEST_YIELD of it when ripe. */
+export function blockDrop(state: number): { state: number; count: number } {
+  if (isCropState(state)) {
+    const ripe = blockVariant(state) === CROP_STAGES - 1;
+    return { state: getBlockDef(state).id, count: ripe ? CROP_HARVEST_YIELD : 1 };
+  }
+  return { state: slabItemState(state), count: 1 };
+}
 export function slabState(material: number, top = false): number {
   const d = BLOCKS.find(d => d.slabMaterial === material);
   if (!d) throw new Error(`No slab for material ${material}`);

@@ -18,7 +18,8 @@ const hit = { x: 0, y: 0, z: 0, nx: 1, ny: 0, nz: 0, distance: 1 };
 describe('slab states and items', () => {
   it('appends two halves for every solid cube, preserving textures, names and light shortcut', () => {
     expect(SLAB_HEIGHT * BLOCK_SIZE_M).toBe(SLAB_HEIGHT_M);
-    for (const material of BLOCKS.filter(d => d.shape === 'cube' && d.solid)) {
+    // Types appended after the slabs (ice, T-G2) have no slab.
+    for (const material of BLOCKS.filter(d => d.shape === 'cube' && d.solid && d.id < 77)) {
       for (const upper of [false, true]) {
         const state = slabState(material.id, upper);
         expect(state).toBeGreaterThanOrEqual(77);
