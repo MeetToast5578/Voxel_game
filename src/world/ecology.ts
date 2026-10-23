@@ -1,9 +1,10 @@
 import { type World } from './world';
 import { type Tick, type TickResult } from './tick';
-import { BlockId, SNOW_LAYERS, blocksSky, getBlockDef, isCropState, isSnowState, snowLayers, snowState } from './blocks';
-import { CHUNK_SIZE, ICE_FREEZE_CHANCE, ICE_THAW_CHANCE, SAPLING_DROP_CHANCE, SAPLING_GROW_CHANCE, SNOW_MELT_CHANCE, SNOW_SETTLE_CHANCE } from '../config';
+import { BlockId, CROP_STAGES, SNOW_LAYERS, blocksSky, blockVariant, getBlockDef, isCropState, isSnowState, snowLayers, snowState } from './blocks';
+import { type Chunk } from './chunk';
+import { CHUNK_SIZE, CHUNK_VOLUME, CROP_GROW_CHANCE, ICE_FREEZE_CHANCE, RANDOM_TICKS_PER_CHUNK, ICE_THAW_CHANCE, SAPLING_DROP_CHANCE, SAPLING_GROW_CHANCE, SNOW_MELT_CHANCE, SNOW_SETTLE_CHANCE } from '../config';
 import { growSapling, isSaplingState, saplingState } from './saplings';
-import { growCrop } from './crops';
+import { cropGrowthFactor, growCrop } from './crops';
 import { floorDiv } from '../core/math';
 import { mulberry32 } from '../core/random';
 import { mixSeed } from './randomTick';
@@ -132,6 +133,58 @@ function settleSnowAndIce(world: World, x: number, y: number, z: number, roll: (
   const def = getBlockDef(ground);
   if (above === BlockId.AIR && weather.snowing && def.solid && def.shape === 'cube' && roll() < SNOW_SETTLE_CHANCE) {
     world.setBlock(x, top + 1, z, snowState(1));
+  }
+}
+
+/**
+ * Catch-up on reload (T-G7): a chunk that comes back after `elapsed` ticks gets the expected outcome of the random
+ * ticks it missed instead of a replay. Crops advance by elapsed × their growth rate, and snow and ice move toward the
+ * current weather. Fractions are rounded up or down at random, on a stream fixed by the seed, tick and chunk.
+ * shortcut: the weather at reload stands for the whole absence; replay a weather history if seasons look wrong.
+ * Saplings are left to grow once loaded, since a tree can reach into chunks that are not.
+ */
+export function catchUpChunk(world: World, chunk: Chunk, elapsed: number): void {
+  const weatherAt = world.surfaceWeather;
+  if (elapsed <= 0 || !weatherAt) return;
+  const rng = mulberry32(mixSeed(world.seed, world.currentTick, chunk.cx, chunk.cy, chunk.cz) ^ 0x5eed);
+  const round = (expected: number) => Math.floor(expected + rng());
+  const happened = (chance: number, tries: number) => rng() < 1 - (1 - chance) ** tries;
+  const x0 = chunk.cx * CHUNK_SIZE, y0 = chunk.cy * CHUNK_SIZE, z0 = chunk.cz * CHUNK_SIZE;
+
+  const cellTicks = elapsed * RANDOM_TICKS_PER_CHUNK / CHUNK_VOLUME; // random ticks each cell expected to get
+  for (let i = 0; i < CHUNK_VOLUME; i++) {
+    const state = chunk.blocks[i]!;
+    if (!isCropState(state)) continue;
+    const x = x0 + (i & 15), y = y0 + (i >> 8), z = z0 + ((i >> 4) & 15); // the order of localIndex
+    const ground = world.getBlock(x, y - 1, z);
+    if ((ground !== BlockId.GRASS && ground !== BlockId.DIRT) || world.topAt(x, z) !== y - 1) continue;
+    const stages = round(cellTicks * CROP_GROW_CHANCE * cropGrowthFactor(state, weatherAt(x, y, z).temperatureC));
+    if (stages > 0) world.setBlock(x, y, z, state + Math.min(stages, CROP_STAGES - 1 - blockVariant(state)));
+  }
+
+  // Snow and ice: each column is handled by the chunk that holds its top, as in settleSnowAndIce.
+  const columnTicks = elapsed * RANDOM_TICKS_PER_CHUNK / (CHUNK_SIZE * CHUNK_SIZE);
+  for (let x = x0; x < x0 + CHUNK_SIZE; x++) for (let z = z0; z < z0 + CHUNK_SIZE; z++) {
+    const top = world.topAt(x, z);
+    if (top === undefined || floorDiv(top, CHUNK_SIZE) !== chunk.cy) continue;
+    const weather = weatherAt(x, top + 1, z);
+    const ground = world.getBlock(x, top, z);
+    if (ground === BlockId.WATER) {
+      if (weather.temperatureC < 0 && happened(ICE_FREEZE_CHANCE, columnTicks)) world.setBlock(x, top, z, BlockId.ICE);
+      continue;
+    }
+    if (ground === BlockId.ICE && weather.temperatureC > 0) {
+      if (happened(ICE_THAW_CHANCE, columnTicks)) world.setBlock(x, top, z, BlockId.WATER);
+      continue;
+    }
+    const above = world.getBlock(x, top + 1, z);
+    const def = getBlockDef(ground);
+    const layers = isSnowState(above) ? snowLayers(above) : above === BlockId.AIR && def.solid && def.shape === 'cube' ? 0 : -1;
+    if (layers < 0) continue;
+    const next = weather.temperatureC > 0 ? layers - round(columnTicks * SNOW_MELT_CHANCE)
+      : weather.snowing ? layers + round(columnTicks * SNOW_SETTLE_CHANCE) : layers;
+    const clamped = Math.max(0, Math.min(SNOW_LAYERS, next));
+    if (clamped !== layers) world.setBlock(x, top + 1, z, clamped > 0 ? snowState(clamped) : BlockId.AIR);
   }
 }
 

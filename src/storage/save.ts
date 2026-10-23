@@ -21,6 +21,8 @@ export interface WorldMeta {
   /** Optional for compatibility with saves made before scheduled update persistence. */
   scheduledTicks?: PendingTick[];
   gameTick?: number;
+  /** [chunk key, ticks since it unloaded] for unloaded chunks with edits, so they catch up when loaded (T-G7). */
+  chunkAges?: [string, number][];
   player: SavedPlayer;
   selectedSlot: number;
   /** INVENTORY_SIZE slots: the hotbar first, then the grid. */
@@ -54,6 +56,7 @@ export interface MetaRecord {
   /** Optional for compatibility with saves made before scheduled update persistence. */
   scheduledTicks?: PendingTick[];
   gameTick?: number;
+  chunkAges?: [string, number][];
   player: SavedPlayer;
   selectedSlot: number;
   inventory: (StoredStack | null)[];
@@ -86,6 +89,8 @@ export function metaRecord(meta: WorldMeta): MetaRecord {
     seed: meta.seed,
     scheduledTicks: meta.scheduledTicks?.map(t => ({ ...t })) ?? [],
     gameTick: meta.gameTick ?? 0,
+    // Only when there are some, so a save or backup written before T-G7 round-trips unchanged.
+    ...(meta.chunkAges?.length ? { chunkAges: meta.chunkAges.map(([key, age]) => [key, age] as [string, number]) } : {}),
     player: { ...meta.player },
     selectedSlot: meta.selectedSlot,
     inventory: meta.inventory.map((s) => (s ? { name: blockStateName(s.state), count: s.count } : null)),
@@ -173,6 +178,13 @@ export function repairTicks(raw: unknown): PendingTick[] {
   });
 }
 
+/** Keeps the [chunk key, age] pairs with a valid key and a non-negative integer age; drops the rest. */
+export function repairChunkAges(raw: unknown): [string, number][] {
+  if (!Array.isArray(raw)) return [];
+  return raw.filter((v): v is [string, number] => Array.isArray(v) && v.length === 2 && typeof v[0] === 'string' &&
+    CHUNK_KEY.test(v[0]) && Number.isSafeInteger(v[1]) && v[1] >= 0).map(([key, age]) => [key, age]);
+}
+
 /**
  * Parses a stored meta (an object, or its JSON text). Returns null when it is missing, corrupt or of another
  * version, or when the seed, player or selected slot is invalid. The inventory, items and time of day are repaired,
@@ -197,6 +209,7 @@ export function parseMeta(raw: unknown): WorldMeta | null {
     seed: d.seed,
     scheduledTicks: repairTicks(d.scheduledTicks),
     gameTick: Number.isSafeInteger(d.gameTick) && (d.gameTick as number) >= 0 ? d.gameTick as number : 0,
+    ...(d.chunkAges === undefined ? {} : { chunkAges: repairChunkAges(d.chunkAges) }),
     player: { x: p.x, y: p.y, z: p.z, yaw: p.yaw, pitch: p.pitch, flying: p.flying },
     selectedSlot: d.selectedSlot,
     inventory: repairInventory(d.inventory, d.hotbar),

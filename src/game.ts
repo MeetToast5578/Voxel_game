@@ -209,6 +209,7 @@ export class Game {
     if (save.loaded && loaded) {
       this.world.loadEdits(save.loaded.edits);
       this.world.loadTicks(loaded.scheduledTicks ?? [], loaded.gameTick ?? 0);
+      this.world.loadChunkAges(loaded.chunkAges ?? []);
       this.inventory = new Inventory(loaded.inventory);
       this.inventory.select(loaded.selectedSlot);
       this.items.restore(loaded.items);
@@ -507,6 +508,7 @@ export class Game {
       seed: this.world.seed,
       scheduledTicks: this.world.snapshotTicks(),
       gameTick: this.world.currentTick,
+      chunkAges: this.world.snapshotChunkAges(),
       player: { x: p.position.x, y: p.position.y, z: p.position.z, yaw: p.yaw, pitch: p.pitch, flying: p.flying },
       selectedSlot: this.inventory.selected,
       inventory: this.inventory.slots.map((s) => (s ? { ...s } : null)),
