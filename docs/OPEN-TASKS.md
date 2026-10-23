@@ -4,7 +4,7 @@ Status on 2026-10-23, against `origin/main` at `08b8582`. `npm run check` passes
 
 This is a short, grouped list to work from. The detailed tracker is `docs/tasks.md`, and the IDs here match it. When an item closes, tick it here and there.
 
-Legend: `[ ]` open, `[~]` partly done.
+Legend: `[ ]` open, `[~]` partly done, `[x]` done since this list was written.
 
 ---
 
@@ -91,8 +91,8 @@ Done when (roadmap): a meadow at dawn has grazing herds that flee when approache
 ## 6. Survival (Phase 7)
 
 - [ ] **T-I11 — Enforce survival acquisition rules.** The creative block tab and pick-block give free stacks in survival right now. Add mode gating and a survival starting-inventory policy. Do this before claiming progression works.
-- [ ] **T-I2 — Make hunger change.** It is stored and shown (`src/game.ts` around lines 111, 186, 392), but no rule writes it. There is no food and no starvation.
-- [ ] **T-I3 — Health regeneration.**
+- [x] **T-I2 — Make hunger change.** Done in #41: hunger drains, starvation damages, and a survival HUD line shows health and hunger. Food is T-I8.
+- [x] **T-I3 — Health regeneration.** Done in #41.
 - [ ] **T-I4 — Body temperature.** From biome, altitude, weather, season, wetness, shelter, fire and clothing. Hypothermia and heatstroke.
 - [ ] **T-I5 — Tools.** Mining time from block hardness and tool. Tiers and durability.
 - [ ] **T-I6 — Crafting.** 2×2 grid in the inventory, 3×3 crafting table, recipes as a data table.
