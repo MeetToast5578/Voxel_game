@@ -52,6 +52,8 @@ const PAINTERS: Record<number, PixelFn> = {
   [Tile.GRASS_TOP]: noisy(GRASS, 0.25),
   [Tile.GRASS_SIDE]: noisy(GRASS, 0.25), // grass all the way down, not a dirt side with a green edge
   [Tile.SAND]: noisy([219, 207, 163], 0.12),
+  [Tile.SNOW]: noisy([240, 246, 250], 0.06),
+  [Tile.ICE]: (_x, _y, r) => shade([150, 190, 235], 0.9 + r() * 0.2, 200),
   [Tile.CLAY]: noisy([151, 162, 170], 0.12),
   [Tile.GRAVEL]: noisy([128, 122, 116], 0.5),
   [Tile.WATER]: noisy([48, 96, 200], 0.1),

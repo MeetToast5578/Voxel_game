@@ -4,7 +4,7 @@ import { WeatherRenderer } from '../src/render/weather';
 import type { WeatherSample } from '../src/world/weather';
 import { metersToBlocks, PRECIP_WIND_DRIFT } from '../src/config';
 
-const rain: WeatherSample = { precipitation: 'rain', cloudCover: 1, humidity: 1, isStorm: false, pressure: 0, windSpeed: 0 };
+const rain: WeatherSample = { precipitation: 'rain', cloudCover: 1, humidity: 1, isStorm: false, pressure: 0, windSpeed: 0, temperatureC: 10 };
 afterEach(() => vi.restoreAllMocks());
 function fixture() {
   const scene = new THREE.Scene();

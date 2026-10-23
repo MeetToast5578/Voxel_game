@@ -47,6 +47,9 @@ export const BlockId = {
   FALLEN_LOG_Z: 74,
   LILY_PAD: 75,
   MOSS: 76,
+  // Appended after the slab types (states 77..142), so saved worlds keep their states.
+  SNOW: 143,
+  ICE: 151,
 } as const;
 
 export const Tile = {
@@ -105,6 +108,8 @@ export const Tile = {
   REED: 52,
   LILY_PAD: 53,
   MOSS: 54,
+  SNOW: 55,
+  ICE: 56,
 } as const;
 
 export type RenderLayer = 'none' | 'opaque' | 'cutout' | 'translucent';
@@ -305,6 +310,9 @@ function def(
 
 const all = (t: number) => ({ top: t, side: t, bottom: t });
 
+/** Snow builds up in this many layers; a full stack is one block deep. */
+export const SNOW_LAYERS = 8;
+
 /** Flowing water has 8 levels, and each level comes in a falling and a non-falling variant. Variant v: level v % 8 + 1. */
 export const WATER_LEVELS = 8;
 export const FLOWING_WATER_VARIANTS = 2 * WATER_LEVELS;
@@ -378,6 +386,12 @@ export const BLOCK_REGISTRY = buildBlockRegistry([
     ...d, key: `${d.key}_slab`, name: `${d.name} slab`, variants: 2,
     shape: 'slab' as const, slabMaterial: d.id, opaque: false, cullSame: false, falls: false, flows: false,
   })),
+  // Snow layers (T-G2): variant v is v + 1 eighths of a block deep. A layer: thin, sunlight passes, water washes it away.
+  def('snow', 'Snow', all(Tile.SNOW), {
+    variants: SNOW_LAYERS, solid: false, opaque: false, shape: 'layer', hardness: 0.1, supports: false, density: 300,
+  }),
+  // Translucent like water, so it still counts as the column top; walkable.
+  def('ice', 'Ice', all(Tile.ICE), { opaque: false, cullSame: true, layer: 'translucent', hardness: 0.5, density: 917 }),
 ]);
 
 // BlockId.X is variant 0 of the type whose key is x; keep the two lists in step.
@@ -432,6 +446,7 @@ export function isFallingWater(state: number): boolean {
 export function blockTopHeight(state: number): number {
   if (getBlockDef(state).shape === 'slab') return blockVariant(state) === 0 ? SLAB_HEIGHT : 1;
   if (state === BlockId.LILY_PAD || state === BlockId.MOSS) return SURFACE_LAYER_HEIGHT;
+  if (isSnowState(state)) return snowLayers(state) / SNOW_LAYERS;
   return isFlowingWaterState(state) ? waterLevel(state) / WATER_LEVELS : isFlowingLavaState(state) ? lavaLevel(state) / WATER_LEVELS : 1;
 }
 
@@ -472,7 +487,24 @@ export function slabBounds(state: number): readonly [number, number] | null {
   return getBlockDef(state).shape === 'slab' ? (blockVariant(state) === 0 ? BOTTOM_SLAB_BOUNDS : TOP_SLAB_BOUNDS) : null;
 }
 export function blockBottomHeight(state: number): number { return slabBounds(state)?.[0] ?? 0; }
-export function blockCollision(state: number): boolean | readonly [number, number] { return slabBounds(state) ?? isSolid(state); }
+export function blockCollision(state: number): boolean | readonly [number, number] {
+  if (isSnowState(state)) return [0, snowLayers(state) / SNOW_LAYERS];
+  return slabBounds(state) ?? isSolid(state);
+}
+
+export function isSnowState(state: number): boolean {
+  return state >= BlockId.SNOW && state < BlockId.SNOW + SNOW_LAYERS;
+}
+
+/** How many layers (1..SNOW_LAYERS) a snow state has. */
+export function snowLayers(state: number): number {
+  return state - BlockId.SNOW + 1;
+}
+
+/** The snow state with `layers` layers (1..SNOW_LAYERS). */
+export function snowState(layers: number): number {
+  return BlockId.SNOW + layers - 1;
+}
 export function slabItemState(state: number): number { const d = getBlockDef(state); return d.shape === 'slab' ? d.id : state; }
 export function slabState(material: number, top = false): number {
   const d = BLOCKS.find(d => d.slabMaterial === material);

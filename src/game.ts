@@ -240,6 +240,10 @@ export class Game {
     this.clouds = new Clouds(this.renderer.scene, seed);
     this.sky = new Sky(this.renderer.scene);
     this.weather = new WeatherModel(seed);
+    this.world.surfaceWeather = (x, y, z) => {
+      const w = this.weather.sample(x * BLOCK_SIZE_M, z * BLOCK_SIZE_M, this.timeOfDay, this.calendar.timeOfYear, y * BLOCK_SIZE_M);
+      return { temperatureC: w.temperatureC, snowing: w.precipitation === 'snow' };
+    };
     this.weatherRenderer = new WeatherRenderer(this.renderer.scene);
     this.input = new Input(this.renderer.canvas);
     this.hud = new Hud(container, this.renderer.atlasCanvas, () => this.toggleInventory());

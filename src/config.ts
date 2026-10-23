@@ -295,6 +295,11 @@ export const ENTITY_FRICTION = 8; // per second: how fast an entity slows down o
 // ---- Random ticks (spec 38) ----
 export const RANDOM_TICKS_PER_CHUNK = 3; // random cells drawn per loaded chunk per tick step
 export const RANDOM_TICK_BUDGET_MS = 1; // max time per frame spent on the random-tick pass
+// Snow and ice (T-G2): the chance that a random tick reaching an exposed column top changes it.
+export const SNOW_SETTLE_CHANCE = 0.05; // while snowing: add one layer of snow
+export const SNOW_MELT_CHANCE = 0.1; // above 0 °C: remove one layer
+export const ICE_FREEZE_CHANCE = 0.05; // below 0 °C: still water at the top freezes
+export const ICE_THAW_CHANCE = 0.1; // above 0 °C: ice turns back into water
 
 // ---- Ecology (spec 36) ----
 export const GRASS_SPREAD_CHANCE = 0.02; // chance per tick that grass spreads to adjacent lit dirt

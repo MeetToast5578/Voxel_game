@@ -1,6 +1,8 @@
 import { type World } from './world';
 import { type Tick, type TickResult } from './tick';
-import { BlockId, blocksSky } from './blocks';
+import { BlockId, SNOW_LAYERS, blocksSky, getBlockDef, isSnowState, snowLayers, snowState } from './blocks';
+import { CHUNK_SIZE, ICE_FREEZE_CHANCE, ICE_THAW_CHANCE, SNOW_MELT_CHANCE, SNOW_SETTLE_CHANCE } from '../config';
+import { floorDiv } from '../core/math';
 import { mulberry32 } from '../core/random';
 import { mixSeed } from './randomTick';
 import { leafSupport, orphanedLeaves } from './leafDecay';
@@ -75,6 +77,42 @@ function handleLeafDecay(world: World, tick: Tick): TickResult {
  */
 export function handleRandomTick(world: World, x: number, y: number, z: number, rng: () => number): void {
   if (world.getBlock(x, y, z) === BlockId.GRASS) spreadGrassFrom(world, x, y, z, rng);
+  if (world.surfaceWeather) settleSnowAndIce(world, x, y, z, rng);
+}
+
+/**
+ * Snow and ice (T-G2) at the top of column (x, z). Each column is handled only from the chunk that holds its top, so
+ * how many chunks are loaded above or below does not change the rate. Snow settles on solid full tops while it is
+ * snowing and builds up to SNOW_LAYERS; above 0 °C it melts a layer at a time. Still water at the top freezes below
+ * 0 °C and thaws above it.
+ */
+function settleSnowAndIce(world: World, x: number, y: number, z: number, roll: () => number): void {
+  const top = world.topAt(x, z);
+  if (top === undefined || floorDiv(top, CHUNK_SIZE) !== floorDiv(y, CHUNK_SIZE)) return;
+  const weather = world.surfaceWeather!(x, top + 1, z);
+  const ground = world.getBlock(x, top, z);
+  if (ground === BlockId.WATER) {
+    if (weather.temperatureC < 0 && roll() < ICE_FREEZE_CHANCE) world.setBlock(x, top, z, BlockId.ICE);
+    return;
+  }
+  if (ground === BlockId.ICE && weather.temperatureC > 0) {
+    if (roll() < ICE_THAW_CHANCE) world.setBlock(x, top, z, BlockId.WATER);
+    return;
+  }
+  const above = world.getBlock(x, top + 1, z);
+  if (isSnowState(above)) {
+    const layers = snowLayers(above);
+    if (weather.temperatureC > 0) {
+      if (roll() < SNOW_MELT_CHANCE) world.setBlock(x, top + 1, z, layers > 1 ? snowState(layers - 1) : BlockId.AIR);
+    } else if (weather.snowing && layers < SNOW_LAYERS && roll() < SNOW_SETTLE_CHANCE) {
+      world.setBlock(x, top + 1, z, snowState(layers + 1));
+    }
+    return;
+  }
+  const def = getBlockDef(ground);
+  if (above === BlockId.AIR && weather.snowing && def.solid && def.shape === 'cube' && roll() < SNOW_SETTLE_CHANCE) {
+    world.setBlock(x, top + 1, z, snowState(1));
+  }
 }
 
 /**

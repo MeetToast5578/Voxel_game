@@ -40,8 +40,16 @@ export interface DroppedBlock {
   body: boolean;
 }
 
+/** The weather just above a column top, for snow and ice (T-G2). */
+export interface SurfaceWeather {
+  temperatureC: number;
+  snowing: boolean;
+}
+
 export class World {
   readonly seed: number;
+  /** Set by the game: the weather at a position in blocks. Without it, snow and ice never change. */
+  surfaceWeather?: (x: number, y: number, z: number) => SurfaceWeather;
   private readonly chunkMap = new Map<string, Chunk>();
   /** Player edits: chunkKey -> (localIndex -> block state). Survives chunk unloading. */
   private readonly editMap = new Map<string, Map<number, number>>();
