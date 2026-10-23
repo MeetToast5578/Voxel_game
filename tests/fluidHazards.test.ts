@@ -23,7 +23,7 @@ function survivalGame(blockAt: (x: number, y: number, z: number) => number) {
   const p = new Player(); p.setPosition(0.5, 0, 0.5);
   Object.assign(g, { player: p, health: HEALTH_MAX, hunger: 20, air: 15, gameMode: GAME_MODE_SURVIVAL,
     fire: new FireExposure(), world: { getBlock: blockAt, topAt: () => 0 },
-    menu: { setGameMode: vi.fn() }, inventory: new Inventory(), items: { spawn: vi.fn() },
+    menu: { setGameMode: vi.fn() }, inventory: new Inventory(), inventoryScreen: { setCreative: vi.fn() }, startedFromSave: true, items: { spawn: vi.fn() },
     spawn: { x: 8, z: 8 }, spawnFeetY: 1,
   });
   return g;

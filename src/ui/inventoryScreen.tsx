@@ -17,6 +17,8 @@ interface ViewProps {
   inventory: Inventory;
   atlas: HTMLCanvasElement;
   tab: InventoryTab;
+  /** False in survival: the Blocks tab, which hands out free stacks, is hidden. */
+  creative: boolean;
   cursor: ItemStack | null;
   hovered: number | null;
   onTab: (tab: InventoryTab) => void;
@@ -77,17 +79,19 @@ function InventoryView(p: ViewProps) {
           >
             Inventory
           </button>
-          <button
-            type="button"
-            role="tab"
-            class="menu-button small"
-            aria-selected={p.tab === 'blocks'}
-            onClick={() => p.onTab('blocks')}
-          >
-            Blocks (creative)
-          </button>
+          {p.creative && (
+            <button
+              type="button"
+              role="tab"
+              class="menu-button small"
+              aria-selected={p.tab === 'blocks'}
+              onClick={() => p.onTab('blocks')}
+            >
+              Blocks (creative)
+            </button>
+          )}
         </div>
-        {p.tab === 'blocks' ? (
+        {p.creative && p.tab === 'blocks' ? (
           <>
             <p class="inventory-hint">
               Click a block to put a full stack of it in the selected hotbar slot. Every block in the game is here.
@@ -120,14 +124,15 @@ function InventoryView(p: ViewProps) {
 
 /**
  * The inventory grid, opened with E or from the pause menu. A click on a slot takes its stack onto the cursor, or puts
- * the cursor down (see Inventory.clickSlot). The held stack and the name tooltip follow the mouse. The Blocks tab puts a
- * full stack of any block into the selected hotbar slot, for testing.
+ * the cursor down (see Inventory.clickSlot). The held stack and the name tooltip follow the mouse. In creative, the Blocks
+ * tab puts a full stack of any block into the selected hotbar slot.
  */
 export class InventoryScreen {
   private readonly root: HTMLDivElement;
   private cursor: ItemStack | null = null;
   private hovered: number | null = null;
   private tab: InventoryTab = 'inventory';
+  private creative = true;
   private open = false;
   private returnFocus: HTMLElement | null = null;
   private cursorEl: HTMLDivElement | null = null;
@@ -207,12 +212,20 @@ export class InventoryScreen {
     this.draw();
   }
 
+  /** Creative shows the Blocks tab; survival hides it and leaves it if it was showing. */
+  setCreative(creative: boolean): void {
+    this.creative = creative;
+    if (!creative) this.tab = 'inventory';
+    if (this.open) this.draw(); // a closed screen draws on show(); drawing now would build icons at startup
+  }
+
   private draw(): void {
     render(
       <InventoryView
         inventory={this.inventory}
         atlas={this.atlas}
         tab={this.tab}
+        creative={this.creative}
         cursor={this.cursor}
         hovered={this.hovered}
         onTab={(tab) => this.setTab(tab)}
@@ -221,6 +234,7 @@ export class InventoryScreen {
           this.draw();
         }}
         onPick={(state) => {
+          if (!this.creative) return;
           this.inventory.setSlot(this.inventory.selected, state, MAX_STACK);
           this.draw();
         }}
