@@ -1,4 +1,5 @@
 import { parseBlockStateName } from './world/blocks';
+import { growSapling } from './world/saplings';
 import type { Game } from './game';
 import type { ToolKind, ToolMode } from './player/buildTool';
 import { HEALTH_MAX, HUNGER_MAX, AIR_MAX_S } from './config';
@@ -28,6 +29,8 @@ export interface DebugApi {
   setTimeOfDay(t: number): void;
   /** 0..1 wraps; 0 = spring equinox. For checking seasonal visuals (T-F7). */
   setTimeOfYear(t: number): void;
+  /** Grows the sapling at a cell now, as a random tick would (T-G3). Returns whether it grew. */
+  growSapling(x: number, y: number, z: number): boolean;
   /** The volume tools: sets any of their fields (mode, kind, size, thickness, disc) for the smoke test. */
   setTool(fields: { mode?: ToolMode; kind?: ToolKind; size?: number; thickness?: number; disc?: boolean }): void;
   /** One add or remove click at the aimed block with the volume tools. The change lands over the next frames. */
@@ -90,6 +93,7 @@ export function installDebugApi(game: Game): void {
     resetBreakStage: () => game.resetBreakStage(),
     setIdle: (idle) => game.setIdle(idle),
     save: () => game.saveNow(),
+    growSapling: (x, y, z) => growSapling(game.world, x, y, z),
     setTimeOfDay: (t) => {
       game.timeOfDay = ((t % 1) + 1) % 1;
     },

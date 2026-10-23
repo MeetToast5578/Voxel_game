@@ -77,9 +77,9 @@ for (let state = 0; state < STATE_COUNT; state++) {
   BOTTOM_HEIGHT_TABLE[state] = blockBottomHeight(state);
   SLAB_TABLE[state] = def.shape === 'slab' ? 1 : 0;
   TOP_HEIGHT_TABLE[state] = blockTopHeight(state);
-  TILE_TABLE[state * 3] = def.tiles.top;
-  TILE_TABLE[state * 3 + 1] = def.tiles.side;
-  TILE_TABLE[state * 3 + 2] = def.tiles.bottom;
+  TILE_TABLE[state * 3] = blockFaceTile(state, 0, 1, 0);
+  TILE_TABLE[state * 3 + 1] = blockFaceTile(state, 1, 0, 0);
+  TILE_TABLE[state * 3 + 2] = blockFaceTile(state, 0, -1, 0);
 }
 /** UV rectangle per atlas tile: [u0, v0, u1, v1]. */
 const TILE_COUNT = ATLAS_TILES * ATLAS_TILES;

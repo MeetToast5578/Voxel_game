@@ -4,7 +4,7 @@ import { mulberry32 } from '../src/core/random';
 import { World } from '../src/world/world';
 import { Chunk } from '../src/world/chunk';
 import { localIndex } from '../src/core/coords';
-import { BlockId, blocksSky } from '../src/world/blocks';
+import { BlockId, SNOW_LAYERS, blockCollision, blockTopHeight, blocksSky, snowState } from '../src/world/blocks';
 import { handleRandomTick, handleTick, scheduleLeafDecay } from '../src/world/ecology';
 import { orphanedLeaves } from '../src/world/leafDecay';
 
@@ -221,4 +221,75 @@ it('defers a border leaf decay until missing neighbouring terrain is known', () 
   expect(world.getBlock(15, 6, 8)).toBe(BlockId.LEAVES);
   world.addChunk(new Chunk(1, 0, 0)); world.tickStep(100);
   expect(world.getBlock(15, 6, 8)).toBe(BlockId.AIR);
+});
+
+describe('ecology - snow and ice (T-G2)', () => {
+  /** A stone floor at y = 5 (water at x = 4), its column tops installed, and weather the test controls. */
+  function snowWorld(weather: { temperatureC: number; snowing: boolean }) {
+    const world = new World(42);
+    const chunk = new Chunk(0, 0, 0);
+    world.addChunk(chunk);
+    for (let x = 0; x < 16; x++) for (let z = 0; z < 16; z++) chunk.blocks[localIndex(x, 5, z)] = BlockId.STONE;
+    chunk.blocks[localIndex(4, 5, 4)] = BlockId.WATER;
+    world.installColumnTops(0, 0, new Int32Array(256).fill(5));
+    world.surfaceWeather = () => weather;
+    return world;
+  }
+  const always = () => 0; // every chance succeeds
+  const tick = (world: World, x: number, z: number, times = 1, y = 9) => {
+    for (let i = 0; i < times; i++) handleRandomTick(world, x, y, z, always);
+  };
+
+  it('settles snow on an exposed top while it snows, and builds up to a full block', () => {
+    const world = snowWorld({ temperatureC: -5, snowing: true });
+    tick(world, 8, 8);
+    expect(world.getBlock(8, 6, 8)).toBe(snowState(1));
+    tick(world, 8, 8, 20);
+    expect(world.getBlock(8, 6, 8)).toBe(snowState(SNOW_LAYERS));
+    expect(world.getBlock(8, 7, 8)).toBe(BlockId.AIR); // never more than one block of layers
+    expect(blockTopHeight(snowState(4))).toBe(0.5);
+  });
+
+  it('melts a layer at a time above 0 °C and leaves the ground bare', () => {
+    const weather = { temperatureC: -5, snowing: true };
+    const world = snowWorld(weather);
+    tick(world, 8, 8, 3);
+    expect(world.getBlock(8, 6, 8)).toBe(snowState(3));
+    weather.temperatureC = 4;
+    weather.snowing = false;
+    tick(world, 8, 8);
+    expect(world.getBlock(8, 6, 8)).toBe(snowState(2));
+    tick(world, 8, 8, 2);
+    expect(world.getBlock(8, 6, 8)).toBe(BlockId.AIR);
+  });
+
+  it('freezes still water at the top below 0 °C and thaws it above', () => {
+    const weather = { temperatureC: -5, snowing: false };
+    const world = snowWorld(weather);
+    tick(world, 4, 4);
+    expect(world.getBlock(4, 5, 4)).toBe(BlockId.ICE);
+    expect(world.topAt(4, 4)).toBe(5); // ice is still the column top
+    weather.temperatureC = 3;
+    tick(world, 4, 4);
+    expect(world.getBlock(4, 5, 4)).toBe(BlockId.WATER);
+  });
+
+  it('does nothing without weather, when it is not snowing, or from a chunk that does not hold the top', () => {
+    const quiet = snowWorld({ temperatureC: -5, snowing: false });
+    tick(quiet, 8, 8, 5);
+    expect(quiet.getBlock(8, 6, 8)).toBe(BlockId.AIR);
+    const snowing = snowWorld({ temperatureC: -5, snowing: true });
+    tick(snowing, 8, 8, 5, 20); // y = 20 is in the chunk above the top
+    expect(snowing.getBlock(8, 6, 8)).toBe(BlockId.AIR);
+    snowing.surfaceWeather = undefined;
+    tick(snowing, 8, 8, 5);
+    expect(snowing.getBlock(8, 6, 8)).toBe(BlockId.AIR);
+  });
+
+  it('gives a snow layer collision as deep as the snow, and lets sunlight through', () => {
+    expect(blockCollision(snowState(1))).toEqual([0, 1 / 8]);
+    expect(blockCollision(snowState(SNOW_LAYERS))).toEqual([0, 1]);
+    expect(blocksSky(snowState(3))).toBe(false);
+    expect(blocksSky(BlockId.ICE)).toBe(true);
+  });
 });

@@ -1,5 +1,5 @@
 import { mulberry32 } from '../core/random';
-import { Tile } from '../world/blocks';
+import { CROP_STAGES, Tile } from '../world/blocks';
 import { ATLAS_SIZE, ATLAS_TILES, TILE_SIZE } from './tiles';
 
 type RGB = readonly [number, number, number];
@@ -52,11 +52,19 @@ const PAINTERS: Record<number, PixelFn> = {
   [Tile.GRASS_TOP]: noisy(GRASS, 0.25),
   [Tile.GRASS_SIDE]: noisy(GRASS, 0.25), // grass all the way down, not a dirt side with a green edge
   [Tile.SAND]: noisy([219, 207, 163], 0.12),
+  [Tile.SNOW]: noisy([240, 246, 250], 0.06),
+  [Tile.ICE]: (_x, _y, r) => shade([150, 190, 235], 0.9 + r() * 0.2, 200),
   [Tile.CLAY]: noisy([151, 162, 170], 0.12),
   [Tile.GRAVEL]: noisy([128, 122, 116], 0.5),
   [Tile.WATER]: noisy([48, 96, 200], 0.1),
   [Tile.LAVA]: (x, y, r) => shade((x * 3 + y * 5) % 11 < 3 ? [255, 211, 55] : [239, 76, 12], 0.85 + r() * 0.15),
   [Tile.OBSIDIAN]: noisy([36, 25, 49], 0.5),
+  [Tile.SAPLING]: (x, y, r) => {
+    // A thin stem with a few leaves near the top; image row 0 is the top of the tile.
+    const stem = x === 7 && y >= 6;
+    const leaf = y >= 2 && y <= 7 && Math.abs(x - 7.5) + Math.abs(y - 4.5) <= 3.2 && r() < 0.8;
+    return stem ? shade(BARK, 0.9 + r() * 0.2) : leaf ? shade([70, 140, 45], 0.85 + r() * 0.3) : [0, 0, 0, 0];
+  },
   [Tile.REED]: (x, y, r) => {
     const stem = x === 5 || x === 10 || (y % 6 === 0 && x >= 4 && x <= 11);
     return stem ? shade([132, 163, 65], 0.85 + r() * 0.15) : [0, 0, 0, 0];
@@ -163,7 +171,29 @@ const PAINTERS: Record<number, PixelFn> = {
   [Tile.DIAMOND_ORE]: orePainter([110, 180, 230]),
   [Tile.EMERALD_ORE]: orePainter([70, 190, 130]),
   [Tile.LAPIS_ORE]: orePainter([50, 90, 180]),
+  ...cropPainters(Tile.WHEAT, [205, 175, 70]),
+  ...cropPainters(Tile.CARROTS, [235, 125, 35]),
+  ...cropPainters(Tile.POTATOES, [225, 215, 160]),
 };
+
+/**
+ * One tile per crop growth stage (T-G4): green shoots that grow taller each stage, and at the ripe stage the crop's
+ * colour shows (wheat ears; carrot and potato tops near the soil).
+ */
+function cropPainters(first: number, ripe: RGB): Record<number, PixelFn> {
+  const painters: Record<number, PixelFn> = {};
+  for (let stage = 0; stage < CROP_STAGES; stage++) {
+    const top = 15 - Math.round((stage + 1) * 12 / CROP_STAGES); // image row where the shoots end
+    const ripeStage = stage === CROP_STAGES - 1;
+    painters[first + stage] = (x, y, r) => {
+      const shoot = (x % 5 === 1 || x % 5 === 3) && y >= top && x > 0 && x < 15;
+      if (!shoot) return [0, 0, 0, 0];
+      const head = ripeStage && (first === Tile.WHEAT ? y < top + 4 : y > 12);
+      return head ? shade(ripe, 0.85 + r() * 0.3) : shade([80, 150, 50], 0.8 + r() * 0.3);
+    };
+  }
+  return painters;
+}
 
 /** RGBA pixels for the whole atlas, row-major, row 0 = top of the image. */
 export function generateAtlasPixels(): Uint8ClampedArray<ArrayBuffer> {

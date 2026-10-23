@@ -58,16 +58,16 @@ Measure first (T-C3), then pick the J items that the measurements point at.
 
 ## 4. Living world
 
-- [ ] **T-G2 — Snow layers.** 8 heights, built up on exposed tops during snowfall and melted above 0 °C. Ice forms on still water and thaws.
-- [ ] **T-G3 — Saplings.** Grow into their species' tree through the feature generator, respecting existing blocks.
-- [ ] **T-G4 — Crops.** Wheat, carrots and potatoes with growth stages, affected by season and temperature.
+- [x] **T-G2 — Snow layers.** Done: 8 snow layers that settle and melt, and ice that forms and thaws.
+- [x] **T-G3 — Saplings.** Done: leaves drop saplings, which grow into their species' tree.
+- [x] **T-G4 — Crops.** Done: wheat, carrots and potatoes that grow by stage with the temperature.
 - [ ] **T-G5 — Plant succession** on bare ground.
 - [ ] **T-G6 — Autumn leaf litter.**
 - [ ] **T-G7 — Catch-up on reload.** A chunk reloaded after Δt applies expected outcomes directly (crops advanced by Δt × rate, snow set from current weather) instead of replaying ticks. Depends on T-G2 and T-G4.
 - [ ] **T-G10 — River flow direction** from the drainage simulation, used for animated flow textures.
 - [ ] **T-G11 — Waterfalls** where rivers drop.
 - [ ] **T-G12 — Currents.** Flowing fluid pushes bodies along its flow vector. Strong rivers carry the player, and waterfalls push down. Not blocked any more, since fluid levels exist.
-- [~] **T-G15 — Fluid and snow rendering.** Lava rendering is done. Still open: fluid texture animation and snow layers (depends on T-G2).
+- [~] **T-G15 — Fluid and snow rendering.** Lava rendering is done. Snow layers render (T-G2). Still open: fluid texture animation.
 
 ---
 

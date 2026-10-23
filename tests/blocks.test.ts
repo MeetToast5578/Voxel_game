@@ -44,6 +44,7 @@ describe('block states', () => {
     TALL_GRASS: 18, POPPY: 19, FERN: 20, DANDELION: 21, LIMESTONE: 22, SLATE: 23, BASALT: 24, DEEPSLATE: 25,
     BROWN_MUSHROOM: 26, RED_MUSHROOM: 27, COAL_ORE: 28, IRON_ORE: 29, GOLD_ORE: 30, REDSTONE_ORE: 31,
     DIAMOND_ORE: 32, EMERALD_ORE: 33, LAPIS_ORE: 34, GRAVEL: 35, FLOWING_WATER: 36, CACTUS: 52, CLAY: 53, LAVA: 54, FLOWING_LAVA: 55, OBSIDIAN: 71, REED: 72, FALLEN_LOG_X: 73, FALLEN_LOG_Z: 74, LILY_PAD: 75, MOSS: 76,
+    SNOW: 143, ICE: 151, SAPLING: 152, WHEAT: 166, CARROTS: 170, POTATOES: 174,
   };
 
   it('keeps every BlockId number, named after its key', () => {
@@ -54,7 +55,9 @@ describe('block states', () => {
       expect(getBlockDef(state).key).toBe(name.toLowerCase());
       expect(blockVariant(state)).toBe(0);
     }
-    expect(BLOCKS.filter(d => d.shape !== 'slab').reduce((n, d) => n + d.variants, 0)).toBe(77); // slab types append after all existing states
+    // Slab types append after the first 77 states; snow, ice (T-G2), saplings (T-G3) and crops (T-G4) append after the slabs.
+    expect(BLOCKS.filter(d => d.shape !== 'slab' && d.id < 77).reduce((n, d) => n + d.variants, 0)).toBe(77);
+    expect(Math.min(...BLOCKS.filter(d => d.shape === 'slab').map(d => d.id))).toBe(77);
   });
   it('ores are stone-like blocks: solid, opaque, breakable, with a painted tile', () => {
     for (const id of [BlockId.COAL_ORE, BlockId.IRON_ORE, BlockId.GOLD_ORE, BlockId.REDSTONE_ORE, BlockId.DIAMOND_ORE, BlockId.EMERALD_ORE, BlockId.LAPIS_ORE]) {

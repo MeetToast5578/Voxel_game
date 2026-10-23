@@ -33,6 +33,8 @@ export interface WeatherSample {
   pressure: number;
   /** Wind speed in m/s. */
   windSpeed: number;
+  /** Air temperature in °C, from the season and altitude. Snow melts and ice thaws above 0 (T-G2). */
+  temperatureC: number;
 }
 
 const PRESSURE_OCTAVES = 4;
@@ -134,6 +136,7 @@ export class WeatherModel {
       isStorm,
       pressure,
       windSpeed,
+      temperatureC,
     };
   }
 }

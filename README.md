@@ -14,6 +14,9 @@ A Minecraft-like voxel sandbox that runs in the browser, built with TypeScript, 
 - Saved structures remain visible across vertical terrain bands, including glass and high roofs.
 - Terrain coordinate and lake-basin repairs regenerate unedited ground correctly; existing saved edits are preserved and may float relative to changed ground.
 - The seasons show on plants: in temperate places leaves turn orange and red in autumn and fall in winter, then grow back green in spring. Cold and tropical forests stay evergreen. Grass browns in hot, dry summers.
+- Crops: wheat, carrots and potatoes, planted on grass or dirt, grow through four stages under open sky. They grow fastest in warm weather and stall in the cold, so they follow the seasons; root crops tolerate more cold. A ripe crop drops three of what you plant. Breaking tall grass sometimes gives wheat; carrots and potatoes come from the creative Blocks tab for now.
+- Breaking or decaying leaves sometimes drops a sapling of the tree species that grows there. Planted on grass or dirt with open sky above, it grows into that species' tree, around whatever is already built.
+- Snow settles on exposed ground while it snows, building up to a full block in eight layers, and melts above 0 °C. Still water open to the sky freezes into walkable ice below 0 °C and thaws above it.
 - Wind follows the weather: leaves and plants sway, rain and snow fall at a slant, and clouds drift faster in strong wind.
 - Storms bring lightning: each flash briefly lights the world and brightens the sky, and thunder follows 1 to 6 seconds later.
 - Build bottom/top slabs from every solid cube material. Aim at the upper/lower half of a side to select the half; matching complementary slabs merge into a full block. Slabs are 0.15 m tall and have matching collision, targeting and item icons.

@@ -1,4 +1,4 @@
-import { CHUNK_SIZE, CHUNK_VOLUME, RANDOM_TICKS_PER_CHUNK } from '../config';
+import { CHUNK_SIZE, CHUNK_VOLUME, RANDOM_TICKS_PER_CHUNK, type TreeSpecies } from '../config';
 import { chunkKey, columnIndex, columnKey, localIndex, worldToChunk, worldToLocal } from '../core/coords';
 import { BlockId, blocksSky } from './blocks';
 import { Chunk } from './chunk';
@@ -40,8 +40,18 @@ export interface DroppedBlock {
   body: boolean;
 }
 
+/** The weather just above a column top, for snow and ice (T-G2). */
+export interface SurfaceWeather {
+  temperatureC: number;
+  snowing: boolean;
+}
+
 export class World {
   readonly seed: number;
+  /** Set by the game: the weather at a position in blocks. Without it, snow and ice never change. */
+  surfaceWeather?: (x: number, y: number, z: number) => SurfaceWeather;
+  /** Set by the game: the tree species that grows at a column, for the saplings leaves drop (T-G3). */
+  treeSpeciesAt?: (x: number, z: number) => TreeSpecies | null;
   private readonly chunkMap = new Map<string, Chunk>();
   /** Player edits: chunkKey -> (localIndex -> block state). Survives chunk unloading. */
   private readonly editMap = new Map<string, Map<number, number>>();
