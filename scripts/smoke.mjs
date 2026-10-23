@@ -1255,6 +1255,9 @@ try {
   const only = process.env.SMOKE_ONLY;
   for (const check of CHECKS.filter((c) => !only || c.name.includes(only))) {
     running = check.name;
+    // It snows at the sky platforms the checks build on; settling snow would fill cells a check expects empty.
+    // Again before every check, since some reload the page.
+    await page.evaluate(() => window.__game.setWeatherEffects(false));
     await check.run(page);
     console.log(`check passed: ${check.name}`);
   }

@@ -26,9 +26,12 @@ after 177 and never renumber. Save version unchanged.
 with `saplings.ts` and `crops.ts`; tunables in `src/config.ts`; debug hooks
 `setTimeOfYear` and `growSapling` in `src/debugApi.ts`.
 
-**Validation:** 712 tests / 82 files pass on `main`; CI (check, budgets, GPU regressions,
-smoke) was green on #48. Smoke runs against the production build, so run `npm run build`
-before `npm run smoke` locally.
+**Validation:** 712 tests / 82 files pass on `main`. #48's last CI run failed once in the
+platform smoke (the inventory "Close (E)" click timed out; it passes locally). The
+volume-box smoke check also failed intermittently: it snows at the y=8390 test platform, and
+snow settled on the cleared floor before the box was placed. The smoke run now turns snow and
+ice off with `setWeatherEffects(false)` before each check (#49). Smoke runs against the
+production build, so run `npm run build` before `npm run smoke` locally.
 
 **Open owner questions:**
 - Dying in survival still refills the starting kit. Suggested: respawn with an empty
