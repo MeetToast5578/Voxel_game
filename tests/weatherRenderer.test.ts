@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import * as THREE from 'three';
 import { WeatherRenderer } from '../src/render/weather';
 import type { WeatherSample } from '../src/world/weather';
+import { metersToBlocks, PRECIP_WIND_DRIFT } from '../src/config';
 
 const rain: WeatherSample = { precipitation: 'rain', cloudCover: 1, humidity: 1, isStorm: false, pressure: 0, windSpeed: 0 };
 afterEach(() => vi.restoreAllMocks());
@@ -17,6 +18,21 @@ function updateAtAltitude(weather: WeatherRenderer, top: (x: number, z: number) 
   // Regression against the old five-argument API: Reflect lets this fail on behaviour before the signature is extended.
   Reflect.apply(weather.update, weather, [100, -100, rain, dt, top, 200]);
 }
+
+describe('wind (T-F5)', () => {
+  it('carries drops downwind (+X) and wraps them back into the box', () => {
+    const {weather,positions} = fixture();
+    try {
+      const windy = { ...rain, windSpeed: 10 };
+      Reflect.apply(weather.update, weather, [0, 0, windy, 0.1, () => undefined, 0]);
+      const step = metersToBlocks(10 * PRECIP_WIND_DRIFT) * 0.1;
+      expect(positions.getX(0)).toBeCloseTo(step);
+      positions.setXYZ(0, 29.9, 5, 0);
+      Reflect.apply(weather.update, weather, [0, 0, windy, 0.1, () => undefined, 0]);
+      expect(positions.getX(0)).toBeCloseTo(29.9 + step - 60);
+    } finally { weather.dispose(); }
+  });
+});
 
 describe('precipitation coordinates and roofs', () => {
   it('recentres precipitation at camera altitude and samples column tops in block coordinates', () => {

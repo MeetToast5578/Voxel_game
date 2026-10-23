@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import {
   CAMERA_FAR_M, CHUNK_SIZE, DEFAULT_FOV, DEFAULT_RENDER_DISTANCE, metersToBlocks, SKY_COLOR, UNDERWATER_COLOR,
-  UNDERWATER_FAR_M, WATER_OPACITY, terrainTransition,
+  UNDERWATER_FAR_M, WATER_OPACITY, terrainTransition, WIND_FULL_M_S,
 } from '../config';
 import { createAtlasCanvas, createAtlasTexture } from './atlas';
 import { patchLightMaterial, type LightUniforms } from './lightMaterial';
@@ -21,7 +21,7 @@ export class Renderer {
   readonly crackMaterial: THREE.MeshBasicMaterial;
   readonly fog: THREE.Fog;
   /** Shared by both block materials; uDaylight is 1 at noon and MIN_DAYLIGHT at midnight. */
-  readonly lightUniforms: LightUniforms = { uDaylight: { value: 1 }, uWetness: { value: 0 } };
+  readonly lightUniforms: LightUniforms = { uDaylight: { value: 1 }, uWetness: { value: 0 }, uWind: { value: 0 }, uWindTime: { value: 0 } };
   private readonly background = new THREE.Color(SKY_COLOR);
   private skyColor = SKY_COLOR;
   private underwater = false;
@@ -63,7 +63,7 @@ export class Renderer {
       map: atlas, vertexColors: true, alphaTest: 0.5, side: THREE.DoubleSide,
       polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4,
     });
-    patchLightMaterial(this.solidMaterial, this.lightUniforms, true, this.terrainFade);
+    patchLightMaterial(this.solidMaterial, this.lightUniforms, true, this.terrainFade, true);
     patchLightMaterial(this.waterMaterial, this.lightUniforms, false, this.terrainFade);
     patchLightMaterial(this.itemMaterial, this.lightUniforms);
 
@@ -119,6 +119,12 @@ export class Renderer {
     if (underwater === this.underwater) return;
     this.underwater = underwater;
     this.applyFog();
+  }
+
+  /** Foliage sway (T-F5): strength from the wind speed in m/s, and its clock advanced by the frame time. */
+  setWind(windSpeed: number, frameDt: number): void {
+    this.lightUniforms.uWind.value = Math.max(0, Math.min(1, windSpeed / WIND_FULL_M_S));
+    this.lightUniforms.uWindTime.value += frameDt;
   }
 
   setDaylight(daylight: number): void {

@@ -29,7 +29,7 @@ try {
     const renderer=new THREE.WebGLRenderer({preserveDrawingBuffer:true});renderer.setSize(128,128);renderer.setClearColor(0);
     const target=new THREE.WebGLRenderTarget(128,128);const pixels=new Uint8Array(128*128*4);
     const camera=new THREE.OrthographicCamera(-1.2,1.2,1.2,-1.2,0.1,2000);
-    const uniforms={uDaylight:{value:1},uWetness:{value:0}};
+    const uniforms={uDaylight:{value:1},uWetness:{value:0},uWind:{value:0},uWindTime:{value:0}};
     const check=(condition,message)=>{if(!condition)throw Error(message);};
     const image=(scene,camera,label)=>{
       renderer.setRenderTarget(null);renderer.render(scene,camera);
@@ -109,9 +109,20 @@ try {
     image(transitionScene,transitionCamera,'Hashed voxel/proxy transition');
     fade.value.set(0,0);read(transitionScene,transitionCamera);
     check(center()>200,'voxel-only fallback retained the horizon fade');
+    // Wind (T-F5): a swaying quad moves toward +X (screen right here), by 0.2 to 1 block at full wind.
+    const swayScene=new THREE.Scene();const swayGeometry=new THREE.PlaneGeometry(0.4,0.4).rotateX(-Math.PI/2);
+    swayGeometry.setAttribute('aLight',new THREE.Float32BufferAttribute([1,0,1,0,1,0,1,0],2));
+    swayGeometry.setAttribute('aSway',new THREE.Float32BufferAttribute([1,1,1,1],1));
+    const swayMaterial=new THREE.MeshBasicMaterial({color:0xffffff});patchLightMaterial(swayMaterial,uniforms,false,undefined,true);
+    swayScene.add(new THREE.Mesh(swayGeometry,swayMaterial));camera.position.set(0,2,0);camera.up.set(0,0,-1);camera.lookAt(0,0,0);
+    const litColumn=()=>{let sum=0,n=0;for(let i=0;i<128*128;i++)if(pixels[i*4]>200){sum+=i%128;n++;}return n?sum/n:-1;};
+    uniforms.uWind.value=0;read(swayScene,camera);const still=litColumn();
+    uniforms.uWind.value=1;uniforms.uWindTime.value=3;read(swayScene,camera);const windy=litColumn();image(swayScene,camera,'Foliage in full wind');
+    check(still>60&&still<68&&windy-still>8,`wind sway failed: ${still} -> ${windy}`);
+    swayGeometry.dispose();swayMaterial.dispose();
     transitionGeometry.dispose();transitionMaterial.dispose();
     sky.dispose();geometry.dispose();material.dispose();dryMaterial.dispose();target.dispose();renderer.dispose();
-    return {dry,wet,shelteredDry,shelteredWet,day,night,translated,moonLitPixels:counts};
+    return {still,windy,dry,wet,shelteredDry,shelteredWet,day,night,translated,moonLitPixels:counts};
   });
   if(errors.length)throw Error(errors.join('\n'));
   mkdirSync('screenshots',{recursive:true});await page.screenshot({path:'screenshots/render-regressions.png',fullPage:true});

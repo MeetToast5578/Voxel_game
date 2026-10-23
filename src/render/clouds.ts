@@ -1,15 +1,14 @@
 import { createNoise4D } from 'simplex-noise';
 import * as THREE from 'three';
-import { CLOUD_DRIFT_M_S, CLOUD_HEIGHT_M, CLOUD_PLANE_M, CLOUD_TEXEL_M, metersToBlocks } from '../config';
+import { CLOUD_DRIFT_PER_WIND, CLOUD_HEIGHT_M, CLOUD_PLANE_M, CLOUD_TEXEL_M, metersToBlocks } from '../config';
 import { mulberry32 } from '../core/random';
 
 const CLOUD_HEIGHT = metersToBlocks(CLOUD_HEIGHT_M);
 const TEXTURE_SIZE = 64; // texels
 const BLOCKS_PER_TEXEL = metersToBlocks(CLOUD_TEXEL_M);
 const PLANE_SIZE = metersToBlocks(CLOUD_PLANE_M); // beyond the fog anyway
-const DRIFT_SPEED = metersToBlocks(CLOUD_DRIFT_M_S); // blocks per second toward +X
 
-/** A flat layer of blocky clouds that drifts slowly and stays fixed relative to the world. */
+/** A flat layer of blocky clouds that drifts with the wind and stays fixed relative to the world. */
 export class Clouds {
   private readonly mesh: THREE.Mesh;
   private readonly texture: THREE.CanvasTexture;
@@ -57,8 +56,8 @@ export class Clouds {
   }
 
   /** Keeps the plane centered on the player while the texture stays put in world space. */
-  update(x: number, z: number, frameDt: number, daylight: number): void {
-    this.drift += DRIFT_SPEED * frameDt;
+  update(x: number, z: number, frameDt: number, daylight: number, windSpeed: number): void {
+    this.drift += metersToBlocks(windSpeed * CLOUD_DRIFT_PER_WIND) * frameDt;
     this.mesh.position.set(x, CLOUD_HEIGHT, z);
     const texelWorld = TEXTURE_SIZE * BLOCKS_PER_TEXEL;
     this.texture.offset.set((x - this.drift) / texelWorld, -z / texelWorld);

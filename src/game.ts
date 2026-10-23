@@ -545,7 +545,6 @@ export class Game {
     this.renderer.setSurfaceDistance(this.chunks.surfaceDistance(eye.y));
     this.renderer.setCamera(eye.x, eye.y, eye.z, this.player.yaw, this.player.pitch);
     this.updateAtmosphere(eye, frameDt);
-    this.clouds.update(eye.x, eye.z, frameDt, daylightAt(this.timeOfDay));
     const underwater = this.isWaterAt(Math.floor(eye.x), Math.floor(eye.y), Math.floor(eye.z));
     this.renderer.setUnderwater(underwater);
     const skyTop = this.world.topAt(Math.floor(eye.x), Math.floor(eye.z));
@@ -596,6 +595,8 @@ export class Game {
       eye.y,
     );
     this.renderer.setWetness(this.weatherRenderer.wetness);
+    this.renderer.setWind(weather.windSpeed, frameDt);
+    this.clouds.update(eye.x, eye.z, frameDt, daylightAt(this.timeOfDay), weather.windSpeed);
     this.updateThunder(frameDt);
     this.fogSampleTimer -= frameDt;
     if (this.fogSampleTimer <= 0) {

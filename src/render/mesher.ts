@@ -1,4 +1,4 @@
-import { CHUNK_SIZE } from '../config';
+import { CHUNK_SIZE, WIND_LEAF_SWAY_M, WIND_PLANT_SWAY_M, metersToBlocks } from '../config';
 import { localIndex } from '../core/coords';
 import { BLOCK_REGISTRY, BlockId, EMISSION_TABLE, OPAQUE_TABLE, blockTopHeight, blockBottomHeight, blockFaceTile } from '../world/blocks';
 import {
@@ -20,6 +20,8 @@ export interface MeshData {
   colors: Float32Array;
   /** Per vertex: [sky brightness, block brightness], each 0..1 (LIGHT_CURVE applied). */
   light: Float32Array;
+  /** Per vertex: how far wind moves it at full strength, in blocks (T-F5). 0 for everything but foliage. */
+  sway: Float32Array;
   indices: Uint32Array;
 }
 
@@ -57,6 +59,8 @@ const SLAB_TABLE = new Uint8Array(STATE_COUNT);
 const TOP_HEIGHT_TABLE = new Float64Array(STATE_COUNT);
 /** Tile index per state and axis: [top, side, bottom]. */
 const TILE_TABLE = new Uint8Array(STATE_COUNT * 3);
+/** Wind sway per state: leaf blocks move as a whole, plants only at their top corners (their base stays rooted). */
+const SWAY_TABLE = new Float32Array(STATE_COUNT);
 const FACE_TILES = new Uint8Array(STATE_COUNT * 6);
 for (let state = 0; state < STATE_COUNT; state++) {
   const def = BLOCK_REGISTRY.getBlockDef(state);
@@ -64,6 +68,8 @@ for (let state = 0; state < STATE_COUNT; state++) {
   const tintKey = BLOCK_REGISTRY.getBlockDef(def.slabMaterial ?? state).key;
   TINT_KIND[state] = tintKey === 'grass' ? 1 : tintKey === 'leaves' ? 2 : tintKey === 'water' || tintKey === 'flowing_water' ? 3 : 0;
   CROSS_TABLE[state] = def.shape === 'cross' ? CROSS_SHAPE : 0;
+  if (tintKey === 'leaves') SWAY_TABLE[state] = metersToBlocks(WIND_LEAF_SWAY_M);
+  else if (def.shape === 'cross' && !def.key.endsWith('mushroom')) SWAY_TABLE[state] = metersToBlocks(WIND_PLANT_SWAY_M);
   TRANSLUCENT_TABLE[state] = def.layer === 'translucent' ? TRANSLUCENT_LAYER : 0;
   CULL_SAME_TABLE[state] = def.cullSame ? 1 : 0;
   BOTTOM_HEIGHT_TABLE[state] = blockBottomHeight(state);
@@ -215,6 +221,7 @@ class MeshBuilder {
   private uvs = new Float32Array(0);
   private colors = new Float32Array(0);
   private light = new Float32Array(0);
+  private sway = new Float32Array(0);
   private indices = new Uint32Array(0);
 
   reset(): void {
@@ -232,6 +239,7 @@ class MeshBuilder {
       this.uvs = grow(this.uvs, capacity * 2);
       this.colors = grow(this.colors, capacity * 3);
       this.light = grow(this.light, capacity * 2);
+      this.sway = grow(this.sway, capacity);
       this.indices = growIndices(this.indices, Math.max(capacity * 6, this.indexCount + indices));
       this.capacity = capacity;
     } else if (this.indexCount + indices > this.indices.length) {
@@ -279,6 +287,11 @@ class MeshBuilder {
     p[offset + 1] = block;
   }
 
+  /** Sway for the next vertex. Always written, because the buffers are reused between chunks. */
+  writeSway(sway: number): void {
+    this.sway[this.vertexCount] = sway;
+  }
+
   writeIndices(offset: number, i0: number, i1: number, i2: number, i3: number, i4: number, i5: number): void {
     const p = this.indices;
     p[offset] = i0;
@@ -295,6 +308,7 @@ class MeshBuilder {
       uvs: this.uvs.slice(0, this.vertexCount * 2),
       colors: this.colors.slice(0, this.vertexCount * 3),
       light: this.light.slice(0, this.vertexCount * 2),
+      sway: this.sway.slice(0, this.vertexCount),
       indices: this.indices.slice(0, this.indexCount),
     };
   }
@@ -382,6 +396,7 @@ export function buildChunkMesh(neighbors: readonly Uint16Array[], tops: readonly
               solid.writeUV(uvOffset, FACE_UV_U[at] === 0 ? u0 : u1, FACE_UV_V[at] === 0 ? v0 : v1);
               solid.writeColor(positionOffset, 1, 1, 1);
               solid.writeLight(lightOffset, skyB, blkB);
+              solid.writeSway(c[1] === 1 ? SWAY_TABLE[id]! : 0);
               solid.vertexCount++;
               positionOffset += 3;
               uvOffset += 2;
@@ -468,6 +483,7 @@ export function buildChunkMesh(neighbors: readonly Uint16Array[], tops: readonly
               out.writeColor(positionOffset, brightness * tints.r, brightness * tints.g, brightness * tints.b);
             } else out.writeColor(positionOffset, brightness, brightness, brightness);
             out.writeLight(lightOffset, skyB, blkB);
+            out.writeSway(SWAY_TABLE[id]!);
             out.vertexCount++;
             positionOffset += 3;
             uvOffset += 2;

@@ -14,6 +14,6 @@ export type WorkerResponse =
 
 /** The ArrayBuffers inside a mesh, so postMessage can move them instead of copying. */
 export function meshBuffers(mesh: ChunkMeshData): ArrayBuffer[] {
-  const parts = (m: MeshData) => [m.positions, m.uvs, m.colors, m.light, m.indices].map((a) => a.buffer as ArrayBuffer);
+  const parts = (m: MeshData) => [m.positions, m.uvs, m.colors, m.light, m.sway, m.indices].map((a) => a.buffer as ArrayBuffer);
   return [...parts(mesh.solid), ...parts(mesh.translucent)];
 }
