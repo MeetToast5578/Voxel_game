@@ -164,7 +164,9 @@ const CHECKS = [
       if (slots !== 9 || selected !== 1) throw new Error(`hotbar: ${slots} slots, ${selected} selected`);
       await page.evaluate(() => window.__game.look(0, -0.3));
       await page.keyboard.press('F3');
-      await page.waitForTimeout(600);
+      // Wait for the text rather than a fixed time: on software rendering one frame can take longer than any sleep.
+      await page.waitForFunction(() => document.querySelector('.debug-overlay')?.textContent?.includes('FPS'), null, { timeout: 10_000 })
+        .catch(() => {});
       const text = await page.locator('.debug-overlay').innerText();
       if (!text.includes('FPS')) throw new Error(`debug overlay text: ${text}`);
       await page.screenshot({ path: 'screenshots/hud.png' });

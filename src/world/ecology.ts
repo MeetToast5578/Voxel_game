@@ -164,7 +164,8 @@ function settleSnowAndIce(world: World, x: number, y: number, z: number, roll: (
  * Catch-up on reload (T-G7): a chunk that comes back after `elapsed` ticks gets the expected outcome of the random
  * ticks it missed instead of a replay. Crops advance by elapsed × their growth rate, and snow and ice move toward the
  * current weather. Fractions are rounded up or down at random, on a stream fixed by the seed, tick and chunk.
- * shortcut: the weather at reload stands for the whole absence; replay a weather history if seasons look wrong.
+ * shortcut: one weather sample at the chunk's centre, at reload, stands for the whole chunk and absence (chunks load
+ * in bursts, so per-column sampling costs too much); replay a weather history if seasons look wrong.
  * Saplings are left to grow once loaded, since a tree can reach into chunks that are not.
  */
 export function catchUpChunk(world: World, chunk: Chunk, elapsed: number): void {
@@ -174,6 +175,7 @@ export function catchUpChunk(world: World, chunk: Chunk, elapsed: number): void 
   const round = (expected: number) => Math.floor(expected + rng());
   const happened = (chance: number, tries: number) => rng() < 1 - (1 - chance) ** tries;
   const x0 = chunk.cx * CHUNK_SIZE, y0 = chunk.cy * CHUNK_SIZE, z0 = chunk.cz * CHUNK_SIZE;
+  const weather = weatherAt(x0 + CHUNK_SIZE / 2, y0 + CHUNK_SIZE / 2, z0 + CHUNK_SIZE / 2);
 
   const cellTicks = elapsed * RANDOM_TICKS_PER_CHUNK / CHUNK_VOLUME; // random ticks each cell expected to get
   for (let i = 0; i < CHUNK_VOLUME; i++) {
@@ -182,7 +184,7 @@ export function catchUpChunk(world: World, chunk: Chunk, elapsed: number): void 
     const x = x0 + (i & 15), y = y0 + (i >> 8), z = z0 + ((i >> 4) & 15); // the order of localIndex
     const ground = world.getBlock(x, y - 1, z);
     if ((ground !== BlockId.GRASS && ground !== BlockId.DIRT) || world.topAt(x, z) !== y - 1) continue;
-    const stages = round(cellTicks * CROP_GROW_CHANCE * cropGrowthFactor(state, weatherAt(x, y, z).temperatureC));
+    const stages = round(cellTicks * CROP_GROW_CHANCE * cropGrowthFactor(state, weather.temperatureC));
     if (stages > 0) world.setBlock(x, y, z, state + Math.min(stages, CROP_STAGES - 1 - blockVariant(state)));
   }
 
@@ -191,7 +193,6 @@ export function catchUpChunk(world: World, chunk: Chunk, elapsed: number): void 
   for (let x = x0; x < x0 + CHUNK_SIZE; x++) for (let z = z0; z < z0 + CHUNK_SIZE; z++) {
     const top = world.topAt(x, z);
     if (top === undefined || floorDiv(top, CHUNK_SIZE) !== chunk.cy) continue;
-    const weather = weatherAt(x, top + 1, z);
     const ground = world.getBlock(x, top, z);
     if (ground === BlockId.WATER) {
       if (weather.temperatureC < 0 && happened(ICE_FREEZE_CHANCE, columnTicks)) world.setBlock(x, top, z, BlockId.ICE);
