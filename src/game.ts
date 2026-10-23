@@ -51,7 +51,7 @@ import { Menu, type MenuMode } from './ui/menu';
 import { BlockId, getBlockDef, isWaterState, isLavaState, isFluidState } from './world/blocks';
 import { leafSapling, scheduleLeafDecay } from './world/ecology';
 import { scheduleFallChecks } from './world/falling';
-import { scheduleFlowChecks } from './world/flow';
+import { flowVector, scheduleFlowChecks, type Flow } from './world/flow';
 import type { LooseBody } from './items/looseBodies';
 import { collapsible, scheduleSupportChecks } from './world/collapse';
 import { Chunk } from './world/chunk';
@@ -341,12 +341,13 @@ export class Game {
   readonly isWaterAt = (x: number, y: number, z: number): boolean => isWaterState(this.world.getBlock(x, y, z));
 
   readonly isLavaAt = (x: number, y: number, z: number): boolean => isLavaState(this.world.getBlock(x, y, z));
+  readonly flowAt = (x: number, y: number, z: number): Flow => flowVector((bx, by, bz) => this.world.getBlock(bx, by, bz), x, y, z);
 
   private fixedUpdate(dt: number): void {
     if (!this.ready || this.idle) return;
     this.timeOfDay = (this.timeOfDay + dt / DAY_LENGTH_S) % 1;
     this.calendar.advance(dt); // Both clocks follow simulation time, including the existing menu-time behaviour.
-    this.player.update(dt, this.playing ? this.readControls() : NO_CONTROLS, this.isSolidAt, this.isWaterAt, this.isLavaAt);
+    this.player.update(dt, this.playing ? this.readControls() : NO_CONTROLS, this.isSolidAt, this.isWaterAt, this.isLavaAt, this.flowAt);
     this.items.step(dt, this.isSolidAt);
     // Block updates run at a fixed rate of game ticks, so a flow or a fall takes several ticks, as in Minecraft.
     this.tickTimer += dt;
@@ -354,7 +355,7 @@ export class Game {
       this.tickTimer -= 1 / GAME_TICKS_PER_SECOND;
       this.chunks.tick();
     }
-    for (const body of this.bodies.step(dt, this.isSolidAt, this.isWaterAt, (state) => getBlockDef(state).density, this.isLavaAt)) {
+    for (const body of this.bodies.step(dt, this.isSolidAt, this.isWaterAt, (state) => getBlockDef(state).density, this.isLavaAt, this.flowAt)) {
       this.settleBody(body);
     }
     this.edits.step();

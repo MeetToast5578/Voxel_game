@@ -169,6 +169,9 @@ export const WATER_DRAG_PER_M = 0.9; // quadratic drag in water: a = -k |v| v, i
 /** The same drag in blocks: a = -WATER_DRAG |v| v with v in blocks per second. */
 export const WATER_DRAG = WATER_DRAG_PER_M * BLOCK_SIZE_M;
 export const SWIM_THRUST = metersToBlocks(6); // swim stroke, m/s^2 in the wish direction
+// Currents (T-G12): flowing fluid pushes a fully submerged body this hard along its flow, so a swimmer can still beat
+// it upstream (the stroke is 6 m/s²); falling water pushes down.
+export const CURRENT_ACCEL = metersToBlocks(4);
 export const SWIM_UP_ACCEL = metersToBlocks(6); // extra upward push while holding jump in water, m/s^2
 export const WADE_SLOWDOWN = 0.5; // walking speed lost per unit of submerged fraction, while not swimming (spec 17)
 export const SPLASH_MIN_SPEED = metersToBlocks(4); // downward speed (m/s) that makes a splash on entering water

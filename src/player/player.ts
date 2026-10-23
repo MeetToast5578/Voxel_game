@@ -1,10 +1,11 @@
 import {
-  LAVA_DENSITY, LAVA_DRAG, BLOCK_SIZE_M, AIR_ACCEL, EYE_HEIGHT, FEET_WATER_HEIGHT, FLY_SPEED, GRAVITY, GROUND_ACCEL, JUMP_SPEED, PLAYER_DENSITY,
+  CURRENT_ACCEL, LAVA_DENSITY, LAVA_DRAG, BLOCK_SIZE_M, AIR_ACCEL, EYE_HEIGHT, FEET_WATER_HEIGHT, FLY_SPEED, GRAVITY, GROUND_ACCEL, JUMP_SPEED, PLAYER_DENSITY,
   PLAYER_HALF_WIDTH, PLAYER_HEIGHT, SPRINT_SPEED, STEP_HEIGHT, STEP_SMOOTH_S, SWIM_THRUST, SWIM_UP_ACCEL,
   SPLASH_MIN_SPEED, SWIM_WAIST_HEIGHT, TERMINAL_VELOCITY, WADE_SLOWDOWN, WALK_SPEED, WATER_DENSITY, WATER_DRAG,
 } from '../config';
 import { clamp, lerp } from '../core/math';
 import { moveAndCollide, type BodyShape, type SolidFn, type CollisionFn, type Vec3 } from './physics';
+import type { Flow } from '../world/flow';
 
 export interface PlayerControls {
   forward: boolean;
@@ -89,7 +90,8 @@ export class Player {
   }
 
   /** Optional fluid predicates preserve dry-world callers; lava has its own density, drag and flags. */
-  update(dt: number, c: PlayerControls, isSolid: CollisionFn, isWater: SolidFn = () => false, isLava: SolidFn = () => false): void {
+  update(dt: number, c: PlayerControls, isSolid: CollisionFn, isWater: SolidFn = () => false, isLava: SolidFn = () => false,
+    flowAt?: (x: number, y: number, z: number) => Flow): void {
     this.prevPosition.x = this.position.x;
     this.prevPosition.y = this.position.y;
     this.prevPosition.z = this.position.z;
@@ -137,6 +139,13 @@ export class Player {
     } else {
       this.velocity.x += (wx * speed - this.velocity.x) * t;
       this.velocity.z += (wz * speed - this.velocity.z) * t;
+    }
+    // Currents (T-G12): the fluid at the feet pushes in proportion to how much of the body is under it.
+    if (flowAt && submerged > 0) {
+      const flow = flowAt(bx, Math.floor(this.position.y + FEET_WATER_HEIGHT), bz);
+      this.velocity.x += flow.x * CURRENT_ACCEL * submerged * dt;
+      this.velocity.y += flow.y * CURRENT_ACCEL * submerged * dt;
+      this.velocity.z += flow.z * CURRENT_ACCEL * submerged * dt;
     }
 
     if (this.flying) {

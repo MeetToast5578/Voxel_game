@@ -19,6 +19,32 @@ const LAVA = { source: BlockId.LAVA, same: isLavaState, flowing: isFlowingLavaSt
 const fluid = (id: number) => isLavaState(id) ? LAVA : WATER;
 const open = (id: number) => id === BlockId.AIR || isPlantState(id);
 
+/** A direction in blocks; unit length, or zero. */
+export interface Flow { x: number; y: number; z: number; }
+
+/**
+ * The current in a fluid cell (T-G12): a unit vector, or zero where the fluid is still (a pool of sources). Falling
+ * fluid points straight down; otherwise the flow runs from this cell toward thinner or falling neighbours of the same
+ * fluid, weighted by how much lower they are.
+ */
+export function flowVector(getBlock: (x: number, y: number, z: number) => number, x: number, y: number, z: number): Flow {
+  const id = getBlock(x, y, z);
+  if (!isFluidState(id)) return { x: 0, y: 0, z: 0 };
+  const f = fluid(id);
+  if (f.falling(id)) return { x: 0, y: -1, z: 0 };
+  const level = (s: number) => s === f.source ? SOURCE_WATER_LEVEL : f.falling(s) ? 0 : f.level(s);
+  const here = level(id);
+  let fx = 0, fz = 0;
+  for (const [dx, dz] of SIDES) {
+    const n = getBlock(x + dx, y, z + dz);
+    if (!f.same(n)) continue;
+    fx += dx * (here - level(n));
+    fz += dz * (here - level(n));
+  }
+  const len = Math.hypot(fx, fz);
+  return len > 0 ? { x: fx / len, y: 0, z: fz / len } : { x: 0, y: 0, z: 0 };
+}
+
 /** Schedule the changed cell and neighbours, using the delay belonging to each fluid. */
 export function scheduleFlowChecks(world: World, x: number, y: number, z: number): void {
   for (const [dx, dy, dz] of FACES) {

@@ -1,7 +1,8 @@
 import {
   LAVA_DENSITY, LAVA_BODY_DRAG, GRAVITY, LOOSE_BODY_CAP, LOOSE_BODY_FRICTION, LOOSE_BODY_MAX_S, LOOSE_BODY_REST_S, LOOSE_BODY_REST_SPEED_M_S, LOOSE_BODY_SPIN_RATE,
-  LOOSE_BODY_WATER_DRAG, TERMINAL_VELOCITY, WATER_DENSITY, metersToBlocks,
+  CURRENT_ACCEL, LOOSE_BODY_WATER_DRAG, TERMINAL_VELOCITY, WATER_DENSITY, metersToBlocks,
 } from '../config';
+import type { Flow } from '../world/flow';
 import { type BodyShape, moveAndCollide, type SolidFn, type CollisionFn } from '../player/physics';
 
 /** A one-block cube that tumbles: a block that broke free of a collapse (spec 25, slice 6). (x, z) is its centre and y its bottom, in blocks. */
@@ -95,6 +96,7 @@ export class LooseBodies {
     isWater: (x: number, y: number, z: number) => boolean,
     densityOf: (state: number) => number,
     isLava: SolidFn = () => false,
+    flowAt?: (x: number, y: number, z: number) => Flow,
   ): LooseBody[] {
     const settled: LooseBody[] = [];
     for (let i = this.bodies.length - 1; i >= 0; i--) {
@@ -114,6 +116,13 @@ export class LooseBodies {
         b.vx *= drag;
         b.vy *= drag;
         b.vz *= drag;
+        // Currents (T-G12) carry a body along like the player.
+        const flow = flowAt?.(Math.floor(b.x), Math.floor(b.y + 0.25), Math.floor(b.z));
+        if (flow) {
+          b.vx += flow.x * CURRENT_ACCEL * submerged * dt;
+          b.vy += flow.y * CURRENT_ACCEL * submerged * dt;
+          b.vz += flow.z * CURRENT_ACCEL * submerged * dt;
+        }
       }
       this.sweep(b, dt, isSolid);
       const speed = Math.hypot(b.vx, b.vy, b.vz);
