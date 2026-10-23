@@ -9,7 +9,7 @@ import {
   FOOTSTEP_DISTANCE, FOOTSTEP_MIN_SPEED, GEN_BUDGET_MS, HOTBAR_SIZE, MAX_FRAME_DT, MESH_BUDGET_MS, REACH, SEA_LEVEL,
   SETTINGS_KEY, SPAWN_READY_RADIUS, START_TIME_OF_DAY, WORLD_LATITUDE_DEG, ITEM_SIZE, PLAYER_HEIGHT, WALK_SPEED,
   GAME_MODE_CREATIVE, GAME_MODE_SURVIVAL, HEALTH_MAX, HUNGER_MAX,
-  DROWN_DAMAGE_PER_S, AIR_MAX_S, GAME_TICKS_PER_SECOND,
+  DROWN_DAMAGE_PER_S, AIR_MAX_S, GAME_TICKS_PER_SECOND, HUNGER_DRAIN_PER_S, STARVE_DAMAGE_PER_S, REGEN_MIN_HUNGER, REGEN_PER_S,
 } from './config';
 import { Sounds } from './audio/sounds';
 import { FixedStepLoop } from './core/loop';
@@ -371,6 +371,11 @@ export class Game {
       this.air = Math.min(AIR_MAX_S, this.air + dt * 2); // restore air twice as fast as it depletes
     }
 
+    // Hunger drains over time (T-I2). A fed player regenerates health (T-I3); a starving one takes damage.
+    this.hunger = Math.max(0, this.hunger - HUNGER_DRAIN_PER_S * dt);
+    if (this.hunger <= 0) this.damage(STARVE_DAMAGE_PER_S * dt);
+    else if (this.hunger >= REGEN_MIN_HUNGER) this.heal(REGEN_PER_S * dt);
+
     // Death: respawn at spawn point, drop inventory.
     if (this.health <= 0) {
       this.die();
@@ -422,9 +427,10 @@ export class Game {
     this.inventory = new Inventory();
     this.inventory.select(0);
 
-    // Reset health, air and transient fire.
+    // Reset health, hunger, air and transient fire.
     this.fire.reset();
     this.health = HEALTH_MAX;
+    this.hunger = HUNGER_MAX;
     this.air = AIR_MAX_S;
 
     // Respawn at spawn point.
@@ -556,6 +562,9 @@ export class Game {
     this.renderer.render();
     this.hud.update(this.inventory.slots, this.inventory.selected, frameDt, this.playing, this.ready && !this.inventoryScreen.isOpen);
     this.hud.setHazard(this.gameMode === GAME_MODE_SURVIVAL && this.fire.remaining > 0 ? 'On fire · Enter water to extinguish' : '');
+    // Round up so a sliver of health reads 1, not 0. Shortcut: plain text until the Pixel Aero HUD (T-K8) adds bars.
+    this.hud.setVitals(this.gameMode === GAME_MODE_SURVIVAL
+      ? `Health ${Math.ceil(this.health)}/${HEALTH_MAX} · Hunger ${Math.ceil(this.hunger)}/${HUNGER_MAX}` : '');
     this.debugOverlay.update(frameDt, () => formatDebugLines(this.debugState()));
   }
 
