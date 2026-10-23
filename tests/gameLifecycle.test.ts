@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { DAY_LENGTH_S, DAYS_PER_SEASON, FIXED_DT, GAME_MODE_CREATIVE, WORLD_LATITUDE_DEG } from '../src/config';
+import { DAY_LENGTH_S, DAYS_PER_SEASON, FIXED_DT, GAME_MODE_CREATIVE, THUNDER_DELAY_MIN_S, WORLD_LATITUDE_DEG } from '../src/config';
 import { Game } from '../src/game';
 import { BlockBreaking } from '../src/player/breaking';
 import { Calendar } from '../src/world/calendar';
@@ -175,5 +175,25 @@ describe('smoke-test debug hooks', () => {
     game.setIdle(false);
     game.setIdle(false);
     expect(game.timeOfDay).toBe(0.42);
+  });
+});
+
+describe('thunder after lightning (T-F14)', () => {
+  it('plays one clap per strike once its delay has passed', () => {
+    const random = vi.spyOn(Math, 'random').mockReturnValue(0); // the shortest delay
+    try {
+      const game = Object.create(Game.prototype) as Game;
+      const sounds = { play: vi.fn() };
+      Object.assign(game, { sounds, weatherRenderer: { strikes: 2 }, seenStrikes: 0, thunderDelays: [] });
+      call(game, 'updateThunder', THUNDER_DELAY_MIN_S / 2);
+      expect(sounds.play).not.toHaveBeenCalled();
+      call(game, 'updateThunder', THUNDER_DELAY_MIN_S / 2);
+      expect(sounds.play).toHaveBeenCalledTimes(2);
+      expect(sounds.play).toHaveBeenCalledWith('thunder');
+      call(game, 'updateThunder', 10); // nothing new struck: no more claps
+      expect(sounds.play).toHaveBeenCalledTimes(2);
+    } finally {
+      random.mockRestore();
+    }
   });
 });

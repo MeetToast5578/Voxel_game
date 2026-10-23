@@ -551,6 +551,9 @@ export const WEATHER_STORM_PRESSURE = -0.5; // pressure below this = storm candi
 export const WEATHER_STORM_HUMIDITY = 0.62; // humidity above this = storm candidate
 export const WEATHER_STORM_TEMP_C = 10; // temperature above this = storm candidate
 export const WEATHER_PRECIP_THRESHOLD = 0.1; // minimum cloud cover for precipitation
+export const LIGHTNING_SKY_BRIGHTEN = 0.6; // share of white mixed into the sky colour at a flash's peak (T-F14)
+export const THUNDER_DELAY_MIN_S = 1; // thunder follows each flash after a random delay, as if 0.3 to 2 km away
+export const THUNDER_DELAY_MAX_S = 6;
 export const WEATHER_TEMP_SNOW_C = -2; // below this temperature = snow
 export const WEATHER_TEMP_RAIN_C = 2; // above this temperature = rain
 

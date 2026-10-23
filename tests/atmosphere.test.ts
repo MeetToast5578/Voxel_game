@@ -11,10 +11,10 @@ function atmosphereGame() {
   const renderer={camera:new THREE.Object3D(),setSkyColor:vi.fn(),setDaylight:vi.fn(),setWetness:vi.fn(),setAtmosphericFog:vi.fn()};
   const weather={precipitation:'rain',humidity:1,cloudCover:1,isStorm:false,pressure:0,windSpeed:0};
   const model={sample:vi.fn(()=>weather)};
-  const particles={update:vi.fn(),wetness:0.5};
+  const particles={update:vi.fn(),wetness:0.5,strikes:0,getFlashIntensity:()=>0};
   const generator={sampleColumn:vi.fn((x:number,z:number)=>({offsetM:x===100&&z===-100?30:42}))};
   Object.assign(game,{renderer,sky:{update:vi.fn()},weather:model,weatherRenderer:particles,world:{topAt:()=>123},generator,
-    timeOfDay:0,calendar:{timeOfYear:0.25},fogSampleTimer:0,fogValleyDepthM:0});
+    timeOfDay:0,calendar:{timeOfYear:0.25},fogSampleTimer:0,fogValleyDepthM:0,seenStrikes:0,thunderDelays:[]});
   return {game,renderer,model,particles,generator};
 }
 function update(game:Game,dt:number) {
