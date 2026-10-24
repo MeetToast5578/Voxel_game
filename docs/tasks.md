@@ -227,16 +227,7 @@ All six sandbox-physics slices (spec 25) are built and tested. One known shortcu
 
 ## H. Phase 6 — Creatures
 
-- [ ] **T-H1 — Wire `entity.ts` into the game.** `src/world/entity.ts` is a pure entity system with gravity and collision (spec 42) and has **zero importers** in `src/`. This is the phase 6 entry point.
-- [ ] **T-H2 — Per-chunk persistence**, despawn and respawn rules. Item 1.
-- [ ] **T-H3 — Shared physics.** Reuse the player AABB sweep including step-up. Bodies in sizes of 1, 2 and 3 blocks tall. Item 2.
-- [ ] **T-H4 — Models.** Procedural textured cuboids with walk, idle and eat animations. Item 3.
-- [ ] **T-H5 — AI.** Utility-scored behaviours: wander, graze, flee, herd (boids), hunt, sleep, follow. Activity changes with day/night and season. Item 4.
-- [ ] **T-H6 — A\* pathfinding** on the voxel grid, respecting body height, jump and fall limits. Item 4.
-- [ ] **T-H7 — Wildlife by biome.** Deer, rabbits, boars, wolves (predator and prey), bears, foxes, sheep, cows, mountain goats, desert camels, fish, bird flocks (cosmetic). Item 5.
-- [ ] **T-H8 — Population caps** per biome; spawn with world generation and slowly repopulate. Item 5.
-- [ ] **T-H9 — Hostile mobs** at night and in dark caves (light < 7), with melee combat and knockback. Item 6.
-- [ ] **T-H10 — Creature sounds.** Item 7.
+- [x] **T-H1..T-H10 — Creatures.** Closed 2026-10-24. `src/creatures/`: `species.ts` (13 species as data), `creatures.ts` (`CreatureSystem` on the now generic `EntitySystem`: utility AI, boids, hunting, bites, knockback), `pathfinding.ts` (A*), `spawning.ts` and `population.ts` (first spawn per column, storage while unloaded, repopulation, caps, hostile spawns in darkness). `src/render/creatureMeshes.ts` draws every creature in one dynamic mesh. Saved as the optional `creatures` and `creatureColumns` meta fields. Raw meat 1659 and cooked meat 1660 (T-I8 hunting). Debug API: `spawnCreature`, `creatures`, `clearCreatures`, `setCreatureSpawning`; the smoke suite turns spawning off except in its creature check. Shortcuts: darkness and creature lighting are judged from the sky and nearby emitters, not stored light values. Covered by `tests/creatures.test.ts` and the smoke check "creatures walk and flee…"
 
 ---
 
@@ -249,7 +240,7 @@ All six sandbox-physics slices (spec 25) are built and tested. One known shortcu
 - [x] **T-I5 — Tools.** Closed 2026-10-23: `src/player/tools.ts`; wooden and stone tiers; iron tier added 2026-10-24 with T-I7.
 - [x] **T-I6 — Crafting.** Closed 2026-10-23: `src/player/crafting.ts`, `crafting_table` (state 180).
 - [x] **T-I7 — Furnaces** that smelt, as a block entity with timers. Item 5. Closed 2026-10-24: `furnace` and `lit_furnace` (1508, 1512; 4 facing variants each, the mouth faces the placer; the lit one emits light 13), `iron_ingot` 1516, `coal` 1517, `baked_potato` 1518, after the new iron tool states. Slots and timers in `src/player/furnace.ts` (`SMELTING`, `FUEL_S`, `SMELT_S` = 10 s); the game keeps them in a map by cell, runs them every step even while unloaded, swaps the lit block in loaded chunks, and saves them as the optional `furnaces` meta field. Breaking a furnace spills its contents. Covered by `tests/furnace.test.ts` and `tests/gameLifecycle.test.ts`.
-- [~] **T-I8 — Food.** Farming slice 2026-10-23: eating crops (`FOOD_HUNGER`, `Game.eatSelected`). Cooking 2026-10-24: baked potatoes from a furnace (6 hunger). Hunting remains (T-H7). Item 6.
+- [~] **T-I8 — Food.** Farming slice 2026-10-23: eating crops (`FOOD_HUNGER`, `Game.eatSelected`). Cooking 2026-10-24: baked potatoes from a furnace (6 hunger). Hunting 2026-10-24: animals drop raw meat, cooked in a furnace. Item 6.
 - [x] **T-I9 — Beds.** Closed 2026-10-23: `bed` (state 179); `Game.useBed` sets the respawn point and sleeps at night; saved as `bed`. Not obtainable in survival until T-I6.
 - [x] **T-I10 — Inventory-backed hotbar** in survival. Verified 2026-10-18: hotbar reads slots 0–8 of the same `Inventory`; placing consumes the selected stack and pickups refill inventory. Existing inventory tests and full baseline browser smoke pass. Survival-specific restrictions on the creative picker and pick-block are separate outstanding work (T-I11).
 - [x] **T-I11 — Enforce survival acquisition rules.** Closed 2026-10-23. In survival the Blocks tab is hidden and ignores picks, and pick-block only selects a block already in the hotbar. Owner policy: switching a world that has not been played yet (no save loaded, inventory still the starting kit) to survival empties the inventory; later switches never change it. Covered by `tests/inventory.test.ts` and `tests/gameLifecycle.test.ts`.

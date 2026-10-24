@@ -66,6 +66,8 @@ export const BlockId = {
   BAKED_POTATO: 1518,
   DOOR: 1519,
   OPEN_DOOR: 1523,
+  RAW_MEAT: 1659,
+  COOKED_MEAT: 1660,
 } as const;
 
 export const Tile = {
@@ -147,6 +149,9 @@ export const Tile = {
   COAL: 90,
   BAKED_POTATO: 91,
   DOOR: 92,
+  CREATURE: 93,
+  RAW_MEAT: 94,
+  COOKED_MEAT: 95,
 } as const;
 
 export type RenderLayer = 'none' | 'opaque' | 'cutout' | 'translucent';
@@ -486,6 +491,9 @@ export const BLOCK_REGISTRY = buildBlockRegistry([
     ...d, key: `${d.key}_stairs`, name: `${d.name} stairs`, variants: 4,
     shape: 'stairs' as const, stairsMaterial: d.id, opaque: false, cullSame: false, falls: false, flows: false,
   })),
+  // Hunting (T-I8, T-H7): animals drop raw meat, which a furnace cooks.
+  def('raw_meat', 'Raw meat', all(Tile.RAW_MEAT), ITEM),
+  def('cooked_meat', 'Cooked meat', all(Tile.COOKED_MEAT), ITEM),
 ]);
 
 // BlockId.X is variant 0 of the type whose key is x; keep the two lists in step.

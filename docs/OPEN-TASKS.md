@@ -73,16 +73,16 @@ Measure first (T-C3), then pick the J items that the measurements point at.
 
 ## 5. Creatures (Phase 6)
 
-- [ ] **T-H1 — Wire `src/world/entity.ts` into the game.** It has gravity and collision (spec 42) but zero importers. Everything below depends on it.
-- [ ] **T-H2 — Per-chunk persistence**, despawn and respawn rules.
-- [ ] **T-H3 — Shared physics.** Reuse the player AABB sweep, including step-up, for bodies 1, 2 and 3 blocks tall.
-- [ ] **T-H4 — Models.** Procedural textured cuboids with walk, idle and eat animations.
-- [ ] **T-H5 — AI.** Utility-scored behaviours: wander, graze, flee, herd (boids), hunt, sleep, follow. Activity follows day/night and season.
-- [ ] **T-H6 — A\* pathfinding** on the voxel grid, respecting body height and jump and fall limits.
-- [ ] **T-H7 — Wildlife by biome.** Deer, rabbits, boars, wolves, bears, foxes, sheep, cows, mountain goats, camels, fish, and bird flocks (cosmetic).
-- [ ] **T-H8 — Population caps** per biome. Spawn with world generation and slowly repopulate.
-- [ ] **T-H9 — Hostile mobs** at night and in dark caves (light below 7), with melee combat and knockback.
-- [ ] **T-H10 — Creature sounds.**
+- [x] **T-H1 — Entities in the game.** Done: `EntitySystem` is generic and drives `CreatureSystem` (`src/creatures/`).
+- [x] **T-H2 — Per-chunk persistence.** Done: a column's creatures are stored when it unloads and come back with it; saved as `creatures` and `creatureColumns`. Hostiles are not saved.
+- [x] **T-H3 — Shared physics.** Done: `moveAndCollide` with step-up (0.6 m, as the player), for bodies of every size.
+- [x] **T-H4 — Models.** Done: textured cuboids per species, with walking legs, idle, grazing head and folded legs asleep; all creatures are one dynamic mesh (one draw call).
+- [x] **T-H5 — AI.** Done: utility-scored wander, graze, flee, herd (boids), hunt, sleep and follow (wheat); day or night activity; bears hibernate in winter.
+- [x] **T-H6 — A\* pathfinding.** Done: `findPath`, with body height, step and fall limits, for hunting and following round obstacles.
+- [x] **T-H7 — Wildlife by biome.** Done: deer, rabbits, boars, wolves, bears, foxes, sheep, cows, mountain goats, camels, fish and bird flocks.
+- [x] **T-H8 — Population caps.** Done: each column gets a group when first seen; repopulation near the player; caps per species within 48 m.
+- [x] **T-H9 — Hostile mobs.** Done: zombies at night and in dark caves, melee bites with knockback; the player hits back with left click (tools hit harder). Shortcut: darkness is judged from the sky and nearby light sources.
+- [x] **T-H10 — Creature sounds.** Done: calls pitched per species and a hurt sound.
 
 Done when (roadmap): a meadow at dawn has grazing herds that flee when approached, wolves hunt, hostile mobs appear at night, and 100+ entities run within the frame budget.
 
@@ -97,7 +97,7 @@ Done when (roadmap): a meadow at dawn has grazing herds that flee when approache
 - [x] **T-I5 — Tools.** Done: wooden and stone pickaxes, axes and shovels; the right tool divides break time by its tier; wear is the state variant. In survival stone-like blocks need a pickaxe to drop. Iron tools (speed 6, 250 uses) come from furnace ingots.
 - [x] **T-I6 — Crafting.** Done: 2×2 grid in the inventory, 3×3 at the crafting table, recipes in `src/player/crafting.ts`. Beds are now craftable (wheat over planks).
 - [x] **T-I7 — Furnaces.** Done: crafted from eight cobblestone; input, fuel and output with timers (`src/player/furnace.ts`), saved as `furnaces`, running while unloaded. Smelts iron ore, sand, cobblestone, clay, logs (to coal) and potatoes. Coal ore drops coal. Iron tools follow.
-- [~] **T-I8 — Food.** Farming slice done: in survival, right click with a crop eats it (wheat 2, carrots 3, potatoes 4 hunger) unless aimed at grass or dirt, where it is planted. Cooking done: a furnace bakes potatoes (6 hunger). Hunting waits on T-H7.
+- [~] **T-I8 — Food.** Farming slice done: in survival, right click with a crop eats it (wheat 2, carrots 3, potatoes 4 hunger) unless aimed at grass or dirt, where it is planted. Cooking done: a furnace bakes potatoes (6 hunger). Hunting done: animals drop raw meat (3), which a furnace cooks (8).
 - [x] **T-I9 — Beds.** Done: a half-height bed; right click sets the respawn point and, while the sun is down, sleeps to sunrise. Crafted from three wheat over three planks.
 
 Done when (roadmap): a new survival world is playable from punching a tree through to iron tools, and a winter is dangerous without shelter.

@@ -10,6 +10,7 @@ export const SMELTING: Readonly<Record<string, string>> = {
   clay: 'brick',
   log: 'coal',
   potatoes: 'baked_potato',
+  raw_meat: 'cooked_meat',
 };
 
 /** Seconds of burning one item of each fuel gives, by block key. */

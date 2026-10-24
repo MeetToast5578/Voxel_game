@@ -74,6 +74,10 @@ const PAINTERS: Record<number, PixelFn> = {
   [Tile.BAKED_POTATO]: (x, y, r) => (Math.hypot((x - 7.5) * 0.8, y - 8) <= 4.5 ? shade([196, 140, 60], 0.8 + r() * 0.35) : [0, 0, 0, 0]),
   // A door (T-K5): upright boards; every cell of the door shows the same tile, so it has no frame or handle.
   [Tile.DOOR]: (x, _y, r) => shade([150, 112, 66], (x % 5 === 0 ? 0.6 : 1) + (r() - 0.5) * 0.12),
+  // Creatures (T-H4): a light fur tile, coloured per species and part by vertex colour.
+  [Tile.CREATURE]: (_x, _y, r) => shade([235, 235, 235], 0.85 + r() * 0.15),
+  [Tile.RAW_MEAT]: (x, y, r) => (Math.hypot((x - 7.5) * 0.75, y - 8) <= 5 ? shade(Math.hypot(x - 9, y - 7) < 1.5 ? [235, 225, 215] : [200, 70, 70], 0.85 + r() * 0.3) : [0, 0, 0, 0]),
+  [Tile.COOKED_MEAT]: (x, y, r) => (Math.hypot((x - 7.5) * 0.75, y - 8) <= 5 ? shade(Math.hypot(x - 9, y - 7) < 1.5 ? [235, 225, 215] : [130, 76, 44], 0.85 + r() * 0.3) : [0, 0, 0, 0]),
   [Tile.STICK]: (x, y, r) => (x + y === 15 && x >= 2 && x <= 13 ? shade(HANDLE, 0.9 + r() * 0.2) : [0, 0, 0, 0]),
   // Crafting table (T-I6): a planked top ruled into a 3×3 grid, and sides with hanging tools.
   [Tile.CRAFTING_TOP]: (x, y, r) => shade([162, 130, 78], (x % 5 === 0 || y % 5 === 0 ? 0.55 : 1) + (r() - 0.5) * 0.1),

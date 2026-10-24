@@ -1,5 +1,12 @@
 # Handoff: Voxel Game (MeetToast5578/Voxel_game)
 
+## 2026-10-24 — creatures (Claude)
+
+Phase 6 (T-H1..T-H10). Wildlife spawns per column by biome, flees, grazes, herds, hunts, sleeps and follows wheat;
+zombies come out at night and in dark caves and bite survival players; left click hits creatures. Code is in
+`src/creatures/` and `src/render/creatureMeshes.ts`. New states: raw meat 1659, cooked meat 1660. Optional meta
+fields `creatures` and `creatureColumns`. This branch builds on the stairs-and-doors branch.
+
 ## 2026-10-24 — stairs and doors (Claude)
 
 T-K5 is done. Stairs exist for every cube block and climb away from the placer. Doors are 2 × 7 cells (0.6 × 2.1 m,

@@ -4,6 +4,10 @@ import { resolvePlacement } from './player/placementTarget';
 import { blockCollision, blockDrop, blockVariant, facingVariant, foodValue, isCropState, isDoor, isFurnace, slabBounds, slabItemState } from './world/blocks';
 import { newFurnace, stepFurnace, type FurnaceState } from './player/furnace';
 import { connectedDoor, doorCells, toggledDoor } from './player/doors';
+import { CreatureSystem, rayHitCreature, type Creature, type CreatureEvent, type CreatureView } from './creatures/creatures';
+import { CreaturePopulation } from './creatures/population';
+import { SPECIES_BY_KEY } from './creatures/species';
+import { CreatureMeshes } from './render/creatureMeshes';
 import { atmosphericFogStrength } from './world/atmosphere';
 import {
   WORLD_FILE_MAX_BYTES, FOG_SAMPLE_INTERVAL_S, FOG_VALLEY_SAMPLE_M, FOG_GROUND_LAYER_M, metersToBlocks,
@@ -12,7 +16,7 @@ import {
   SETTINGS_KEY, SPAWN_READY_RADIUS, START_TIME_OF_DAY, WORLD_LATITUDE_DEG, ITEM_SIZE, PLAYER_HEIGHT, WALK_SPEED, WHEAT_SEED_DROP_CHANCE,
   GAME_MODE_CREATIVE, GAME_MODE_SURVIVAL, HEALTH_MAX, HUNGER_MAX,
   DROWN_DAMAGE_PER_S, AIR_MAX_S, GAME_TICKS_PER_SECOND, LIGHTNING_SKY_BRIGHTEN, THUNDER_DELAY_MIN_S, THUNDER_DELAY_MAX_S,
-  HUNGER_DRAIN_PER_S, STARVE_DAMAGE_PER_S, REGEN_MIN_HUNGER, REGEN_PER_S, NOTICE_S, FURNACE_REFRESH_S, SLAB_HEIGHT,
+  HUNGER_DRAIN_PER_S, STARVE_DAMAGE_PER_S, REGEN_MIN_HUNGER, REGEN_PER_S, NOTICE_S, FURNACE_REFRESH_S, SLAB_HEIGHT, CREATURE_KNOCKBACK, CREATURE_SOUND_RADIUS, PLAYER_ATTACK_DAMAGE,
   BODY_TEMP_DAMAGE_PER_S, BODY_TEMP_NORMAL_C, HEAT_SOURCE_RADIUS, HEATSTROKE_ABOVE_C, HYPOTHERMIA_BELOW_C,
 } from './config';
 import { Sounds } from './audio/sounds';
@@ -25,7 +29,7 @@ import { BlockBreaking } from './player/breaking';
 import { BuildTool, cornerFor, frameFor } from './player/buildTool';
 import { Inventory, type ItemStack, startingSlots } from './player/inventory';
 import { blockIntersectsBody, canBreak } from './player/interaction';
-import { afterUse, breakSeconds, dropsWhenMined } from './player/tools';
+import { afterUse, breakSeconds, dropsWhenMined, toolOf } from './player/tools';
 import { feltTemperature, stepBodyTemperature, type Exposure } from './player/bodyTemperature';
 import type { Vec3 } from './player/physics';
 import { FireExposure, fluidContact, landingDamage, landingWaterDepth } from './player/fluidHazards';
@@ -105,6 +109,7 @@ export class Game {
   private readonly held: HeldBlock;
   private readonly itemMeshes: ItemMeshes;
   private readonly bodyMeshes: BodyMeshes;
+  private readonly creatureMeshes: CreatureMeshes;
   private readonly breakOverlay: BreakOverlay;
   private readonly inventoryScreen: InventoryScreen;
   /** Seconds since the game started; drives the spin and bob of dropped items. */
@@ -121,6 +126,12 @@ export class Game {
   private readonly furnaces = new Map<string, FurnaceState>();
   private openFurnace: FurnaceState | null = null;
   private furnaceRefreshS = 0;
+  /** Creatures (T-H1..T-H10): the live ones, and where the rest are kept while their columns are unloaded. */
+  readonly creatures = new CreatureSystem();
+  private readonly population = new CreaturePopulation();
+  private populationS = 0;
+  /** Off for scripted checks (the debug API), so wildlife and hostiles do not wander into them. */
+  creatureSpawning = true;
   fps = 0;
   /** 0 sunrise, 0.25 noon, 0.5 sunset, 0.75 midnight; wraps at 1. */
   timeOfDay = START_TIME_OF_DAY;
@@ -245,6 +256,7 @@ export class Game {
       this.air = loaded.air ?? AIR_MAX_S;
       this.bed = loaded.bed ?? null;
       for (const { x, y, z, ...f } of loaded.furnaces ?? []) this.furnaces.set(`${x},${y},${z}`, f);
+      this.population.load(loaded.creatures ?? [], loaded.creatureColumns ?? []);
     }
     this.savedPlayer = loaded?.player ?? null;
     this.saver = new WorldSaver(this.worldStore, this.world, () => this.worldMeta());
@@ -253,6 +265,7 @@ export class Game {
     this.held = new HeldBlock(this.renderer.camera, this.renderer.itemMaterial);
     this.itemMeshes = new ItemMeshes(this.renderer.scene, this.renderer.itemMaterial);
     this.bodyMeshes = new BodyMeshes(this.renderer.scene, this.renderer.itemMaterial);
+    this.creatureMeshes = new CreatureMeshes(this.renderer.scene, this.renderer.itemMaterial);
     this.usingWorkers = options.workers && typeof Worker !== 'undefined';
     const workerCount = Math.max(1, Math.min(4, (navigator.hardwareConcurrency || 2) - 1));
     const jobs = this.usingWorkers ? new WorkerPool(seed, workerCount) : null;
@@ -381,6 +394,7 @@ export class Game {
     this.spawnBrokenBlocks();
     this.collectItems();
     this.updateFurnaces(dt);
+    this.updateCreatures(dt);
     this.updateFootsteps(dt);
     if (this.player.splashSpeed > 0) this.sounds.play('splash');
     this.saveTimer += dt;
@@ -594,6 +608,10 @@ export class Game {
       hunger: this.hunger,
       air: this.air,
       ...(this.bed ? { bed: { ...this.bed } } : {}),
+      ...(() => {
+        const { creatures, populated } = this.population.snapshot(this.creatures);
+        return { ...(creatures.length ? { creatures } : {}), ...(populated.length ? { creatureColumns: populated } : {}) };
+      })(),
       ...(this.furnaces.size ? { furnaces: [...this.furnaces].map(([key, f]) => {
         const [x, y, z] = key.split(',').map(Number) as [number, number, number];
         return { x, y, z, slots: f.slots.map((s) => (s ? { ...s } : null)) as FurnaceState['slots'], burnS: f.burnS, burnTotalS: f.burnTotalS, cookS: f.cookS };
@@ -624,6 +642,76 @@ export class Game {
       this.furnaceRefreshS = FURNACE_REFRESH_S;
       this.inventoryScreen.refresh();
     }
+  }
+
+  /** The world as the creatures see it this step. */
+  private creatureView(): CreatureView {
+    const p = this.player.position;
+    return {
+      isSolid: (x, y, z) => this.isSolidAt(x, y, z) === true,
+      isWater: this.isWaterAt,
+      isLoaded: (x, y, z) => this.world.isLoadedAt(x, y, z),
+      groundY: (x, z) => { const top = this.world.topAt(x, z); return top === undefined ? undefined : top + 1; },
+      player: { x: p.x, y: p.y, z: p.z, holdingWheat: this.inventory.selectedBlock === BlockId.WHEAT, prey: this.gameMode === GAME_MODE_SURVIVAL },
+      night: Math.sin(2 * Math.PI * this.timeOfDay) < 0,
+      winter: this.calendar.season === 'winter',
+      rand: Math.random,
+    };
+  }
+
+  /** Steps the creatures and acts on what they did; about once a second, their population is updated (T-H2, T-H8). */
+  private updateCreatures(dt: number): void {
+    const view = this.creatureView();
+    if (this.creatureSpawning && (this.populationS -= dt) <= 0) {
+      this.populationS = 1;
+      this.population.update(1, this.creatures, {
+        seed: this.world.seed,
+        columnKeys: () => this.world.columnKeys(),
+        topAt: (x, z) => this.world.topAt(x, z),
+        getBlock: (x, y, z) => this.world.getBlock(x, y, z),
+        isLoadedAt: (x, y, z) => this.world.isLoadedAt(x, y, z),
+        biomeAt: (x, y, z) => this.generator.climateAt(x, y, z).biome,
+      }, view.player, view.night, Math.random);
+    }
+    for (const e of this.creatures.step(dt, view, this.isSolidAt)) this.onCreatureEvent(e);
+  }
+
+  private onCreatureEvent(e: CreatureEvent): void {
+    const p = this.player.position;
+    if (e.kind === 'bite') {
+      // A bite or hit (T-H9): damage and a knock away from the attacker.
+      this.damage(e.damage);
+      const dx = p.x - e.x, dz = p.z - e.z, d = Math.hypot(dx, dz) || 1;
+      this.player.velocity.x += (dx / d) * CREATURE_KNOCKBACK;
+      this.player.velocity.z += (dz / d) * CREATURE_KNOCKBACK;
+      this.player.velocity.y = Math.max(this.player.velocity.y, CREATURE_KNOCKBACK * 0.4);
+      this.sounds.play('hurt', 0.7);
+    } else if (e.kind === 'sound') {
+      const d = Math.hypot(e.x - p.x, e.y - p.y, e.z - p.z);
+      this.sounds.play('call', 0.3 + e.species.voice * 1.4, Math.max(0, 1 - d / CREATURE_SOUND_RADIUS));
+    } else {
+      const c = e.creature;
+      if (e.byPlayer && c.species.meat > 0) this.items.spawn(BlockId.RAW_MEAT, c.species.meat, c.x, c.y + 0.2, c.z, Math.random);
+    }
+  }
+
+  /** A left click on a creature in reach, nearer than the aimed block, hits it (T-H9). Returns true if one was hit. */
+  private attackCreature(eye: Vec3, look: Vec3): boolean {
+    const hit = rayHitCreature(this.creatures.all(), eye, look, Math.min(REACH, this.target?.distance ?? REACH));
+    if (!hit) return false;
+    const tool = toolOf(this.inventory.selectedBlock);
+    if (this.creatures.hurt(hit.creature, PLAYER_ATTACK_DAMAGE + (tool?.speed ?? 0), this.player.position.x, this.player.position.z, true)) {
+      this.onCreatureEvent({ kind: 'death', creature: hit.creature, byPlayer: true });
+    }
+    if (this.gameMode === GAME_MODE_SURVIVAL && tool) this.wearSelectedTool();
+    this.sounds.play('hurt', 0.4 + hit.creature.species.voice);
+    return true;
+  }
+
+  /** Spawns a creature of a species by key (the debug API). */
+  spawnCreature(key: string, x: number, y: number, z: number): Creature | null {
+    const species = SPECIES_BY_KEY.get(key);
+    return species ? this.creatures.spawn(species, x, y, z, Math.random) : null;
   }
 
   /** Spills a furnace's slots at its cell and forgets it. */
@@ -673,6 +761,11 @@ export class Game {
     if (this.playing && this.ready && !this.inventoryScreen.isOpen) this.handleBlockActions(frameDt, eye, look);
     this.itemMeshes.sync(this.items.items, this.clockS);
     this.bodyMeshes.sync(this.bodies.bodies);
+    this.creatureMeshes.sync(this.creatures.all(), this.clockS, (c) => {
+      // Shortcut: full sky light in the open, a little under cover; the mesher's light values are not kept per cell.
+      const open = (this.world.topAt(Math.floor(c.x), Math.floor(c.z)) ?? -Infinity) < c.y + c.height;
+      return [open ? 1 : 0.25, 0];
+    });
     this.breakOverlay.update(this.breaking.target, this.breaking.stage, this.breaking.target ? slabBounds(this.world.getBlock(this.breaking.target.x, this.breaking.target.y, this.breaking.target.z)) : null);
     const walking = this.player.onGround ? Math.min(1, Math.hypot(this.player.velocity.x, this.player.velocity.z) / WALK_SPEED) : 0;
     this.held.setState(this.inventory.selectedBlock);
@@ -1073,10 +1166,13 @@ export class Game {
       return;
     }
     const breakClicked = this.input.consumeClick(0);
+    // A creature in front of the aimed block takes the click, and holding the button does not mine through it.
+    const onCreature = rayHitCreature(this.creatures.all(), eye, look, Math.min(REACH, this.target?.distance ?? REACH)) !== null;
+    if (breakClicked && onCreature) this.attackCreature(eye, look);
     const t = this.target;
     const broken = this.breaking.update(
       frameDt,
-      this.input.isMouseDown(0),
+      this.input.isMouseDown(0) && !onCreature,
       t ? { x: t.x, y: t.y, z: t.z } : null,
       this.breakHardness(),
     );
@@ -1350,6 +1446,7 @@ export class Game {
       inLava: this.player.inLava,
       hunger: this.hunger,
       bodyTempC: Math.round(this.bodyTempC * 10) / 10,
+      creatures: this.creatures.count,
       air: Math.round(this.air * 100) / 100,
       target: this.target ? [this.target.x, this.target.y, this.target.z] : null,
       targetName: this.target ? getBlockDef(this.world.getBlock(this.target.x, this.target.y, this.target.z)).name : null,

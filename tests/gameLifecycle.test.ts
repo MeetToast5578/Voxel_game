@@ -20,7 +20,7 @@ function tickingGame() {
     tickTimer: 0, saveTimer: 0, gameMode: GAME_MODE_CREATIVE,
     items: { step: vi.fn() }, chunks: { tick: vi.fn() }, bodies: { step: () => [] },
     edits: { step: vi.fn() }, isSolidAt: () => false, isWaterAt: () => false,
-    spawnBrokenBlocks: vi.fn(), collectItems: vi.fn(), updateFurnaces: vi.fn(), updateFootsteps: vi.fn(),
+    spawnBrokenBlocks: vi.fn(), collectItems: vi.fn(), updateFurnaces: vi.fn(), updateCreatures: vi.fn(), updateFootsteps: vi.fn(),
   });
   return { game, calendar, player };
 }
@@ -144,7 +144,7 @@ describe('smoke-test debug hooks', () => {
       placeTarget: vi.fn(),
       eatSelected: () => false,
       useBed: () => false,
-      useCraftingTable: () => false, useFurnace: () => false, useDoor: () => false,
+      useCraftingTable: () => false, useFurnace: () => false, useDoor: () => false, creatures: { all: () => [] },
       placeTargetCheck: vi.fn(),
       setBlock: vi.fn(),
     });

@@ -61,6 +61,7 @@ Requires Node.js 20+.
 | Right click on a crafting table | Craft on a 3×3 grid; the inventory (E) has a 2×2 grid |
 | Right click on a furnace | Smelt: input on top, fuel below, take the output on the right |
 | Right click on a door | Open or close it |
+| Left click on a creature | Hit it (tools hit harder); hold wheat and grazers follow you |
 | Middle click | Pick the targeted block into the hotbar |
 | 1–9, mouse wheel | Select hotbar slot |
 | E | Open or close the inventory; the HUD Inventory button also works without mouse capture |

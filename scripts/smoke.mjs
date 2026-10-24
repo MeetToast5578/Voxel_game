@@ -605,6 +605,39 @@ const CHECKS = [
     },
   },
   {
+    name: 'creatures walk and flee, and a zombie bites a survival player at night (T-H1..T-H9)',
+    run: async (page) => {
+      const s = await page.evaluate(() => window.__game.state());
+      const [x, , z] = s.position.map(Math.floor);
+      const spawned = await page.evaluate(([x, z]) => {
+        const g = window.__game;
+        let top = 8600;
+        while (top > 1 && g.getBlock(x, top, z - 8) === 0) top--;
+        g.setTimeOfDay(0.3);
+        g.look(0, -0.2);
+        return ['deer', 'deer', 'sheep', 'cow', 'rabbit'].map((key, i) => g.spawnCreature(key, x - 4 + i * 2 + 0.5, top + 1, z - 8.5));
+      }, [x, z]);
+      if (spawned.some((id) => id === null)) throw new Error(`spawnCreature failed: ${spawned}`);
+      const start = await page.evaluate(() => window.__game.creatures());
+      await page.waitForTimeout(3000);
+      await page.screenshot({ path: 'screenshots/creatures.png', timeout: 60_000 });
+      const later = await page.evaluate(() => window.__game.creatures());
+      const moved = later.filter((c) => { const a = start.find((o) => o.id === c.id); return a && Math.hypot(c.x - a.x, c.z - a.z) > 0.05; });
+      if (later.length !== start.length || moved.length === 0) throw new Error(`creatures did not move: ${JSON.stringify(later)}`);
+      // Survival at midnight: a zombie hunts the player and bites.
+      await page.evaluate(([x, z]) => {
+        const g = window.__game;
+        g.clearCreatures();
+        g.setGameMode('survival');
+        g.setTimeOfDay(0.75);
+        const s = g.state();
+        g.spawnCreature('zombie', s.position[0] + 3, s.position[1] + 0.5, s.position[2]);
+      }, [x, z]);
+      await waitForCondition(page, 'zombie bite', () => window.__game.state().health < 20, 30_000);
+      await page.evaluate(() => { const g = window.__game; g.clearCreatures(); g.setGameMode('creative'); g.setTimeOfDay(0.3); });
+    },
+  },
+  {
     name: 'glowstone lights up the night',
     run: async (page) => {
       const s = await page.evaluate(() => window.__game.state());
@@ -1259,7 +1292,8 @@ try {
     running = check.name;
     // It snows at the sky platforms the checks build on; settling snow would fill cells a check expects empty.
     // Again before every check, since some reload the page.
-    await page.evaluate(() => window.__game.setWeatherEffects(false));
+    // Wildlife and hostiles would wander into checks; the creatures check spawns its own.
+    await page.evaluate(() => { const g = window.__game; g.setWeatherEffects(false); g.setCreatureSpawning(false); g.clearCreatures(); });
     await check.run(page);
     console.log(`check passed: ${check.name}`);
   }
