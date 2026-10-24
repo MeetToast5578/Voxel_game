@@ -1,7 +1,9 @@
 import { exportWorldArchive, parseWorldArchive, type WorldArchive } from './storage/worldArchive';
 import { BuildClipboard } from './player/clipboard';
 import { resolvePlacement } from './player/placementTarget';
-import { blockCollision, blockDrop, foodValue, slabBounds, slabItemState } from './world/blocks';
+import { blockCollision, blockDrop, blockVariant, facingVariant, foodValue, isCropState, isDoor, isFurnace, slabBounds, slabItemState } from './world/blocks';
+import { newFurnace, stepFurnace, type FurnaceState } from './player/furnace';
+import { connectedDoor, doorCells, toggledDoor } from './player/doors';
 import { atmosphericFogStrength } from './world/atmosphere';
 import {
   WORLD_FILE_MAX_BYTES, FOG_SAMPLE_INTERVAL_S, FOG_VALLEY_SAMPLE_M, FOG_GROUND_LAYER_M, metersToBlocks,
@@ -10,7 +12,7 @@ import {
   SETTINGS_KEY, SPAWN_READY_RADIUS, START_TIME_OF_DAY, WORLD_LATITUDE_DEG, ITEM_SIZE, PLAYER_HEIGHT, WALK_SPEED, WHEAT_SEED_DROP_CHANCE,
   GAME_MODE_CREATIVE, GAME_MODE_SURVIVAL, HEALTH_MAX, HUNGER_MAX,
   DROWN_DAMAGE_PER_S, AIR_MAX_S, GAME_TICKS_PER_SECOND, LIGHTNING_SKY_BRIGHTEN, THUNDER_DELAY_MIN_S, THUNDER_DELAY_MAX_S,
-  HUNGER_DRAIN_PER_S, STARVE_DAMAGE_PER_S, REGEN_MIN_HUNGER, REGEN_PER_S, NOTICE_S, SLAB_HEIGHT,
+  HUNGER_DRAIN_PER_S, STARVE_DAMAGE_PER_S, REGEN_MIN_HUNGER, REGEN_PER_S, NOTICE_S, FURNACE_REFRESH_S, SLAB_HEIGHT,
   BODY_TEMP_DAMAGE_PER_S, BODY_TEMP_NORMAL_C, HEAT_SOURCE_RADIUS, HEATSTROKE_ABOVE_C, HYPOTHERMIA_BELOW_C,
 } from './config';
 import { Sounds } from './audio/sounds';
@@ -115,6 +117,10 @@ export class Game {
   ready = false;
   /** True while the game receives input (pointer locked, or ?autostart=1). */
   playing = false;
+  /** Furnaces by cell key "x,y,z" (T-I7): only ones with something in them, burning, or open on screen. */
+  private readonly furnaces = new Map<string, FurnaceState>();
+  private openFurnace: FurnaceState | null = null;
+  private furnaceRefreshS = 0;
   fps = 0;
   /** 0 sunrise, 0.25 noon, 0.5 sunset, 0.75 midnight; wraps at 1. */
   timeOfDay = START_TIME_OF_DAY;
@@ -238,6 +244,7 @@ export class Game {
       this.hunger = loaded.hunger ?? HUNGER_MAX;
       this.air = loaded.air ?? AIR_MAX_S;
       this.bed = loaded.bed ?? null;
+      for (const { x, y, z, ...f } of loaded.furnaces ?? []) this.furnaces.set(`${x},${y},${z}`, f);
     }
     this.savedPlayer = loaded?.player ?? null;
     this.saver = new WorldSaver(this.worldStore, this.world, () => this.worldMeta());
@@ -373,6 +380,7 @@ export class Game {
     this.edits.step();
     this.spawnBrokenBlocks();
     this.collectItems();
+    this.updateFurnaces(dt);
     this.updateFootsteps(dt);
     if (this.player.splashSpeed > 0) this.sounds.play('splash');
     this.saveTimer += dt;
@@ -586,7 +594,44 @@ export class Game {
       hunger: this.hunger,
       air: this.air,
       ...(this.bed ? { bed: { ...this.bed } } : {}),
+      ...(this.furnaces.size ? { furnaces: [...this.furnaces].map(([key, f]) => {
+        const [x, y, z] = key.split(',').map(Number) as [number, number, number];
+        return { x, y, z, slots: f.slots.map((s) => (s ? { ...s } : null)) as FurnaceState['slots'], burnS: f.burnS, burnTotalS: f.burnTotalS, cookS: f.cookS };
+      }) } : {}),
     };
+  }
+
+  /**
+   * Runs every furnace (T-I7), loaded or not, so smelting goes on while the player is away. A loaded one shows its fire
+   * as the lit block; one whose block is gone drops its contents, and an empty cold one is forgotten (it starts afresh).
+   */
+  private updateFurnaces(dt: number): void {
+    for (const [key, f] of this.furnaces) {
+      const lit = stepFurnace(f, dt);
+      const [x, y, z] = key.split(',').map(Number) as [number, number, number];
+      if (this.world.isLoadedAt(x, y, z)) {
+        const block = this.world.getBlock(x, y, z);
+        if (!isFurnace(block)) {
+          this.dropFurnace(key, x, y, z);
+          continue;
+        }
+        const want = (lit ? BlockId.LIT_FURNACE : BlockId.FURNACE) + blockVariant(block);
+        if (block !== want) this.setBlock(x, y, z, want);
+      }
+      if (!lit && f.slots.every((s) => s === null) && f !== this.openFurnace) this.furnaces.delete(key);
+    }
+    if (this.openFurnace && (this.furnaceRefreshS -= dt) <= 0) {
+      this.furnaceRefreshS = FURNACE_REFRESH_S;
+      this.inventoryScreen.refresh();
+    }
+  }
+
+  /** Spills a furnace's slots at its cell and forgets it. */
+  private dropFurnace(key: string, x: number, y: number, z: number): void {
+    for (const stack of this.furnaces.get(key)?.slots ?? []) {
+      if (stack) this.items.spawn(stack.state, stack.count, x + 0.5, y + (1 - ITEM_SIZE) / 2, z + 0.5, Math.random);
+    }
+    this.furnaces.delete(key);
   }
 
   private renderFrame(alpha: number, frameDt: number): void {
@@ -799,11 +844,15 @@ export class Game {
   private breakCell(x: number, y: number, z: number): boolean {
     const id = this.world.getBlock(x, y, z);
     if (!canBreak(id)) return false;
+    // A door goes as a whole (T-K5): the rest of its cells vanish with the one broken (the first cell is this one).
+    const door = isDoor(id) ? connectedDoor((cx, cy, cz) => this.world.getBlock(cx, cy, cz), x, y, z) : [];
     const ok = this.setBlock(x, y, z, BlockId.AIR);
     if (ok) {
       const held = this.inventory.selectedBlock;
       const survival = this.gameMode === GAME_MODE_SURVIVAL;
       if (survival) this.wearSelectedTool();
+      if (isFurnace(id)) this.dropFurnace(`${x},${y},${z}`, x, y, z);
+      for (const c of door.slice(1)) this.setBlock(c.x, c.y, c.z, BlockId.AIR);
       const drop = blockDrop(id);
       // Survival (T-I5): stone-like blocks broken without a pickaxe give nothing.
       if (!survival || dropsWhenMined(id, held)) this.items.spawn(drop.state, drop.count, x + 0.5, y + (1 - ITEM_SIZE) / 2, z + 0.5, Math.random);
@@ -877,12 +926,46 @@ export class Game {
     const block = this.buildBlock;
     const eye = this.player.eyePosition(1), look = this.player.lookDirection();
     const p = resolvePlacement(t, (x, y, z) => this.world.getBlock(x, y, z), block, this.player.position, PLAYER_SHAPE, eye.y + look.y * t.distance);
+    const pos = this.player.position;
+    // A furnace's mouth faces the player who places it; stairs climb away from them.
+    if (p && isFurnace(p.state)) p.state = BlockId.FURNACE + facingVariant(pos.x - p.x - 0.5, pos.z - p.z - 0.5);
+    if (p && getBlockDef(p.state).shape === 'stairs') p.state = getBlockDef(p.state).id + facingVariant(p.x + 0.5 - pos.x, p.z + 0.5 - pos.z);
+    if (p && isDoor(p.state)) return this.placeDoor(p.x, p.y, p.z);
     const ok = p !== null && this.setBlock(p.x, p.y, p.z, p.state);
     if (ok) {
       this.inventory.consumeSelected();
       this.sounds.play('place');
     }
     return ok;
+  }
+
+  /** Places a whole door (T-K5) from one door item, its panel toward the player, if every cell is free. */
+  private placeDoor(x: number, y: number, z: number): boolean {
+    const pos = this.player.position;
+    const facing = facingVariant(pos.x - x - 0.5, pos.z - z - 0.5);
+    const cells = doorCells(x, y, z, facing);
+    const free = (c: { x: number; y: number; z: number }) => {
+      const state = this.world.getBlock(c.x, c.y, c.z);
+      return this.world.isLoadedAt(c.x, c.y, c.z) && (state === BlockId.AIR || isWaterState(state)) && !blockIntersectsBody(c.x, c.y, c.z, pos, PLAYER_SHAPE);
+    };
+    if (!cells.every(free)) return false;
+    for (const c of cells) this.setBlock(c.x, c.y, c.z, BlockId.DOOR + facing);
+    this.inventory.consumeSelected();
+    this.sounds.play('place');
+    return true;
+  }
+
+  /** Right click on a door opens or closes all of it; it does not close on the player. Returns true if one was aimed at. */
+  useDoor(): boolean {
+    const t = this.target;
+    if (!t) return false;
+    const cells = connectedDoor((x, y, z) => this.world.getBlock(x, y, z), t.x, t.y, t.z);
+    if (cells.length === 0) return false;
+    const opening = this.world.getBlock(t.x, t.y, t.z) < BlockId.OPEN_DOOR;
+    if (!opening && cells.some((c) => blockIntersectsBody(c.x, c.y, c.z, this.player.position, PLAYER_SHAPE))) return true;
+    for (const c of cells) this.setBlock(c.x, c.y, c.z, toggledDoor(this.world.getBlock(c.x, c.y, c.z)));
+    this.sounds.play('place');
+    return true;
   }
 
   /**
@@ -909,6 +992,17 @@ export class Game {
     return true;
   }
 
+  /** Right click on a furnace (T-I7) opens the inventory with its input, fuel and output. Returns true if one was aimed at. */
+  useFurnace(): boolean {
+    const t = this.target;
+    if (!t || !isFurnace(this.world.getBlock(t.x, t.y, t.z))) return false;
+    const key = `${t.x},${t.y},${t.z}`;
+    let furnace = this.furnaces.get(key);
+    if (!furnace) this.furnaces.set(key, furnace = newFurnace());
+    this.openInventory(2, furnace);
+    return true;
+  }
+
   private showNotice(text: string): void {
     this.notice = text;
     this.noticeS = NOTICE_S;
@@ -923,7 +1017,7 @@ export class Game {
     if (this.gameMode !== GAME_MODE_SURVIVAL || value === 0 || this.hunger >= HUNGER_MAX) return false;
     const t = this.target;
     const aimed = t ? this.world.getBlock(t.x, t.y, t.z) : BlockId.AIR;
-    if (aimed === BlockId.GRASS || aimed === BlockId.DIRT) return false;
+    if (isCropState(this.inventory.selectedBlock) && (aimed === BlockId.GRASS || aimed === BlockId.DIRT)) return false; // planting it
     this.hunger = Math.min(HUNGER_MAX, this.hunger + value);
     this.inventory.consumeSelected();
     this.sounds.play('eat');
@@ -991,7 +1085,7 @@ export class Game {
     if (breakClicked || broken) this.held.swing();
     const placeClicked = this.input.consumeClick(2);
     if (placeClicked || (this.input.isMouseDown(2) && this.actionCooldown === 0)) {
-      if (!this.useBed() && !this.useCraftingTable() && !this.eatSelected()) this.placeTarget();
+      if (!this.useBed() && !this.useCraftingTable() && !this.useFurnace() && !this.useDoor() && !this.eatSelected()) this.placeTarget();
       this.actionCooldown = BREAK_REPEAT_S;
       this.held.swing();
     }
@@ -1163,16 +1257,18 @@ export class Game {
   }
 
   /** Frees the pointer and shows the inventory, remembering the originating menu when not playing. */
-  private openInventory(craftSize: 2 | 3 = 2): void {
+  private openInventory(craftSize: 2 | 3 = 2, furnace: FurnaceState | null = null): void {
     this.inventoryReturnMenu = this.playing ? null : this.menu.currentMode;
     this.menu.hide();
-    this.inventoryScreen.show(craftSize);
+    this.openFurnace = furnace;
+    this.inventoryScreen.show(craftSize, furnace);
     this.input.releasePointerLock();
   }
 
   /** Closes the inventory. Restore its originating menu, or request pointer capture to return to play. */
   private closeInventory(): void {
     for (const stack of this.inventoryScreen.hide()) this.dropStack(stack);
+    this.openFurnace = null;
     if (this.inventoryReturnMenu !== null) {
       const mode = this.inventoryReturnMenu;
       this.inventoryReturnMenu = null;

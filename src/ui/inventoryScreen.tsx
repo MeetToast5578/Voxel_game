@@ -1,7 +1,8 @@
 import { render } from 'preact';
-import { HOTBAR_SIZE, INVENTORY_SIZE, MAX_STACK } from '../config';
+import { HOTBAR_SIZE, INVENTORY_SIZE, MAX_STACK, SMELT_S } from '../config';
 import type { Inventory, ItemStack } from '../player/inventory';
 import { CraftingGrid } from '../player/crafting';
+import { clickFurnaceSlot, takeFurnaceOutput, type FurnaceState } from '../player/furnace';
 import { usesLeft } from '../player/tools';
 import { BLOCKS, BlockId, blockStateName, getBlockDef } from '../world/blocks';
 import { Slot } from './components';
@@ -24,6 +25,9 @@ interface ViewProps {
   cursor: ItemStack | null;
   hovered: number | null;
   crafting: CraftingGrid;
+  /** The furnace the screen was opened at (T-I7); it replaces the crafting grid. */
+  furnace: FurnaceState | null;
+  onFurnaceSlot: (index: 0 | 1 | 2) => void;
   onCraftCell: (index: number) => void;
   onCraftResult: () => void;
   onTab: (tab: InventoryTab) => void;
@@ -43,6 +47,23 @@ function itemName(state: number): string {
 
 function slotLabel(stack: ItemStack | null): string {
   return stack ? `${itemName(stack.state)}, ${stack.count}` : 'empty';
+}
+
+/** Input over fuel, the fire and cooking progress, and the output (T-I7). */
+function FurnaceRow(p: { furnace: FurnaceState; atlas: HTMLCanvasElement; onSlot: (index: 0 | 1 | 2) => void }) {
+  const [input, fuel, output] = p.furnace.slots;
+  const burn = p.furnace.burnTotalS > 0 ? p.furnace.burnS / p.furnace.burnTotalS : 0;
+  return (
+    <div class="crafting" aria-label="Furnace">
+      <div class="furnace-inputs">
+        <Slot stack={input} atlas={p.atlas} label={`Furnace input: ${slotLabel(input)}`} onPress={() => p.onSlot(0)} />
+        <progress class="furnace-burn" max={1} value={burn} aria-label="Fire" />
+        <Slot stack={fuel} atlas={p.atlas} label={`Furnace fuel: ${slotLabel(fuel)}`} onPress={() => p.onSlot(1)} />
+      </div>
+      <progress class="furnace-cook" max={SMELT_S} value={p.furnace.cookS} aria-label="Smelting" />
+      <Slot stack={output} atlas={p.atlas} label={`Furnace output: ${slotLabel(output)}`} onPress={() => p.onSlot(2)} />
+    </div>
+  );
 }
 
 function InventoryView(p: ViewProps) {
@@ -80,7 +101,7 @@ function InventoryView(p: ViewProps) {
     <>
       <div class="inventory-panel" role="dialog" aria-modal="true" aria-label="Inventory">
         <div class="inventory-head">
-          <h2 class="inventory-title">{p.tab === 'blocks' ? 'Blocks' : 'Inventory'}</h2>
+          <h2 class="inventory-title">{p.tab === 'blocks' ? 'Blocks' : p.furnace ? 'Furnace' : size === 3 ? 'Crafting table' : 'Inventory'}</h2>
           <button type="button" class="menu-button small" onClick={p.onClose}>
             Close (E)
           </button>
@@ -119,12 +140,14 @@ function InventoryView(p: ViewProps) {
         ) : (
           <>
             <p class="inventory-hint">Click a slot to pick up or put down a stack. Esc or E closes.</p>
-            <div class="crafting" aria-label={size === 3 ? 'Crafting table' : 'Crafting'}>
-              <div class="crafting-grid" style={{ gridTemplateColumns: `repeat(${size}, 44px)` }}>{craftCells}</div>
-              <span class="crafting-arrow" aria-hidden="true">→</span>
-              <Slot stack={result} atlas={p.atlas} label={result ? `Craft ${slotLabel(result)}` : 'Nothing to craft'}
-                onPress={p.onCraftResult} />
-            </div>
+            {p.furnace ? <FurnaceRow furnace={p.furnace} atlas={p.atlas} onSlot={p.onFurnaceSlot} /> : (
+              <div class="crafting" aria-label={size === 3 ? 'Crafting table' : 'Crafting'}>
+                <div class="crafting-grid" style={{ gridTemplateColumns: `repeat(${size}, 44px)` }}>{craftCells}</div>
+                <span class="crafting-arrow" aria-hidden="true">→</span>
+                <Slot stack={result} atlas={p.atlas} label={result ? `Craft ${slotLabel(result)}` : 'Nothing to craft'}
+                  onPress={p.onCraftResult} />
+              </div>
+            )}
             <div class="inventory-grid">{grid}</div>
           </>
         )}
@@ -155,6 +178,7 @@ export class InventoryScreen {
   private hovered: number | null = null;
   /** The crafting grid (T-I6): 2×2 from the inventory, 3×3 when opened at a crafting table. */
   readonly crafting = new CraftingGrid();
+  private furnace: FurnaceState | null = null;
   private tab: InventoryTab = 'inventory';
   private creative = true;
   private open = false;
@@ -198,10 +222,11 @@ export class InventoryScreen {
     return this.tab;
   }
 
-  /** Opens on the inventory tab; `craftSize` 3 gives the crafting table's grid. */
-  show(craftSize: 2 | 3 = 2): void {
+  /** Opens on the inventory tab; `craftSize` 3 gives the crafting table's grid, and a furnace shows its slots instead. */
+  show(craftSize: 2 | 3 = 2, furnace: FurnaceState | null = null): void {
     this.returnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     this.crafting.size = craftSize;
+    this.furnace = furnace;
     this.open = true;
     this.tab = 'inventory';
     this.root.style.display = '';
@@ -221,6 +246,7 @@ export class InventoryScreen {
     }
     this.cursor = null;
     this.hovered = null;
+    this.furnace = null; // its items stay in the furnace
     this.open = false;
     this.root.style.display = 'none';
     this.draw();
@@ -258,6 +284,12 @@ export class InventoryScreen {
         cursor={this.cursor}
         hovered={this.hovered}
         crafting={this.crafting}
+        furnace={this.furnace}
+        onFurnaceSlot={(i) => {
+          if (!this.furnace) return;
+          this.cursor = i === 2 ? takeFurnaceOutput(this.furnace, this.cursor) : clickFurnaceSlot(this.furnace, i, this.cursor);
+          this.draw();
+        }}
         onCraftCell={(i) => {
           this.cursor = this.crafting.click(i, this.cursor);
           this.draw();

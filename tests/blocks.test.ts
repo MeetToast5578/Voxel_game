@@ -45,6 +45,7 @@ describe('block states', () => {
     BROWN_MUSHROOM: 26, RED_MUSHROOM: 27, COAL_ORE: 28, IRON_ORE: 29, GOLD_ORE: 30, REDSTONE_ORE: 31,
     DIAMOND_ORE: 32, EMERALD_ORE: 33, LAPIS_ORE: 34, GRAVEL: 35, FLOWING_WATER: 36, CACTUS: 52, CLAY: 53, LAVA: 54, FLOWING_LAVA: 55, OBSIDIAN: 71, REED: 72, FALLEN_LOG_X: 73, FALLEN_LOG_Z: 74, LILY_PAD: 75, MOSS: 76,
     SNOW: 143, ICE: 151, SAPLING: 152, WHEAT: 166, CARROTS: 170, POTATOES: 174, LEAF_LITTER: 178, BED: 179, CRAFTING_TABLE: 180, STICK: 181,
+    FURNACE: 1508, LIT_FURNACE: 1512, IRON_INGOT: 1516, COAL: 1517, BAKED_POTATO: 1518, DOOR: 1519, OPEN_DOOR: 1523,
   };
 
   it('keeps every BlockId number, named after its key', () => {
@@ -151,7 +152,7 @@ describe('physics rule fields (spec 25, slice 2)', () => {
     for (const def of BLOCKS) {
       expect(def.flows).toBe(['flowing_water', 'flowing_lava'].includes(def.key));
       // Leaves are solid but hold nothing up (spec 25, slice 5): a canopy is not a support.
-      expect(def.supports).toBe(def.key === 'leaves' || def.slabMaterial === BlockId.LEAVES ? false : def.solid);
+      expect(def.supports).toBe(def.key === 'leaves' || def.slabMaterial === BlockId.LEAVES || def.stairsMaterial === BlockId.LEAVES ? false : def.solid);
       if (def.key !== 'sand' && def.key !== 'gravel') expect(def.falls).toBe(false);
     }
   });

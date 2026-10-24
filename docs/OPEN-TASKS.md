@@ -94,10 +94,10 @@ Done when (roadmap): a meadow at dawn has grazing herds that flee when approache
 - [x] **T-I2 — Make hunger change.** Done in #41: hunger drains, starvation damages, and a survival HUD line shows health and hunger. Food is T-I8.
 - [x] **T-I3 — Health regeneration.** Done in #41.
 - [x] **T-I4 — Body temperature.** Done: climate, season, altitude, wind, wetness, a roof and nearby lava or light sources; hypothermia below 35 °C and heatstroke above 39.5 °C. No clothing yet, and the body temperature is not saved.
-- [x] **T-I5 — Tools.** Done: wooden and stone pickaxes, axes and shovels; the right tool divides break time by its tier; wear is the state variant. In survival stone-like blocks need a pickaxe to drop. Iron tools wait on furnaces (T-I7).
+- [x] **T-I5 — Tools.** Done: wooden and stone pickaxes, axes and shovels; the right tool divides break time by its tier; wear is the state variant. In survival stone-like blocks need a pickaxe to drop. Iron tools (speed 6, 250 uses) come from furnace ingots.
 - [x] **T-I6 — Crafting.** Done: 2×2 grid in the inventory, 3×3 at the crafting table, recipes in `src/player/crafting.ts`. Beds are now craftable (wheat over planks).
-- [ ] **T-I7 — Furnaces** that smelt, as a block entity with timers.
-- [~] **T-I8 — Food.** Farming slice done: in survival, right click with a crop eats it (wheat 2, carrots 3, potatoes 4 hunger) unless aimed at grass or dirt, where it is planted. Hunting and cooking wait on T-H7 and T-I7.
+- [x] **T-I7 — Furnaces.** Done: crafted from eight cobblestone; input, fuel and output with timers (`src/player/furnace.ts`), saved as `furnaces`, running while unloaded. Smelts iron ore, sand, cobblestone, clay, logs (to coal) and potatoes. Coal ore drops coal. Iron tools follow.
+- [~] **T-I8 — Food.** Farming slice done: in survival, right click with a crop eats it (wheat 2, carrots 3, potatoes 4 hunger) unless aimed at grass or dirt, where it is planted. Cooking done: a furnace bakes potatoes (6 hunger). Hunting waits on T-H7.
 - [x] **T-I9 — Beds.** Done: a half-height bed; right click sets the respawn point and, while the sun is down, sleeps to sunrise. Crafted from three wheat over three planks.
 
 Done when (roadmap): a new survival world is playable from punching a tree through to iron tools, and a winter is dangerous without shelter.
@@ -106,7 +106,7 @@ Done when (roadmap): a new survival world is playable from punching a tree throu
 
 ## 7. Building and platform
 
-- [~] **T-K5 — Building tools.** Fill, undo, redo, copy/paste and world export/import are done. Remaining: stairs and doors.
+- [x] **T-K5 — Building tools.** Done: fill, undo, redo, copy/paste, world export/import, stairs for every cube block (they climb away from the placer) and doors (2 × 7 cells, 0.6 × 2.1 m; right click opens the whole door). Shortcut: a closed door collides as whole cells.
 - [~] **T-K6 — Input (code part).** Remaining: gamepad, and in-world touch controls for movement, look and building.
 - [ ] **T-K8 — Pixel Aero HUD.** A separate HUD track described in `docs/pixel-aero-hud/README_FOR_CODEX.md`. Keep the nine-slot model, and do not mix it into the existing Preact GUI.
 
