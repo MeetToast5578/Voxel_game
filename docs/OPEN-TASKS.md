@@ -64,10 +64,10 @@ Measure first (T-C3), then pick the J items that the measurements point at.
 - [x] **T-G5 — Plant succession.** Done: bare open grass regrows its natural plant; tall grass and ferns where trees grow become saplings.
 - [x] **T-G6 — Autumn leaf litter.** Done: leaves drop a thin litter layer in autumn where trees are deciduous; it rots after autumn and snow buries it.
 - [x] **T-G7 — Catch-up on reload.** Done: a reloaded surface or edited chunk advances crops by the expected stages and moves snow and ice toward the current weather. Shortcut: the weather at reload stands for the whole absence; saplings and litter wait until loaded.
-- [ ] **T-G10 — River flow direction** from the drainage simulation, used for animated flow textures.
-- [ ] **T-G11 — Waterfalls** where rivers drop.
-- [x] **T-G12 — Currents.** Done: flowing and falling fluid pushes the player and loose bodies. Generated rivers are still source blocks, so they have no current until T-G10 gives them a flow direction; dropped items are not pushed.
-- [~] **T-G15 — Fluid and snow rendering.** Lava rendering is done. Snow layers render (T-G2). Still open: fluid texture animation.
+- [x] **T-G10 — River flow direction.** Done: river water pushes swimmers downstream (`RIVER_CURRENT`) and its ripples drift with the drainage simulation's flow.
+- [x] **T-G11 — Waterfalls.** Done: where a river drops 0.6 m or more between columns, falling water fills the drop.
+- [x] **T-G12 — Currents.** Done: flowing and falling fluid pushes the player and loose bodies. Rivers push too since T-G10, and dropped items drift along.
+- [~] **T-G15 — Fluid and snow rendering.** Lava rendering is done. Snow layers render (T-G2). Water is animated: ripples follow the flow, and waterfall sides stream down. Still open: lava animation (lava draws with the solid blocks, whose per-vertex slot is taken).
 
 ---
 

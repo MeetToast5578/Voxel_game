@@ -16,7 +16,7 @@ import {
   SETTINGS_KEY, SPAWN_READY_RADIUS, START_TIME_OF_DAY, WORLD_LATITUDE_DEG, ITEM_SIZE, PLAYER_HEIGHT, WALK_SPEED, WHEAT_SEED_DROP_CHANCE,
   GAME_MODE_CREATIVE, GAME_MODE_SURVIVAL, HEALTH_MAX, HUNGER_MAX,
   DROWN_DAMAGE_PER_S, AIR_MAX_S, GAME_TICKS_PER_SECOND, LIGHTNING_SKY_BRIGHTEN, THUNDER_DELAY_MIN_S, THUNDER_DELAY_MAX_S,
-  HUNGER_DRAIN_PER_S, STARVE_DAMAGE_PER_S, REGEN_MIN_HUNGER, REGEN_PER_S, NOTICE_S, FURNACE_REFRESH_S, SLAB_HEIGHT, CREATURE_KNOCKBACK, CREATURE_SOUND_RADIUS, PLAYER_ATTACK_DAMAGE,
+  HUNGER_DRAIN_PER_S, STARVE_DAMAGE_PER_S, REGEN_MIN_HUNGER, REGEN_PER_S, NOTICE_S, FURNACE_REFRESH_S, SLAB_HEIGHT, CREATURE_KNOCKBACK, CREATURE_SOUND_RADIUS, PLAYER_ATTACK_DAMAGE, RIVER_CURRENT,
   BODY_TEMP_DAMAGE_PER_S, BODY_TEMP_NORMAL_C, HEAT_SOURCE_RADIUS, HEATSTROKE_ABOVE_C, HYPOTHERMIA_BELOW_C,
 } from './config';
 import { Sounds } from './audio/sounds';
@@ -373,14 +373,22 @@ export class Game {
   readonly isWaterAt = (x: number, y: number, z: number): boolean => isWaterState(this.world.getBlock(x, y, z));
 
   readonly isLavaAt = (x: number, y: number, z: number): boolean => isLavaState(this.world.getBlock(x, y, z));
-  readonly flowAt = (x: number, y: number, z: number): Flow => flowVector((bx, by, bz) => this.world.getBlock(bx, by, bz), x, y, z);
+  readonly flowAt = (x: number, y: number, z: number): Flow => this.currentAt(x, y, z);
+
+  /** The current in a fluid cell (T-G12). Still source water in a river channel flows the river's way (T-G10). */
+  currentAt(x: number, y: number, z: number): Flow {
+    const flow = flowVector((bx, by, bz) => this.world.getBlock(bx, by, bz), x, y, z);
+    if (flow.x || flow.y || flow.z || this.world.getBlock(x, y, z) !== BlockId.WATER) return flow;
+    const river = this.generator.sampleColumn(Math.floor(x), Math.floor(z));
+    return river.isRiver ? { x: river.flowX * RIVER_CURRENT, y: 0, z: river.flowZ * RIVER_CURRENT } : flow;
+  }
 
   private fixedUpdate(dt: number): void {
     if (!this.ready || this.idle) return;
     this.timeOfDay = (this.timeOfDay + dt / DAY_LENGTH_S) % 1;
     this.calendar.advance(dt); // Both clocks follow simulation time, including the existing menu-time behaviour.
     this.player.update(dt, this.playing ? this.readControls() : NO_CONTROLS, this.isSolidAt, this.isWaterAt, this.isLavaAt, this.flowAt);
-    this.items.step(dt, this.isSolidAt);
+    this.items.step(dt, this.isSolidAt, this.flowAt);
     // Block updates run at a fixed rate of game ticks, so a flow or a fall takes several ticks, as in Minecraft.
     this.tickTimer += dt;
     while (this.tickTimer >= 1 / GAME_TICKS_PER_SECOND) {

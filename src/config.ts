@@ -240,6 +240,7 @@ export const MAX_STACK = 64;
 export const TOOL_TIERS = { wooden: { speed: 2, uses: 60 }, stone: { speed: 4, uses: 132 }, iron: { speed: 6, uses: 250 } } as const;
 /** Seconds a furnace takes to smelt one item (T-I7). */
 export const SMELT_S = 10;
+export const RIVER_CURRENT = 0.6; // a river's push, as a share of flowing water's (T-G10)
 export const DOOR_WIDTH = 2; // cells across a door (0.6 m): the player is 0.48 m wide
 export const DOOR_HEIGHT = roundBlocks(2.1); // cells up a door: the player is 1.75 m tall
 export const FURNACE_REFRESH_S = 0.25; // how often an open furnace screen redraws its progress

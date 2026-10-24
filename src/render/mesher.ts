@@ -1,6 +1,6 @@
 import { CHUNK_SIZE, WIND_LEAF_SWAY_M, WIND_PLANT_SWAY_M, metersToBlocks } from '../config';
 import { localIndex } from '../core/coords';
-import { BLOCK_REGISTRY, BlockId, EMISSION_TABLE, OPAQUE_TABLE, blockBoxes, blockTopHeight, blockBottomHeight, blockFaceTile, type CellBox } from '../world/blocks';
+import { BLOCK_REGISTRY, BlockId, EMISSION_TABLE, OPAQUE_TABLE, isFallingWater, isWaterState, waterLevel, blockBoxes, blockTopHeight, blockBottomHeight, blockFaceTile, type CellBox } from '../world/blocks';
 import {
   LIGHT_CURVE,
   REGION_SIZE,
@@ -22,7 +22,10 @@ export interface MeshData {
   light: Float32Array;
   /** Per vertex: how far wind moves it at full strength, in blocks (T-F5). 0 for everything but foliage. */
   sway: Float32Array;
-  /** Per vertex: [deciduous leaf, dry grass] weights 0..1, from the climate (T-F7). The shader applies the season. */
+  /**
+   * Per vertex: [deciduous leaf, dry grass] weights 0..1, from the climate (T-F7). The shader applies the season.
+   * Water has no seasons: for water the pair is its surface flow [x, z] instead (T-G10), which animates its ripples.
+   */
   season: Float32Array;
   indices: Uint32Array;
 }
@@ -64,11 +67,14 @@ const TILE_TABLE = new Uint8Array(STATE_COUNT * 3);
 /** Wind sway per state: leaf blocks move as a whole, plants only at their top corners (their base stays rooted). */
 const SWAY_TABLE = new Float32Array(STATE_COUNT);
 const FACE_TILES = new Uint8Array(STATE_COUNT * 6);
+/** Water level per state (1..8), 0 for anything else; falling water is -1, as it flows down rather than across. */
+const WATER_LEVEL_TABLE = new Int8Array(STATE_COUNT);
 /** Stairs and doors (T-K5): the boxes each state is drawn as; null for every other shape. */
 const BOX_TABLE: (readonly CellBox[] | null)[] = new Array(STATE_COUNT).fill(null);
 for (let state = 0; state < STATE_COUNT; state++) {
   const def = BLOCK_REGISTRY.getBlockDef(state);
   BOX_TABLE[state] = blockBoxes(state);
+  WATER_LEVEL_TABLE[state] = !isWaterState(state) ? 0 : isFallingWater(state) ? -1 : waterLevel(state);
   FACES.forEach((face, f) => { FACE_TILES[state * 6 + f] = blockFaceTile(state, ...face.dir); });
   const tintKey = BLOCK_REGISTRY.getBlockDef(def.slabMaterial ?? state).key;
   TINT_KIND[state] = tintKey === 'grass' ? 1 : tintKey === 'leaves' ? 2 : tintKey === 'water' || tintKey === 'flowing_water' ? 3 : 0;
@@ -370,7 +376,37 @@ function emptyMesh(): ChunkMeshData {
  * Meshes chunk (cx, cy, cz). neighbors: the 27 block arrays around it (see buildPaddedVolume). tops: the 9
  * column-top arrays around its column, index (dz + 1) * 3 + (dx + 1). Positions are relative to the chunk origin.
  */
-export function buildChunkMesh(neighbors: readonly Uint16Array[], tops: readonly Int32Array[], cy: number, context?: { seed: number; cx: number; cz: number }): ChunkMeshData {
+/** Extra world facts the mesher may use: the seed and chunk column for tints, and the river flow for still water (T-G10). */
+export interface MeshContext {
+  seed: number;
+  cx: number;
+  cz: number;
+  /** The unit flow of the river running through world column (x, z), or null outside rivers. */
+  riverFlow?: (x: number, z: number) => readonly [number, number] | null;
+}
+
+/**
+ * The surface flow of a water cell (T-G10), written to `out`: toward lower water or open air beside it; still sources
+ * take the river's flow when they lie in a river channel; falling water and still pools give zero.
+ */
+function waterFlow(vol: Uint16Array, i: number, level: number, wx: number, wz: number, context: MeshContext | undefined, out: number[]): void {
+  out[0] = 0; out[1] = 0;
+  if (level < 0) return;
+  for (const [dx, dz, step] of WATER_NEIGHBOURS) {
+    const n = vol[i + step]!, nl = WATER_LEVEL_TABLE[n]!;
+    // A source at a shore meets air without spilling; only flowing water spreads into open air.
+    const weight = nl !== 0 ? (nl < 0 ? 2 : Math.max(0, level - nl)) : n === BlockId.AIR && level < WATER_LEVELS_FULL ? 1 : 0;
+    out[0] += dx * weight; out[1] += dz * weight;
+  }
+  const len = Math.hypot(out[0], out[1]);
+  if (len > 0) { out[0] /= len; out[1] /= len; return; }
+  const river = level === WATER_LEVELS_FULL ? context?.riverFlow?.(wx, wz) : null;
+  if (river) { out[0] = river[0]; out[1] = river[1]; }
+}
+const WATER_LEVELS_FULL = 8;
+const WATER_NEIGHBOURS = [[1, 0, STRIDE_X], [-1, 0, -STRIDE_X], [0, 1, STRIDE_Z], [0, -1, -STRIDE_Z]] as const;
+
+export function buildChunkMesh(neighbors: readonly Uint16Array[], tops: readonly Int32Array[], cy: number, context?: MeshContext): ChunkMeshData {
   if (neighbors.length !== 27) throw new Error('buildChunkMesh needs 27 chunks');
   if (tops.length !== 9) throw new Error('buildChunkMesh needs 9 column-top arrays');
   // Quick exits; both give exactly what full meshing would (no faces), without computing light.
@@ -388,6 +424,7 @@ export function buildChunkMesh(neighbors: readonly Uint16Array[], tops: readonly
   const solid = pooledSolid;
   const translucent = pooledTranslucent;
   const ao = [0, 0, 0, 0];
+  const flow = [0, 0];
 
   for (let y = 0; y < CHUNK_SIZE; y++) {
     for (let lz = 0; lz < CHUNK_SIZE; lz++) {
@@ -476,6 +513,8 @@ export function buildChunkMesh(neighbors: readonly Uint16Array[], tops: readonly
         const emission = EMISSION_TABLE[id]!;
         const top = TOP_HEIGHT_TABLE[id]!;
         const bottom = BOTTOM_HEIGHT_TABLE[id]!;
+        const level = WATER_LEVEL_TABLE[id]!;
+        if (level !== 0) waterFlow(vol, i, level, (context?.cx ?? 0) * CHUNK_SIZE + lx, (context?.cz ?? 0) * CHUNK_SIZE + lz, context, flow);
 
         for (let f = 0; f < 6; f++) {
           const n = i + FACE_NEIGHBOR[f]!;
@@ -535,11 +574,12 @@ export function buildChunkMesh(neighbors: readonly Uint16Array[], tops: readonly
             if (tints && tint) {
               tints.sample(lx + FACE_CORNERS[at * 3]!, y + (cyCorner === 1 ? top : bottom), lz + FACE_CORNERS[at * 3 + 2]!, tint as TintKind);
               out.writeColor(positionOffset, brightness * tints.r, brightness * tints.g, brightness * tints.b);
-              out.writeSeason(tints.deciduous, tints.dryness);
             } else {
               out.writeColor(positionOffset, brightness, brightness, brightness);
-              out.writeSeason(0, 0);
             }
+            if (level !== 0) out.writeSeason(flow[0]!, flow[1]!);
+            else if (tints && tint) out.writeSeason(tints.deciduous, tints.dryness);
+            else out.writeSeason(0, 0);
             const lo = at * 3;
             const o1 = opaque[vol[n + FACE_AO[lo]!]!]!;
             const o2 = opaque[vol[n + FACE_AO[lo + 1]!]!]!;

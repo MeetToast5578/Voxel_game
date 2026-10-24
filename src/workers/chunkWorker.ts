@@ -15,6 +15,15 @@ function generatorFor(seed: number): TerrainGenerator {
   return generator;
 }
 
+/** The river flow lookup the mesher uses for still water (T-G10), from the region simulation. */
+function riverFlowFor(seed: number): (x: number, z: number) => readonly [number, number] | null {
+  const generator = generatorFor(seed);
+  return (x, z) => {
+    const s = generator.sampleColumn(x, z);
+    return s.isRiver ? [s.flowX, s.flowZ] : null;
+  };
+}
+
 function reply(message: WorkerResponse, transfer: ArrayBuffer[]): void {
   self.postMessage(message, { transfer });
 }
@@ -29,7 +38,7 @@ self.onmessage = (event: MessageEvent<WorkerRequest>) => {
     generatorFor(msg.seed).generateChunk(chunk);
     reply({ type: 'generated', id: msg.id, blocks: chunk.blocks }, [chunk.blocks.buffer as ArrayBuffer]);
   } else {
-    const mesh = buildChunkMesh(msg.neighbors, msg.tops, msg.cy, { seed: msg.seed, cx: msg.cx, cz: msg.cz });
+    const mesh = buildChunkMesh(msg.neighbors, msg.tops, msg.cy, { seed: msg.seed, cx: msg.cx, cz: msg.cz, riverFlow: riverFlowFor(msg.seed) });
     reply({ type: 'meshed', id: msg.id, mesh }, meshBuffers(mesh));
   }
 };
