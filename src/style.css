@@ -622,6 +622,13 @@ body {
     width: 30px;
     height: 30px;
   }
+  /* The hotbar spans the width here, so the hints sit above it, and the tool panel stops short of the Inventory button. */
+  .key-hints {
+    bottom: 64px;
+  }
+  .tool-panel {
+    width: calc(100vw - 150px);
+  }
 }
 
 .hazard-warning {

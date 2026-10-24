@@ -1,6 +1,6 @@
 # Open tasks: Voxel Game
 
-Status on 2026-10-23, against `origin/main` at `08b8582`. `npm run check` passes: typecheck, 680 tests in 80 files, and the production build.
+Status on 2026-10-24, against `origin/main` at `178e8df`. `npm run check` passes: typecheck, 740 tests in 89 files, and the production build.
 
 This is a short, grouped list to work from. The detailed tracker is `docs/tasks.md`, and the IDs here match it. When an item closes, tick it here and there.
 
