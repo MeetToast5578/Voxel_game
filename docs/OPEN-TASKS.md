@@ -13,11 +13,11 @@ Legend: `[ ]` open, `[~]` partly done, `[x]` done since this list was written.
 Headless tests cannot close these. Run them with `npm run dev` on your own machine (see `docs/HANDOFF.md`).
 
 - [ ] **T-C1 — 10-minute playtest.** Real mouse and keyboard: pointer lock, mouse look, audio, and stepping up 0.6 m (2-block) ledges. Anything broken goes to the top of the queue.
-- [ ] **T-C2 — Clearance.** A 2 m tunnel fits the player; a 1.5 m one does not.
+- [ ] **T-C2 — Clearance.** A 2 m tunnel fits the player; a 1.5 m one does not. Headless proxy passes (`tests/player.test.ts`, 2026-10-24); confirm by eye.
 - [ ] **T-C3 — Frame rate on your machine.** Target hardware is an i5-8265U (4c/8t, 1.6 GHz). The 8 fps smoke figure is SwiftShader and says nothing about real performance.
 - [ ] **T-C4 — Phase 1 manual checks.** Dig a 30 m (100-block) shaft: chunks keep appearing below and the sky shows above. From a valley, hills show to the full render distance. Save, dig 9 m down, wait 10 s, reload: hotbar, hole and roughly the same time of day return.
-- [ ] **T-C5 — Terrain after spec 22 and region simulation.** Peaks at most about 232 m. Check rivers, lakes and region seams from a valley and from a ridge. Caveat: edits in an existing save may float, because unedited ground regenerates.
-- [ ] **T-C6 — River continuity across region seams.** Sample 50 seams on the debug map; there must be no breaks. This gates the Phase 2 "done when". Spec 51's synthetic checks do not replace it.
+- [ ] **T-C5 — Terrain after spec 22 and region simulation.** Peaks at most about 232 m (headless proxy 2026-10-24, seed 1, 4 × 4 regions: highest surface 168.6 m). Check rivers, lakes and region seams from a valley and from a ridge. Caveat: edits in an existing save may float, because unedited ground regenerates.
+- [ ] **T-C6 — River continuity across region seams.** Sample 50 seams on the debug map; there must be no breaks. This gates the Phase 2 "done when". Spec 51's synthetic checks do not replace it. **Headless proxy 2026-10-24 found breaks:** on seed 1, 8 of 25 river crossings of region seams break, e.g. a river ends at the z = 2048 seam near x = -976, and one stops 16 blocks short of the x = -2048 seam near z = 912 and resumes on the other side. Likely cause: each region's drainage is simulated alone, so a river whose catchment reaches past the region's margin gets too little flow on one side. Fixing it changes how rivers are computed (larger margins, inflow from neighbours, or a coarse global drainage pass), so it needs an owner decision.
 - [ ] **T-C7 — Look of new rock and plants.** Limestone, slate, basalt, deepslate and mushrooms.
 - [ ] **T-C8 — Tool panel and creative block picker.** Only smoke-tested so far.
 - [ ] **T-C9 — Re-check the four closed decisions by eye.** Tree heights in F3, biome border dithering, and the new F3 lines.
