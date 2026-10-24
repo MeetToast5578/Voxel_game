@@ -114,14 +114,17 @@ describe('ChunkManager', () => {
     expect(world.getColumnTops(0, 0)).toBeUndefined();
     expect(sink.meshes.has('20,0,0')).toBe(true);
   });
-  it('remeshes all chunks touching a changed corner block, and keeps edits after unloading', () => {
+  it('remeshes the chunks a changed corner block faces at once, the rest soon after, and keeps edits after unloading', () => {
     const { world, sink, manager } = setup(2);
     settle(manager, 8, 8, 8);
     sink.order = [];
     const oldTop = world.topAt(15, 15);
     world.setBlock(-1, -1, -1, BlockId.BRICK); // corner of chunk (-1, -1, -1), below the top
     manager.onBlockChanged(-1, -1, -1, oldTop, world.topAt(-1, -1));
-    expect(new Set(sink.order)).toEqual(new Set(['-1,-1,-1', '0,-1,-1', '-1,0,-1', '-1,-1,0', '0,0,-1', '0,-1,0', '-1,0,0', '0,0,0']));
+    // T-J13: the block's own chunk and the three it faces are remeshed in the same call; edge and corner chunks wait.
+    expect(new Set(sink.order)).toEqual(new Set(['-1,-1,-1', '0,-1,-1', '-1,0,-1', '-1,-1,0']));
+    settle(manager, 8, 8, 8); // with the chunks whose light or shading the change touches
+    expect(sink.order).toEqual(expect.arrayContaining(['0,0,-1', '0,-1,0', '-1,0,0', '0,0,0']));
     settle(manager, 16 * 20, 8, 8);
     settle(manager, 8, 8, 8);
     expect(world.getBlock(-1, -1, -1)).toBe(BlockId.BRICK);

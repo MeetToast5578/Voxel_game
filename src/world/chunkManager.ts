@@ -210,9 +210,13 @@ export class ChunkManager {
    */
   onBlockChanged(wx: number, wy: number, wz: number, oldTop?: number, newTop?: number): void {
     const done = new Set<string>();
+    // T-J13: only the chunks whose faces the cell touches are remeshed at once (at most 4, at a corner): they can show
+    // or hide a face, which a frame's delay would show as a hole. Chunks that only share an edge or corner change
+    // their shading, and go to the dirty queue below with everything else.
     for (let oy = -1; oy <= 1; oy++)
       for (let oz = -1; oz <= 1; oz++)
         for (let ox = -1; ox <= 1; ox++) {
+          if (Math.abs(ox) + Math.abs(oy) + Math.abs(oz) > 1) continue;
           const p = this.pos(worldToChunk(wx + ox), worldToChunk(wy + oy), worldToChunk(wz + oz));
           if (done.has(p.key)) continue;
           done.add(p.key);

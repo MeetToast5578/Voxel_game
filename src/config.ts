@@ -745,3 +745,8 @@ export const BIRD_ALTITUDE = metersToBlocks(18); // birds fly this high over the
 export const CREATURE_SOUND_CHANCE = 0.01; // per think, a creature near the player calls (T-H10)
 export const CREATURE_SOUND_RADIUS = metersToBlocks(16);
 export const PLAYER_ATTACK_DAMAGE = 2; // a hit with an empty hand or a block; a tool adds its tier speed
+
+// ---- Adaptive budgets and memory caps (T-J6) ----
+/** Loaded chunks (8 KB of blocks each, plus their meshes) above which the render distance steps down. */
+export const MAX_LOADED_CHUNKS = 10000;
+export const MEMORY_CHECK_S = 2;

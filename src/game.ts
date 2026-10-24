@@ -10,6 +10,7 @@ import { SPECIES_BY_KEY } from './creatures/species';
 import { CreatureMeshes } from './render/creatureMeshes';
 import { GamepadInput } from './input/gamepad';
 import { TouchControls } from './ui/touchControls';
+import { cappedRenderDistance, chunkWorkShare } from './world/budgets';
 import { atmosphericFogStrength } from './world/atmosphere';
 import {
   WORLD_FILE_MAX_BYTES, FOG_SAMPLE_INTERVAL_S, FOG_VALLEY_SAMPLE_M, FOG_GROUND_LAYER_M, metersToBlocks,
@@ -18,7 +19,7 @@ import {
   SETTINGS_KEY, SPAWN_READY_RADIUS, START_TIME_OF_DAY, WORLD_LATITUDE_DEG, ITEM_SIZE, PLAYER_HEIGHT, WALK_SPEED, WHEAT_SEED_DROP_CHANCE,
   GAME_MODE_CREATIVE, GAME_MODE_SURVIVAL, HEALTH_MAX, HUNGER_MAX,
   DROWN_DAMAGE_PER_S, AIR_MAX_S, GAME_TICKS_PER_SECOND, LIGHTNING_SKY_BRIGHTEN, THUNDER_DELAY_MIN_S, THUNDER_DELAY_MAX_S,
-  HUNGER_DRAIN_PER_S, STARVE_DAMAGE_PER_S, REGEN_MIN_HUNGER, REGEN_PER_S, NOTICE_S, FURNACE_REFRESH_S, SLAB_HEIGHT, CREATURE_KNOCKBACK, CREATURE_SOUND_RADIUS, PLAYER_ATTACK_DAMAGE, RIVER_CURRENT,
+  HUNGER_DRAIN_PER_S, STARVE_DAMAGE_PER_S, REGEN_MIN_HUNGER, REGEN_PER_S, NOTICE_S, FURNACE_REFRESH_S, SLAB_HEIGHT, CREATURE_KNOCKBACK, CREATURE_SOUND_RADIUS, PLAYER_ATTACK_DAMAGE, RIVER_CURRENT, MAX_LOADED_CHUNKS, MEMORY_CHECK_S,
   BODY_TEMP_DAMAGE_PER_S, BODY_TEMP_NORMAL_C, HEAT_SOURCE_RADIUS, HEATSTROKE_ABOVE_C, HYPOTHERMIA_BELOW_C,
 } from './config';
 import { Sounds } from './audio/sounds';
@@ -136,6 +137,9 @@ export class Game {
   private readonly gamepad: GamepadInput;
   private readonly touchControls: TouchControls;
   private readonly touchMode: boolean;
+  /** T-J6: smoothed frame time, which scales the chunk budgets, and the memory cap's timer. */
+  private smoothFrameS = 1 / 60;
+  private memoryCheckS = MEMORY_CHECK_S;
   /** Off for scripted checks (the debug API), so wildlife and hostiles do not wander into them. */
   creatureSpawning = true;
   fps = 0;
@@ -768,7 +772,17 @@ export class Game {
     if (this.input.consumePressed('F3') || this.input.consumePressed('Backquote')) this.debugOverlay.toggle();
 
     const focus = this.ready ? this.player.eyePosition(alpha) : this.spawnFocus();
-    this.chunks.update(focus.x, focus.y, focus.z, GEN_BUDGET_MS, MESH_BUDGET_MS);
+    this.smoothFrameS += (Math.min(frameDt, 0.25) - this.smoothFrameS) * 0.1;
+    const share = chunkWorkShare(this.smoothFrameS);
+    this.chunks.update(focus.x, focus.y, focus.z, GEN_BUDGET_MS * share, MESH_BUDGET_MS * share);
+    if ((this.memoryCheckS -= frameDt) <= 0) {
+      this.memoryCheckS = MEMORY_CHECK_S;
+      const distance = cappedRenderDistance(this.chunks.renderDistance, this.settings.renderDistance, this.world.chunkCount, MAX_LOADED_CHUNKS);
+      if (distance !== this.chunks.renderDistance) {
+        this.chunks.renderDistance = distance;
+        this.renderer.setViewDistance(distance);
+      }
+    }
     if (!this.ready) this.trySpawn();
 
     const eye = this.player.eyePosition(alpha);
