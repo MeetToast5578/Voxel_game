@@ -18,6 +18,8 @@ export interface ChunkGenerator {
   generateChunk(chunk: Chunk): void;
   columnTops(cx: number, cz: number): Int32Array;
   columnGroundMin?(cx: number, cz: number): number;
+  /** Rivers for the mesher's water flow (T-G10); a fake may leave it out. */
+  sampleColumn?(x: number, z: number): { isRiver: boolean; flowX: number; flowZ: number };
 }
 
 /** Does the three chunk jobs somewhere else (Web Workers). Implemented by workers/workerPool.ts. */
@@ -208,9 +210,13 @@ export class ChunkManager {
    */
   onBlockChanged(wx: number, wy: number, wz: number, oldTop?: number, newTop?: number): void {
     const done = new Set<string>();
+    // T-J13: only the chunks whose faces the cell touches are remeshed at once (at most 4, at a corner): they can show
+    // or hide a face, which a frame's delay would show as a hole. Chunks that only share an edge or corner change
+    // their shading, and go to the dirty queue below with everything else.
     for (let oy = -1; oy <= 1; oy++)
       for (let oz = -1; oz <= 1; oz++)
         for (let ox = -1; ox <= 1; ox++) {
+          if (Math.abs(ox) + Math.abs(oy) + Math.abs(oz) > 1) continue;
           const p = this.pos(worldToChunk(wx + ox), worldToChunk(wy + oy), worldToChunk(wz + oz));
           if (done.has(p.key)) continue;
           done.add(p.key);
@@ -627,7 +633,8 @@ export class ChunkManager {
   }
 
   private meshNow(p: ChunkPos): void {
-    this.sink.set(p.cx, p.cy, p.cz, buildChunkMesh(this.neighborBlocks(p.cx, p.cy, p.cz), this.neighborTops(p.cx, p.cz), p.cy, { seed: this.world.seed, cx: p.cx, cz: p.cz }));
+    this.sink.set(p.cx, p.cy, p.cz, buildChunkMesh(this.neighborBlocks(p.cx, p.cy, p.cz), this.neighborTops(p.cx, p.cz), p.cy, { seed: this.world.seed, cx: p.cx, cz: p.cz,
+      riverFlow: (x, z) => { const r = this.generator.sampleColumn?.(x, z); return r?.isRiver ? [r.flowX, r.flowZ] : null; } }));
     this.meshed.set(p.key, p);
     this.dirty.delete(p.key);
   }

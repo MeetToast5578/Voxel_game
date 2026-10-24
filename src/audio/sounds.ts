@@ -1,4 +1,4 @@
-export type SoundName = 'break' | 'place' | 'step' | 'splash' | 'thunder' | 'eat';
+export type SoundName = 'break' | 'place' | 'step' | 'splash' | 'thunder' | 'eat' | 'call' | 'hurt';
 
 interface Preset {
   /** Low-pass filter cutoff in Hz: lower sounds duller. */
@@ -15,6 +15,9 @@ const PRESETS: Record<SoundName, Preset> = {
   splash: { frequency: 700, volume: 0.3, duration: 0.35 },
   thunder: { frequency: 150, volume: 0.7, duration: 2.5 },
   eat: { frequency: 1100, volume: 0.3, duration: 0.12 },
+  // Creatures (T-H10): a call pitched by the species' voice, and a short yelp when hit.
+  call: { frequency: 900, volume: 0.25, duration: 0.3 },
+  hurt: { frequency: 1300, volume: 0.35, duration: 0.15 },
 };
 
 /** Tiny procedural sound effects: filtered white-noise bursts. No audio files needed. */
@@ -33,7 +36,8 @@ export class Sounds {
     this.ctx.resume().catch(() => {});
   }
 
-  play(name: SoundName): void {
+  /** `pitch` scales the filter cutoff (creature voices); `volume` scales the loudness, for distance. */
+  play(name: SoundName, pitch = 1, volume = 1): void {
     const ctx = this.ctx;
     if (!ctx || !this.noise || ctx.state !== 'running') return;
     const preset = PRESETS[name];
@@ -43,9 +47,9 @@ export class Sounds {
     source.loop = preset.duration > this.noise.duration; // the noise buffer is shorter than a thunder rumble
     const filter = ctx.createBiquadFilter();
     filter.type = 'lowpass';
-    filter.frequency.value = preset.frequency * (0.9 + Math.random() * 0.2); // slight variation
+    filter.frequency.value = preset.frequency * pitch * (0.9 + Math.random() * 0.2); // slight variation
     const gain = ctx.createGain();
-    gain.gain.setValueAtTime(preset.volume, t);
+    gain.gain.setValueAtTime(Math.max(0.002, preset.volume * volume), t);
     gain.gain.exponentialRampToValueAtTime(0.001, t + preset.duration);
     source.connect(filter).connect(gain).connect(ctx.destination);
     source.start(t);

@@ -237,7 +237,13 @@ export const HOTBAR_SIZE = 9;
 export const INVENTORY_SIZE = 36; // 9 hotbar slots, then 27 in the grid
 export const MAX_STACK = 64;
 // Tools (T-I5): each tier mines this many times faster than a hand with the right kind of tool, and lasts this many uses.
-export const TOOL_TIERS = { wooden: { speed: 2, uses: 60 }, stone: { speed: 4, uses: 132 } } as const;
+export const TOOL_TIERS = { wooden: { speed: 2, uses: 60 }, stone: { speed: 4, uses: 132 }, iron: { speed: 6, uses: 250 } } as const;
+/** Seconds a furnace takes to smelt one item (T-I7). */
+export const SMELT_S = 10;
+export const RIVER_CURRENT = 0.6; // a river's push, as a share of flowing water's (T-G10)
+export const DOOR_WIDTH = 2; // cells across a door (0.6 m): the player is 0.48 m wide
+export const DOOR_HEIGHT = roundBlocks(2.1); // cells up a door: the player is 1.75 m tall
+export const FURNACE_REFRESH_S = 0.25; // how often an open furnace screen redraws its progress
 export const TOOL_KINDS = ['pickaxe', 'axe', 'shovel'] as const;
 /** A block that needs a pickaxe takes this many times longer by hand, and drops nothing. */
 export const NO_PICKAXE_SLOWDOWN = 3;
@@ -604,8 +610,8 @@ export const HUNGER_DRAIN_PER_S = HUNGER_MAX / (15 * 60); // a full bar lasts 15
 export const STARVE_DAMAGE_PER_S = 0.25; // at zero hunger: one point every 4 s, which can kill
 export const REGEN_MIN_HUNGER = 18; // health regenerates only while hunger is at least this (T-I3)
 export const REGEN_PER_S = 0.25; // one point every 4 s
-/** Hunger one eaten crop restores (T-I8). Raw grain fills least; a potato most. */
-export const FOOD_HUNGER = { wheat: 2, carrots: 3, potatoes: 4 } as const;
+/** Hunger one eaten food restores (T-I8). Raw grain fills least, then raw crops; cooking a potato (T-I7) adds half again. */
+export const FOOD_HUNGER: Readonly<Record<string, number>> = { wheat: 2, carrots: 3, potatoes: 4, baked_potato: 6, raw_meat: 3, cooked_meat: 8 };
 export const FALL_DAMAGE_THRESHOLD_M_S = 6; // impact speed above this causes damage
 export const FALL_DAMAGE_MULTIPLIER = 2; // damage per m/s above threshold
 export const DROWN_DAMAGE_PER_S = 2; // damage per second when out of air
@@ -708,3 +714,39 @@ export const WORLD_FILE_MAX_BYTES = 16 * 1024 * 1024;
 export const WORLD_FILE_MAX_CHUNKS = 100_000;
 export const WORLD_FILE_MAX_EDITS = 500_000;
 export const WORLD_FILE_MAX_COORD = 1_000_000_000;
+
+// ---- Creatures (T-H1..T-H10) ----
+export const CREATURE_THINK_S = 0.3; // each creature rescores its behaviours this often (staggered)
+export const CREATURE_RUN_FACTOR = 1.8; // fleeing and hunting speed, times the walking speed
+export const CREATURE_JUMP_SPEED = metersToBlocks(6.5);
+export const CREATURE_FLEE_RADIUS = metersToBlocks(7); // a grazer runs from the player or a predator this close
+export const CREATURE_HUNT_RADIUS = metersToBlocks(14); // a predator or hostile notices prey this close
+export const CREATURE_FOLLOW_RADIUS = metersToBlocks(8); // grazers follow a player holding wheat this close
+export const CREATURE_HERD_RADIUS = metersToBlocks(6); // boids neighbourhood
+export const CREATURE_WANDER_RADIUS = metersToBlocks(8);
+export const CREATURE_HUNGER_S = 120; // a predator hunts again this long after eating
+export const CREATURE_ATTACK_S = 1; // seconds between bites or hits
+export const CREATURE_KNOCKBACK = metersToBlocks(7); // speed given by a hit, blocks per second
+export const CREATURE_REACH = metersToBlocks(0.6); // how far past its body a creature bites
+export const CREATURE_PATH_NODES = 300; // A* nodes per path search
+export const CREATURE_STEP = 2; // cells a creature walks up, as the player does (0.6 m)
+export const CREATURE_FALL = 10; // cells a path may drop (3 m)
+export const CREATURE_SPAWN_CHANCE = 0.12; // chance a newly seen column gets a wildlife group
+export const CREATURE_CAP_RADIUS = metersToBlocks(48); // population caps count creatures of a species this close
+export const CREATURE_CAP_GROUPS = 3; // at most this many full groups of a species within the cap radius
+export const CREATURE_REPOPULATE_S = 45; // one repopulation attempt near the player this often
+export const HOSTILE_SPAWN_S = 4; // one hostile spawn attempt this often, at night or in the dark
+export const HOSTILE_CAP = 6; // hostiles within the cap radius
+export const HOSTILE_SPAWN_MIN = metersToBlocks(12); // hostiles appear at least this far from the player
+export const HOSTILE_SPAWN_MAX = metersToBlocks(28);
+export const HOSTILE_DESPAWN = metersToBlocks(64); // hostiles farther than this are removed
+export const DARK_LIGHT = 7; // hostiles spawn in light below this (T-H9)
+export const BIRD_ALTITUDE = metersToBlocks(18); // birds fly this high over the ground
+export const CREATURE_SOUND_CHANCE = 0.01; // per think, a creature near the player calls (T-H10)
+export const CREATURE_SOUND_RADIUS = metersToBlocks(16);
+export const PLAYER_ATTACK_DAMAGE = 2; // a hit with an empty hand or a block; a tool adds its tier speed
+
+// ---- Adaptive budgets and memory caps (T-J6) ----
+/** Loaded chunks (8 KB of blocks each, plus their meshes) above which the render distance steps down. */
+export const MAX_LOADED_CHUNKS = 10000;
+export const MEMORY_CHECK_S = 2;

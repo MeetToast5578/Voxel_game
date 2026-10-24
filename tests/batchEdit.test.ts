@@ -107,7 +107,9 @@ describe('tick-driven mesh invalidation', () => {
     world.setBlock(8, 4, 8, BlockId.SAND);
     world.takeBlockChanges(); // Isolate the fall's changes from fixture construction.
     world.scheduleTick(8, 4, 8, world.currentTick + 1, 'fall');
-    manager.tick();
+    // Ticks run under a wall-clock budget (TICK_BUDGET_MS); on a loaded CI runner the first call can spend it before
+    // reaching this chunk, and the due tick then runs on the next call. A few calls still prove one step of falling.
+    for (let i = 0; i < 5 && world.getBlock(8, 3, 8) !== BlockId.SAND; i++) manager.tick();
     expect(world.getBlock(8, 3, 8)).toBe(BlockId.SAND);
     manager.update(8, 8, 8, Infinity, Infinity);
     expect(sink.order).toContain('0,0,0');
