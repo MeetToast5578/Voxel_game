@@ -1,6 +1,6 @@
 import { CHUNK_SIZE, WIND_LEAF_SWAY_M, WIND_PLANT_SWAY_M, metersToBlocks } from '../config';
 import { localIndex } from '../core/coords';
-import { BLOCK_REGISTRY, BlockId, EMISSION_TABLE, OPAQUE_TABLE, blockTopHeight, blockBottomHeight, blockFaceTile } from '../world/blocks';
+import { BLOCK_REGISTRY, BlockId, EMISSION_TABLE, OPAQUE_TABLE, blockBoxes, blockTopHeight, blockBottomHeight, blockFaceTile, type CellBox } from '../world/blocks';
 import {
   LIGHT_CURVE,
   REGION_SIZE,
@@ -64,8 +64,11 @@ const TILE_TABLE = new Uint8Array(STATE_COUNT * 3);
 /** Wind sway per state: leaf blocks move as a whole, plants only at their top corners (their base stays rooted). */
 const SWAY_TABLE = new Float32Array(STATE_COUNT);
 const FACE_TILES = new Uint8Array(STATE_COUNT * 6);
+/** Stairs and doors (T-K5): the boxes each state is drawn as; null for every other shape. */
+const BOX_TABLE: (readonly CellBox[] | null)[] = new Array(STATE_COUNT).fill(null);
 for (let state = 0; state < STATE_COUNT; state++) {
   const def = BLOCK_REGISTRY.getBlockDef(state);
+  BOX_TABLE[state] = blockBoxes(state);
   FACES.forEach((face, f) => { FACE_TILES[state * 6 + f] = blockFaceTile(state, ...face.dir); });
   const tintKey = BLOCK_REGISTRY.getBlockDef(def.slabMaterial ?? state).key;
   TINT_KIND[state] = tintKey === 'grass' ? 1 : tintKey === 'leaves' ? 2 : tintKey === 'water' || tintKey === 'flowing_water' ? 3 : 0;
@@ -434,6 +437,38 @@ export function buildChunkMesh(neighbors: readonly Uint16Array[], tops: readonly
           io += 6;
           solid.writeIndices(io, second, second + 2, second + 1, second, second + 3, second + 2);
           solid.indexCount += 24;
+          continue;
+        }
+        const boxes = BOX_TABLE[id];
+        if (boxes) {
+          // Stairs and doors: every face of every box, lit by the cell itself. A face on the cell's side is hidden by an opaque neighbour.
+          const skyB = LIGHT_CURVE[skyLight[r]!]!;
+          const blkB = LIGHT_CURVE[blockLight[r]! > EMISSION_TABLE[id]! ? blockLight[r]! : EMISSION_TABLE[id]!]!;
+          for (const box of boxes) {
+            for (let f = 0; f < 6; f++) {
+              const dir = FACES[f]!.dir;
+              const axis = dir[0] !== 0 ? 0 : dir[1] !== 0 ? 1 : 2;
+              const onSide = dir[axis]! > 0 ? box[axis + 3] === 1 : box[axis] === 0;
+              if (onSide && opaque[vol[i + FACE_NEIGHBOR[f]!]!] === 1) continue;
+              const tile = FACE_TILES[id * 6 + f]! * 4;
+              const shade = FACE_SHADE[f]!;
+              solid.reserve(4, 6);
+              const base = solid.vertexCount;
+              for (let k = 0; k < 4; k++) {
+                const at = f * 4 + k;
+                const cx = FACE_CORNERS[at * 3]!, cy = FACE_CORNERS[at * 3 + 1]!, cz = FACE_CORNERS[at * 3 + 2]!;
+                solid.writePosition(solid.positionOffset, lx + (cx ? box[3] : box[0]), y + (cy ? box[4] : box[1]), lz + (cz ? box[5] : box[2]));
+                solid.writeUV(solid.uvOffset, UV_TABLE[tile + (FACE_UV_U[at] ? 2 : 0)]!, UV_TABLE[tile + (FACE_UV_V[at] ? 3 : 1)]!);
+                solid.writeColor(solid.positionOffset, shade, shade, shade);
+                solid.writeLight(solid.vertexCount * 2, skyB, blkB);
+                solid.writeSway(0);
+                solid.writeSeason(0, 0);
+                solid.vertexCount++;
+              }
+              solid.writeIndices(solid.indexOffset, base, base + 1, base + 2, base, base + 2, base + 3);
+              solid.indexCount += 6;
+            }
+          }
           continue;
         }
         const out = TRANSLUCENT_TABLE[id] === TRANSLUCENT_LAYER ? translucent : solid;

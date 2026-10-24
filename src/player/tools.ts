@@ -3,7 +3,7 @@ import { blockVariant, getBlockDef } from '../world/blocks';
 
 export type MiningToolKind = (typeof TOOL_KINDS)[number];
 
-const AXE_BLOCKS = new Set(['log', 'planks', 'fallen_log_x', 'fallen_log_z', 'crafting_table', 'bed', 'cactus']);
+const AXE_BLOCKS = new Set(['log', 'planks', 'fallen_log_x', 'fallen_log_z', 'crafting_table', 'bed', 'cactus', 'door', 'open_door']);
 const SHOVEL_BLOCKS = new Set(['dirt', 'grass', 'sand', 'gravel', 'clay', 'snow']);
 
 /** The tool kind and tier speed of a held state, or null when it is not a tool (T-I5). */
@@ -15,10 +15,10 @@ export function toolOf(state: number): { kind: MiningToolKind; speed: number } |
 
 /**
  * The tool that mines a block fast: an axe for wood, a shovel for loose ground, a pickaxe for anything else solid and
- * at least as hard as stone by hand (DEFAULT_HARDNESS), and none for soft blocks and plants. Slabs follow their material.
+ * at least as hard as stone by hand (DEFAULT_HARDNESS), and none for soft blocks and plants. Slabs and stairs follow their material.
  */
 export function minedWith(state: number): MiningToolKind | null {
-  const def = getBlockDef(getBlockDef(state).slabMaterial ?? state);
+  const def = getBlockDef(getBlockDef(state).slabMaterial ?? getBlockDef(state).stairsMaterial ?? state);
   if (AXE_BLOCKS.has(def.key)) return 'axe';
   if (SHOVEL_BLOCKS.has(def.key)) return 'shovel';
   return def.solid && def.hardness >= 1 ? 'pickaxe' : null;
