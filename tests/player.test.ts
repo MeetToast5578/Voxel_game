@@ -17,7 +17,7 @@ function standing(): Player {
 describe('Player', () => {
   it('walks into a 2 m tunnel but not a 1.5 m one (T-C2 headless proxy)', () => {
     // Open ground for z > -2, then a tunnel heading -Z whose roof is `height` metres above the floor.
-    const tunnel = (height: number) => (x: number, y: number, z: number) =>
+    const tunnel = (height: number) => (_x: number, y: number, z: number) =>
       y < 10 || (z <= -2 && y >= 10 + Math.round(metersToBlocks(height)));
     for (const [height, enters] of [[2, true], [1.5, false]] as const) {
       const p = standing();
