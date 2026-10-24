@@ -1,5 +1,13 @@
 # Handoff: Voxel Game (MeetToast5578/Voxel_game)
 
+## 2026-10-24 — performance (Claude)
+
+T-J13: an edit remeshes at once only the chunks the changed cell faces (at most 4, was 8). T-J6: chunk budgets
+shrink to half on slow frames, and a memory cap (`MAX_LOADED_CHUNKS`) steps the render distance down while it is
+exceeded (`src/world/budgets.ts`). T-J14 re-measured: both forest fixtures pass. T-J2 to T-J5 wait for the owner's
+hardware measurements (T-C3). The steepness shortcut in `generator.ts` is left as is: its own note says to change it
+only if bare ground looks wrong, and changing it would reshape every world. This branch builds on the input branch.
+
 ## 2026-10-24 — gamepad and touch (Claude)
 
 T-K6 code part. A gamepad drives movement, look, break, place, slots, flying, the inventory and pause. On touch

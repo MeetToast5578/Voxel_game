@@ -33,17 +33,17 @@ Headless tests cannot close these. Run them with `npm run dev` on your own machi
 - [~] **T-D7 — Horizon LOD.** Spec 51 fixed the big seams. Still open: coarse distant coastlines are approximate, distant vegetation and buildings are missing, and owner visual acceptance is pending. See `docs/specs/51-terrain-visual-acceptance.md`.
 - [~] **T-E11 — 16 tree species.** All 16 are implemented. Only the owner review (T-E11b) remains.
 - [~] **T-J9 — Chunk generation at or under 3 ms.** Warm generation is guarded in CI (mean 1.365 ms). Cold region and column preparation is still over 3 ms, and the full cold streaming path is not measured within budget.
-- [~] **T-J14 — Dense-forest mesh budget.** The standard guard passes. The docs disagree about the forest guard (see below). Re-run the benchmark on owner hardware before closing.
-- [ ] **T-J13 — Edit remesh cost.** One edit remeshes up to 8 chunks on the main thread, about 3 ms each. Worse now that block updates run at 20 Hz.
+- [~] **T-J14 — Dense-forest mesh budget.** Re-measured 2026-10-24 here: forest (216,-140) 1.91/1.31 ms and (240,-108) 1.99/2.86 ms generation/meshing, all under 3 ms. Re-run on owner hardware before closing.
+- [x] **T-J13 — Edit remesh cost.** Done: an edit remeshes at once only the chunks the cell faces (at most 4, was 8); edge and corner chunks, which only change shading, wait for the budgeted queue.
 - [ ] **T-J2 — Section visibility culling** (cave culling via per-chunk face connectivity).
 - [ ] **T-J3 — Fewer draw calls** through batched buffers.
 - [ ] **T-J4 — Packed vertex format** (positions as bytes, packed light and colour).
 - [ ] **T-J5 — Palette compression** for chunk storage.
-- [ ] **T-J6 — Adaptive time budgets and memory caps.**
+- [x] **T-J6 — Adaptive time budgets and memory caps.** Done: chunk budgets shrink to half on slow frames (`chunkWorkShare`); over `MAX_LOADED_CHUNKS` (10,000) the render distance steps down, and back up once well under (`src/world/budgets.ts`).
 - [x] **T-J7 — Quality presets.** Done: Low, Medium and High set render distance and the new resolution setting.
 - [x] **T-J8 — Frame-time graph in F3.** Done: the last 120 frames as bars against the 60 and 30 fps budgets, plus average and worst.
 
-Measure first (T-C3), then pick the J items that the measurements point at.
+Measure first (T-C3), then pick the J items that the measurements point at. T-J2 to T-J5 are big engine changes with no measured need yet (meshing 1.2 ms, generation 0.9 ms, 100 to 350 draw calls here), so they wait for the owner-hardware numbers.
 
 ---
 
@@ -142,6 +142,6 @@ T-K8 (Pixel Aero) can run alongside any of these.
 
 ## Where the docs disagree
 
-- **T-J14 forest guard.** `docs/HANDOFF.md` says the extra forest guard is still slightly over 3 ms. `docs/tasks.md` says all current strict guards pass after spec 51. Re-run the benchmark to settle it.
+- **T-J14 forest guard.** Settled 2026-10-24: re-run here, both forest fixtures pass (see T-J14). The HANDOFF note that it is over 3 ms is out of date.
 - **Tree sizes.** `docs/ROADMAP.md` (Phase 1b, dated 2026-10-17) still says 4.8–7.2 m. `docs/tasks.md` (T-B1) says the fix to 8–12 m is closed. The roadmap is out of date.
 - **`docs/REFERENCE-GAPS.md`** is dated 2026-10-15. Many of its "open" items are done now. Treat it as history.

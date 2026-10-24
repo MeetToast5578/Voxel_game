@@ -250,19 +250,19 @@ All six sandbox-physics slices (spec 25) are built and tested. One known shortcu
 ## J. Phase 8 — Scale and performance
 
 - [x] **T-J1 — Mesh time ≤3 ms on the reference fixture.** CPU profiling identified neighbour-region copying as a major cost; the 2026-10-19 pass then removed the remaining allocation and per-face object work. Node-22 visible-top fixture: 4.011 ms → 1.715 ms mean (passes 2.114 / 1.502 / 1.529), with the mesh SHA-256 unchanged at `803974a7770501157d9409fc8622d26838a45e03e5c06ed3661d8989843715ae`. What changed: per-state flat tables built once from the block registry, precomputed face/AO/UV/region offsets, quads written into growable typed arrays, reusable region and light scratch buffers, and 32-bit row copies in `buildRegion` with a 16-bit fallback. Existing light/mesher tests unchanged plus new cases for scratch reuse, transferable buffers, caller-provided region arrays, an unaligned chunk view and all 27 region offsets; full gameplay/GPU checks pass. This is the specified 50-chunk seed-1 reference measurement, not a guarantee for every world/hardware.
-- [~] **T-J14 — Dense-forest mesh budget.** Spec 50's extra fixture exceeded 3 ms. After spec 51 corrects world coordinates, all current strict guards pass: standard 1.193/1.137 ms generation/mesh; (240,-108) 2.268/1.926 ms; actual forest (216,-140) 2.471/1.268 ms. Worldgen changed geometry hashes, so this is not a like-for-like mesher optimization. Representative forest/owner hardware and current CI review remain; no thresholds relaxed.
+- [~] **T-J14 — Dense-forest mesh budget.** 2026-10-24 re-run: (216,-140) 1.907/1.314 ms and (240,-108) 1.991/2.858 ms generation/mesh, standard 0.93/1.16 ms; all under 3 ms on this environment. Spec 50's extra fixture exceeded 3 ms. After spec 51 corrects world coordinates, all current strict guards pass: standard 1.193/1.137 ms generation/mesh; (240,-108) 2.268/1.926 ms; actual forest (216,-140) 2.471/1.268 ms. Worldgen changed geometry hashes, so this is not a like-for-like mesher optimization. Representative forest/owner hardware and current CI review remain; no thresholds relaxed.
 - [ ] **T-J2 — Section visibility culling** ("cave culling" via per-chunk face connectivity).
 - [ ] **T-J3 — Fewer draw calls** through batched buffers.
 - [ ] **T-J4 — Packed vertex format:** positions as bytes, packed light and colour.
 - [ ] **T-J5 — Palette compression** for chunk storage.
-- [ ] **T-J6 — Adaptive time budgets** and memory caps.
+- [x] **T-J6 — Adaptive time budgets** and memory caps. Closed 2026-10-24: `chunkWorkShare` scales the generation and mesh budgets from 1 at 60 fps to 0.5 at 30 fps or slower; `cappedRenderDistance` steps the render distance down while more than `MAX_LOADED_CHUNKS` chunks are loaded and back once under 60 % of it. `tests/budgets.test.ts`.
 - [x] **T-J7 — Quality presets.** Closed 2026-10-23: `QUALITY_PRESETS` in `settings.ts`, resolution setting.
 - [x] **T-J8 — Frame-time graph in F3.** Closed 2026-10-23 (`src/ui/debugOverlay.ts`).
 - [~] **T-J9 — Chunk generation ≤3 ms.** Warm visible-surface generation is measured in an actual Node worker and guarded in CI (1.365 ms mean, 50 chunks × three passes). Cold region/column preparation is measured separately and remains over 3 ms; the complete cold streaming workflow is not claimed within budget.
 - [x] **T-J10 — Re-measure cold column preparation.** Reusable benchmark: 12 fresh-generator column-top requests with regions within feature reach pre-warmed. Node 22: mean 44.031 ms, median 44.625 ms. This explicitly defined operation includes tops/features and neighbouring column preparation; the old undocumented 8.4 ms figure is not directly comparable.
 - [x] **T-J11 — Re-measure the spawn search.** Fresh generators for seeds 1–30 in the worker: Node-22 mean 140.215 ms, median 115.793 ms. Reproduce with `node scripts/benchmark.mjs` while browser tests are idle.
 - [x] **T-J12 — Re-measure region simulation.** Three independent seed-1337 regions: Node-22 mean 77.037 ms, median 65.866 ms. Runtime and sample counts are included in the benchmark JSON.
-- [ ] **T-J13 — Edit remesh cost.** A single edit remeshes up to 8 chunks on the main thread, ~3 ms each (`HANDOFF.md:201`). Worse now that block updates run at 20 Hz.
+- [x] **T-J13 — Edit remesh cost.** A single edit remeshed up to 8 chunks on the main thread, ~3 ms each (`HANDOFF.md:201`). Closed 2026-10-24: `onBlockChanged` remeshes at once only the cell's chunk and the chunks it faces (at most 4); edge and corner chunks go to the budgeted dirty queue.
 
 ---
 
