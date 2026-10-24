@@ -1,5 +1,13 @@
 # Handoff: Voxel Game (MeetToast5578/Voxel_game)
 
+## 2026-10-24 — furnaces (Claude)
+
+T-I7 furnaces and iron tools, plus cooking for T-I8. Craft a furnace from eight cobblestone; right click opens input,
+fuel and output. Smelting runs in `src/player/furnace.ts` and keeps going while the chunk is unloaded. Coal ore now
+drops coal. New states append after the tools: the iron tool states, then furnace 1508, lit furnace 1512, iron ingot
+1516, coal 1517, baked potato 1518. The optional `furnaces` meta field is written only when there are some; save
+version unchanged. Survival now runs through to iron tools.
+
 ## Latest session — 2026-10-23, second batch (Claude)
 
 This section supersedes the priorities below. Branch `claude/zen-goodall-129e55`, one PR for the batch.

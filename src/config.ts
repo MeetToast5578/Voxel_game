@@ -237,7 +237,10 @@ export const HOTBAR_SIZE = 9;
 export const INVENTORY_SIZE = 36; // 9 hotbar slots, then 27 in the grid
 export const MAX_STACK = 64;
 // Tools (T-I5): each tier mines this many times faster than a hand with the right kind of tool, and lasts this many uses.
-export const TOOL_TIERS = { wooden: { speed: 2, uses: 60 }, stone: { speed: 4, uses: 132 } } as const;
+export const TOOL_TIERS = { wooden: { speed: 2, uses: 60 }, stone: { speed: 4, uses: 132 }, iron: { speed: 6, uses: 250 } } as const;
+/** Seconds a furnace takes to smelt one item (T-I7). */
+export const SMELT_S = 10;
+export const FURNACE_REFRESH_S = 0.25; // how often an open furnace screen redraws its progress
 export const TOOL_KINDS = ['pickaxe', 'axe', 'shovel'] as const;
 /** A block that needs a pickaxe takes this many times longer by hand, and drops nothing. */
 export const NO_PICKAXE_SLOWDOWN = 3;
@@ -604,8 +607,8 @@ export const HUNGER_DRAIN_PER_S = HUNGER_MAX / (15 * 60); // a full bar lasts 15
 export const STARVE_DAMAGE_PER_S = 0.25; // at zero hunger: one point every 4 s, which can kill
 export const REGEN_MIN_HUNGER = 18; // health regenerates only while hunger is at least this (T-I3)
 export const REGEN_PER_S = 0.25; // one point every 4 s
-/** Hunger one eaten crop restores (T-I8). Raw grain fills least; a potato most. */
-export const FOOD_HUNGER = { wheat: 2, carrots: 3, potatoes: 4 } as const;
+/** Hunger one eaten food restores (T-I8). Raw grain fills least, then raw crops; cooking a potato (T-I7) adds half again. */
+export const FOOD_HUNGER: Readonly<Record<string, number>> = { wheat: 2, carrots: 3, potatoes: 4, baked_potato: 6 };
 export const FALL_DAMAGE_THRESHOLD_M_S = 6; // impact speed above this causes damage
 export const FALL_DAMAGE_MULTIPLIER = 2; // damage per m/s above threshold
 export const DROWN_DAMAGE_PER_S = 2; // damage per second when out of air

@@ -643,6 +643,26 @@ body {
 .world-file-actions > .menu-button { flex: 1 1 160px; min-width: 0; }
 .world-file-actions input { display: block; width: 100%; max-width: 100%; box-sizing: border-box; }
 
+/* Furnace (T-I7): input over fuel with the fire between, then cooking progress and the output. */
+.furnace-inputs {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.furnace-burn {
+  width: 44px;
+  height: 8px;
+  accent-color: #ff9a3c;
+}
+
+.furnace-cook {
+  width: 64px;
+  height: 10px;
+  accent-color: #e8e8e8;
+}
+
 /* Crafting (T-I6): the grid, an arrow and the result, above the inventory grid. */
 .crafting {
   display: flex;
