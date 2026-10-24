@@ -7,6 +7,11 @@ const STICK_KEY = 0.35;
 /** Look speed: mouse pixels per pixel dragged. */
 const LOOK_GAIN = 2.5;
 
+/** Keeps a touch's moves coming to `target` when it slides off; a pointer that is already gone just has nothing to capture. */
+function capture(target: Element, e: PointerEvent): void {
+  try { target.setPointerCapture(e.pointerId); } catch { /* not active any more */ }
+}
+
 /**
  * In-world touch controls (T-K6): a stick on the left to move, dragging on the right half to look, and buttons to
  * jump, break, place, fly, change the hotbar slot and pause. They feed Input like the keyboard and mouse do.
@@ -30,7 +35,7 @@ export class TouchControls {
       const b = el('button', 'touch-button', text);
       b.type = 'button';
       b.setAttribute('aria-label', label);
-      b.addEventListener('pointerdown', (e) => { e.preventDefault(); b.setPointerCapture(e.pointerId); press(true); });
+      b.addEventListener('pointerdown', (e) => { e.preventDefault(); capture(b, e); press(true); });
       for (const end of ['pointerup', 'pointercancel'] as const) b.addEventListener(end, () => press(false));
       return b;
     };
@@ -48,7 +53,7 @@ export class TouchControls {
     parent.append(this.root);
 
     let lookId: number | null = null, lastX = 0, lastY = 0;
-    look.addEventListener('pointerdown', (e) => { lookId = e.pointerId; lastX = e.clientX; lastY = e.clientY; look.setPointerCapture(e.pointerId); });
+    look.addEventListener('pointerdown', (e) => { lookId = e.pointerId; lastX = e.clientX; lastY = e.clientY; capture(look, e); });
     look.addEventListener('pointermove', (e) => {
       if (e.pointerId !== lookId) return;
       input.addLook((e.clientX - lastX) * LOOK_GAIN, (e.clientY - lastY) * LOOK_GAIN);
@@ -61,7 +66,7 @@ export class TouchControls {
       stickId = e.pointerId;
       const r = stick.getBoundingClientRect();
       cx = r.left + r.width / 2; cy = r.top + r.height / 2;
-      stick.setPointerCapture(e.pointerId);
+      capture(stick, e);
       this.moveStick(e.clientX - cx, e.clientY - cy);
     });
     stick.addEventListener('pointermove', (e) => { if (e.pointerId === stickId) this.moveStick(e.clientX - cx, e.clientY - cy); });
