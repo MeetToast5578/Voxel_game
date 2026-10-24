@@ -88,6 +88,8 @@ export class CreatureMeshes {
   sync(creatures: readonly Creature[], time: number, lightAt: (c: Creature) => readonly [number, number]): void {
     const parts = creatures.map((c) => creatureParts(c, time));
     const boxes = parts.reduce((n, p) => n + p.length, 0);
+    this.mesh.visible = boxes > 0;
+    if (boxes === 0) return; // nothing to draw, and no buffers before the first creature
     this.ensure(boxes);
     const uv = tileUV(Tile.CREATURE);
     let v = 0;
@@ -118,7 +120,6 @@ export class CreatureMeshes {
     });
     this.geometry.setDrawRange(0, boxes * 36);
     for (const name of ['position', 'uv', 'color', 'aLight']) this.geometry.getAttribute(name).needsUpdate = true;
-    this.mesh.visible = boxes > 0;
   }
 
   private ensure(boxes: number): void {
