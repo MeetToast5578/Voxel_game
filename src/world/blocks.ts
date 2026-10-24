@@ -59,6 +59,11 @@ export const BlockId = {
   BED: 179,
   CRAFTING_TABLE: 180,
   STICK: 181,
+  FURNACE: 1508,
+  LIT_FURNACE: 1512,
+  IRON_INGOT: 1516,
+  COAL: 1517,
+  BAKED_POTATO: 1518,
 } as const;
 
 export const Tile = {
@@ -130,8 +135,15 @@ export const Tile = {
   CRAFTING_TOP: 73,
   CRAFTING_SIDE: 74,
   STICK: 75,
-  // One tile per tool: TOOL_KINDS within TOOL_TIERS order (pickaxe, axe, shovel; wooden then stone).
+  // One tile per tool: TOOL_KINDS within TOOL_TIERS order (pickaxe, axe, shovel; wooden, stone, iron).
   TOOLS: 76,
+  FURNACE_SIDE: 85,
+  FURNACE_FRONT: 86,
+  FURNACE_FRONT_LIT: 87,
+  FURNACE_TOP: 88,
+  IRON_INGOT: 89,
+  COAL: 90,
+  BAKED_POTATO: 91,
 } as const;
 
 export type RenderLayer = 'none' | 'opaque' | 'cutout' | 'translucent';
@@ -452,6 +464,13 @@ export const BLOCK_REGISTRY = buildBlockRegistry([
   ...Object.entries(TOOL_TIERS).flatMap(([tier, { uses }], t) => TOOL_KINDS.map((kind, k) =>
     def(`${tier}_${kind}`, `${tier[0]!.toUpperCase()}${tier.slice(1)} ${kind}`, all(Tile.TOOLS + t * TOOL_KINDS.length + k),
       { ...ITEM, variants: uses, maxStack: 1 }))),
+  // Furnaces (T-I7): the variant is the side the mouth faces (FACINGS); a burning one is its own type, which glows.
+  def('furnace', 'Furnace', { top: Tile.FURNACE_TOP, side: Tile.FURNACE_SIDE, bottom: Tile.FURNACE_TOP }, { variants: 4, hardness: 3.5 }),
+  def('lit_furnace', 'Lit furnace', { top: Tile.FURNACE_TOP, side: Tile.FURNACE_SIDE, bottom: Tile.FURNACE_TOP },
+    { variants: 4, hardness: 3.5, lightEmission: 13 }),
+  def('iron_ingot', 'Iron ingot', all(Tile.IRON_INGOT), ITEM),
+  def('coal', 'Coal', all(Tile.COAL), ITEM),
+  def('baked_potato', 'Baked potato', all(Tile.BAKED_POTATO), ITEM),
 ]);
 
 // BlockId.X is variant 0 of the type whose key is x; keep the two lists in step.
@@ -532,11 +551,22 @@ export function flowingLavaState(level: number, falling: boolean): number {
 }
 
 /** Tile for a cube face normal; horizontal logs keep end grain perpendicular to their axis. */
+/** The horizontal direction [dx, dz] of each facing variant: north (-z), east, south, west. */
+export const FACINGS: readonly (readonly [number, number])[] = [[0, -1], [1, 0], [0, 1], [-1, 0]];
+/** The facing variant that points from a block along (dx, dz), by the larger component; toward the viewer when given the offset to them. */
+export function facingVariant(dx: number, dz: number): number {
+  return Math.abs(dx) > Math.abs(dz) ? (dx > 0 ? 1 : 3) : (dz > 0 ? 2 : 0);
+}
+
+export const isFurnace = (state: number) => state >= BlockId.FURNACE && state < BlockId.LIT_FURNACE + FACINGS.length;
+
 export function blockFaceTile(state: number, dx: number, dy: number, dz: number): number {
   state = getBlockDef(state).slabMaterial ?? state;
   if ((state === BlockId.FALLEN_LOG_X && dx !== 0) || (state === BlockId.FALLEN_LOG_Z && dz !== 0)) return Tile.LOG_TOP;
   const tiles = getBlockDef(state).tiles;
   if (isCropState(state)) return tiles.side + blockVariant(state); // one tile per growth stage
+  if (isFurnace(state) && FACINGS[blockVariant(state)]![0] === dx && FACINGS[blockVariant(state)]![1] === dz)
+    return getBlockDef(state).id === BlockId.LIT_FURNACE ? Tile.FURNACE_FRONT_LIT : Tile.FURNACE_FRONT;
   return dy > 0 ? tiles.top : dy < 0 ? tiles.bottom : tiles.side;
 }
 
@@ -559,8 +589,10 @@ export function isCropState(state: number): boolean {
 }
 
 /** Hunger a block state restores when eaten (T-I8): the planted stage of a crop is food; anything else is 0. */
+/** Hunger a food restores, or 0. Only a crop's first state (what you plant) is food, not a growing one. */
 export function foodValue(state: number): number {
-  return isCropState(state) && blockVariant(state) === 0 ? FOOD_HUNGER[getBlockDef(state).key as keyof typeof FOOD_HUNGER] : 0;
+  const def = getBlockDef(state);
+  return def.id === state ? FOOD_HUNGER[def.key] ?? 0 : 0;
 }
 
 export function isSnowState(state: number): boolean {
@@ -584,6 +616,8 @@ export function blockDrop(state: number): { state: number; count: number } {
     const ripe = blockVariant(state) === CROP_STAGES - 1;
     return { state: getBlockDef(state).id, count: ripe ? CROP_HARVEST_YIELD : 1 };
   }
+  if (isFurnace(state)) return { state: BlockId.FURNACE, count: 1 }; // facing and fire are not part of the item
+  if (state === BlockId.COAL_ORE) return { state: BlockId.COAL, count: 1 };
   return { state: slabItemState(state), count: 1 };
 }
 export function slabState(material: number, top = false): number {

@@ -12,7 +12,7 @@ export interface Recipe {
 }
 
 const WOOD = ['log', 'fallen_log_x', 'fallen_log_z'];
-const TOOL_HEADS = { wooden: ['planks'], stone: ['cobblestone'] } as const;
+const TOOL_HEADS = { wooden: ['planks'], stone: ['cobblestone'], iron: ['iron_ingot'] } as const;
 const TOOL_PATTERNS = { pickaxe: ['MMM', ' S ', ' S '], axe: ['MM', 'MS', ' S'], shovel: ['M', 'S', 'S'] } as const;
 
 /** Every recipe, as data. Order matters only where two patterns could match the same grid (none do). */
@@ -20,6 +20,7 @@ export const RECIPES: readonly Recipe[] = [
   { pattern: ['L'], key: { L: WOOD }, result: ['planks', 4] },
   { pattern: ['P', 'P'], key: { P: ['planks'] }, result: ['stick', 4] },
   { pattern: ['PP', 'PP'], key: { P: ['planks'] }, result: ['crafting_table', 1] },
+  { pattern: ['CCC', 'C C', 'CCC'], key: { C: ['cobblestone'] }, result: ['furnace', 1] },
   // Straw from the wheat field on a wooden frame (T-I9).
   { pattern: ['WWW', 'PPP'], key: { W: ['wheat'], P: ['planks'] }, result: ['bed', 1] },
   ...Object.entries(TOOL_HEADS).flatMap(([tier, head]) => Object.entries(TOOL_PATTERNS).map(([kind, pattern]) =>

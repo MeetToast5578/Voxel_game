@@ -18,6 +18,7 @@ export const CONTROL_SECTIONS: readonly { title: string; rows: readonly (readonl
       ['Right, with a crop', 'Survival: eat it, or plant it on grass or dirt'],
       ['Right, on a bed', 'Set the respawn point; sleep through the night'],
       ['Right, on a crafting table', 'Craft on a 3×3 grid (the inventory has 2×2)'],
+      ['Right, on a furnace', 'Smelt: input on top, fuel below'],
       ['Middle click', 'Pick block'],
       ['1-9, wheel', 'Select block'],
       ['E', 'Inventory (also from the pause menu)'],
