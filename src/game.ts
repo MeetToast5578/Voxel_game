@@ -1,7 +1,15 @@
 import { exportWorldArchive, parseWorldArchive, type WorldArchive } from './storage/worldArchive';
 import { BuildClipboard } from './player/clipboard';
 import { resolvePlacement } from './player/placementTarget';
-import { blockCollision, blockDrop, foodValue, slabBounds, slabItemState } from './world/blocks';
+import { blockCollision, blockDrop, blockVariant, facingVariant, foodValue, isCropState, isDoor, isFurnace, slabBounds, slabItemState } from './world/blocks';
+import { newFurnace, stepFurnace, type FurnaceState } from './player/furnace';
+import { connectedDoor, doorCells, toggledDoor } from './player/doors';
+import { CreatureSystem, rayHitCreature, type Creature, type CreatureEvent, type CreatureView } from './creatures/creatures';
+import { CreaturePopulation } from './creatures/population';
+import { SPECIES_BY_KEY } from './creatures/species';
+import { CreatureMeshes } from './render/creatureMeshes';
+import { GamepadInput } from './input/gamepad';
+import { TouchControls } from './ui/touchControls';
 import { atmosphericFogStrength } from './world/atmosphere';
 import {
   WORLD_FILE_MAX_BYTES, FOG_SAMPLE_INTERVAL_S, FOG_VALLEY_SAMPLE_M, FOG_GROUND_LAYER_M, metersToBlocks,
@@ -10,7 +18,7 @@ import {
   SETTINGS_KEY, SPAWN_READY_RADIUS, START_TIME_OF_DAY, WORLD_LATITUDE_DEG, ITEM_SIZE, PLAYER_HEIGHT, WALK_SPEED, WHEAT_SEED_DROP_CHANCE,
   GAME_MODE_CREATIVE, GAME_MODE_SURVIVAL, HEALTH_MAX, HUNGER_MAX,
   DROWN_DAMAGE_PER_S, AIR_MAX_S, GAME_TICKS_PER_SECOND, LIGHTNING_SKY_BRIGHTEN, THUNDER_DELAY_MIN_S, THUNDER_DELAY_MAX_S,
-  HUNGER_DRAIN_PER_S, STARVE_DAMAGE_PER_S, REGEN_MIN_HUNGER, REGEN_PER_S, NOTICE_S, SLAB_HEIGHT,
+  HUNGER_DRAIN_PER_S, STARVE_DAMAGE_PER_S, REGEN_MIN_HUNGER, REGEN_PER_S, NOTICE_S, FURNACE_REFRESH_S, SLAB_HEIGHT, CREATURE_KNOCKBACK, CREATURE_SOUND_RADIUS, PLAYER_ATTACK_DAMAGE, RIVER_CURRENT,
   BODY_TEMP_DAMAGE_PER_S, BODY_TEMP_NORMAL_C, HEAT_SOURCE_RADIUS, HEATSTROKE_ABOVE_C, HYPOTHERMIA_BELOW_C,
 } from './config';
 import { Sounds } from './audio/sounds';
@@ -23,7 +31,7 @@ import { BlockBreaking } from './player/breaking';
 import { BuildTool, cornerFor, frameFor } from './player/buildTool';
 import { Inventory, type ItemStack, startingSlots } from './player/inventory';
 import { blockIntersectsBody, canBreak } from './player/interaction';
-import { afterUse, breakSeconds, dropsWhenMined } from './player/tools';
+import { afterUse, breakSeconds, dropsWhenMined, toolOf } from './player/tools';
 import { feltTemperature, stepBodyTemperature, type Exposure } from './player/bodyTemperature';
 import type { Vec3 } from './player/physics';
 import { FireExposure, fluidContact, landingDamage, landingWaterDepth } from './player/fluidHazards';
@@ -103,6 +111,7 @@ export class Game {
   private readonly held: HeldBlock;
   private readonly itemMeshes: ItemMeshes;
   private readonly bodyMeshes: BodyMeshes;
+  private readonly creatureMeshes: CreatureMeshes;
   private readonly breakOverlay: BreakOverlay;
   private readonly inventoryScreen: InventoryScreen;
   /** Seconds since the game started; drives the spin and bob of dropped items. */
@@ -115,6 +124,20 @@ export class Game {
   ready = false;
   /** True while the game receives input (pointer locked, or ?autostart=1). */
   playing = false;
+  /** Furnaces by cell key "x,y,z" (T-I7): only ones with something in them, burning, or open on screen. */
+  private readonly furnaces = new Map<string, FurnaceState>();
+  private openFurnace: FurnaceState | null = null;
+  private furnaceRefreshS = 0;
+  /** Creatures (T-H1..T-H10): the live ones, and where the rest are kept while their columns are unloaded. */
+  readonly creatures = new CreatureSystem();
+  private readonly population = new CreaturePopulation();
+  private populationS = 0;
+  /** Gamepad and touch input (T-K6). Either one plays without pointer capture. */
+  private readonly gamepad: GamepadInput;
+  private readonly touchControls: TouchControls;
+  private readonly touchMode: boolean;
+  /** Off for scripted checks (the debug API), so wildlife and hostiles do not wander into them. */
+  creatureSpawning = true;
   fps = 0;
   /** 0 sunrise, 0.25 noon, 0.5 sunset, 0.75 midnight; wraps at 1. */
   timeOfDay = START_TIME_OF_DAY;
@@ -238,6 +261,8 @@ export class Game {
       this.hunger = loaded.hunger ?? HUNGER_MAX;
       this.air = loaded.air ?? AIR_MAX_S;
       this.bed = loaded.bed ?? null;
+      for (const { x, y, z, ...f } of loaded.furnaces ?? []) this.furnaces.set(`${x},${y},${z}`, f);
+      this.population.load(loaded.creatures ?? [], loaded.creatureColumns ?? []);
     }
     this.savedPlayer = loaded?.player ?? null;
     this.saver = new WorldSaver(this.worldStore, this.world, () => this.worldMeta());
@@ -246,6 +271,7 @@ export class Game {
     this.held = new HeldBlock(this.renderer.camera, this.renderer.itemMaterial);
     this.itemMeshes = new ItemMeshes(this.renderer.scene, this.renderer.itemMaterial);
     this.bodyMeshes = new BodyMeshes(this.renderer.scene, this.renderer.itemMaterial);
+    this.creatureMeshes = new CreatureMeshes(this.renderer.scene, this.renderer.itemMaterial);
     this.usingWorkers = options.workers && typeof Worker !== 'undefined';
     const workerCount = Math.max(1, Math.min(4, (navigator.hardwareConcurrency || 2) - 1));
     const jobs = this.usingWorkers ? new WorkerPool(seed, workerCount) : null;
@@ -284,7 +310,9 @@ export class Game {
       {
         onPlay: () => {
           this.sounds.unlock();
-          this.input.requestPointerLock();
+          // Touch screens cannot capture a pointer, and a gamepad needs none.
+          if (this.touchMode || this.gamepad.used) this.resumeWithoutLock();
+          else this.input.requestPointerLock();
         },
         onSettingsChange: (s) => this.changeSettings(s),
         onNewWorld: () => this.newWorld(),
@@ -295,6 +323,10 @@ export class Game {
       },
     );
 
+    this.gamepad = new GamepadInput(this.input);
+    this.touchMode = options.touch || (typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches);
+    this.touchControls = new TouchControls(container, this.input, () => this.pauseWithoutLock());
+    container.classList.toggle('touch-mode', this.touchMode);
     this.playing = options.autostart;
     if (options.autostart) this.menu.hide();
     else this.menu.show('start');
@@ -353,14 +385,22 @@ export class Game {
   readonly isWaterAt = (x: number, y: number, z: number): boolean => isWaterState(this.world.getBlock(x, y, z));
 
   readonly isLavaAt = (x: number, y: number, z: number): boolean => isLavaState(this.world.getBlock(x, y, z));
-  readonly flowAt = (x: number, y: number, z: number): Flow => flowVector((bx, by, bz) => this.world.getBlock(bx, by, bz), x, y, z);
+  readonly flowAt = (x: number, y: number, z: number): Flow => this.currentAt(x, y, z);
+
+  /** The current in a fluid cell (T-G12). Still source water in a river channel flows the river's way (T-G10). */
+  currentAt(x: number, y: number, z: number): Flow {
+    const flow = flowVector((bx, by, bz) => this.world.getBlock(bx, by, bz), x, y, z);
+    if (flow.x || flow.y || flow.z || this.world.getBlock(x, y, z) !== BlockId.WATER) return flow;
+    const river = this.generator.sampleColumn(Math.floor(x), Math.floor(z));
+    return river.isRiver ? { x: river.flowX * RIVER_CURRENT, y: 0, z: river.flowZ * RIVER_CURRENT } : flow;
+  }
 
   private fixedUpdate(dt: number): void {
     if (!this.ready || this.idle) return;
     this.timeOfDay = (this.timeOfDay + dt / DAY_LENGTH_S) % 1;
     this.calendar.advance(dt); // Both clocks follow simulation time, including the existing menu-time behaviour.
     this.player.update(dt, this.playing ? this.readControls() : NO_CONTROLS, this.isSolidAt, this.isWaterAt, this.isLavaAt, this.flowAt);
-    this.items.step(dt, this.isSolidAt);
+    this.items.step(dt, this.isSolidAt, this.flowAt);
     // Block updates run at a fixed rate of game ticks, so a flow or a fall takes several ticks, as in Minecraft.
     this.tickTimer += dt;
     while (this.tickTimer >= 1 / GAME_TICKS_PER_SECOND) {
@@ -373,6 +413,8 @@ export class Game {
     this.edits.step();
     this.spawnBrokenBlocks();
     this.collectItems();
+    this.updateFurnaces(dt);
+    this.updateCreatures(dt);
     this.updateFootsteps(dt);
     if (this.player.splashSpeed > 0) this.sounds.play('splash');
     this.saveTimer += dt;
@@ -586,13 +628,130 @@ export class Game {
       hunger: this.hunger,
       air: this.air,
       ...(this.bed ? { bed: { ...this.bed } } : {}),
+      ...(() => {
+        const { creatures, populated } = this.population.snapshot(this.creatures);
+        return { ...(creatures.length ? { creatures } : {}), ...(populated.length ? { creatureColumns: populated } : {}) };
+      })(),
+      ...(this.furnaces.size ? { furnaces: [...this.furnaces].map(([key, f]) => {
+        const [x, y, z] = key.split(',').map(Number) as [number, number, number];
+        return { x, y, z, slots: f.slots.map((s) => (s ? { ...s } : null)) as FurnaceState['slots'], burnS: f.burnS, burnTotalS: f.burnTotalS, cookS: f.cookS };
+      }) } : {}),
     };
+  }
+
+  /**
+   * Runs every furnace (T-I7), loaded or not, so smelting goes on while the player is away. A loaded one shows its fire
+   * as the lit block; one whose block is gone drops its contents, and an empty cold one is forgotten (it starts afresh).
+   */
+  private updateFurnaces(dt: number): void {
+    for (const [key, f] of this.furnaces) {
+      const lit = stepFurnace(f, dt);
+      const [x, y, z] = key.split(',').map(Number) as [number, number, number];
+      if (this.world.isLoadedAt(x, y, z)) {
+        const block = this.world.getBlock(x, y, z);
+        if (!isFurnace(block)) {
+          this.dropFurnace(key, x, y, z);
+          continue;
+        }
+        const want = (lit ? BlockId.LIT_FURNACE : BlockId.FURNACE) + blockVariant(block);
+        if (block !== want) this.setBlock(x, y, z, want);
+      }
+      if (!lit && f.slots.every((s) => s === null) && f !== this.openFurnace) this.furnaces.delete(key);
+    }
+    if (this.openFurnace && (this.furnaceRefreshS -= dt) <= 0) {
+      this.furnaceRefreshS = FURNACE_REFRESH_S;
+      this.inventoryScreen.refresh();
+    }
+  }
+
+  /** The world as the creatures see it this step. */
+  private creatureView(): CreatureView {
+    const p = this.player.position;
+    return {
+      isSolid: (x, y, z) => this.isSolidAt(x, y, z) === true,
+      isWater: this.isWaterAt,
+      isLoaded: (x, y, z) => this.world.isLoadedAt(x, y, z),
+      groundY: (x, z) => { const top = this.world.topAt(x, z); return top === undefined ? undefined : top + 1; },
+      player: { x: p.x, y: p.y, z: p.z, holdingWheat: this.inventory.selectedBlock === BlockId.WHEAT, prey: this.gameMode === GAME_MODE_SURVIVAL },
+      night: Math.sin(2 * Math.PI * this.timeOfDay) < 0,
+      winter: this.calendar.season === 'winter',
+      rand: Math.random,
+    };
+  }
+
+  /** Steps the creatures and acts on what they did; about once a second, their population is updated (T-H2, T-H8). */
+  private updateCreatures(dt: number): void {
+    const view = this.creatureView();
+    if (this.creatureSpawning && (this.populationS -= dt) <= 0) {
+      this.populationS = 1;
+      this.population.update(1, this.creatures, {
+        seed: this.world.seed,
+        columnKeys: () => this.world.columnKeys(),
+        topAt: (x, z) => this.world.topAt(x, z),
+        getBlock: (x, y, z) => this.world.getBlock(x, y, z),
+        isLoadedAt: (x, y, z) => this.world.isLoadedAt(x, y, z),
+        biomeAt: (x, y, z) => this.generator.climateAt(x, y, z).biome,
+      }, view.player, view.night, Math.random);
+    }
+    for (const e of this.creatures.step(dt, view, this.isSolidAt)) this.onCreatureEvent(e);
+  }
+
+  private onCreatureEvent(e: CreatureEvent): void {
+    const p = this.player.position;
+    if (e.kind === 'bite') {
+      // A bite or hit (T-H9): damage and a knock away from the attacker.
+      this.damage(e.damage);
+      const dx = p.x - e.x, dz = p.z - e.z, d = Math.hypot(dx, dz) || 1;
+      this.player.velocity.x += (dx / d) * CREATURE_KNOCKBACK;
+      this.player.velocity.z += (dz / d) * CREATURE_KNOCKBACK;
+      this.player.velocity.y = Math.max(this.player.velocity.y, CREATURE_KNOCKBACK * 0.4);
+      this.sounds.play('hurt', 0.7);
+    } else if (e.kind === 'sound') {
+      const d = Math.hypot(e.x - p.x, e.y - p.y, e.z - p.z);
+      this.sounds.play('call', 0.3 + e.species.voice * 1.4, Math.max(0, 1 - d / CREATURE_SOUND_RADIUS));
+    } else {
+      const c = e.creature;
+      if (e.byPlayer && c.species.meat > 0) this.items.spawn(BlockId.RAW_MEAT, c.species.meat, c.x, c.y + 0.2, c.z, Math.random);
+    }
+  }
+
+  /** A left click on a creature in reach, nearer than the aimed block, hits it (T-H9). Returns true if one was hit. */
+  private attackCreature(eye: Vec3, look: Vec3): boolean {
+    const hit = rayHitCreature(this.creatures.all(), eye, look, Math.min(REACH, this.target?.distance ?? REACH));
+    if (!hit) return false;
+    const tool = toolOf(this.inventory.selectedBlock);
+    if (this.creatures.hurt(hit.creature, PLAYER_ATTACK_DAMAGE + (tool?.speed ?? 0), this.player.position.x, this.player.position.z, true)) {
+      this.onCreatureEvent({ kind: 'death', creature: hit.creature, byPlayer: true });
+    }
+    if (this.gameMode === GAME_MODE_SURVIVAL && tool) this.wearSelectedTool();
+    this.sounds.play('hurt', 0.4 + hit.creature.species.voice);
+    return true;
+  }
+
+  /** Spawns a creature of a species by key (the debug API). */
+  spawnCreature(key: string, x: number, y: number, z: number): Creature | null {
+    const species = SPECIES_BY_KEY.get(key);
+    return species ? this.creatures.spawn(species, x, y, z, Math.random) : null;
+  }
+
+  /** Spills a furnace's slots at its cell and forgets it. */
+  private dropFurnace(key: string, x: number, y: number, z: number): void {
+    for (const stack of this.furnaces.get(key)?.slots ?? []) {
+      if (stack) this.items.spawn(stack.state, stack.count, x + 0.5, y + (1 - ITEM_SIZE) / 2, z + 0.5, Math.random);
+    }
+    this.furnaces.delete(key);
   }
 
   private renderFrame(alpha: number, frameDt: number): void {
     if (this.idle) return;
     this.frameCount++;
     this.clockS += frameDt;
+    // Start on a gamepad pauses play, or resumes it from the start or pause menu (T-K6).
+    if (this.gamepad.poll(frameDt)) {
+      if (this.playing && !this.inventoryScreen.isOpen) this.pauseWithoutLock();
+      else if (this.menu.visible && (this.menu.currentMode === 'paused' || this.menu.currentMode === 'start')) this.resumeWithoutLock();
+    }
+    this.touchControls.setVisible(this.touchMode && this.playing && !this.inventoryScreen.isOpen);
     const eKey = this.input.consumePressed('KeyE');
     const escKey = this.input.consumePressed('Escape');
     if (eKey && (this.playing || this.inventoryScreen.isOpen || (this.menu.visible && this.menu.currentMode === 'paused'))) {
@@ -628,6 +787,11 @@ export class Game {
     if (this.playing && this.ready && !this.inventoryScreen.isOpen) this.handleBlockActions(frameDt, eye, look);
     this.itemMeshes.sync(this.items.items, this.clockS);
     this.bodyMeshes.sync(this.bodies.bodies);
+    this.creatureMeshes.sync(this.creatures.all(), this.clockS, (c) => {
+      // Shortcut: full sky light in the open, a little under cover; the mesher's light values are not kept per cell.
+      const open = (this.world.topAt(Math.floor(c.x), Math.floor(c.z)) ?? -Infinity) < c.y + c.height;
+      return [open ? 1 : 0.25, 0];
+    });
     this.breakOverlay.update(this.breaking.target, this.breaking.stage, this.breaking.target ? slabBounds(this.world.getBlock(this.breaking.target.x, this.breaking.target.y, this.breaking.target.z)) : null);
     const walking = this.player.onGround ? Math.min(1, Math.hypot(this.player.velocity.x, this.player.velocity.z) / WALK_SPEED) : 0;
     this.held.setState(this.inventory.selectedBlock);
@@ -799,11 +963,15 @@ export class Game {
   private breakCell(x: number, y: number, z: number): boolean {
     const id = this.world.getBlock(x, y, z);
     if (!canBreak(id)) return false;
+    // A door goes as a whole (T-K5): the rest of its cells vanish with the one broken (the first cell is this one).
+    const door = isDoor(id) ? connectedDoor((cx, cy, cz) => this.world.getBlock(cx, cy, cz), x, y, z) : [];
     const ok = this.setBlock(x, y, z, BlockId.AIR);
     if (ok) {
       const held = this.inventory.selectedBlock;
       const survival = this.gameMode === GAME_MODE_SURVIVAL;
       if (survival) this.wearSelectedTool();
+      if (isFurnace(id)) this.dropFurnace(`${x},${y},${z}`, x, y, z);
+      for (const c of door.slice(1)) this.setBlock(c.x, c.y, c.z, BlockId.AIR);
       const drop = blockDrop(id);
       // Survival (T-I5): stone-like blocks broken without a pickaxe give nothing.
       if (!survival || dropsWhenMined(id, held)) this.items.spawn(drop.state, drop.count, x + 0.5, y + (1 - ITEM_SIZE) / 2, z + 0.5, Math.random);
@@ -877,12 +1045,46 @@ export class Game {
     const block = this.buildBlock;
     const eye = this.player.eyePosition(1), look = this.player.lookDirection();
     const p = resolvePlacement(t, (x, y, z) => this.world.getBlock(x, y, z), block, this.player.position, PLAYER_SHAPE, eye.y + look.y * t.distance);
+    const pos = this.player.position;
+    // A furnace's mouth faces the player who places it; stairs climb away from them.
+    if (p && isFurnace(p.state)) p.state = BlockId.FURNACE + facingVariant(pos.x - p.x - 0.5, pos.z - p.z - 0.5);
+    if (p && getBlockDef(p.state).shape === 'stairs') p.state = getBlockDef(p.state).id + facingVariant(p.x + 0.5 - pos.x, p.z + 0.5 - pos.z);
+    if (p && isDoor(p.state)) return this.placeDoor(p.x, p.y, p.z);
     const ok = p !== null && this.setBlock(p.x, p.y, p.z, p.state);
     if (ok) {
       this.inventory.consumeSelected();
       this.sounds.play('place');
     }
     return ok;
+  }
+
+  /** Places a whole door (T-K5) from one door item, its panel toward the player, if every cell is free. */
+  private placeDoor(x: number, y: number, z: number): boolean {
+    const pos = this.player.position;
+    const facing = facingVariant(pos.x - x - 0.5, pos.z - z - 0.5);
+    const cells = doorCells(x, y, z, facing);
+    const free = (c: { x: number; y: number; z: number }) => {
+      const state = this.world.getBlock(c.x, c.y, c.z);
+      return this.world.isLoadedAt(c.x, c.y, c.z) && (state === BlockId.AIR || isWaterState(state)) && !blockIntersectsBody(c.x, c.y, c.z, pos, PLAYER_SHAPE);
+    };
+    if (!cells.every(free)) return false;
+    for (const c of cells) this.setBlock(c.x, c.y, c.z, BlockId.DOOR + facing);
+    this.inventory.consumeSelected();
+    this.sounds.play('place');
+    return true;
+  }
+
+  /** Right click on a door opens or closes all of it; it does not close on the player. Returns true if one was aimed at. */
+  useDoor(): boolean {
+    const t = this.target;
+    if (!t) return false;
+    const cells = connectedDoor((x, y, z) => this.world.getBlock(x, y, z), t.x, t.y, t.z);
+    if (cells.length === 0) return false;
+    const opening = this.world.getBlock(t.x, t.y, t.z) < BlockId.OPEN_DOOR;
+    if (!opening && cells.some((c) => blockIntersectsBody(c.x, c.y, c.z, this.player.position, PLAYER_SHAPE))) return true;
+    for (const c of cells) this.setBlock(c.x, c.y, c.z, toggledDoor(this.world.getBlock(c.x, c.y, c.z)));
+    this.sounds.play('place');
+    return true;
   }
 
   /**
@@ -909,6 +1111,17 @@ export class Game {
     return true;
   }
 
+  /** Right click on a furnace (T-I7) opens the inventory with its input, fuel and output. Returns true if one was aimed at. */
+  useFurnace(): boolean {
+    const t = this.target;
+    if (!t || !isFurnace(this.world.getBlock(t.x, t.y, t.z))) return false;
+    const key = `${t.x},${t.y},${t.z}`;
+    let furnace = this.furnaces.get(key);
+    if (!furnace) this.furnaces.set(key, furnace = newFurnace());
+    this.openInventory(2, furnace);
+    return true;
+  }
+
   private showNotice(text: string): void {
     this.notice = text;
     this.noticeS = NOTICE_S;
@@ -923,7 +1136,7 @@ export class Game {
     if (this.gameMode !== GAME_MODE_SURVIVAL || value === 0 || this.hunger >= HUNGER_MAX) return false;
     const t = this.target;
     const aimed = t ? this.world.getBlock(t.x, t.y, t.z) : BlockId.AIR;
-    if (aimed === BlockId.GRASS || aimed === BlockId.DIRT) return false;
+    if (isCropState(this.inventory.selectedBlock) && (aimed === BlockId.GRASS || aimed === BlockId.DIRT)) return false; // planting it
     this.hunger = Math.min(HUNGER_MAX, this.hunger + value);
     this.inventory.consumeSelected();
     this.sounds.play('eat');
@@ -979,10 +1192,13 @@ export class Game {
       return;
     }
     const breakClicked = this.input.consumeClick(0);
+    // A creature in front of the aimed block takes the click, and holding the button does not mine through it.
+    const onCreature = rayHitCreature(this.creatures.all(), eye, look, Math.min(REACH, this.target?.distance ?? REACH)) !== null;
+    if (breakClicked && onCreature) this.attackCreature(eye, look);
     const t = this.target;
     const broken = this.breaking.update(
       frameDt,
-      this.input.isMouseDown(0),
+      this.input.isMouseDown(0) && !onCreature,
       t ? { x: t.x, y: t.y, z: t.z } : null,
       this.breakHardness(),
     );
@@ -991,7 +1207,7 @@ export class Game {
     if (breakClicked || broken) this.held.swing();
     const placeClicked = this.input.consumeClick(2);
     if (placeClicked || (this.input.isMouseDown(2) && this.actionCooldown === 0)) {
-      if (!this.useBed() && !this.useCraftingTable() && !this.eatSelected()) this.placeTarget();
+      if (!this.useBed() && !this.useCraftingTable() && !this.useFurnace() && !this.useDoor() && !this.eatSelected()) this.placeTarget();
       this.actionCooldown = BREAK_REPEAT_S;
       this.held.swing();
     }
@@ -1157,22 +1373,39 @@ export class Game {
   }
 
   /** E or the HUD button: toggle the same inventory screen (spec 24). */
+  /** Plays without pointer capture: touch screens and gamepads (T-K6). */
+  private resumeWithoutLock(): void {
+    this.menu.hide();
+    this.menu.setLockNote(null);
+    this.playing = true;
+  }
+
+  /** The pause menu, as Esc gives it with a captured mouse. */
+  private pauseWithoutLock(): void {
+    this.tool.cancelFrame();
+    this.input.releasePointerLock();
+    this.playing = false;
+    this.menu.show('paused');
+  }
+
   private toggleInventory(): void {
     if (this.inventoryScreen.isOpen) this.closeInventory();
     else this.openInventory();
   }
 
   /** Frees the pointer and shows the inventory, remembering the originating menu when not playing. */
-  private openInventory(craftSize: 2 | 3 = 2): void {
+  private openInventory(craftSize: 2 | 3 = 2, furnace: FurnaceState | null = null): void {
     this.inventoryReturnMenu = this.playing ? null : this.menu.currentMode;
     this.menu.hide();
-    this.inventoryScreen.show(craftSize);
+    this.openFurnace = furnace;
+    this.inventoryScreen.show(craftSize, furnace);
     this.input.releasePointerLock();
   }
 
   /** Closes the inventory. Restore its originating menu, or request pointer capture to return to play. */
   private closeInventory(): void {
     for (const stack of this.inventoryScreen.hide()) this.dropStack(stack);
+    this.openFurnace = null;
     if (this.inventoryReturnMenu !== null) {
       const mode = this.inventoryReturnMenu;
       this.inventoryReturnMenu = null;
@@ -1254,6 +1487,7 @@ export class Game {
       inLava: this.player.inLava,
       hunger: this.hunger,
       bodyTempC: Math.round(this.bodyTempC * 10) / 10,
+      creatures: this.creatures.count,
       air: Math.round(this.air * 100) / 100,
       target: this.target ? [this.target.x, this.target.y, this.target.z] : null,
       targetName: this.target ? getBlockDef(this.world.getBlock(this.target.x, this.target.y, this.target.z)).name : null,

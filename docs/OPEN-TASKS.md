@@ -64,25 +64,25 @@ Measure first (T-C3), then pick the J items that the measurements point at.
 - [x] **T-G5 — Plant succession.** Done: bare open grass regrows its natural plant; tall grass and ferns where trees grow become saplings.
 - [x] **T-G6 — Autumn leaf litter.** Done: leaves drop a thin litter layer in autumn where trees are deciduous; it rots after autumn and snow buries it.
 - [x] **T-G7 — Catch-up on reload.** Done: a reloaded surface or edited chunk advances crops by the expected stages and moves snow and ice toward the current weather. Shortcut: the weather at reload stands for the whole absence; saplings and litter wait until loaded.
-- [ ] **T-G10 — River flow direction** from the drainage simulation, used for animated flow textures.
-- [ ] **T-G11 — Waterfalls** where rivers drop.
-- [x] **T-G12 — Currents.** Done: flowing and falling fluid pushes the player and loose bodies. Generated rivers are still source blocks, so they have no current until T-G10 gives them a flow direction; dropped items are not pushed.
-- [~] **T-G15 — Fluid and snow rendering.** Lava rendering is done. Snow layers render (T-G2). Still open: fluid texture animation.
+- [x] **T-G10 — River flow direction.** Done: river water pushes swimmers downstream (`RIVER_CURRENT`) and its ripples drift with the drainage simulation's flow.
+- [x] **T-G11 — Waterfalls.** Done: where a river drops 0.6 m or more between columns, falling water fills the drop.
+- [x] **T-G12 — Currents.** Done: flowing and falling fluid pushes the player and loose bodies. Rivers push too since T-G10, and dropped items drift along.
+- [~] **T-G15 — Fluid and snow rendering.** Lava rendering is done. Snow layers render (T-G2). Water is animated: ripples follow the flow, and waterfall sides stream down. Still open: lava animation (lava draws with the solid blocks, whose per-vertex slot is taken).
 
 ---
 
 ## 5. Creatures (Phase 6)
 
-- [ ] **T-H1 — Wire `src/world/entity.ts` into the game.** It has gravity and collision (spec 42) but zero importers. Everything below depends on it.
-- [ ] **T-H2 — Per-chunk persistence**, despawn and respawn rules.
-- [ ] **T-H3 — Shared physics.** Reuse the player AABB sweep, including step-up, for bodies 1, 2 and 3 blocks tall.
-- [ ] **T-H4 — Models.** Procedural textured cuboids with walk, idle and eat animations.
-- [ ] **T-H5 — AI.** Utility-scored behaviours: wander, graze, flee, herd (boids), hunt, sleep, follow. Activity follows day/night and season.
-- [ ] **T-H6 — A\* pathfinding** on the voxel grid, respecting body height and jump and fall limits.
-- [ ] **T-H7 — Wildlife by biome.** Deer, rabbits, boars, wolves, bears, foxes, sheep, cows, mountain goats, camels, fish, and bird flocks (cosmetic).
-- [ ] **T-H8 — Population caps** per biome. Spawn with world generation and slowly repopulate.
-- [ ] **T-H9 — Hostile mobs** at night and in dark caves (light below 7), with melee combat and knockback.
-- [ ] **T-H10 — Creature sounds.**
+- [x] **T-H1 — Entities in the game.** Done: `EntitySystem` is generic and drives `CreatureSystem` (`src/creatures/`).
+- [x] **T-H2 — Per-chunk persistence.** Done: a column's creatures are stored when it unloads and come back with it; saved as `creatures` and `creatureColumns`. Hostiles are not saved.
+- [x] **T-H3 — Shared physics.** Done: `moveAndCollide` with step-up (0.6 m, as the player), for bodies of every size.
+- [x] **T-H4 — Models.** Done: textured cuboids per species, with walking legs, idle, grazing head and folded legs asleep; all creatures are one dynamic mesh (one draw call).
+- [x] **T-H5 — AI.** Done: utility-scored wander, graze, flee, herd (boids), hunt, sleep and follow (wheat); day or night activity; bears hibernate in winter.
+- [x] **T-H6 — A\* pathfinding.** Done: `findPath`, with body height, step and fall limits, for hunting and following round obstacles.
+- [x] **T-H7 — Wildlife by biome.** Done: deer, rabbits, boars, wolves, bears, foxes, sheep, cows, mountain goats, camels, fish and bird flocks.
+- [x] **T-H8 — Population caps.** Done: each column gets a group when first seen; repopulation near the player; caps per species within 48 m.
+- [x] **T-H9 — Hostile mobs.** Done: zombies at night and in dark caves, melee bites with knockback; the player hits back with left click (tools hit harder). Shortcut: darkness is judged from the sky and nearby light sources.
+- [x] **T-H10 — Creature sounds.** Done: calls pitched per species and a hurt sound.
 
 Done when (roadmap): a meadow at dawn has grazing herds that flee when approached, wolves hunt, hostile mobs appear at night, and 100+ entities run within the frame budget.
 
@@ -94,10 +94,10 @@ Done when (roadmap): a meadow at dawn has grazing herds that flee when approache
 - [x] **T-I2 — Make hunger change.** Done in #41: hunger drains, starvation damages, and a survival HUD line shows health and hunger. Food is T-I8.
 - [x] **T-I3 — Health regeneration.** Done in #41.
 - [x] **T-I4 — Body temperature.** Done: climate, season, altitude, wind, wetness, a roof and nearby lava or light sources; hypothermia below 35 °C and heatstroke above 39.5 °C. No clothing yet, and the body temperature is not saved.
-- [x] **T-I5 — Tools.** Done: wooden and stone pickaxes, axes and shovels; the right tool divides break time by its tier; wear is the state variant. In survival stone-like blocks need a pickaxe to drop. Iron tools wait on furnaces (T-I7).
+- [x] **T-I5 — Tools.** Done: wooden and stone pickaxes, axes and shovels; the right tool divides break time by its tier; wear is the state variant. In survival stone-like blocks need a pickaxe to drop. Iron tools (speed 6, 250 uses) come from furnace ingots.
 - [x] **T-I6 — Crafting.** Done: 2×2 grid in the inventory, 3×3 at the crafting table, recipes in `src/player/crafting.ts`. Beds are now craftable (wheat over planks).
-- [ ] **T-I7 — Furnaces** that smelt, as a block entity with timers.
-- [~] **T-I8 — Food.** Farming slice done: in survival, right click with a crop eats it (wheat 2, carrots 3, potatoes 4 hunger) unless aimed at grass or dirt, where it is planted. Hunting and cooking wait on T-H7 and T-I7.
+- [x] **T-I7 — Furnaces.** Done: crafted from eight cobblestone; input, fuel and output with timers (`src/player/furnace.ts`), saved as `furnaces`, running while unloaded. Smelts iron ore, sand, cobblestone, clay, logs (to coal) and potatoes. Coal ore drops coal. Iron tools follow.
+- [~] **T-I8 — Food.** Farming slice done: in survival, right click with a crop eats it (wheat 2, carrots 3, potatoes 4 hunger) unless aimed at grass or dirt, where it is planted. Cooking done: a furnace bakes potatoes (6 hunger). Hunting done: animals drop raw meat (3), which a furnace cooks (8).
 - [x] **T-I9 — Beds.** Done: a half-height bed; right click sets the respawn point and, while the sun is down, sleeps to sunrise. Crafted from three wheat over three planks.
 
 Done when (roadmap): a new survival world is playable from punching a tree through to iron tools, and a winter is dangerous without shelter.
@@ -106,8 +106,8 @@ Done when (roadmap): a new survival world is playable from punching a tree throu
 
 ## 7. Building and platform
 
-- [~] **T-K5 — Building tools.** Fill, undo, redo, copy/paste and world export/import are done. Remaining: stairs and doors.
-- [~] **T-K6 — Input (code part).** Remaining: gamepad, and in-world touch controls for movement, look and building.
+- [x] **T-K5 — Building tools.** Done: fill, undo, redo, copy/paste, world export/import, stairs for every cube block (they climb away from the placer) and doors (2 × 7 cells, 0.6 × 2.1 m; right click opens the whole door). Shortcut: a closed door collides as whole cells.
+- [x] **T-K6 — Input (code part).** Done: gamepad (`src/input/gamepad.ts`, standard mapping) and in-world touch controls (`src/ui/touchControls.ts`: stick, drag to look, jump, break, place, fly, slots, pause). Both play without pointer capture. Not done: navigating menus and the inventory with a gamepad (they need a pointer). Installed-browser review stays with the owner checks.
 - [ ] **T-K8 — Pixel Aero HUD.** A separate HUD track described in `docs/pixel-aero-hud/README_FOR_CODEX.md`. Keep the nine-slot model, and do not mix it into the existing Preact GUI.
 
 ---

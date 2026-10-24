@@ -26,6 +26,25 @@ diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.14, 0.1, 0.07), vSeason.x * uSea
 diffuseColor.rgb = mix(diffuseColor.rgb, seasonLuma * vec3(1.45, 1.15, 0.55), vSeason.y * uSeason.z * 0.8);`;
 
 /**
+ * Water ripples (T-G15): brightness bands that drift along the surface flow (T-G10) at its speed, a slow shimmer on
+ * still water, and on the sides of falling water, bands that stream downward. vWetPosition is in world blocks.
+ */
+const FLUID_FRAGMENT = `
+vec3 fluidNormal = normalize(cross(dFdx(vWetPosition), dFdy(vWetPosition)));
+float fluidSpeed = min(length(vFlow), 1.0);
+float ripple;
+if (abs(fluidNormal.y) > 0.5) {
+  vec2 dir = fluidSpeed > 0.01 ? normalize(vFlow) : vec2(1.0, 0.0);
+  float along = dot(vWetPosition.xz, dir), across = dot(vWetPosition.xz, vec2(-dir.y, dir.x));
+  float stream = sin(along * 2.2 - uWindTime * 6.0 + sin(across * 1.3) * 1.5);
+  float still = sin(vWetPosition.x * 1.3 + uWindTime * 0.9) * sin(vWetPosition.z * 1.1 - uWindTime * 0.7);
+  ripple = mix(still * 0.5, stream, fluidSpeed);
+} else {
+  ripple = sin(vWetPosition.y * 2.5 + uWindTime * 8.0 + sin(dot(vWetPosition.xz, vec2(1.7, 1.3))) * 1.2);
+}
+diffuseColor.rgb *= 1.0 + 0.09 * ripple;`;
+
+/**
  * Multiplies the final color by max(skyLight * daylight, blockLight). Geometry MUST have an `aLight` vec2 attribute.
  * Fog uses the horizontal distance from the camera, so terrain far below or above is not fogged by height alone.
  * With `foliage`, geometry MUST also have an `aSway` float and an `aSeason` vec2 attribute (see MeshData).
@@ -34,12 +53,13 @@ diffuseColor.rgb = mix(diffuseColor.rgb, seasonLuma * vec3(1.45, 1.15, 0.55), vS
  * - Seasons (T-F7): deciduous leaves (aSeason.x) turn orange and red in autumn, then fall texel by texel, leaving twigs
  *   through winter. Dry grass (aSeason.y) browns in high summer. Nothing is remeshed: only uSeason changes.
  */
-export function patchLightMaterial(material: THREE.MeshBasicMaterial, uniforms: LightUniforms, wettable = false, transition?: { value: THREE.Vector2 }, foliage = false): void {
-  material.customProgramCacheKey = () => `voxel-light-${wettable ? "wet" : "dry"}-${transition ? "transition" : "full"}-${foliage ? "foliage" : "plain"}`;
+export function patchLightMaterial(material: THREE.MeshBasicMaterial, uniforms: LightUniforms, wettable = false, transition?: { value: THREE.Vector2 }, foliage = false, fluid = false): void {
+  material.customProgramCacheKey = () => `voxel-light-${wettable ? "wet" : "dry"}-${transition ? "transition" : "full"}-${foliage ? "foliage" : "plain"}-${fluid ? "fluid" : "solid"}`;
   material.onBeforeCompile = (shader) => {
     if (transition) shader.uniforms.uTerrainFade = transition;
     shader.uniforms.uDaylight = uniforms.uDaylight;
     shader.uniforms.uWetness = uniforms.uWetness;
+    if (foliage || fluid) shader.uniforms.uWindTime = uniforms.uWindTime;
     if (foliage) {
       shader.uniforms.uWind = uniforms.uWind;
       shader.uniforms.uWindTime = uniforms.uWindTime;
@@ -49,17 +69,17 @@ export function patchLightMaterial(material: THREE.MeshBasicMaterial, uniforms: 
       ? '\nvec3 swayWorld = (modelMatrix * vec4(transformed, 1.0)).xyz;\nfloat swayPhase = dot(swayWorld, vec3(0.37, 0.21, 0.29));\ntransformed.x += aSway * uWind * (0.6 + 0.4 * sin(uWindTime * 2.0 + swayPhase));\ntransformed.z += aSway * uWind * 0.3 * sin(uWindTime * 2.7 + swayPhase * 1.3);'
       : '';
     shader.vertexShader = shader.vertexShader
-      .replace('#include <common>', `#include <common>\nattribute vec2 aLight;\nvarying vec2 vLight;\nvarying float vWetExposure;\nvarying vec3 vWetPosition;${foliage ? '\nattribute float aSway;\nattribute vec2 aSeason;\nvarying vec2 vSeason;\nvarying vec3 vSeasonPosition;\nuniform float uWind;\nuniform float uWindTime;' : ''}`)
-      .replace('#include <begin_vertex>', `#include <begin_vertex>${swayCode}${foliage ? '\nvSeason = aSeason;\nvSeasonPosition = (modelMatrix * vec4(position, 1.0)).xyz;' : ''}\nvLight = aLight;\nvWetExposure = step(0.99, aLight.x);\nvWetPosition = (modelMatrix * vec4(transformed, 1.0)).xyz;`)
+      .replace('#include <common>', `#include <common>\nattribute vec2 aLight;\nvarying vec2 vLight;\nvarying float vWetExposure;\nvarying vec3 vWetPosition;${foliage ? '\nattribute float aSway;\nattribute vec2 aSeason;\nvarying vec2 vSeason;\nvarying vec3 vSeasonPosition;\nuniform float uWind;\nuniform float uWindTime;' : ''}${fluid ? '\nattribute vec2 aSeason;\nvarying vec2 vFlow;' : ''}`)
+      .replace('#include <begin_vertex>', `#include <begin_vertex>${swayCode}${foliage ? '\nvSeason = aSeason;\nvSeasonPosition = (modelMatrix * vec4(position, 1.0)).xyz;' : ''}${fluid ? '\nvFlow = aSeason;' : ''}\nvLight = aLight;\nvWetExposure = step(0.99, aLight.x);\nvWetPosition = (modelMatrix * vec4(transformed, 1.0)).xyz;`)
       .replace(
         '#include <fog_vertex>',
         '#ifdef USE_FOG\nvFogDepth = length((modelMatrix * vec4(transformed, 1.0)).xz - cameraPosition.xz);\n#endif',
       );
     shader.fragmentShader = shader.fragmentShader
-      .replace('#include <common>', `#include <common>\n${transition ? 'uniform vec2 uTerrainFade;\n' : ''}uniform float uDaylight;\nuniform float uWetness;\nvarying vec2 vLight;\nvarying float vWetExposure;\nvarying vec3 vWetPosition;${foliage ? '\nuniform vec3 uSeason;\nvarying vec2 vSeason;\nvarying vec3 vSeasonPosition;' : ''}`)
+      .replace('#include <common>', `#include <common>\n${transition ? 'uniform vec2 uTerrainFade;\n' : ''}uniform float uDaylight;\nuniform float uWetness;\nvarying vec2 vLight;\nvarying float vWetExposure;\nvarying vec3 vWetPosition;${foliage ? '\nuniform vec3 uSeason;\nvarying vec2 vSeason;\nvarying vec3 vSeasonPosition;' : ''}${fluid ? '\nuniform float uWindTime;\nvarying vec2 vFlow;' : ''}`)
       .replace(
         '#include <color_fragment>',
-        `#include <color_fragment>${foliage ? SEASON_FRAGMENT : ''}\ndiffuseColor.rgb *= max(vLight.x * uDaylight, vLight.y);${wettable ? `\ndiffuseColor.rgb *= 1.0 - clamp(uWetness, 0.0, 1.0) * vWetExposure * max(normalize(cross(dFdx(vWetPosition), dFdy(vWetPosition))).y, 0.0) * ${WEATHER_WET_DARKENING.toFixed(2)};` : ''}`,
+        `#include <color_fragment>${foliage ? SEASON_FRAGMENT : ''}${fluid ? FLUID_FRAGMENT : ''}\ndiffuseColor.rgb *= max(vLight.x * uDaylight, vLight.y);${wettable ? `\ndiffuseColor.rgb *= 1.0 - clamp(uWetness, 0.0, 1.0) * vWetExposure * max(normalize(cross(dFdx(vWetPosition), dFdy(vWetPosition))).y, 0.0) * ${WEATHER_WET_DARKENING.toFixed(2)};` : ''}`,
       );
     if (transition) shader.fragmentShader = shader.fragmentShader.replace('#include <alphahash_fragment>',
       'if (uTerrainFade.y > 0.0) diffuseColor.a *= 1.0 - smoothstep(uTerrainFade.x, uTerrainFade.y, length(vWetPosition.xz - cameraPosition.xz));\n#include <alphahash_fragment>');

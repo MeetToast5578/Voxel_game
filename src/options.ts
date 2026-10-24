@@ -9,6 +9,8 @@ export interface GameOptions {
   workers: boolean;
   /** ?map=1 — show the top-down debug map of the terrain instead of the game. */
   map: boolean;
+  /** ?touch=1 shows the touch controls (T-K6) on any device; otherwise only on touch screens. */
+  touch: boolean;
 }
 
 export function readOptions(search: string): GameOptions {
@@ -21,5 +23,6 @@ export function readOptions(search: string): GameOptions {
     nosave: params.get('nosave') === '1',
     workers: params.get('workers') !== '0',
     map: params.get('map') === '1',
+    touch: params.get('touch') === '1',
   };
 }

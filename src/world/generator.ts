@@ -28,7 +28,7 @@ import { columnIndex, columnKey, localIndex } from '../core/coords';
 import { floorDiv } from '../core/math';
 import { hash2, mulberry32 } from '../core/random';
 import { caveKind, createCaveNoises, type CaveNoises } from './caves';
-import { BlockId, blocksSky, getBlockDef, parseBlockStateName } from './blocks';
+import { BlockId, WATER_LEVELS, blocksSky, flowingWaterState, getBlockDef, parseBlockStateName } from './blocks';
 import { Chunk } from './chunk';
 import { AquiferSampler } from './aquifer';
 import { UndergroundPools } from './undergroundPools';
@@ -46,6 +46,9 @@ import { MAX_TREE_RISE, treeBlocks } from './trees';
 
 /** The column cache is only a cache, so clearing it never changes a result. */
 const COLUMN_CACHE_LIMIT = 2048;
+/** A river that drops this many blocks (0.6 m) or more from one column to the next falls (T-G11). */
+const WATERFALL_MIN_DROP = 2;
+const FALLING_WATER = flowingWaterState(WATER_LEVELS, true);
 
 /** Valid substrate for shoreline reeds. */
 const REED_GROUNDS = new Set<number>([BlockId.GRASS, BlockId.SAND, BlockId.CLAY, BlockId.GRAVEL]);
@@ -337,6 +340,7 @@ export class TerrainGenerator {
         const temperature = column.temperatures[i]!;
         const damp = dampClimate(temperature, column.precipitation[i]!);
         const lily = lilyPadAt(this.seed, wx, wz, waterY - h, column.waterBodies[i] === 2, temperature);
+        const fallTop = column.waterBodies[i] === 1 ? this.waterfallTop(wx, wz, waterY) : -Infinity;
         const moss = !submerged && !soil && !coast && !this.isCave(wx, h, wz, h) &&
           mossAt(this.seed, wx, wz, damp) &&
           (this.getHeight(wx - 1, wz) > h || this.getHeight(wx, wz - 1) > h);
@@ -360,7 +364,7 @@ export class TerrainGenerator {
             // Surface water retains its local level. Enclosed density voids use groundwater,
             // just like carved caves, so sea level does not flood every underground passage.
             const level = y <= h - SHORE_ROOF ? waterTable : waterY;
-            id = y <= level ? BlockId.WATER : BlockId.AIR;
+            id = y <= level ? BlockId.WATER : y <= fallTop ? FALLING_WATER : BlockId.AIR;
           }
           out[localIndex(lx, y - y0, lz)] = id;
         }
@@ -430,6 +434,20 @@ export class TerrainGenerator {
       }
     this.columnCache.set(key, column);
     return column;
+  }
+
+  /**
+   * Waterfalls (T-G11): where a neighbouring river column's surface stands WATERFALL_MIN_DROP or more above this river
+   * column's, falling water fills the drop up to it. Returns that top, or -Infinity where the river does not fall.
+   */
+  private waterfallTop(wx: number, wz: number, waterY: number): number {
+    let top = -Infinity;
+    for (const [dx, dz] of [[1, 0], [-1, 0], [0, 1], [0, -1]] as const) {
+      const n = this.regions.sample(wx + dx, wz + dz);
+      const ny = Math.floor(metersToBlocks(n.waterLevelM));
+      if (n.isRiver && ny - waterY >= WATERFALL_MIN_DROP && ny > top) top = ny;
+    }
+    return top;
   }
 
   /** Pure terrain facts used by feature builders; no generated chunk or neighbour load order. */
