@@ -64,6 +64,8 @@ export const BlockId = {
   IRON_INGOT: 1516,
   COAL: 1517,
   BAKED_POTATO: 1518,
+  DOOR: 1519,
+  OPEN_DOOR: 1523,
 } as const;
 
 export const Tile = {
@@ -144,10 +146,11 @@ export const Tile = {
   IRON_INGOT: 89,
   COAL: 90,
   BAKED_POTATO: 91,
+  DOOR: 92,
 } as const;
 
 export type RenderLayer = 'none' | 'opaque' | 'cutout' | 'translucent';
-export type BlockShape = 'cube' | 'cross' | 'layer' | 'slab';
+export type BlockShape = 'cube' | 'cross' | 'layer' | 'slab' | 'stairs' | 'door';
 
 /**
  * A block type. Each type owns `variants` consecutive block states, starting at `id`.
@@ -175,6 +178,8 @@ export interface BlockDef {
   shape: BlockShape;
   /** Base cube state for a slab; variants 0/1 are bottom/top. */
   slabMaterial?: number;
+  /** Base cube state for stairs (T-K5); the variant is the facing (FACINGS) of the high half. */
+  stairsMaterial?: number;
   tiles: { top: number; side: number; bottom: number };
   /**
    * Derived: true if direct sunlight stops at this block. Everything except air and glass blocks the sky
@@ -243,7 +248,8 @@ export interface BlockRegistry {
 
 /** Air lets sunlight through because it is empty; glass because it is clear and not culled against itself; plants because they are thin. */
 function derivedBlocksSky(d: BlockTypeDef): boolean {
-  const clear = d.layer === 'none' || d.shape === 'cross' || d.shape === 'layer' || d.shape === 'slab' || (d.layer === 'cutout' && d.cullSame);
+  const clear = d.layer === 'none' || d.shape === 'cross' || d.shape === 'layer' || d.shape === 'slab' || d.shape === 'stairs' ||
+    d.shape === 'door' || (d.layer === 'cutout' && d.cullSame);
   return !clear;
 }
 
@@ -471,6 +477,15 @@ export const BLOCK_REGISTRY = buildBlockRegistry([
   def('iron_ingot', 'Iron ingot', all(Tile.IRON_INGOT), ITEM),
   def('coal', 'Coal', all(Tile.COAL), ITEM),
   def('baked_potato', 'Baked potato', all(Tile.BAKED_POTATO), ITEM),
+  // Doors (T-K5): DOOR_WIDTH × DOOR_HEIGHT cells, each a thin panel on the side its facing points to. Shortcut: a closed
+  // door collides as whole cells, and an open one not at all; upgrade if doors need thin collision.
+  def('door', 'Door', all(Tile.DOOR), { variants: 4, shape: 'door', opaque: false, cullSame: false, hardness: 1.5, density: 600 }),
+  def('open_door', 'Open door', all(Tile.DOOR), { variants: 4, shape: 'door', solid: false, opaque: false, cullSame: false, hardness: 1.5, density: 600 }),
+  // Stairs (T-K5) for every cube block, as for slabs: a bottom half and a high half toward the facing.
+  ...BASE_REGISTRY.types.filter(d => d.solid && d.shape === 'cube').map(d => ({
+    ...d, key: `${d.key}_stairs`, name: `${d.name} stairs`, variants: 4,
+    shape: 'stairs' as const, stairsMaterial: d.id, opaque: false, cullSame: false, falls: false, flows: false,
+  })),
 ]);
 
 // BlockId.X is variant 0 of the type whose key is x; keep the two lists in step.
@@ -558,10 +573,38 @@ export function facingVariant(dx: number, dz: number): number {
   return Math.abs(dx) > Math.abs(dz) ? (dx > 0 ? 1 : 3) : (dz > 0 ? 2 : 0);
 }
 
+/** An axis-aligned box inside a cell: [x0, y0, z0, x1, y1, z1], each 0..1. */
+export type CellBox = readonly [number, number, number, number, number, number];
+const DOOR_THICKNESS = 3 / 16;
+
+/** The half of a cell toward a facing, between heights y0 and y1. */
+function halfToward([dx, dz]: readonly [number, number], y0: number, y1: number): CellBox {
+  return [dx > 0 ? 0.5 : 0, y0, dz > 0 ? 0.5 : 0, dx < 0 ? 0.5 : 1, y1, dz < 0 ? 0.5 : 1];
+}
+
+/** A thin panel against the cell side a facing points to. */
+function panelAt([dx, dz]: readonly [number, number]): CellBox {
+  const t = DOOR_THICKNESS;
+  return [dx > 0 ? 1 - t : 0, 0, dz > 0 ? 1 - t : 0, dx < 0 ? t : 1, 1, dz < 0 ? t : 1];
+}
+
+/**
+ * The boxes drawn for a stairs or door state, or null for every other shape. Stairs: a bottom half, and the upper half
+ * toward their facing. A door: a panel on its facing side, turned a quarter (to the next facing) when open.
+ */
+export function blockBoxes(state: number): readonly CellBox[] | null {
+  const def = getBlockDef(state), facing = FACINGS[blockVariant(state)]!;
+  if (def.shape === 'stairs') return [[0, 0, 0, 1, 0.5, 1], halfToward(facing, 0.5, 1)];
+  if (def.shape === 'door') return [panelAt(def.id === BlockId.OPEN_DOOR ? FACINGS[(blockVariant(state) + 1) % 4]! : facing)];
+  return null;
+}
+
+export const isDoor = (state: number) => state >= BlockId.DOOR && state < BlockId.OPEN_DOOR + FACINGS.length;
+
 export const isFurnace = (state: number) => state >= BlockId.FURNACE && state < BlockId.LIT_FURNACE + FACINGS.length;
 
 export function blockFaceTile(state: number, dx: number, dy: number, dz: number): number {
-  state = getBlockDef(state).slabMaterial ?? state;
+  state = getBlockDef(state).slabMaterial ?? getBlockDef(state).stairsMaterial ?? state;
   if ((state === BlockId.FALLEN_LOG_X && dx !== 0) || (state === BlockId.FALLEN_LOG_Z && dz !== 0)) return Tile.LOG_TOP;
   const tiles = getBlockDef(state).tiles;
   if (isCropState(state)) return tiles.side + blockVariant(state); // one tile per growth stage
@@ -617,6 +660,8 @@ export function blockDrop(state: number): { state: number; count: number } {
     return { state: getBlockDef(state).id, count: ripe ? CROP_HARVEST_YIELD : 1 };
   }
   if (isFurnace(state)) return { state: BlockId.FURNACE, count: 1 }; // facing and fire are not part of the item
+  if (isDoor(state)) return { state: BlockId.DOOR, count: 1 };
+  if (getBlockDef(state).shape === 'stairs') return { state: getBlockDef(state).id, count: 1 };
   if (state === BlockId.COAL_ORE) return { state: BlockId.COAL, count: 1 };
   return { state: slabItemState(state), count: 1 };
 }

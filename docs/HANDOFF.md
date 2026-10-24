@@ -1,5 +1,12 @@
 # Handoff: Voxel Game (MeetToast5578/Voxel_game)
 
+## 2026-10-24 — stairs and doors (Claude)
+
+T-K5 is done. Stairs exist for every cube block and climb away from the placer. Doors are 2 × 7 cells (0.6 × 2.1 m,
+so the player fits) and are placed, opened and broken as a whole (`src/player/doors.ts`). Both draw through a new
+box path in the mesher (`blockBoxes`). New states append after the furnace states: door 1519, open door 1523, then
+the stairs. Shortcuts: a closed door and stairs collide as whole cells. This branch builds on the furnaces branch.
+
 ## 2026-10-24 — furnaces (Claude)
 
 T-I7 furnaces and iron tools, plus cooking for T-I8. Craft a furnace from eight cobblestone; right click opens input,

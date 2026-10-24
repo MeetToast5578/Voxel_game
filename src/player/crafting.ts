@@ -25,6 +25,11 @@ export const RECIPES: readonly Recipe[] = [
   { pattern: ['WWW', 'PPP'], key: { W: ['wheat'], P: ['planks'] }, result: ['bed', 1] },
   ...Object.entries(TOOL_HEADS).flatMap(([tier, head]) => Object.entries(TOOL_PATTERNS).map(([kind, pattern]) =>
     ({ pattern, key: { M: head, S: ['stick'] }, result: [`${tier}_${kind}`, 1] as const }))),
+  { pattern: ['PP', 'PP', 'PP'], key: { P: ['planks'] }, result: ['door', 1] },
+  // Six of any cube block in a staircase make four stairs (T-K5).
+  ...BLOCKS.filter((d) => d.stairsMaterial !== undefined).map((d) => ({
+    pattern: ['M  ', 'MM ', 'MMM'], key: { M: [getBlockDef(d.stairsMaterial!).key] }, result: [d.key, 4] as const,
+  })),
   // Three of any cube block with a slab make six slabs.
   ...BLOCKS.filter((d) => d.slabMaterial !== undefined).map((d) => ({
     pattern: ['MMM'], key: { M: [getBlockDef(d.slabMaterial!).key] }, result: [d.key, 6] as const,

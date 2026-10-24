@@ -1,8 +1,9 @@
 import { exportWorldArchive, parseWorldArchive, type WorldArchive } from './storage/worldArchive';
 import { BuildClipboard } from './player/clipboard';
 import { resolvePlacement } from './player/placementTarget';
-import { blockCollision, blockDrop, blockVariant, facingVariant, foodValue, isCropState, isFurnace, slabBounds, slabItemState } from './world/blocks';
+import { blockCollision, blockDrop, blockVariant, facingVariant, foodValue, isCropState, isDoor, isFurnace, slabBounds, slabItemState } from './world/blocks';
 import { newFurnace, stepFurnace, type FurnaceState } from './player/furnace';
+import { connectedDoor, doorCells, toggledDoor } from './player/doors';
 import { atmosphericFogStrength } from './world/atmosphere';
 import {
   WORLD_FILE_MAX_BYTES, FOG_SAMPLE_INTERVAL_S, FOG_VALLEY_SAMPLE_M, FOG_GROUND_LAYER_M, metersToBlocks,
@@ -843,12 +844,15 @@ export class Game {
   private breakCell(x: number, y: number, z: number): boolean {
     const id = this.world.getBlock(x, y, z);
     if (!canBreak(id)) return false;
+    // A door goes as a whole (T-K5): the rest of its cells vanish with the one broken (the first cell is this one).
+    const door = isDoor(id) ? connectedDoor((cx, cy, cz) => this.world.getBlock(cx, cy, cz), x, y, z) : [];
     const ok = this.setBlock(x, y, z, BlockId.AIR);
     if (ok) {
       const held = this.inventory.selectedBlock;
       const survival = this.gameMode === GAME_MODE_SURVIVAL;
       if (survival) this.wearSelectedTool();
       if (isFurnace(id)) this.dropFurnace(`${x},${y},${z}`, x, y, z);
+      for (const c of door.slice(1)) this.setBlock(c.x, c.y, c.z, BlockId.AIR);
       const drop = blockDrop(id);
       // Survival (T-I5): stone-like blocks broken without a pickaxe give nothing.
       if (!survival || dropsWhenMined(id, held)) this.items.spawn(drop.state, drop.count, x + 0.5, y + (1 - ITEM_SIZE) / 2, z + 0.5, Math.random);
@@ -922,14 +926,46 @@ export class Game {
     const block = this.buildBlock;
     const eye = this.player.eyePosition(1), look = this.player.lookDirection();
     const p = resolvePlacement(t, (x, y, z) => this.world.getBlock(x, y, z), block, this.player.position, PLAYER_SHAPE, eye.y + look.y * t.distance);
-    // A furnace's mouth faces the player who places it.
-    if (p && isFurnace(p.state)) p.state = BlockId.FURNACE + facingVariant(this.player.position.x - p.x - 0.5, this.player.position.z - p.z - 0.5);
+    const pos = this.player.position;
+    // A furnace's mouth faces the player who places it; stairs climb away from them.
+    if (p && isFurnace(p.state)) p.state = BlockId.FURNACE + facingVariant(pos.x - p.x - 0.5, pos.z - p.z - 0.5);
+    if (p && getBlockDef(p.state).shape === 'stairs') p.state = getBlockDef(p.state).id + facingVariant(p.x + 0.5 - pos.x, p.z + 0.5 - pos.z);
+    if (p && isDoor(p.state)) return this.placeDoor(p.x, p.y, p.z);
     const ok = p !== null && this.setBlock(p.x, p.y, p.z, p.state);
     if (ok) {
       this.inventory.consumeSelected();
       this.sounds.play('place');
     }
     return ok;
+  }
+
+  /** Places a whole door (T-K5) from one door item, its panel toward the player, if every cell is free. */
+  private placeDoor(x: number, y: number, z: number): boolean {
+    const pos = this.player.position;
+    const facing = facingVariant(pos.x - x - 0.5, pos.z - z - 0.5);
+    const cells = doorCells(x, y, z, facing);
+    const free = (c: { x: number; y: number; z: number }) => {
+      const state = this.world.getBlock(c.x, c.y, c.z);
+      return this.world.isLoadedAt(c.x, c.y, c.z) && (state === BlockId.AIR || isWaterState(state)) && !blockIntersectsBody(c.x, c.y, c.z, pos, PLAYER_SHAPE);
+    };
+    if (!cells.every(free)) return false;
+    for (const c of cells) this.setBlock(c.x, c.y, c.z, BlockId.DOOR + facing);
+    this.inventory.consumeSelected();
+    this.sounds.play('place');
+    return true;
+  }
+
+  /** Right click on a door opens or closes all of it; it does not close on the player. Returns true if one was aimed at. */
+  useDoor(): boolean {
+    const t = this.target;
+    if (!t) return false;
+    const cells = connectedDoor((x, y, z) => this.world.getBlock(x, y, z), t.x, t.y, t.z);
+    if (cells.length === 0) return false;
+    const opening = this.world.getBlock(t.x, t.y, t.z) < BlockId.OPEN_DOOR;
+    if (!opening && cells.some((c) => blockIntersectsBody(c.x, c.y, c.z, this.player.position, PLAYER_SHAPE))) return true;
+    for (const c of cells) this.setBlock(c.x, c.y, c.z, toggledDoor(this.world.getBlock(c.x, c.y, c.z)));
+    this.sounds.play('place');
+    return true;
   }
 
   /**
@@ -1049,7 +1085,7 @@ export class Game {
     if (breakClicked || broken) this.held.swing();
     const placeClicked = this.input.consumeClick(2);
     if (placeClicked || (this.input.isMouseDown(2) && this.actionCooldown === 0)) {
-      if (!this.useBed() && !this.useCraftingTable() && !this.useFurnace() && !this.eatSelected()) this.placeTarget();
+      if (!this.useBed() && !this.useCraftingTable() && !this.useFurnace() && !this.useDoor() && !this.eatSelected()) this.placeTarget();
       this.actionCooldown = BREAK_REPEAT_S;
       this.held.swing();
     }

@@ -72,6 +72,8 @@ const PAINTERS: Record<number, PixelFn> = {
   [Tile.IRON_INGOT]: (x, y, r) => (y >= 6 && y <= 10 && x >= 2 + (10 - y) && x <= 13 - (10 - y) / 2 ? shade([216, 216, 216], (y === 6 ? 1.15 : 0.9) + r() * 0.1) : [0, 0, 0, 0]),
   [Tile.COAL]: (x, y, r) => (Math.hypot(x - 7.5, (y - 8) * 1.2) <= 5.5 ? shade([40, 40, 44], 0.7 + r() * 0.6) : [0, 0, 0, 0]),
   [Tile.BAKED_POTATO]: (x, y, r) => (Math.hypot((x - 7.5) * 0.8, y - 8) <= 4.5 ? shade([196, 140, 60], 0.8 + r() * 0.35) : [0, 0, 0, 0]),
+  // A door (T-K5): upright boards; every cell of the door shows the same tile, so it has no frame or handle.
+  [Tile.DOOR]: (x, _y, r) => shade([150, 112, 66], (x % 5 === 0 ? 0.6 : 1) + (r() - 0.5) * 0.12),
   [Tile.STICK]: (x, y, r) => (x + y === 15 && x >= 2 && x <= 13 ? shade(HANDLE, 0.9 + r() * 0.2) : [0, 0, 0, 0]),
   // Crafting table (T-I6): a planked top ruled into a 3×3 grid, and sides with hanging tools.
   [Tile.CRAFTING_TOP]: (x, y, r) => shade([162, 130, 78], (x % 5 === 0 || y % 5 === 0 ? 0.55 : 1) + (r() - 0.5) * 0.1),
