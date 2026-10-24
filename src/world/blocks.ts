@@ -59,6 +59,15 @@ export const BlockId = {
   BED: 179,
   CRAFTING_TABLE: 180,
   STICK: 181,
+  FURNACE: 1508,
+  LIT_FURNACE: 1512,
+  IRON_INGOT: 1516,
+  COAL: 1517,
+  BAKED_POTATO: 1518,
+  DOOR: 1519,
+  OPEN_DOOR: 1523,
+  RAW_MEAT: 1659,
+  COOKED_MEAT: 1660,
 } as const;
 
 export const Tile = {
@@ -130,12 +139,23 @@ export const Tile = {
   CRAFTING_TOP: 73,
   CRAFTING_SIDE: 74,
   STICK: 75,
-  // One tile per tool: TOOL_KINDS within TOOL_TIERS order (pickaxe, axe, shovel; wooden then stone).
+  // One tile per tool: TOOL_KINDS within TOOL_TIERS order (pickaxe, axe, shovel; wooden, stone, iron).
   TOOLS: 76,
+  FURNACE_SIDE: 85,
+  FURNACE_FRONT: 86,
+  FURNACE_FRONT_LIT: 87,
+  FURNACE_TOP: 88,
+  IRON_INGOT: 89,
+  COAL: 90,
+  BAKED_POTATO: 91,
+  DOOR: 92,
+  CREATURE: 93,
+  RAW_MEAT: 94,
+  COOKED_MEAT: 95,
 } as const;
 
 export type RenderLayer = 'none' | 'opaque' | 'cutout' | 'translucent';
-export type BlockShape = 'cube' | 'cross' | 'layer' | 'slab';
+export type BlockShape = 'cube' | 'cross' | 'layer' | 'slab' | 'stairs' | 'door';
 
 /**
  * A block type. Each type owns `variants` consecutive block states, starting at `id`.
@@ -163,6 +183,8 @@ export interface BlockDef {
   shape: BlockShape;
   /** Base cube state for a slab; variants 0/1 are bottom/top. */
   slabMaterial?: number;
+  /** Base cube state for stairs (T-K5); the variant is the facing (FACINGS) of the high half. */
+  stairsMaterial?: number;
   tiles: { top: number; side: number; bottom: number };
   /**
    * Derived: true if direct sunlight stops at this block. Everything except air and glass blocks the sky
@@ -231,7 +253,8 @@ export interface BlockRegistry {
 
 /** Air lets sunlight through because it is empty; glass because it is clear and not culled against itself; plants because they are thin. */
 function derivedBlocksSky(d: BlockTypeDef): boolean {
-  const clear = d.layer === 'none' || d.shape === 'cross' || d.shape === 'layer' || d.shape === 'slab' || (d.layer === 'cutout' && d.cullSame);
+  const clear = d.layer === 'none' || d.shape === 'cross' || d.shape === 'layer' || d.shape === 'slab' || d.shape === 'stairs' ||
+    d.shape === 'door' || (d.layer === 'cutout' && d.cullSame);
   return !clear;
 }
 
@@ -452,6 +475,25 @@ export const BLOCK_REGISTRY = buildBlockRegistry([
   ...Object.entries(TOOL_TIERS).flatMap(([tier, { uses }], t) => TOOL_KINDS.map((kind, k) =>
     def(`${tier}_${kind}`, `${tier[0]!.toUpperCase()}${tier.slice(1)} ${kind}`, all(Tile.TOOLS + t * TOOL_KINDS.length + k),
       { ...ITEM, variants: uses, maxStack: 1 }))),
+  // Furnaces (T-I7): the variant is the side the mouth faces (FACINGS); a burning one is its own type, which glows.
+  def('furnace', 'Furnace', { top: Tile.FURNACE_TOP, side: Tile.FURNACE_SIDE, bottom: Tile.FURNACE_TOP }, { variants: 4, hardness: 3.5 }),
+  def('lit_furnace', 'Lit furnace', { top: Tile.FURNACE_TOP, side: Tile.FURNACE_SIDE, bottom: Tile.FURNACE_TOP },
+    { variants: 4, hardness: 3.5, lightEmission: 13 }),
+  def('iron_ingot', 'Iron ingot', all(Tile.IRON_INGOT), ITEM),
+  def('coal', 'Coal', all(Tile.COAL), ITEM),
+  def('baked_potato', 'Baked potato', all(Tile.BAKED_POTATO), ITEM),
+  // Doors (T-K5): DOOR_WIDTH × DOOR_HEIGHT cells, each a thin panel on the side its facing points to. Shortcut: a closed
+  // door collides as whole cells, and an open one not at all; upgrade if doors need thin collision.
+  def('door', 'Door', all(Tile.DOOR), { variants: 4, shape: 'door', opaque: false, cullSame: false, hardness: 1.5, density: 600 }),
+  def('open_door', 'Open door', all(Tile.DOOR), { variants: 4, shape: 'door', solid: false, opaque: false, cullSame: false, hardness: 1.5, density: 600 }),
+  // Stairs (T-K5) for every cube block, as for slabs: a bottom half and a high half toward the facing.
+  ...BASE_REGISTRY.types.filter(d => d.solid && d.shape === 'cube').map(d => ({
+    ...d, key: `${d.key}_stairs`, name: `${d.name} stairs`, variants: 4,
+    shape: 'stairs' as const, stairsMaterial: d.id, opaque: false, cullSame: false, falls: false, flows: false,
+  })),
+  // Hunting (T-I8, T-H7): animals drop raw meat, which a furnace cooks.
+  def('raw_meat', 'Raw meat', all(Tile.RAW_MEAT), ITEM),
+  def('cooked_meat', 'Cooked meat', all(Tile.COOKED_MEAT), ITEM),
 ]);
 
 // BlockId.X is variant 0 of the type whose key is x; keep the two lists in step.
@@ -532,11 +574,50 @@ export function flowingLavaState(level: number, falling: boolean): number {
 }
 
 /** Tile for a cube face normal; horizontal logs keep end grain perpendicular to their axis. */
+/** The horizontal direction [dx, dz] of each facing variant: north (-z), east, south, west. */
+export const FACINGS: readonly (readonly [number, number])[] = [[0, -1], [1, 0], [0, 1], [-1, 0]];
+/** The facing variant that points from a block along (dx, dz), by the larger component; toward the viewer when given the offset to them. */
+export function facingVariant(dx: number, dz: number): number {
+  return Math.abs(dx) > Math.abs(dz) ? (dx > 0 ? 1 : 3) : (dz > 0 ? 2 : 0);
+}
+
+/** An axis-aligned box inside a cell: [x0, y0, z0, x1, y1, z1], each 0..1. */
+export type CellBox = readonly [number, number, number, number, number, number];
+const DOOR_THICKNESS = 3 / 16;
+
+/** The half of a cell toward a facing, between heights y0 and y1. */
+function halfToward([dx, dz]: readonly [number, number], y0: number, y1: number): CellBox {
+  return [dx > 0 ? 0.5 : 0, y0, dz > 0 ? 0.5 : 0, dx < 0 ? 0.5 : 1, y1, dz < 0 ? 0.5 : 1];
+}
+
+/** A thin panel against the cell side a facing points to. */
+function panelAt([dx, dz]: readonly [number, number]): CellBox {
+  const t = DOOR_THICKNESS;
+  return [dx > 0 ? 1 - t : 0, 0, dz > 0 ? 1 - t : 0, dx < 0 ? t : 1, 1, dz < 0 ? t : 1];
+}
+
+/**
+ * The boxes drawn for a stairs or door state, or null for every other shape. Stairs: a bottom half, and the upper half
+ * toward their facing. A door: a panel on its facing side, turned a quarter (to the next facing) when open.
+ */
+export function blockBoxes(state: number): readonly CellBox[] | null {
+  const def = getBlockDef(state), facing = FACINGS[blockVariant(state)]!;
+  if (def.shape === 'stairs') return [[0, 0, 0, 1, 0.5, 1], halfToward(facing, 0.5, 1)];
+  if (def.shape === 'door') return [panelAt(def.id === BlockId.OPEN_DOOR ? FACINGS[(blockVariant(state) + 1) % 4]! : facing)];
+  return null;
+}
+
+export const isDoor = (state: number) => state >= BlockId.DOOR && state < BlockId.OPEN_DOOR + FACINGS.length;
+
+export const isFurnace = (state: number) => state >= BlockId.FURNACE && state < BlockId.LIT_FURNACE + FACINGS.length;
+
 export function blockFaceTile(state: number, dx: number, dy: number, dz: number): number {
-  state = getBlockDef(state).slabMaterial ?? state;
+  state = getBlockDef(state).slabMaterial ?? getBlockDef(state).stairsMaterial ?? state;
   if ((state === BlockId.FALLEN_LOG_X && dx !== 0) || (state === BlockId.FALLEN_LOG_Z && dz !== 0)) return Tile.LOG_TOP;
   const tiles = getBlockDef(state).tiles;
   if (isCropState(state)) return tiles.side + blockVariant(state); // one tile per growth stage
+  if (isFurnace(state) && FACINGS[blockVariant(state)]![0] === dx && FACINGS[blockVariant(state)]![1] === dz)
+    return getBlockDef(state).id === BlockId.LIT_FURNACE ? Tile.FURNACE_FRONT_LIT : Tile.FURNACE_FRONT;
   return dy > 0 ? tiles.top : dy < 0 ? tiles.bottom : tiles.side;
 }
 
@@ -559,8 +640,10 @@ export function isCropState(state: number): boolean {
 }
 
 /** Hunger a block state restores when eaten (T-I8): the planted stage of a crop is food; anything else is 0. */
+/** Hunger a food restores, or 0. Only a crop's first state (what you plant) is food, not a growing one. */
 export function foodValue(state: number): number {
-  return isCropState(state) && blockVariant(state) === 0 ? FOOD_HUNGER[getBlockDef(state).key as keyof typeof FOOD_HUNGER] : 0;
+  const def = getBlockDef(state);
+  return def.id === state ? FOOD_HUNGER[def.key] ?? 0 : 0;
 }
 
 export function isSnowState(state: number): boolean {
@@ -584,6 +667,10 @@ export function blockDrop(state: number): { state: number; count: number } {
     const ripe = blockVariant(state) === CROP_STAGES - 1;
     return { state: getBlockDef(state).id, count: ripe ? CROP_HARVEST_YIELD : 1 };
   }
+  if (isFurnace(state)) return { state: BlockId.FURNACE, count: 1 }; // facing and fire are not part of the item
+  if (isDoor(state)) return { state: BlockId.DOOR, count: 1 };
+  if (getBlockDef(state).shape === 'stairs') return { state: getBlockDef(state).id, count: 1 };
+  if (state === BlockId.COAL_ORE) return { state: BlockId.COAL, count: 1 };
   return { state: slabItemState(state), count: 1 };
 }
 export function slabState(material: number, top = false): number {

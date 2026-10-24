@@ -60,6 +60,14 @@ export interface DebugApi {
   resetBreakStage(): void;
   /** Debug hook: pauses or resumes simulation and rendering so an auxiliary page can load without contention. */
   setIdle(idle: boolean): void;
+  /** Spawns a creature by species key (T-H1); returns its id, or null for an unknown species. */
+  spawnCreature(species: string, x: number, y: number, z: number): number | null;
+  /** Every live creature: id, species, position, behaviour and health. */
+  creatures(): { id: number; species: string; x: number; y: number; z: number; behaviour: string; health: number }[];
+  /** Removes every live creature (stored ones stay), for checks that need a quiet world. */
+  clearCreatures(): void;
+  /** Turns creature spawning and column storage on or off (scripted checks turn it off). */
+  setCreatureSpawning(on: boolean): void;
 }
 
 declare global {
@@ -121,6 +129,10 @@ export function installDebugApi(game: Game): void {
     get editsBusy() {
       return game.editsBusy;
     },
+    spawnCreature: (species, x, y, z) => game.spawnCreature(species, x, y, z)?.id ?? null,
+    creatures: () => game.creatures.all().map((c) => ({ id: c.id, species: c.species.key, x: c.x, y: c.y, z: c.z, behaviour: c.behaviour, health: c.health })),
+    clearCreatures: () => { for (const c of game.creatures.all()) game.creatures.remove(c.id); },
+    setCreatureSpawning: (on) => { game.creatureSpawning = on; },
     setGameMode: (mode) => {
       game.setGameMode(mode); // through the game, so the menu picker stays in step and survival tops up the vitals
     },

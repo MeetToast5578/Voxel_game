@@ -2,6 +2,9 @@ import { CHUNK_VOLUME, GAME_MODE_CREATIVE, GAME_MODE_SURVIVAL, HEALTH_MAX, HUNGE
 import type { PendingTick } from '../world/tick';
 import type { DroppedItem } from '../items/itemEntities';
 import { DEFAULT_HOTBAR, type ItemStack } from '../player/inventory';
+import type { FurnaceState } from '../player/furnace';
+import type { SavedCreature } from '../creatures/creatures';
+import { SPECIES_BY_KEY } from '../creatures/species';
 import { BlockId, blockStateName, parseBlockStateName } from '../world/blocks';
 
 export const SAVE_VERSION = 3; // 3: block coordinates at 0.3 m; older saves are not loaded
@@ -43,7 +46,14 @@ export interface WorldMeta {
   air: number;
   /** The bed the player respawns on (T-I9), if any. */
   bed?: { x: number; y: number; z: number };
+  /** Furnaces with something in them or still burning (T-I7). */
+  furnaces?: SavedFurnace[];
+  /** Wildlife, live and in unloaded columns, and the columns that have had their first spawn (T-H2). */
+  creatures?: SavedCreature[];
+  creatureColumns?: string[];
 }
+
+export type SavedFurnace = { x: number; y: number; z: number } & FurnaceState;
 
 /** A stack as stored: the block's name and the count. */
 export interface StoredStack {
@@ -70,6 +80,9 @@ export interface MetaRecord {
   hunger: number;
   air: number;
   bed?: { x: number; y: number; z: number };
+  furnaces?: ({ x: number; y: number; z: number; slots: (StoredStack | null)[]; burnS: number; burnTotalS: number; cookS: number })[];
+  creatures?: SavedCreature[];
+  creatureColumns?: string[];
 }
 
 /** One chunk's player edits: chunk key "cx,cy,cz" and [localIndex 0..4095, state name] pairs. */
@@ -105,6 +118,12 @@ export function metaRecord(meta: WorldMeta): MetaRecord {
     hunger: meta.hunger,
     air: meta.air,
     ...(meta.bed ? { bed: { ...meta.bed } } : {}), // only when set, so older saves and backups round-trip unchanged
+    ...(meta.furnaces?.length ? { furnaces: meta.furnaces.map((f) => ({
+      x: f.x, y: f.y, z: f.z, slots: f.slots.map((s) => (s ? { name: blockStateName(s.state), count: s.count } : null)),
+      burnS: f.burnS, burnTotalS: f.burnTotalS, cookS: f.cookS,
+    })) } : {}),
+    ...(meta.creatures?.length ? { creatures: meta.creatures.map((c) => ({ ...c })) } : {}),
+    ...(meta.creatureColumns?.length ? { creatureColumns: [...meta.creatureColumns] } : {}),
   };
 }
 
@@ -191,6 +210,29 @@ export function repairChunkAges(raw: unknown): [string, number][] {
     CHUNK_KEY.test(v[0]) && Number.isSafeInteger(v[1]) && v[1] >= 0).map(([key, age]) => [key, age]);
 }
 
+/** Furnaces from a save: an invalid one is dropped, an invalid slot emptied, timers clamped. Never throws. */
+export function repairFurnaces(raw: unknown): SavedFurnace[] {
+  if (!Array.isArray(raw)) return [];
+  const out: SavedFurnace[] = [];
+  for (const r of raw) {
+    const f = r as Partial<Record<'slots' | 'burnS' | 'burnTotalS' | 'cookS', unknown>>;
+    if (!isCell(r) || !Array.isArray(f.slots) || f.slots.length !== 3) continue;
+    const time = (v: unknown) => (isNum(v) ? Math.max(0, v) : 0);
+    const [input, fuel, output] = f.slots.map((s) => parseStack(s));
+    out.push({ x: r.x, y: r.y, z: r.z, slots: [input ?? null, fuel ?? null, output ?? null],
+      burnS: time(f.burnS), burnTotalS: time(f.burnTotalS), cookS: time(f.cookS) });
+  }
+  return out;
+}
+
+/** Creatures from a save: unknown species and bad numbers are dropped. Never throws. */
+export function repairCreatures(raw: unknown): SavedCreature[] {
+  if (!Array.isArray(raw)) return [];
+  return raw.filter((c): c is SavedCreature => typeof c === 'object' && c !== null && SPECIES_BY_KEY.has((c as SavedCreature).species) &&
+    [c.x, c.y, c.z, c.yaw].every(isNum) && isNum(c.health) && c.health > 0)
+    .map((c) => ({ species: c.species, x: c.x, y: c.y, z: c.z, health: c.health, yaw: c.yaw }));
+}
+
 /**
  * Parses a stored meta (an object, or its JSON text). Returns null when it is missing, corrupt or of another
  * version, or when the seed, player or selected slot is invalid. The inventory, items and time of day are repaired,
@@ -229,10 +271,15 @@ export function parseMeta(raw: unknown): WorldMeta | null {
     hunger: isNum(d.hunger) ? Math.max(0, Math.min(HUNGER_MAX, d.hunger)) : HUNGER_MAX,
     air: isNum(d.air) ? Math.max(0, Math.min(AIR_MAX_S, d.air)) : AIR_MAX_S,
     ...(isCell(d.bed) ? { bed: { x: d.bed.x, y: d.bed.y, z: d.bed.z } } : {}),
+    ...(d.furnaces === undefined ? {} : { furnaces: repairFurnaces(d.furnaces) }),
+    ...(d.creatures === undefined ? {} : { creatures: repairCreatures(d.creatures) }),
+    ...(d.creatureColumns === undefined ? {} : { creatureColumns: repairChunkKeys(d.creatureColumns) }),
   };
 }
 
 const CHUNK_KEY = /^-?\d+,-?\d+,-?\d+$/;
+const COLUMN_KEY = /^-?\d+,-?\d+$/;
+const repairChunkKeys = (raw: unknown): string[] => (Array.isArray(raw) ? raw.filter((k): k is string => typeof k === 'string' && COLUMN_KEY.test(k)) : []);
 
 /**
  * Parses a stored chunk record. Returns null (the whole record is dropped) when it is not an object or its key is

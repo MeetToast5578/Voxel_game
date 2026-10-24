@@ -18,6 +18,8 @@ export interface ChunkGenerator {
   generateChunk(chunk: Chunk): void;
   columnTops(cx: number, cz: number): Int32Array;
   columnGroundMin?(cx: number, cz: number): number;
+  /** Rivers for the mesher's water flow (T-G10); a fake may leave it out. */
+  sampleColumn?(x: number, z: number): { isRiver: boolean; flowX: number; flowZ: number };
 }
 
 /** Does the three chunk jobs somewhere else (Web Workers). Implemented by workers/workerPool.ts. */
@@ -627,7 +629,8 @@ export class ChunkManager {
   }
 
   private meshNow(p: ChunkPos): void {
-    this.sink.set(p.cx, p.cy, p.cz, buildChunkMesh(this.neighborBlocks(p.cx, p.cy, p.cz), this.neighborTops(p.cx, p.cz), p.cy, { seed: this.world.seed, cx: p.cx, cz: p.cz }));
+    this.sink.set(p.cx, p.cy, p.cz, buildChunkMesh(this.neighborBlocks(p.cx, p.cy, p.cz), this.neighborTops(p.cx, p.cz), p.cy, { seed: this.world.seed, cx: p.cx, cz: p.cz,
+      riverFlow: (x, z) => { const r = this.generator.sampleColumn?.(x, z); return r?.isRiver ? [r.flowX, r.flowZ] : null; } }));
     this.meshed.set(p.key, p);
     this.dirty.delete(p.key);
   }

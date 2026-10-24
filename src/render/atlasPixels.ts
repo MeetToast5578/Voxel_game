@@ -50,11 +50,34 @@ function toolPainter(kind: string, head: RGB): PixelFn {
   };
   return (x, y, r) => inHead(x, y) ? shade(head, 0.85 + r() * 0.3) : onHandle(x, y) ? shade(HANDLE, 0.9 + r() * 0.2) : [0, 0, 0, 0];
 }
-const TOOL_HEADS: readonly RGB[] = [[162, 130, 78], [125, 125, 125]]; // wooden, stone
+const TOOL_HEADS: readonly RGB[] = [[162, 130, 78], [125, 125, 125], [216, 216, 216]]; // wooden, stone, iron
+
+const COBBLE: RGB = [118, 118, 118];
+/** A furnace front (T-I7): cobble with a dark mouth in the lower half, glowing when lit. */
+function furnaceFront(lit: boolean): PixelFn {
+  return (x, y, r) => {
+    if (x >= 4 && x <= 11 && y >= 8 && y <= 13) return lit ? shade(y >= 11 ? [255, 150, 40] : [230, 90, 20], 0.8 + r() * 0.4) : shade([30, 28, 26], 1);
+    return shade(COBBLE, (y === 7 && x >= 3 && x <= 12 ? 0.6 : 1) + (r() - 0.5) * 0.3);
+  };
+}
 
 const PAINTERS: Record<number, PixelFn> = {
   ...Object.fromEntries(TOOL_HEADS.flatMap((head, t) => TOOL_KINDS.map((kind, k) =>
     [Tile.TOOLS + t * TOOL_KINDS.length + k, toolPainter(kind, head)]))),
+  [Tile.FURNACE_SIDE]: (_x, _y, r) => shade(COBBLE, 1 + (r() - 0.5) * 0.3),
+  [Tile.FURNACE_TOP]: (x, y, r) => shade(COBBLE, (x === 0 || y === 0 || x === 15 || y === 15 ? 0.7 : 1.1) + (r() - 0.5) * 0.2),
+  [Tile.FURNACE_FRONT]: furnaceFront(false),
+  [Tile.FURNACE_FRONT_LIT]: furnaceFront(true),
+  // Items: an ingot bar, a lump of coal and a browned potato, each on a clear background.
+  [Tile.IRON_INGOT]: (x, y, r) => (y >= 6 && y <= 10 && x >= 2 + (10 - y) && x <= 13 - (10 - y) / 2 ? shade([216, 216, 216], (y === 6 ? 1.15 : 0.9) + r() * 0.1) : [0, 0, 0, 0]),
+  [Tile.COAL]: (x, y, r) => (Math.hypot(x - 7.5, (y - 8) * 1.2) <= 5.5 ? shade([40, 40, 44], 0.7 + r() * 0.6) : [0, 0, 0, 0]),
+  [Tile.BAKED_POTATO]: (x, y, r) => (Math.hypot((x - 7.5) * 0.8, y - 8) <= 4.5 ? shade([196, 140, 60], 0.8 + r() * 0.35) : [0, 0, 0, 0]),
+  // A door (T-K5): upright boards; every cell of the door shows the same tile, so it has no frame or handle.
+  [Tile.DOOR]: (x, _y, r) => shade([150, 112, 66], (x % 5 === 0 ? 0.6 : 1) + (r() - 0.5) * 0.12),
+  // Creatures (T-H4): a light fur tile, coloured per species and part by vertex colour.
+  [Tile.CREATURE]: (_x, _y, r) => shade([235, 235, 235], 0.85 + r() * 0.15),
+  [Tile.RAW_MEAT]: (x, y, r) => (Math.hypot((x - 7.5) * 0.75, y - 8) <= 5 ? shade(Math.hypot(x - 9, y - 7) < 1.5 ? [235, 225, 215] : [200, 70, 70], 0.85 + r() * 0.3) : [0, 0, 0, 0]),
+  [Tile.COOKED_MEAT]: (x, y, r) => (Math.hypot((x - 7.5) * 0.75, y - 8) <= 5 ? shade(Math.hypot(x - 9, y - 7) < 1.5 ? [235, 225, 215] : [130, 76, 44], 0.85 + r() * 0.3) : [0, 0, 0, 0]),
   [Tile.STICK]: (x, y, r) => (x + y === 15 && x >= 2 && x <= 13 ? shade(HANDLE, 0.9 + r() * 0.2) : [0, 0, 0, 0]),
   // Crafting table (T-I6): a planked top ruled into a 3×3 grid, and sides with hanging tools.
   [Tile.CRAFTING_TOP]: (x, y, r) => shade([162, 130, 78], (x % 5 === 0 || y % 5 === 0 ? 0.55 : 1) + (r() - 0.5) * 0.1),

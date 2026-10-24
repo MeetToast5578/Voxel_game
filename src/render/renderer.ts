@@ -65,7 +65,7 @@ export class Renderer {
       polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4,
     });
     patchLightMaterial(this.solidMaterial, this.lightUniforms, true, this.terrainFade, true);
-    patchLightMaterial(this.waterMaterial, this.lightUniforms, false, this.terrainFade);
+    patchLightMaterial(this.waterMaterial, this.lightUniforms, false, this.terrainFade, false, true);
     patchLightMaterial(this.itemMaterial, this.lightUniforms);
 
     window.addEventListener('resize', this.resize);
