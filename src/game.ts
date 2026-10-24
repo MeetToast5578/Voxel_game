@@ -326,6 +326,7 @@ export class Game {
     this.gamepad = new GamepadInput(this.input);
     this.touchMode = options.touch || (typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches);
     this.touchControls = new TouchControls(container, this.input, () => this.pauseWithoutLock());
+    container.classList.toggle('touch-mode', this.touchMode);
     this.playing = options.autostart;
     if (options.autostart) this.menu.hide();
     else this.menu.show('start');

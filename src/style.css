@@ -750,6 +750,12 @@ body {
   background: rgba(91, 203, 220, 0.55);
 }
 
+/* The keyboard's build tool panel and key hints mean nothing on a touch screen, and would cover the stick. */
+.touch-mode .tool-panel,
+.touch-mode .key-hints {
+  display: none;
+}
+
 .touch-pause {
   position: absolute;
   top: 12px;
