@@ -107,7 +107,7 @@ Done when (roadmap): a new survival world is playable from punching a tree throu
 ## 7. Building and platform
 
 - [x] **T-K5 — Building tools.** Done: fill, undo, redo, copy/paste, world export/import, stairs for every cube block (they climb away from the placer) and doors (2 × 7 cells, 0.6 × 2.1 m; right click opens the whole door). Shortcut: a closed door collides as whole cells.
-- [~] **T-K6 — Input (code part).** Remaining: gamepad, and in-world touch controls for movement, look and building.
+- [x] **T-K6 — Input (code part).** Done: gamepad (`src/input/gamepad.ts`, standard mapping) and in-world touch controls (`src/ui/touchControls.ts`: stick, drag to look, jump, break, place, fly, slots, pause). Both play without pointer capture. Not done: navigating menus and the inventory with a gamepad (they need a pointer). Installed-browser review stays with the owner checks.
 - [ ] **T-K8 — Pixel Aero HUD.** A separate HUD track described in `docs/pixel-aero-hud/README_FOR_CODEX.md`. Keep the nine-slot model, and do not mix it into the existing Preact GUI.
 
 ---

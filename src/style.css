@@ -682,3 +682,77 @@ body {
   font-size: 22px;
   color: var(--muted);
 }
+
+/* In-world touch controls (T-K6): a stick bottom left, buttons bottom right, the right half drags to look. */
+.touch-controls {
+  position: absolute;
+  inset: 0;
+  z-index: 1; /* above the canvas and HUD text, below menus (2) and the inventory (5) */
+  pointer-events: none;
+  touch-action: none;
+  user-select: none;
+}
+
+.touch-look {
+  position: absolute;
+  top: 64px;
+  right: 0;
+  bottom: 0;
+  width: 55%;
+  pointer-events: auto;
+}
+
+.touch-stick {
+  position: absolute;
+  left: 24px;
+  bottom: 96px;
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  background: rgba(10, 12, 18, 0.35);
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  pointer-events: auto;
+}
+
+.touch-knob {
+  position: absolute;
+  left: 36px;
+  top: 36px;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.55);
+}
+
+.touch-buttons {
+  position: absolute;
+  right: 16px;
+  bottom: 96px;
+  display: grid;
+  grid-template-columns: repeat(2, 64px);
+  gap: 8px;
+  pointer-events: auto;
+}
+
+.touch-button {
+  min-width: 48px;
+  min-height: 48px;
+  border: 2px solid rgba(255, 255, 255, 0.45);
+  border-radius: var(--radius);
+  background: rgba(10, 12, 18, 0.55);
+  color: #fff;
+  font: 600 14px var(--font);
+  touch-action: none;
+  pointer-events: auto;
+}
+
+.touch-button:active {
+  background: rgba(91, 203, 220, 0.55);
+}
+
+.touch-pause {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+}

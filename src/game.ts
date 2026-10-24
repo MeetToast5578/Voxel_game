@@ -8,6 +8,8 @@ import { CreatureSystem, rayHitCreature, type Creature, type CreatureEvent, type
 import { CreaturePopulation } from './creatures/population';
 import { SPECIES_BY_KEY } from './creatures/species';
 import { CreatureMeshes } from './render/creatureMeshes';
+import { GamepadInput } from './input/gamepad';
+import { TouchControls } from './ui/touchControls';
 import { atmosphericFogStrength } from './world/atmosphere';
 import {
   WORLD_FILE_MAX_BYTES, FOG_SAMPLE_INTERVAL_S, FOG_VALLEY_SAMPLE_M, FOG_GROUND_LAYER_M, metersToBlocks,
@@ -130,6 +132,10 @@ export class Game {
   readonly creatures = new CreatureSystem();
   private readonly population = new CreaturePopulation();
   private populationS = 0;
+  /** Gamepad and touch input (T-K6). Either one plays without pointer capture. */
+  private readonly gamepad: GamepadInput;
+  private readonly touchControls: TouchControls;
+  private readonly touchMode: boolean;
   /** Off for scripted checks (the debug API), so wildlife and hostiles do not wander into them. */
   creatureSpawning = true;
   fps = 0;
@@ -304,7 +310,9 @@ export class Game {
       {
         onPlay: () => {
           this.sounds.unlock();
-          this.input.requestPointerLock();
+          // Touch screens cannot capture a pointer, and a gamepad needs none.
+          if (this.touchMode || this.gamepad.used) this.resumeWithoutLock();
+          else this.input.requestPointerLock();
         },
         onSettingsChange: (s) => this.changeSettings(s),
         onNewWorld: () => this.newWorld(),
@@ -315,6 +323,9 @@ export class Game {
       },
     );
 
+    this.gamepad = new GamepadInput(this.input);
+    this.touchMode = options.touch || (typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches);
+    this.touchControls = new TouchControls(container, this.input, () => this.pauseWithoutLock());
     this.playing = options.autostart;
     if (options.autostart) this.menu.hide();
     else this.menu.show('start');
@@ -734,6 +745,12 @@ export class Game {
     if (this.idle) return;
     this.frameCount++;
     this.clockS += frameDt;
+    // Start on a gamepad pauses play, or resumes it from the start or pause menu (T-K6).
+    if (this.gamepad.poll(frameDt)) {
+      if (this.playing && !this.inventoryScreen.isOpen) this.pauseWithoutLock();
+      else if (this.menu.visible && (this.menu.currentMode === 'paused' || this.menu.currentMode === 'start')) this.resumeWithoutLock();
+    }
+    this.touchControls.setVisible(this.touchMode && this.playing && !this.inventoryScreen.isOpen);
     const eKey = this.input.consumePressed('KeyE');
     const escKey = this.input.consumePressed('Escape');
     if (eKey && (this.playing || this.inventoryScreen.isOpen || (this.menu.visible && this.menu.currentMode === 'paused'))) {
@@ -1355,6 +1372,21 @@ export class Game {
   }
 
   /** E or the HUD button: toggle the same inventory screen (spec 24). */
+  /** Plays without pointer capture: touch screens and gamepads (T-K6). */
+  private resumeWithoutLock(): void {
+    this.menu.hide();
+    this.menu.setLockNote(null);
+    this.playing = true;
+  }
+
+  /** The pause menu, as Esc gives it with a captured mouse. */
+  private pauseWithoutLock(): void {
+    this.tool.cancelFrame();
+    this.input.releasePointerLock();
+    this.playing = false;
+    this.menu.show('paused');
+  }
+
   private toggleInventory(): void {
     if (this.inventoryScreen.isOpen) this.closeInventory();
     else this.openInventory();

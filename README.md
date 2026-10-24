@@ -62,6 +62,8 @@ Requires Node.js 20+.
 | Right click on a furnace | Smelt: input on top, fuel below, take the output on the right |
 | Right click on a door | Open or close it |
 | Left click on a creature | Hit it (tools hit harder); hold wheat and grazers follow you |
+| Gamepad | Left stick move, right stick look, A jump, B crouch, RT break, LT place, LB/RB slot, X fly, Y inventory, Start pause |
+| Touch screen | Stick to move, drag on the right to look, on-screen buttons for the rest |
 | Middle click | Pick the targeted block into the hotbar |
 | 1–9, mouse wheel | Select hotbar slot |
 | E | Open or close the inventory; the HUD Inventory button also works without mouse capture |

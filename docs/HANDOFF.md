@@ -1,5 +1,11 @@
 # Handoff: Voxel Game (MeetToast5578/Voxel_game)
 
+## 2026-10-24 — gamepad and touch (Claude)
+
+T-K6 code part. A gamepad drives movement, look, break, place, slots, flying, the inventory and pause. On touch
+screens (or with `?touch=1`) on-screen controls appear. Both play without pointer capture. This branch builds on the
+rivers branch.
+
 ## 2026-10-24 — rivers and waterfalls (Claude)
 
 T-G10, T-G11 and the water part of T-G15. River water now has a current. Rivers that drop 0.6 m or more between

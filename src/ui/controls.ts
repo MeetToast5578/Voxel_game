@@ -28,6 +28,19 @@ export const CONTROL_SECTIONS: readonly { title: string; rows: readonly (readonl
     ],
   },
   {
+    title: 'Gamepad and touch',
+    rows: [
+      ['Left stick', 'Move (press: sprint)'],
+      ['Right stick', 'Look'],
+      ['A / B', 'Jump, fly up / crouch, fly down'],
+      ['RT / LT', 'Break / place'],
+      ['LB / RB', 'Select block'],
+      ['X / Y', 'Toggle flying / inventory'],
+      ['Start', 'Pause or resume'],
+      ['Touch', 'Stick to move, drag the right half to look, buttons to act'],
+    ],
+  },
+  {
     title: 'Volume tools',
     rows: [
       ['R', 'Mode: single, add, remove'],

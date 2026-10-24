@@ -67,6 +67,34 @@ export class Input {
     }
   }
 
+  /**
+   * A key held by another input device (gamepad or touch, T-K6). Going down counts as a press, as from the keyboard.
+   * Only the device that pressed a key should release it.
+   */
+  setVirtualKey(code: string, down: boolean): void {
+    if (down && !this.keysDown.has(code)) this.keysPressed.add(code);
+    if (down) this.keysDown.add(code);
+    else this.keysDown.delete(code);
+  }
+
+  /** A mouse button held by another input device; going down counts as a click. */
+  setVirtualButton(button: number, down: boolean): void {
+    if (down && !this.buttonsDown.has(button)) this.buttonsClicked.add(button);
+    if (down) this.buttonsDown.add(button);
+    else this.buttonsDown.delete(button);
+  }
+
+  /** Look movement from another input device, in mouse pixels; it works without pointer capture. */
+  addLook(dx: number, dy: number): void {
+    this.mouseDx += dx;
+    this.mouseDy += dy;
+  }
+
+  /** Hotbar steps from another input device: positive moves right, as scrolling down does. */
+  addWheel(steps: number): void {
+    this.wheelSteps += steps;
+  }
+
   onPointerLockChanged(listener: (locked: boolean) => void): void {
     this.lockListeners.push(listener);
   }
