@@ -1,8 +1,9 @@
 import {
-  GRAVITY, ITEM_FRICTION, ITEM_LIFETIME_S, ITEM_PICKUP_BELOW_M, ITEM_PICKUP_DELAY_S, ITEM_PICKUP_RADIUS_M,
+  CURRENT_ACCEL, GRAVITY, ITEM_FRICTION, ITEM_LIFETIME_S, ITEM_PICKUP_BELOW_M, ITEM_PICKUP_DELAY_S, ITEM_PICKUP_RADIUS_M,
   ITEM_POP_SPEED_M_S, ITEM_SIZE, ITEM_SPREAD_M_S, MAX_ITEMS, TERMINAL_VELOCITY, metersToBlocks,
 } from '../config';
 import { type BodyShape, moveAndCollide, type CollisionFn } from '../player/physics';
+import type { Flow } from '../world/flow';
 
 /** A stack of block states lying on the ground. (x, z) is its centre and y its bottom, in blocks. */
 export interface ItemEntity {
@@ -66,7 +67,8 @@ export class ItemEntities {
   }
 
   /** Moves every item by dt seconds under gravity and friction, and removes the ones past their lifetime. */
-  step(dt: number, isSolid: CollisionFn): void {
+  /** `flowAt` gives the current in a fluid cell (T-G12): items in flowing water and rivers drift along it. */
+  step(dt: number, isSolid: CollisionFn, flowAt?: (x: number, y: number, z: number) => Flow): void {
     for (let i = this.items.length - 1; i >= 0; i--) {
       const item = this.items[i]!;
       item.age += dt;
@@ -75,6 +77,12 @@ export class ItemEntities {
         continue;
       }
       item.vy = Math.max(-TERMINAL_VELOCITY, item.vy - GRAVITY * dt);
+      const flow = flowAt?.(Math.floor(item.x), Math.floor(item.y), Math.floor(item.z));
+      if (flow) {
+        item.vx += flow.x * CURRENT_ACCEL * dt;
+        item.vy += flow.y * CURRENT_ACCEL * dt;
+        item.vz += flow.z * CURRENT_ACCEL * dt;
+      }
       // moveAndCollide needs each move to be shorter than the item's size, so fast items take smaller steps.
       const fastest = Math.max(Math.abs(item.vx), Math.abs(item.vy), Math.abs(item.vz));
       const parts = Math.max(1, Math.ceil((fastest * dt) / (ITEM_SIZE / 2)));

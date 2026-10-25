@@ -1,5 +1,48 @@
 # Handoff: Voxel Game (MeetToast5578/Voxel_game)
 
+## 2026-10-24 — performance (Claude)
+
+T-J13: an edit remeshes at once only the chunks the changed cell faces (at most 4, was 8). T-J6: chunk budgets
+shrink to half on slow frames, and a memory cap (`MAX_LOADED_CHUNKS`) steps the render distance down while it is
+exceeded (`src/world/budgets.ts`). T-J14 re-measured: both forest fixtures pass. T-J2 to T-J5 wait for the owner's
+hardware measurements (T-C3). The steepness shortcut in `generator.ts` is left as is: its own note says to change it
+only if bare ground looks wrong, and changing it would reshape every world. This branch builds on the input branch.
+
+## 2026-10-24 — gamepad and touch (Claude)
+
+T-K6 code part. A gamepad drives movement, look, break, place, slots, flying, the inventory and pause. On touch
+screens (or with `?touch=1`) on-screen controls appear. Both play without pointer capture. This branch builds on the
+rivers branch.
+
+## 2026-10-24 — rivers and waterfalls (Claude)
+
+T-G10, T-G11 and the water part of T-G15. River water now has a current. Rivers that drop 0.6 m or more between
+columns get waterfalls of falling water. Water ripples are animated in the water shader along each cell's flow,
+which the mesher writes per vertex (it reuses the season slot, which water does not use). This branch builds on
+the creatures branch. Lava is not animated yet.
+
+## 2026-10-24 — creatures (Claude)
+
+Phase 6 (T-H1..T-H10). Wildlife spawns per column by biome, flees, grazes, herds, hunts, sleeps and follows wheat;
+zombies come out at night and in dark caves and bite survival players; left click hits creatures. Code is in
+`src/creatures/` and `src/render/creatureMeshes.ts`. New states: raw meat 1659, cooked meat 1660. Optional meta
+fields `creatures` and `creatureColumns`. This branch builds on the stairs-and-doors branch.
+
+## 2026-10-24 — stairs and doors (Claude)
+
+T-K5 is done. Stairs exist for every cube block and climb away from the placer. Doors are 2 × 7 cells (0.6 × 2.1 m,
+so the player fits) and are placed, opened and broken as a whole (`src/player/doors.ts`). Both draw through a new
+box path in the mesher (`blockBoxes`). New states append after the furnace states: door 1519, open door 1523, then
+the stairs. Shortcuts: a closed door and stairs collide as whole cells. This branch builds on the furnaces branch.
+
+## 2026-10-24 — furnaces (Claude)
+
+T-I7 furnaces and iron tools, plus cooking for T-I8. Craft a furnace from eight cobblestone; right click opens input,
+fuel and output. Smelting runs in `src/player/furnace.ts` and keeps going while the chunk is unloaded. Coal ore now
+drops coal. New states append after the tools: the iron tool states, then furnace 1508, lit furnace 1512, iron ingot
+1516, coal 1517, baked potato 1518. The optional `furnaces` meta field is written only when there are some; save
+version unchanged. Survival now runs through to iron tools.
+
 ## Latest session — 2026-10-23, second batch (Claude)
 
 This section supersedes the priorities below. Branch `claude/zen-goodall-129e55`, one PR for the batch.
@@ -20,7 +63,7 @@ states 182 onward), T-I4 body temperature (`src/player/bodyTemperature.ts`), T-G
 log → planks → sticks → crafting table → wooden pickaxe → cobblestone → stone tools; iron needs furnaces (T-I7).
 
 **Known limits:** generated rivers are source blocks and
-carry no current until T-G10; dropped items ignore currents; catch-up uses the weather at reload for the whole
+carry no current until T-G10 (done since); dropped items drift in currents since then too; catch-up uses the weather at reload for the whole
 absence, and saplings and litter only change while loaded; sleeping does not advance crops in loaded chunks.
 
 **Next suggested tasks:** T-I7 furnaces (then iron tools), T-H1 wiring entities, T-G10 river flow direction (gives

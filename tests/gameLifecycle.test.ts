@@ -20,7 +20,7 @@ function tickingGame() {
     tickTimer: 0, saveTimer: 0, gameMode: GAME_MODE_CREATIVE,
     items: { step: vi.fn() }, chunks: { tick: vi.fn() }, bodies: { step: () => [] },
     edits: { step: vi.fn() }, isSolidAt: () => false, isWaterAt: () => false,
-    spawnBrokenBlocks: vi.fn(), collectItems: vi.fn(), updateFootsteps: vi.fn(),
+    spawnBrokenBlocks: vi.fn(), collectItems: vi.fn(), updateFurnaces: vi.fn(), updateCreatures: vi.fn(), updateFootsteps: vi.fn(),
   });
   return { game, calendar, player };
 }
@@ -144,7 +144,7 @@ describe('smoke-test debug hooks', () => {
       placeTarget: vi.fn(),
       eatSelected: () => false,
       useBed: () => false,
-      useCraftingTable: () => false,
+      useCraftingTable: () => false, useFurnace: () => false, useDoor: () => false, creatures: { all: () => [] },
       placeTargetCheck: vi.fn(),
       setBlock: vi.fn(),
     });
@@ -314,5 +314,85 @@ describe('beds (T-I9)', () => {
     call(broken.game, 'die');
     expect(broken.game.bed).toBeNull();
     expect(broken.player.setPosition).toHaveBeenCalledWith(0, 9, 0);
+  });
+});
+
+describe('furnaces in the game (T-I7)', () => {
+  function furnaceGame(block: number) {
+    const game = Object.create(Game.prototype) as Game;
+    const cells = new Map<string, number>([['4,7,-2', block]]);
+    const world = { isLoadedAt: () => true, getBlock: (x: number, y: number, z: number) => cells.get(`${x},${y},${z}`) ?? BlockId.AIR };
+    const setBlock = vi.fn((x: number, y: number, z: number, id: number) => { cells.set(`${x},${y},${z}`, id); return true; });
+    const items = { spawn: vi.fn() };
+    Object.assign(game, { world, setBlock, items, furnaces: new Map(), openFurnace: null, furnaceRefreshS: 0, target: { x: 4, y: 7, z: -2 },
+      menu: { hide: vi.fn(), currentMode: 'paused' }, inventoryScreen: { show: vi.fn(), refresh: vi.fn() }, input: { releasePointerLock: vi.fn() }, playing: true });
+    return { game, cells, items };
+  }
+
+  it('right click opens a furnace; burning fuel lights the block, which goes out when done', () => {
+    const { game, cells } = furnaceGame(BlockId.FURNACE + 1);
+    expect(game.useFurnace()).toBe(true);
+    const f = Reflect.get(game, 'openFurnace');
+    f.slots[0] = { state: BlockId.POTATOES, count: 1 };
+    f.slots[1] = { state: BlockId.STICK, count: 2 };
+    call(game, 'updateFurnaces', 1);
+    expect(cells.get('4,7,-2')).toBe(BlockId.LIT_FURNACE + 1); // keeps its facing
+    call(game, 'updateFurnaces', 30);
+    expect(cells.get('4,7,-2')).toBe(BlockId.FURNACE + 1);
+    expect(f.slots[2]).toEqual({ state: BlockId.BAKED_POTATO, count: 1 });
+    expect(furnaceGame(BlockId.STONE).game.useFurnace()).toBe(false);
+  });
+
+  it('a furnace whose block is gone spills its contents and is forgotten', () => {
+    const { game, cells, items } = furnaceGame(BlockId.FURNACE);
+    game.useFurnace();
+    Reflect.get(game, 'openFurnace').slots[2] = { state: BlockId.IRON_INGOT, count: 3 };
+    cells.set('4,7,-2', BlockId.AIR);
+    call(game, 'updateFurnaces', 0.05);
+    expect(items.spawn).toHaveBeenCalledWith(BlockId.IRON_INGOT, 3, 4.5, expect.any(Number), -1.5, Math.random);
+    expect(Reflect.get(game, 'furnaces').size).toBe(0);
+  });
+});
+
+describe('doors in the game (T-K5)', () => {
+  function doorGame() {
+    const game = Object.create(Game.prototype) as Game;
+    const cells = new Map<string, number>();
+    const world = { isLoadedAt: () => true, getBlock: (x: number, y: number, z: number) => cells.get(`${x},${y},${z}`) ?? BlockId.AIR };
+    const setBlock = vi.fn((x: number, y: number, z: number, id: number) => { cells.set(`${x},${y},${z}`, id); return true; });
+    const inventory = new Inventory(new Array(startingSlots().length).fill(null));
+    inventory.setSlot(0, BlockId.DOOR, 1);
+    const items = { spawn: vi.fn() };
+    Object.assign(game, { world, setBlock, inventory, items, gameMode: GAME_MODE_CREATIVE, sounds: { play: vi.fn() },
+      player: { position: { x: 0.5, y: 0, z: 8.5 } }, target: { x: 0, y: 0, z: 0 } });
+    return { game, cells, inventory, items };
+  }
+
+  it('places a whole door from one item, opens and closes it, and breaks it as a whole', () => {
+    const { game, cells, inventory, items } = doorGame();
+    expect(call(game, 'placeDoor', 0, 0, 0)).toBe(true);
+    expect(inventory.slots[0]).toBeNull();
+    const doorCells = [...cells.values()];
+    expect(doorCells.length).toBeGreaterThan(2);
+    expect(doorCells.every((s) => s === doorCells[0])).toBe(true);
+    expect(game.useDoor()).toBe(true);
+    expect([...cells.values()].every((s) => s >= BlockId.OPEN_DOOR)).toBe(true);
+    game.useDoor();
+    expect([...cells.values()].every((s) => s === doorCells[0])).toBe(true);
+    expect(call(game, 'breakCell', 0, 3, 0)).toBe(true);
+    expect([...cells.values()].every((s) => s === BlockId.AIR)).toBe(true);
+    expect(items.spawn).toHaveBeenCalledWith(BlockId.DOOR, 1, 0.5, expect.any(Number), 0.5, Math.random);
+  });
+
+  it('does not place over blocks or close on the player', () => {
+    const { game, cells } = doorGame();
+    cells.set('0,4,0', BlockId.STONE);
+    expect(call(game, 'placeDoor', 0, 0, 0)).toBe(false);
+    cells.clear();
+    call(game, 'placeDoor', 0, 0, 0);
+    game.useDoor();
+    Object.assign(game, { player: { position: { x: 0.5, y: 0, z: 0.5 } } });
+    game.useDoor();
+    expect([...cells.values()].every((s) => s >= BlockId.OPEN_DOOR)).toBe(true);
   });
 });

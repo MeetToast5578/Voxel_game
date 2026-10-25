@@ -30,6 +30,8 @@ export interface DebugInfo {
   dayOfSeason: number;
   dayLengthMin: number;
   renderDistance: number;
+  /** Live creatures (T-H1). Optional so older callers and tests need not set it. */
+  creatures?: number;
 }
 
 /** Compass name for a yaw angle. Yaw 0 looks north (-Z); positive yaw turns toward west (-X). */
@@ -65,7 +67,7 @@ export function formatDebugLines(info: DebugInfo): string[] {
     `Chunks loaded ${info.loaded}  meshed ${info.meshed}  pending ${info.pendingGen}/${info.pendingMesh}`,
     `Columns ${info.columns}   Jobs in flight ${info.jobsInFlight}`,
     `Ticks ran ${info.tickRan}  pending ${info.tickPending}`,
-    `Random ticks ${info.randomTickRan}  (${info.randomTickMs.toFixed(2)} ms)`,
+    `Random ticks ${info.randomTickRan}  (${info.randomTickMs.toFixed(2)} ms)   Creatures ${info.creatures ?? 0}`,
     `Render distance ${info.renderDistance}   Seed ${info.seed}`,
   ];
 }
