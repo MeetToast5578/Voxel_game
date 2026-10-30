@@ -162,6 +162,11 @@ export const RAVINE_DEPTH_M = 30;
 export const SHORE_CAVE_BAND_M = 3;
 export const SHORE_ROOF_M = 5;
 export const SHORE_ROOF_CELLS = cells(SHORE_ROOF_M);
+/** Groundwater: caves below this level (varying by place) are flooded, with lava instead below LAVA_DEPTH_M. */
+export const AQUIFER_LEVEL_M = -42;
+export const AQUIFER_AMPLITUDE_M = 30;
+export const AQUIFER_SCALE_M = 160;
+export const LAVA_DEPTH_M = -100;
 
 // ---- Trees and features ----
 /** Tree anchors per square metre where the biome grows trees. */

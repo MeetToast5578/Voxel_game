@@ -74,6 +74,14 @@ export class TickScheduler {
     for (const t of keep) this.push(t);
   }
 
+  /** Parks one due tick whose chunk is not loaded (it was scheduled across the edge of the loaded area). */
+  defer(t: Tick): void {
+    const key = chunkKey(toChunk(t.x), toChunk(t.y), toChunk(t.z));
+    const list = this.dormant.get(key) ?? [];
+    list.push([t.x, t.y, t.z, t.kind, 1]);
+    this.dormant.set(key, list);
+  }
+
   /** Resumes the parked ticks of a chunk that loaded. */
   resume(cx: number, cy: number, cz: number): void {
     const key = chunkKey(cx, cy, cz);

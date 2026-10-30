@@ -3,7 +3,8 @@ import {
   BLOCK_SIZE_M, CAVE_CHEESE_FADE_M, CAVE_CHEESE_OPENING, CAVE_CHEESE_SCALE_H_M, CAVE_CHEESE_SCALE_V_M,
   CAVE_CHEESE_THRESHOLD, CAVE_NOODLE_ROOF_M, CAVE_NOODLE_SCALE_H_M, CAVE_NOODLE_SCALE_V_M, CAVE_NOODLE_STRETCH,
   CAVE_NOODLE_THRESHOLD, CAVE_SCALE_H_M, CAVE_SCALE_V_M, CAVE_THRESHOLD, CHUNK_SIZE, DEEPSLATE_DEPTH_M,
-  GEOLOGY_LAYER_M, GEOLOGY_WARP_M, RAVINE_BAND, RAVINE_DEPTH_M, RAVINE_ROOF_M, RAVINE_SCALE_M,
+  GEOLOGY_LAYER_M, GEOLOGY_WARP_M, RAVINE_BAND, RAVINE_DEPTH_M, RAVINE_ROOF_M, RAVINE_SCALE_M, AQUIFER_AMPLITUDE_M,
+  AQUIFER_LEVEL_M, AQUIFER_SCALE_M, LAVA_DEPTH_M,
 } from '../config';
 import { mulberry32 } from '../core/random';
 import { BLOCKS } from '../engine/blocks';
@@ -40,6 +41,7 @@ export class Underground {
   private readonly spagA: NoiseFunction3D;
   private readonly spagB: NoiseFunction3D;
   private readonly ravine: NoiseFunction2D;
+  private readonly aquifer: NoiseFunction2D;
 
   constructor(private readonly seed: number) {
     const n3 = (o: number) => createNoise3D(mulberry32(seed + o));
@@ -50,6 +52,7 @@ export class Underground {
     this.spagA = n3(3);
     this.spagB = n3(4);
     this.ravine = createNoise2D(mulberry32(seed + 503));
+    this.aquifer = createNoise2D(mulberry32(seed + 504));
   }
 
   /** Warp of the rock layers at a column cell, in [-1, 1]. */
@@ -92,6 +95,14 @@ export class Underground {
       if (Math.abs(this.ravine(xm / RAVINE_SCALE_M, zm / RAVINE_SCALE_M)) < width) return true;
     }
     return false;
+  }
+
+  /** What fills a carved cave cell: groundwater below the local water table, lava deep down, or air. */
+  caveFill(x: number, y: number, z: number, water: number, lava: number, air: number): number {
+    const ym = (y + 0.5) * B;
+    if (ym < LAVA_DEPTH_M) return lava;
+    const table = AQUIFER_LEVEL_M + AQUIFER_AMPLITUDE_M * this.aquifer((x * B) / AQUIFER_SCALE_M, (z * B) / AQUIFER_SCALE_M);
+    return ym < table ? water : air;
   }
 
   /** Places ore veins in chunk (cx, cy, cz) of `out`, replacing host rock only. Veins stay inside the chunk. */

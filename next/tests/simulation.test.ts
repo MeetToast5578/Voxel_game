@@ -148,3 +148,17 @@ describe('tick scheduler', () => {
     expect(u.dormantCount).toBe(1);
   });
 });
+
+describe('ticks at the edge of the loaded area', () => {
+  it('wait for their chunk instead of being lost', () => {
+    const t = new TickScheduler();
+    t.schedule(100, 0, 0, TickKind.Flow, 1);
+    t.now = 5;
+    for (const k of t.takeDue()) t.defer(k);
+    expect(t.size).toBe(0);
+    expect(t.dormantCount).toBe(1);
+    t.resume(6, 0, 0);
+    t.now += 1;
+    expect(t.takeDue().map((k) => k.x)).toEqual([100]);
+  });
+});

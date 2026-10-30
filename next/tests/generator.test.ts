@@ -49,7 +49,8 @@ describe('generator', () => {
       Math.floor(col.maxTop / CHUNK_SIZE) + 2 >= 0 ? AIR : WATER);
     const deep = new Uint16Array(CHUNK_VOLUME);
     expect(gen.generate(1, Math.floor(col.minTop / CHUNK_SIZE) - 8, 1, deep)).toBe(-1);
-    expect(deep.every((s) => s === AIR || BLOCKS.isOpaque(s))).toBe(true);
+    const fluids = new Set([AIR, WATER, BLOCKS.state('lava')]);
+    expect(deep.every((s) => fluids.has(s) || BLOCKS.isOpaque(s))).toBe(true);
   });
 
   it('fills open cells below sea level with water', () => {

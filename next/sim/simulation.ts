@@ -106,7 +106,11 @@ export class Simulation {
   step(px: number, pz: number): void {
     this.ticks.now++;
     for (const t of this.ticks.takeDue(MAX_TICKS_PER_STEP)) {
-      if (!this.world.isLoaded(t.x, t.y, t.z)) continue;
+      // A tick across the edge of the loaded area waits for its chunk instead of being lost.
+      if (!this.world.isLoaded(t.x, t.y, t.z)) {
+        this.ticks.defer(t);
+        continue;
+      }
       if (t.kind === TickKind.Flow) this.flow(t.x, t.y, t.z);
       else if (t.kind === TickKind.Fall) this.fall(t.x, t.y, t.z);
       else if (t.kind === TickKind.Decay) { if (this.world.get(t.x, t.y, t.z) === LEAVES) this.leaves(t.x, t.y, t.z); }

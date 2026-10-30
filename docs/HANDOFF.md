@@ -183,6 +183,10 @@ Phase 11, the rest:
 - **Chests:** 27 slots, crafted from eight planks. They face the player, are saved in `play`, and empty into the
   inventory when broken in survival.
 - **Biome borders** dither: each cell's temperature and rainfall get a small nudge before its biome is chosen.
+- **Groundwater:** caves fill with water below a water table at about -42 m ± 30 m (old tuning), and with lava below
+  -100 m.
+- **Fix:** block updates scheduled across the edge of the loaded area now wait for their chunk (`TickScheduler.defer`)
+  instead of being lost when due.
 
 ## 2026-10-24 — performance (Claude)
 

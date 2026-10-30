@@ -20,7 +20,7 @@ const B = BLOCK_SIZE_M;
 const S = (key: string) => BLOCKS.state(key);
 const AIR = S('air'), STONE = S('stone'), DIRT = S('dirt'), GRASS = S('grass'), SAND = S('sand'), GRAVEL = S('gravel');
 const WATER = S('water'), LOG = S('log'), LEAVES = S('leaves'), COBBLE = S('cobblestone'), CLAY = S('clay');
-const REED = S('reed'), LILY = S('lily_pad');
+const REED = S('reed'), LILY = S('lily_pad'), LAVA = S('lava');
 const COVER = { tall: S('tall_grass'), fern: S('fern'), poppy: S('poppy'), dandelion: S('dandelion'),
   brown: S('brown_mushroom'), red: S('red_mushroom') };
 
@@ -290,7 +290,7 @@ export class Generator {
           if (y > top || !this.solid(x, y, z, offset, amp)) {
             s = y < water ? WATER : y === top + 1 ? cover : lily && y === water ? LILY : AIR;
           }
-          else if (y <= caveTop && ug.isCave(x, y, z, (top - y) * B)) s = AIR;
+          else if (y <= caveTop && ug.isCave(x, y, z, (top - y) * B)) s = ug.caveFill(x, y, z, WATER, LAVA, AIR);
           else {
             const depth = top - y;
             s = depth === 0 ? (surface === GRASS && y + 1 < SEA_CELL ? DIRT : surface) : depth < SOIL_CELLS ? soil : ug.rockAt(y, warp);
