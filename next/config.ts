@@ -28,3 +28,34 @@ export const CHUNK_M = CHUNK_SIZE * BLOCK_SIZE_M;
 // ---- Light ----
 /** Light levels 0..MAX_LIGHT, falling by one per cell. A torch at 15 reaches 9 m. */
 export const MAX_LIGHT = 15;
+
+// ---- Terrain ----
+/** Water fills open cells below this height. */
+export const SEA_LEVEL_M = 0;
+/** Dirt (or sand on beaches) between the surface and the stone. */
+export const SOIL_DEPTH_M = 1.8;
+/** Land this close above sea level is beach sand. */
+export const BEACH_BAND_M = 1;
+/** Sea floor deeper than this below sea level is gravel instead of sand. */
+export const DEEP_SEA_FLOOR_M = 4;
+/** Feature size of the 3D terrain detail noise. */
+export const DETAIL_H_M = 16;
+export const DETAIL_V_M = 10;
+
+// ---- Streaming ----
+/** Default horizontal view radius, in chunks (12 chunks is 115 m). */
+export const DEFAULT_VIEW_CHUNKS = 12;
+export const MIN_VIEW_CHUNKS = 4;
+export const MAX_VIEW_CHUNKS = 32;
+/** Around the player, every chunk this many chunks across and up/down is loaded, surface or not. */
+export const NEAR_RADIUS_CHUNKS = 3;
+export const NEAR_HEIGHT_CHUNKS = 2;
+/** Generated columns kept in each worker's cache. */
+export const COLUMN_CACHE = 4096;
+/** Jobs each worker may have in flight. */
+export const JOBS_PER_WORKER = 4;
+
+// ---- Camera ----
+export const FLY_SPEED_M_S = 12;
+export const FLY_FAST_FACTOR = 4;
+export const EYE_HEIGHT_M = 1.62;

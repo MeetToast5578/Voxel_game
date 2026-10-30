@@ -7,7 +7,17 @@ stays in `src/` and keeps working until the switch-over phase. Plan: engine revi
 generation and meshing, stored lighting, player, saves, simulation, worldgen, atmosphere, gameplay, creatures, UI,
 switch-over). Phase 1 adds `next/config.ts` (meters only; cell counts come from `cells()`), packed integer chunk keys,
 a growable `IntQueue`, a name-based block registry (`next/engine/blocks.ts`), palette-compressed chunks with nibble
-light (`next/engine/chunk.ts`) and the `World` store. Tests are in `next/tests`. Nothing is wired to a page yet.
+light (`next/engine/chunk.ts`) and the `World` store. Tests are in `next/tests`.
+
+Phase 2 makes `next.html` playable as a fly camera (WASD, space/shift, ctrl fast, +/- view distance; URL `seed`, `view`,
+`x`, `y`, `z`, `yaw`, `pitch`). Climate fields and density terrain are ported without rivers, caves or features
+(`next/worldgen`). Workers are picked by column hash so their column caches hit (`next/workers/pool.ts`). The mesher
+merges cube faces greedily and packs a vertex into two uint32 words (`next/engine/mesher.ts`); tiles are a texture
+array so merged faces repeat them (`next/render/tilePixels.ts`). Four passes: opaque (no discard), cutout, water, ice.
+Streaming (`next/engine/streaming.ts`) never discards a mesh result; a chunk changed meanwhile is meshed again.
+`node scripts/next-benchmark.mjs --assert` gates generation under 2 ms and meshing under 1 ms per chunk (here 0.42 and
+0.79 ms). `node scripts/next-smoke.mjs` (after a build) loads the page headless and screenshots it; at 12 chunks
+(115 m) SwiftShader showed 2,422 chunks, 762 meshes and 192 draw calls. Light is full sky everywhere until phase 3.
 
 ## 2026-10-24 — performance (Claude)
 

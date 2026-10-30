@@ -26,6 +26,7 @@ jobs:
       - run: npm ci
       - run: npm run check
       - run: node scripts/benchmark.mjs --assert-generation-budget --assert-mesh-budget
+      - run: node scripts/next-benchmark.mjs --assert
 
   smoke:
     runs-on: ubuntu-latest
@@ -40,6 +41,7 @@ jobs:
       - run: npx playwright install --with-deps chromium
       - run: node scripts/render-smoke.mjs
       - run: npm run smoke
+      - run: node scripts/next-smoke.mjs
       - run: node scripts/platform-smoke.mjs
       - run: node scripts/world-transfer-smoke.mjs
       - uses: actions/upload-artifact@v4

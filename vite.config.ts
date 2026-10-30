@@ -6,7 +6,10 @@ export default defineConfig({
   base: './',
   server: { port: 5173 },
   preview: { port: 4173, strictPort: true },
-  build: { chunkSizeWarningLimit: 1500 },
+  build: {
+    chunkSizeWarningLimit: 1500,
+    rollupOptions: { input: { main: 'index.html', next: 'next.html' } },
+  },
   test: {
     include: ['tests/**/*.test.ts', 'next/tests/**/*.test.ts'],
     environment: 'node',
