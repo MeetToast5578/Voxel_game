@@ -275,3 +275,27 @@ export const SAPLING_CHANCE = 0.05;
 /** Chance a random tick on a lit crop grows it a stage, or on a lit sapling grows its tree. */
 export const CROP_GROW_CHANCE = 0.3;
 export const SAPLING_GROW_CHANCE = 0.1;
+
+// ---- Creatures ----
+/** Most creatures alive near the player at once. */
+export const CREATURE_CAP = 48;
+export const HOSTILE_CAP = 12;
+/** New creatures appear this far from the player, never closer; they leave beyond the despawn distance. */
+export const SPAWN_MIN_M = 24;
+export const SPAWN_MAX_M = 64;
+export const DESPAWN_M = 110;
+/** Seconds between spawn attempts. */
+export const SPAWN_INTERVAL_S = 1.5;
+/** Grazers notice and flee a player this close; hunters notice prey this close. */
+export const FLEE_M = 8;
+export const HUNT_M = 16;
+export const ATTACK_REACH_M = 0.6;
+export const ATTACK_COOLDOWN_S = 1.2;
+/** Creatures do not walk off drops deeper than this. */
+export const CREATURE_FALL_M = 3;
+export const RUN_FACTOR = 1.8;
+/** Hits on a creature: by hand, and with an axe, which is the best weapon there is. */
+export const HAND_DAMAGE = 1;
+export const AXE_DAMAGE = 4;
+export const TOOL_DAMAGE = 2;
+export const KNOCKBACK_M_S = 5;

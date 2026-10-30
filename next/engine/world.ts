@@ -16,6 +16,9 @@ export class Column {
   readonly generatedSkyTop = new Int32Array(CHUNK_AREA);
   /** Per cell: temperature << 4 | humidity from generation (see `climateTemperature`). */
   readonly climate = new Uint8Array(CHUNK_AREA);
+  /** Per cell: the biome index (see worldgen/biomes) and where generated water stands (cells below are water). */
+  readonly biome = new Uint8Array(CHUNK_AREA);
+  readonly water = new Int32Array(CHUNK_AREA);
   /** Highest generated cell of the column (terrain or trees): above it is open sky. */
   maxTop = 0;
 

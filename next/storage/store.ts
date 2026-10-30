@@ -29,6 +29,8 @@ export interface WorldMeta {
   yearTime?: number;
   /** The player's game state (mode, inventory, health, furnaces); checked when loaded. */
   play?: unknown;
+  /** Creatures alive when saved; checked when loaded. */
+  creatures?: unknown;
 }
 
 export interface WorldStore {
@@ -67,6 +69,7 @@ export function parseMeta(value: unknown): WorldMeta | null {
     ...(num(m.simTick) ? { simTick: m.simTick as number } : {}),
     ...(num(m.yearTime) ? { yearTime: m.yearTime as number } : {}),
     ...(typeof m.play === 'object' && m.play !== null ? { play: m.play } : {}),
+    ...(Array.isArray(m.creatures) ? { creatures: m.creatures } : {}),
   };
 }
 

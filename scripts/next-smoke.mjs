@@ -38,7 +38,7 @@ try {
       const n = window.__next;
       return { fps: n.fps, chunks: n.world.chunks.size, meshes: n.renderer.chunks.count, quads: n.renderer.chunks.quads,
         calls: n.renderer.renderer.info.render.calls, failures: n.streamer.failures,
-        visible: [...n.renderer.chunks.keys()].length };
+        visible: [...n.renderer.chunks.keys()].length, creatures: n.creatures.list.length };
     });
     console.log(name, JSON.stringify({ ...stats, loadMs }));
     // The pause menu shows whenever the pointer is free, which it always is here: hide the UI for the views.

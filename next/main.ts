@@ -1,6 +1,6 @@
 import { AUTOSAVE_S, BLOCK_SIZE_M, CHUNK_SIZE, DAY_LENGTH_S, HORIZON_RECENTER_M, MAX_VIEW_CHUNKS, MIN_VIEW_CHUNKS, SIM_HZ, toCells } from './config';
 import { Sounds } from './audio/sounds';
-import { chunkKey, forEachChunkReading, unpackChunkKey } from './core/coords';
+import { chunkKey, forEachChunkReading, localIndex, unpackChunkKey } from './core/coords';
 import { FixedStepLoop } from './core/loop';
 import { BLOCKS } from './engine/blocks';
 import { LightEngine } from './engine/light';
@@ -13,6 +13,9 @@ import { Play, type Mode } from './game/play';
 import { Player } from './game/player';
 import { Highlight } from './render/highlight';
 import { Renderer } from './render/renderer';
+import { Creatures } from './creatures/creatures';
+import { CreatureMeshes } from './render/creatureMeshes';
+import { mulberry32 } from './core/random';
 import { Environment } from './sim/environment';
 import { Simulation } from './sim/simulation';
 import { drawUi, type UiModel } from './ui/app';
@@ -109,6 +112,19 @@ const play = new Play(world, (x, y, z, s) => setBlock(x, y, z, s, true), {
     return night;
   },
 }, (params.get('mode') as Mode | null) ?? (existed ? 'survival' : 'creative'));
+const creatures = new Creatures(world, mulberry32(seed ^ 0xc0ffee), {
+  bite: (damage, by) => {
+    if (play.mode === 'survival' && !play.survival.dead) {
+      play.survival.hurt(damage, `killed by a ${by.toLowerCase()}`);
+      sounds.play('break', 0.6);
+      play.version++;
+    }
+  },
+  sound: (name, volume) => sounds.play(name, volume),
+});
+creatures.load(saver.worldMeta.creatures);
+play.creatures = creatures;
+const creatureMeshes = new CreatureMeshes(renderer.scene);
 if (saver.worldMeta.play) play.load(saver.worldMeta.play);
 else if (play.mode === 'creative') play.creativeHotbar();
 /** Where the player starts: where they first stood, or their bed. */
@@ -119,7 +135,7 @@ const env = new Environment(seed, Number(params.get('time') ?? saver.worldMeta.d
 function save(): Promise<void> {
   const b = player.body;
   return saver.save(world, {
-    dayTime: env.clock.dayTime, yearTime: env.clock.yearTime, play: play.save(), ticks: simulation.ticks.save(), simTick: simulation.ticks.now, player: { x: b.x, y: b.y, z: b.z, yaw: player.yaw, pitch: player.pitch, flying: player.flying },
+    dayTime: env.clock.dayTime, yearTime: env.clock.yearTime, play: play.save(), creatures: creatures.save(), ticks: simulation.ticks.save(), simTick: simulation.ticks.now, player: { x: b.x, y: b.y, z: b.z, yaw: player.yaw, pitch: player.pitch, flying: player.flying },
   }).catch((err) => console.error('Saving failed:', err));
 }
 setInterval(() => void save(), AUTOSAVE_S * 1000);
@@ -148,6 +164,7 @@ function update(dt: number): void {
   player.update(dt, active ? input : idleInput, boxAt, waterAt);
   if (active) play.update(dt, input, player);
   play.tickFurnaces(dt);
+  creatures.update(dt, { player: player.body, survival: play.mode === 'survival', day: env.atmosphere.sun[1] > -0.05, boxAt, waterAt });
   if (play.mode === 'survival' && !play.survival.dead) {
     if (player.body.onGround && falling > 0 && player.submerged < 0.2) play.survival.land(falling * BLOCK_SIZE_M);
     const eye = world.get(Math.floor(player.body.x), Math.floor(player.eyeY), Math.floor(player.body.z));
@@ -343,6 +360,14 @@ const loop = new FixedStepLoop(1 / 60, 0.25, update, (_alpha, frameDt) => {
   renderer.camera.position.set(player.body.x, player.eyeY, player.body.z);
   renderer.camera.rotation.set(player.pitch, player.yaw, 0, 'YXZ');
   highlight.set(play.target, play.breaking);
+  const daylight = renderer.uniforms.daylight!.value as number;
+  creatureMeshes.update(creatures.list, (c) => {
+    const x = Math.floor(c.body.x), y = Math.floor(c.body.y + c.body.height * 0.6), z = Math.floor(c.body.z);
+    const chunk = world.chunkAt(x, y, z);
+    if (!chunk) return daylight;
+    const i = localIndex(x & 15, y & 15, z & 15), sky = chunk.skyLight(i) / 15, block = chunk.blockLight(i) / 15;
+    return 0.06 + 0.94 * Math.max(sky * sky * daylight, block * block);
+  });
   cull();
   const cam = renderer.camera.position;
   renderer.setAtmosphere(env.frame(frameDt, cam.x, cam.y, cam.z, world));
@@ -373,7 +398,7 @@ const loop = new FixedStepLoop(1 / 60, 0.25, update, (_alpha, frameDt) => {
       `pos ${m(b.x)} ${m(b.y)} ${m(b.z)} m  ${player.flying ? 'flying' : b.onGround ? 'ground' : player.submerged > 0.05 ? 'swimming' : 'air'} [F]`,
       `chunks ${world.chunks.size}  meshes ${renderer.chunks.count}  quads ${renderer.chunks.quads}  culled ${culled}  draw calls ${info.render.calls}`,
       `world ${worldName} (seed ${seed})${saver.conflict ? '  NOT SAVING: opened in another tab' : ''}`,
-      `block updates ${simulation.ticks.size} (${simulation.ticks.dormantCount} waiting)  jobs ${streamer.pendingChunks}  columns ${streamer.pendingColumns}  dirty ${streamer.dirtyCount}  failures ${streamer.failures}`,
+      `creatures ${creatures.list.length}  block updates ${simulation.ticks.size} (${simulation.ticks.dormantCount} waiting)  jobs ${streamer.pendingChunks}  columns ${streamer.pendingColumns}  dirty ${streamer.dirtyCount}  failures ${streamer.failures}`,
       `${play.mode} [F3 hides this]`,
     ].join('\n');
   }
@@ -382,7 +407,7 @@ loop.start();
 
 /** For browser tests. */
 (window as unknown as { __next: unknown }).__next = {
-  world, streamer, renderer, pool, light, player, play, setBlock, blocks: BLOCKS, saver, save, seed, simulation,
+  world, streamer, renderer, pool, light, player, play, setBlock, creatures, blocks: BLOCKS, saver, save, seed, simulation,
   get fps() { return fps; },
   get idle() { return placed && streamer.idle; },
   env,

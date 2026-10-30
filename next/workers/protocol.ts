@@ -8,7 +8,7 @@ export type WorkerRequest =
   | { type: 'horizon'; id: number; x: number; z: number; radii: Float32Array; segments: number };
 
 export type WorkerResponse =
-  | { type: 'column'; id: number; top: Int32Array; skyTop: Int32Array; climate: Uint8Array; minTop: number; maxTop: number }
+  | { type: 'column'; id: number; top: Int32Array; skyTop: Int32Array; climate: Uint8Array; biome: Uint8Array; water: Int32Array; minTop: number; maxTop: number }
   /**
    * `uniform` is the single state of a uniform chunk (then `states` is absent), or -1. Likewise `uniformLight` is the
    * light byte of every cell, or -1 when `light` holds one per cell.

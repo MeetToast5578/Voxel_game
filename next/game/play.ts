@@ -1,4 +1,5 @@
-import { REACH_M, REPEAT_S, toCells } from '../config';
+import { AXE_DAMAGE, HAND_DAMAGE, REACH_M, REPEAT_S, TOOL_DAMAGE, toCells } from '../config';
+import { meatOf, type Creatures } from '../creatures/creatures';
 import { AIR, BLOCKS, SOLID } from '../engine/blocks';
 import type { World } from '../engine/world';
 import { COLLISION } from './collision';
@@ -45,6 +46,8 @@ export class Play {
   private repeat = 0;
   /** Bumped whenever anything the UI shows changes. */
   version = 0;
+  /** Creatures the player can hit, if any live in this world. */
+  creatures: Creatures | null = null;
 
   constructor(private readonly world: World, private readonly setBlock: (x: number, y: number, z: number, s: number) => void,
     private readonly events: { sound(name: 'break' | 'place'): void; sleep(): boolean }, mode: Mode = 'creative') {
@@ -78,11 +81,29 @@ export class Play {
       this.use(player);
     }
     const clicked = input.consume('break');
+    if (clicked && this.creatures && this.attack(b.x, player.eyeY, b.z, dx, dy, dz)) return;
     if (input.breaking && this.target) this.dig(dt, clicked, roll);
     else {
       this.breaking = 0;
       this.breakingCell = '';
     }
+  }
+
+  /** Hits the creature under the crosshair, if one is nearer than the targeted block. Returns whether one was hit. */
+  private attack(ox: number, oy: number, oz: number, dx: number, dy: number, dz: number): boolean {
+    const hit = this.creatures!.raycast(ox, oy, oz, dx, dy, dz, toCells(REACH_M));
+    if (!hit || (this.target && this.target.distance < hit.distance)) return false;
+    const held = this.held, tool = held ? BLOCKS.type(held.state).tool : undefined;
+    const damage = tool ? (tool.kind === 'axe' ? AXE_DAMAGE : TOOL_DAMAGE) + tool.tier : HAND_DAMAGE;
+    const c = hit.creature;
+    if (this.creatures!.damage(c, damage, ox, oz) && this.mode === 'survival') {
+      const meat = meatOf(c);
+      if (meat) this.inventory.add(meat);
+    }
+    if (held && tool && this.mode === 'survival' && !wearTool(held)) this.inventory.slots[this.inventory.selected] = null;
+    this.events.sound('break');
+    this.version++;
+    return true;
   }
 
   private select(slot: number): void {

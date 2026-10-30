@@ -29,6 +29,8 @@ interface ColumnInfo {
   top: Int32Array;
   skyTop: Int32Array;
   climate: Uint8Array;
+  biome: Uint8Array;
+  water: Int32Array;
   minTop: number;
   maxTop: number;
 }
@@ -194,7 +196,7 @@ export class Streamer {
       this.columnJobs.add(key);
       this.pool.run(w, { type: 'column', cx: col.cx, cz: col.cz }).then((r) => {
         this.columnJobs.delete(key);
-        this.infos.set(key, { cx: col.cx, cz: col.cz, top: r.top, skyTop: r.skyTop, climate: r.climate, minTop: r.minTop, maxTop: r.maxTop });
+        this.infos.set(key, { cx: col.cx, cz: col.cz, top: r.top, skyTop: r.skyTop, climate: r.climate, biome: r.biome, water: r.water, minTop: r.minTop, maxTop: r.maxTop });
         this.stale = true;
       }, () => {
         this.columnJobs.delete(key);
@@ -338,6 +340,8 @@ export class Streamer {
       column.surface.set(info.top);
       column.maxTop = info.maxTop;
       column.climate.set(info.climate);
+      column.biome.set(info.biome);
+      column.water.set(info.water);
       column.skyTop.set(skyTop);
       column.generatedSkyTop.set(skyTop);
     }

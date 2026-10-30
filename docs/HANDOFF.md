@@ -155,6 +155,23 @@ Phase 9 with the UI part of phase 11: play.
 - **URL `mode`:** `creative` or `survival` for a new world. Worlds made from the URL default to creative, worlds made
   from the menu to the mode picked there.
 
+Phase 10: creatures (`next/creatures`, `next/render/creatureMeshes.ts`).
+- **Species:** the old twelve, with sizes and speeds now in meters.
+- **Spawning:** groups appear 24–64 m from the player by biome. Fish appear in water, and zombies in the dark or at
+  night. At most 48 creatures and 12 monsters; they leave beyond 110 m, and monsters slip away by day.
+- **Behaviour:**
+  - grazers flee the player and predators; herds keep together; predators hunt their prey;
+  - in survival, monsters hunt and bite the player;
+  - creatures sleep by their day or night;
+  - they wander without walking into water, off drops over 3 m, or into walls too high to step;
+  - physics is the player's own.
+  - Shortcut: no path-finding, only steering.
+- **Combat:** the player hits the nearest creature under the crosshair (axes hit hardest). Hits knock creatures back;
+  dead animals leave raw meat in survival.
+- **Drawing:** boxes in one instanced mesh, posed per frame, lit by the light where each creature stands and
+  flashing red when hit. Only the used part of the instance buffers is uploaded.
+- **Saving:** creatures go in the meta record.
+
 ## 2026-10-24 — performance (Claude)
 
 T-J13: an edit remeshes at once only the chunks the changed cell faces (at most 4, was 8). T-J6: chunk budgets
