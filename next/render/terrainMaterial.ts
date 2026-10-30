@@ -7,6 +7,8 @@ uniform mat4 modelViewMatrix;
 uniform mat4 projectionMatrix;
 uniform mat4 modelMatrix;
 uniform vec3 cameraPosition;
+uniform highp sampler2D batchingTexture;
+uniform highp usampler2D batchingIdTexture;
 uniform float time;
 uniform float autumn;
 uniform float summer;
@@ -20,6 +22,15 @@ out vec2 vWorldXZ;
 const float SHADE[8] = float[8](0.6, 0.6, 1.0, 0.5, 0.8, 0.8, 0.85, 0.85);
 const float AO[4] = float[4](0.45, 0.65, 0.82, 1.0);
 
+/** The chunk's origin: the translation of this draw's instance matrix (see ChunkMeshes). */
+vec3 chunkOrigin() {
+  int size = textureSize(batchingIdTexture, 0).x;
+  uint id = texelFetch(batchingIdTexture, ivec2(gl_DrawID % size, gl_DrawID / size), 0).r;
+  int width = textureSize(batchingTexture, 0).x;
+  int j = int(id) * 4 + 3;
+  return texelFetch(batchingTexture, ivec2(j % width, j / width), 0).xyz;
+}
+
 void main() {
   uint w0 = data.x;
   uint w1 = data.y;
@@ -32,7 +43,7 @@ void main() {
   else if (n == 4u) vUv = vec2(p.x, p.y);
   else if (n == 5u) vUv = vec2(-p.x, p.y);
   else vUv = corner;
-  vec4 world = modelMatrix * vec4(p, 1.0);
+  vec4 world = modelMatrix * vec4(p + chunkOrigin(), 1.0);
   if (((w1 >> 30u) & 1u) == 1u) {
     // Plants sway at their tops.
     float phase = time * 1.7 + world.x * 0.7 + world.z * 0.9;
@@ -101,12 +112,16 @@ void main() {
   outColor = vec4(color, opacity);
 }`;
 
-/** One material per render pass. Opaque never discards, so early depth testing stays on for most terrain. */
-export function terrainMaterial(layer: RenderLayer, uniforms: Record<string, THREE.IUniform>): THREE.RawShaderMaterial {
+/**
+ * One material per render pass. Opaque never discards, so early depth testing stays on for most terrain. Without
+ * WEBGL_multi_draw three draws each chunk of a pool separately and sets _gl_DrawID itself.
+ */
+export function terrainMaterial(layer: RenderLayer, uniforms: Record<string, THREE.IUniform>, multiDraw: boolean): THREE.RawShaderMaterial {
   const transparent = layer === 'water' || layer === 'ice';
   return new THREE.RawShaderMaterial({
     glslVersion: THREE.GLSL3,
-    vertexShader: 'precision highp float;\nuniform mat4 viewMatrix;\n' + VERTEX,
+    vertexShader: (multiDraw ? '#extension GL_ANGLE_multi_draw : require\n' : '#define gl_DrawID _gl_DrawID\nuniform int _gl_DrawID;\n')
+      + 'precision highp float;\nuniform mat4 viewMatrix;\n' + VERTEX,
     fragmentShader: FRAGMENT,
     defines: layer === 'cutout' ? { CUTOUT: 1 } : layer === 'water' ? { WATER: 1 } : {},
     uniforms: { ...uniforms, opacity: { value: layer === 'water' ? 0.72 : layer === 'ice' ? 0.82 : 1 } },

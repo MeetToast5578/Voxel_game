@@ -70,7 +70,7 @@ export class Renderer {
     this.sky = new Sky(this.scene, seed);
     this.clouds = new Clouds(this.scene, seed);
     this.precipitation = new Precipitation(this.scene);
-    this.chunks = new ChunkMeshes(this.scene, LAYERS.map((layer) => terrainMaterial(layer, this.uniforms)));
+    this.chunks = new ChunkMeshes(this.scene, LAYERS.map((layer) => terrainMaterial(layer, this.uniforms, this.renderer.extensions.has('WEBGL_multi_draw'))));
     this.horizon = new Horizon(this.scene, this.uniforms, viewCells * 0.85);
     this.setViewDistance(viewCells);
     this.resize();
