@@ -180,6 +180,9 @@ Phase 11, the rest:
   - B marks a corner; B again fills the box (up to 19.2 m a side) with the held block. G does the same to clear.
   - Boxes are applied 1,500 cells per tick.
   - Every player edit goes into a 32-step undo history: Ctrl+Z to undo, Ctrl+Y to redo.
+- **Chests:** 27 slots, crafted from eight planks. They face the player, are saved in `play`, and empty into the
+  inventory when broken in survival.
+- **Biome borders** dither: each cell's temperature and rainfall get a small nudge before its biome is chosen.
 
 ## 2026-10-24 — performance (Claude)
 

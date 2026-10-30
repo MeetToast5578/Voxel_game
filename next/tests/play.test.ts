@@ -148,3 +148,29 @@ describe('creative building', () => {
     for (let z = at[2] + 1; z <= at[2] + 3; z++) expect(world.get(at[0], at[1], z)).toBe(0);
   });
 });
+
+describe('chests', () => {
+  it('opens, keeps items, saves them, and empties into the inventory when broken in survival', () => {
+    const { world, play, player, input, press } = setup('survival');
+    play.inventory.slots[0] = { state: S('chest'), count: 1 };
+    play.update(0.05, input, player);
+    const t = play.target!;
+    const at = [t.x + t.nx, t.y + t.ny, t.z + t.nz] as const;
+    press('place');
+    play.update(0.05, input, player);
+    expect(BLOCKS.type(world.get(...at)).key).toBe('chest');
+    play.target = { x: at[0], y: at[1], z: at[2], nx: 0, ny: 1, nz: 0, distance: 1 };
+    (play as unknown as { use(p: Player): void }).use(player);
+    expect(play.screen).toBe('chest');
+    const key = `${at[0]},${at[1]},${at[2]}`;
+    play.chests.get(key)![4] = { state: S('coal'), count: 9 };
+    const back = new Play(world, () => undefined, { sound: () => undefined, sleep: () => true });
+    back.load(JSON.parse(JSON.stringify(play.save())));
+    expect(back.chests.get(key)![4]).toEqual({ state: S('coal'), count: 9 });
+    play.closeScreen();
+    (play as unknown as { breakCell(x: number, y: number, z: number, s: number, survival: boolean, roll: number): void })
+      .breakCell(at[0], at[1], at[2], world.get(...at), true, 0.5);
+    expect(play.inventory.count(S('coal'))).toBe(9);
+    expect(play.inventory.count(S('chest'))).toBe(1);
+  });
+});

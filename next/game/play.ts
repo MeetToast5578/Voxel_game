@@ -17,6 +17,8 @@ export type Mode = 'creative' | 'survival';
 
 const S = (key: string, v = 0) => BLOCKS.state(key, v);
 const DOOR = BLOCKS.byName('door'), BED = BLOCKS.byName('bed'), FURNACE = BLOCKS.byName('furnace'), LIT = BLOCKS.byName('lit_furnace');
+const CHEST = BLOCKS.byName('chest');
+export const CHEST_SLOTS = 27;
 const TABLE = S('crafting_table'), TORCH = S('torch'), GRASS = S('grass'), DIRT = S('dirt');
 /** Cells a door is tall: 2.1 m at 0.6 m cells rounds up to 4. */
 export const DOOR_CELLS = 4;
@@ -34,8 +36,11 @@ export class Play {
   readonly furnaces = new Map<string, FurnaceState>();
   /** The furnace the screen shows, or null. */
   openFurnace: string | null = null;
-  /** Which screen is open: none, the inventory (with crafting) or a furnace. */
-  screen: 'none' | 'inventory' | 'furnace' = 'none';
+  /** Chests' contents by cell key, and the one the screen shows. */
+  readonly chests = new Map<string, (ItemStack | null)[]>();
+  openChest: string | null = null;
+  /** Which screen is open: none, the inventory (with crafting), a furnace or a chest. */
+  screen: 'none' | 'inventory' | 'furnace' | 'chest' = 'none';
   /** The item on the mouse in a screen. */
   cursor: ItemStack | null = null;
   spawn: [number, number, number] | null = null;
@@ -239,6 +244,11 @@ export class Play {
       }
     }
     if (type === FURNACE || type === LIT) this.dropFurnace(x, y, z, survival);
+    if (type === CHEST) {
+      const key = `${x},${y},${z}`;
+      if (survival) for (const s of this.chests.get(key) ?? []) if (s) this.inventory.add(s);
+      this.chests.delete(key);
+    }
     this.setBlock(x, y, z, AIR);
     this.events.sound('break');
     this.version++;
@@ -267,6 +277,13 @@ export class Play {
       if (type === DOOR) {
         const v = BLOCKS.variant(state), next = DOOR.id + (v < 4 ? v + 4 : v - 4);
         for (const [x, y, z] of this.doorCells(t.x, t.y, t.z)) this.setBlock(x, y, z, next);
+        return;
+      }
+      if (type === CHEST) {
+        const key = `${t.x},${t.y},${t.z}`;
+        if (!this.chests.has(key)) this.chests.set(key, new Array(CHEST_SLOTS).fill(null));
+        this.openChest = key;
+        this.openScreen('chest', 2);
         return;
       }
       if (state === TABLE) {
@@ -353,7 +370,7 @@ export class Play {
     this.version++;
   }
 
-  openScreen(screen: 'inventory' | 'furnace', craftSize = 2): void {
+  openScreen(screen: 'inventory' | 'furnace' | 'chest', craftSize = 2): void {
     this.screen = screen;
     this.craftSize = craftSize;
     this.version++;
@@ -369,6 +386,7 @@ export class Play {
     this.cursor = null;
     this.screen = 'none';
     this.openFurnace = null;
+    this.openChest = null;
     this.version++;
   }
 
@@ -414,6 +432,7 @@ export class Play {
       mode: this.mode, inventory: this.inventory.save(), selected: this.inventory.selected,
       health: this.survival.health, hunger: this.survival.hunger, air: this.survival.air, spawn: this.spawn,
       furnaces: [...this.furnaces].map(([k, f]) => [k, s(f.input), s(f.fuel), s(f.output), f.burn, f.progress]),
+      chests: [...this.chests].map(([k, slots]) => [k, slots.map((st) => (st ? [BLOCKS.stateName(st.state), st.count, st.wear ?? 0] : null))]),
     };
   }
 
@@ -438,6 +457,14 @@ export class Play {
       for (const f of p.furnaces) {
         if (!Array.isArray(f) || typeof f[0] !== 'string' || !/^-?\d+,-?\d+,-?\d+$/.test(f[0])) continue;
         this.furnaces.set(f[0], { input: stack(f[1]), fuel: stack(f[2]), output: stack(f[3]), burn: num(f[4], 0), progress: num(f[5], 0) });
+      }
+    }
+    if (Array.isArray(p.chests)) {
+      for (const c of p.chests) {
+        if (!Array.isArray(c) || typeof c[0] !== 'string' || !/^-?\d+,-?\d+,-?\d+$/.test(c[0]) || !Array.isArray(c[1])) continue;
+        const slots = new Inventory();
+        slots.load(c[1]);
+        this.chests.set(c[0], slots.slots.slice(0, CHEST_SLOTS));
       }
     }
     this.version++;

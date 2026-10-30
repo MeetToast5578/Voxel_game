@@ -82,9 +82,12 @@ function Grid({ slots, from, to, play, cols = 9 }: { slots: (ItemStack | null)[]
 function InventoryScreen({ play }: { play: Play }) {
   const inv = play.inventory.slots;
   const furnace = play.screen === 'furnace' && play.openFurnace ? play.furnaces.get(play.openFurnace) : undefined;
+  const chest = play.screen === 'chest' && play.openChest ? play.chests.get(play.openChest) : undefined;
   return (
     <div class="screen" onContextMenu={(e) => e.preventDefault()}>
-      {furnace ? (
+      {chest ? (
+        <Grid slots={chest} from={0} to={chest.length} play={play} />
+      ) : furnace ? (
         <div class="row">
           <div class="col">
             <Slot stack={furnace.input} onClick={(r) => { const box = [furnace.input]; play.cursor = clickSlot(box, 0, play.cursor, r); furnace.input = box[0]!; play.version++; }} />

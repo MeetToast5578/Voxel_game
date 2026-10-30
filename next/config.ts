@@ -126,8 +126,9 @@ export const TEMPERATURE_LAPSE_C_PER_KM = 6.5;
 export const PRECIPITATION_MAX_MM = 2000;
 /** Precipitation boost per unit of the largest detail amplitude (22 m): rain falls on rugged ground. */
 export const OROGRAPHIC_LIFT = 0.3;
-/** Surface blocks dither into the next biome over this distance from its border. */
-export const BIOME_BLEND_M = 0.9;
+/** Biome borders dither: each cell's temperature and rainfall are nudged by up to half these before choosing. */
+export const BIOME_JITTER_C = 1.6;
+export const BIOME_JITTER_MM = 80;
 /** Ground this rugged (detail amplitude) has no soil: bare rock. */
 export const BARE_ROCK_AMP_M = 12;
 

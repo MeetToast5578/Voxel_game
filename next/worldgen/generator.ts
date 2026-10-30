@@ -1,6 +1,6 @@
 import { createNoise3D, type NoiseFunction3D } from 'simplex-noise';
 import {
-  BARE_ROCK_AMP_M, BEACH_BAND_M, BLOCK_SIZE_M, BOULDER_DENSITY_PER_M2, BOULDER_RADIUS_M, CHUNK_AREA, CHUNK_SIZE,
+  BARE_ROCK_AMP_M, BEACH_BAND_M, BIOME_JITTER_C, BIOME_JITTER_MM, BLOCK_SIZE_M, BOULDER_DENSITY_PER_M2, BOULDER_RADIUS_M, CHUNK_AREA, CHUNK_SIZE,
   COLUMN_CACHE, DEEP_SEA_FLOOR_M, DETAIL_H_M, DETAIL_V_M, FALLEN_LOG_DENSITY_PER_M2, FALLEN_LOG_MAX_M,
   FALLEN_LOG_MIN_M, FERN_CHANCE, FLOWER_CHANCE, LILY_PAD_CHANCE, MUSHROOM_CHANCE, REED_CHANCE, SEA_LEVEL_M, SECONDARY_TREE_CHANCE,
   SHORE_CAVE_BAND_M, SHORE_ROOF_CELLS, SOIL_DEPTH_M, TALL_GRASS_CHANCE, TREE_DENSITY_PER_M2, TREE_REACH_CELLS, cells,
@@ -135,7 +135,9 @@ export class Generator {
         while (y > bottom && !this.solid(x, y, z, offset, amp)) y--;
         const topM = (y + 1) * B;
         const temp = temperatureAt(f, topM), precip = precipitationAt(f, amp);
-        const biome = biomeAt(temp, precip, topM, amp, f.weirdness);
+        // A small per-cell nudge to the climate dithers biome borders instead of drawing them as clean lines.
+        const jitter = hash2(this.seed + 64, x, z) - 0.5;
+        const biome = biomeAt(temp + jitter * BIOME_JITTER_C, precip + jitter * BIOME_JITTER_MM, topM, amp, f.weirdness);
         const warp = this.underground.warpAt(x, z);
         d.top[i] = y;
         d.water[i] = water;
@@ -145,7 +147,6 @@ export class Generator {
         d.warp[i] = warp;
         d.biome[i] = biomeIndex(biome.key);
         d.climate[i] = (quantize((temp - 5) / 25) << 4) | quantize(precip / 1000 - 1);
-        // shortcut: no dithering between neighbouring biomes' surfaces yet; add it if borders look too sharp.
         if (y + 1 <= water && water > SEA_CELL) {
           // River and lake beds: patches of sand, gravel and clay.
           const r = hash2(this.seed + 61, x, z);

@@ -107,6 +107,11 @@ const PAINTERS: Record<string, PixelFn> = {
   ...cropPainters('carrots', [235, 125, 35]),
   ...cropPainters('potatoes', [225, 215, 160]),
   ...Object.fromEntries(Object.entries(TOOL_HEADS).flatMap(([tier, head]) => ['pickaxe', 'axe', 'shovel'].map((k) => [tier + '_' + k, toolPainter(k, head)]))),
+  // A chest: planks with a dark rim, and a latch on the front.
+  chest_side: (x, y, r) => shade([150, 110, 60], (x === 0 || x === 15 || y === 0 || y === 15 || y === 5 ? 0.6 : 1) + (r() - 0.5) * 0.12),
+  chest_top: (x, y, r) => shade([160, 120, 66], (x === 0 || x === 15 || y === 0 || y === 15 ? 0.6 : 1) + (r() - 0.5) * 0.12),
+  chest_front: (x, y, r) => (x >= 7 && x <= 8 && y >= 4 && y <= 7 ? shade([200, 200, 200], 1)
+    : shade([150, 110, 60], (x === 0 || x === 15 || y === 0 || y === 15 || y === 5 ? 0.6 : 1) + (r() - 0.5) * 0.12)),
   // A torch: a stick with a glowing tip, drawn on the stick's 2-pixel width.
   torch: (x, y, r) => (x >= 7 && x <= 8 ? (y <= 5 ? shade(y <= 2 ? [255, 236, 140] : [240, 150, 40], 0.9 + r() * 0.2) : shade(HANDLE, 0.9 + r() * 0.2)) : [0, 0, 0, 0]),
   // Items: an ingot bar, a lump of coal and a browned potato, each on a clear background.

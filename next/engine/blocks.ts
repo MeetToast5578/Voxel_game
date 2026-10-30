@@ -274,6 +274,8 @@ function gameplay(): BlockSpec[] {
   return [
     { key: 'torch', name: 'Torch', tiles: all('torch'), shape: 'boxes', boxes: () => [[7, 0, 7, 9, 10, 9]], solid: false,
       layer: 'cutout', lightEmission: 14, hardness: 0, needsSupport: true, supports: false },
+    { key: 'chest', name: 'Chest', tiles: { top: 'chest_top', side: 'chest_side', bottom: 'chest_top' }, front: 'chest_front',
+      variants: 4, hardness: 2.5, density: 600, ...wood },
     { key: 'crafting_table', name: 'Crafting table', tiles: { top: 'crafting_table_top', side: 'crafting_table_side', bottom: 'planks' },
       hardness: 2.5, density: 600, ...wood },
     stone('furnace', 'Furnace', { tiles: { top: 'furnace_top', side: 'furnace_side', bottom: 'furnace_top' }, front: 'furnace_front', variants: 4, hardness: 3.5 }),
