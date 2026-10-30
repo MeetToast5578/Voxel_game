@@ -17,6 +17,8 @@ import { Creatures } from './creatures/creatures';
 import { CreatureMeshes } from './render/creatureMeshes';
 import { mulberry32 } from './core/random';
 import { Environment } from './sim/environment';
+import { climateTemperature } from './sim/weather';
+import { biomeByIndex } from './worldgen/biomes';
 import { Simulation } from './sim/simulation';
 import { drawUi, type UiModel } from './ui/app';
 import { installTouchControls, wantsTouch } from './ui/touch';
@@ -342,6 +344,17 @@ function cull(): void {
 }
 let culled = 0;
 
+/** Biome, temperature and light where the player stands, for the debug text. */
+function describeHere(): string {
+  const x = Math.floor(player.body.x), y = Math.floor(player.eyeY), z = Math.floor(player.body.z);
+  const column = world.column(x >> 4, z >> 4);
+  const chunk = world.chunkAt(x, y, z);
+  if (!column || !chunk) return '';
+  const i = ((z & 15) << 4) | (x & 15), cell = localIndex(x & 15, y & 15, z & 15);
+  const temp = climateTemperature(column.climate[i]!) + (env.sample?.seasonC ?? 0);
+  return `${biomeByIndex(column.biome[i]!).name}  ${temp.toFixed(0)} °C  light sky ${chunk.skyLight(cell)} block ${chunk.blockLight(cell)}`;
+}
+
 /** Far terrain: rebuilt in a worker when the player has moved far enough from where it was built. */
 let horizonPending = false;
 function updateHorizon(x: number, z: number): void {
@@ -408,6 +421,7 @@ const loop = new FixedStepLoop(1 / 60, 0.25, update, (_alpha, frameDt) => {
       `pos ${m(b.x)} ${m(b.y)} ${m(b.z)} m  ${player.flying ? 'flying' : b.onGround ? 'ground' : player.submerged > 0.05 ? 'swimming' : 'air'} [F]`,
       `chunks ${world.chunks.size}  meshes ${renderer.chunks.count}  quads ${renderer.chunks.quads}  culled ${culled}  draw calls ${info.render.calls}`,
       `world ${worldName} (seed ${seed})${saver.conflict ? '  NOT SAVING: opened in another tab' : ''}`,
+      describeHere(),
       `creatures ${creatures.list.length}  block updates ${simulation.ticks.size} (${simulation.ticks.dormantCount} waiting)  jobs ${streamer.pendingChunks}  columns ${streamer.pendingColumns}  dirty ${streamer.dirtyCount}  failures ${streamer.failures}`,
       `${play.mode} [F3 hides this]`,
     ].join('\n');
