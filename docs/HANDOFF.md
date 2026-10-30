@@ -188,6 +188,20 @@ Phase 11, the rest:
 - **Fix:** block updates scheduled across the edge of the loaded area now wait for their chunk (`TickScheduler.defer`)
   instead of being lost when due.
 
+Polish:
+- **Draw calls** (`next/render/chunkMeshes.ts`): chunks are drawn from pools of 131,072 quads, one multi-draw per pool
+  and pass (three's `BatchedMesh`), with space handed out first-fit. At view 12 the terrain takes 10 draw calls instead
+  of about 500. The vertex shader finds each chunk's origin from `gl_DrawID`. SwiftShader frame rates do not change,
+  because software rasterising dominates there; the saving is CPU time per frame on real GPUs.
+- **Dropped items** (`next/game/drops.ts`, `next/render/dropMeshes.ts`): what does not fit in the inventory drops into
+  the world. Q throws one of the held item, and death scatters the inventory. Drops fall, slide to a stop, are picked
+  up within 1.5 m, vanish after 5 minutes (at most 256 at once) and are saved with `play`.
+- **Waterfalls** (`Generator.column`): where a neighbour's water stands higher, a curtain of flowing water spills
+  over the step. The top cell is full level and the rest are falling cells, which is exactly what the block updates
+  settle on, so a test can tick every waterfall cell and see nothing change. A one-cell step gets a source instead,
+  because water between two sources becomes one. Real falls are rare: 2 in a 768 m square of seed 1, with one at
+  (-591, 32, -468) in cells.
+
 ## 2026-10-24 — performance (Claude)
 
 T-J13: an edit remeshes at once only the chunks the changed cell faces (at most 4, was 8). T-J6: chunk budgets

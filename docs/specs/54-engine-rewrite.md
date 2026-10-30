@@ -51,6 +51,9 @@ The owner chose a full rewrite with 0.6 m blocks and 16³ chunks (9.6 m).
   - Runs in workers, from an 18³ padded copy of cells and light.
   - Greedy merging of faces; two uint32 words per vertex; tiles in a texture array.
   - Four passes: opaque without discard, cutout, water, ice.
+  - Each pass is drawn from pools of 131,072 quads: one multi-draw per pool (three's `BatchedMesh`, with space
+    handed out first-fit by `ChunkMeshes`). The shader finds a chunk's origin from `gl_DrawID`. The terrain takes
+    about 10 draw calls, whatever the view distance.
   - A mesh result is never thrown away: a chunk that changed meanwhile is meshed again. Player edits are meshed
     first.
 - **Streaming:**
@@ -77,16 +80,19 @@ The owner chose a full rewrite with 0.6 m blocks and 16³ chunks (9.6 m).
 - **Per chunk:** generation about 1.2 ms, meshing about 0.5 ms, worker light about 0.7 ms, stitching about 0.3 ms.
   `scripts/next-benchmark.mjs --assert` gates them at 2, 1, 1 and 1 ms.
 - **Edits:** 0.3–3.9 ms on the main thread; on screen within 2 frames (`scripts/next-smoke.mjs`).
-- **View distance 12 chunks (115 m):** about 2,700 chunks loaded and 500–650 draw calls with plants and trees. The
-  old engine needed 3,000–4,000 chunks and 340 draw calls to show 38 m.
+- **View distance 12 chunks (115 m):** about 2,700 chunks loaded and about 330,000 quads in 13 draw calls. Before
+  pooling it was 500–650 draw calls. The old engine needed 3,000–4,000 chunks and 340 draw calls to show 38 m.
 
 ## Known shortcuts and open items
 
 - **Collision:** stairs and closed doors collide as whole cells.
 - **Creatures:** steer instead of path-finding.
-- **Drops:** when the inventory is full, drops are lost; there are no dropped-item entities.
-- **Rivers:** waterfalls are steps of still water; there are no stony shores or sandbars.
-- **Draw calls:** each chunk with plants adds a cutout pass. Batching (old task T-J3) is still open.
+- **Drops:** items lie in the world only when they do not fit, are thrown (Q) or are scattered on death; broken
+  blocks still go straight into the inventory.
+- **Rivers:** there are no stony shores or sandbars. Waterfalls are generated only where a river steps down more
+  than one cell. Where a lake spills over a wide edge, the waterfall is as wide as the edge.
+- **Pools:** `ChunkMeshes` reaches into `BatchedMesh`'s private geometry table (three is pinned at 0.186.0); a test
+  fails if an upgrade changes it. Freed space is reused, never compacted.
 - **Light:** below the loaded chunks, the generated sky top is assumed.
 
 ## Phase 12 (not done; the owner decides)

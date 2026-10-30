@@ -6,7 +6,7 @@ import {
   SHORE_CAVE_BAND_M, SHORE_ROOF_CELLS, SOIL_DEPTH_M, TALL_GRASS_CHANCE, TREE_DENSITY_PER_M2, TREE_REACH_CELLS, cells,
 } from '../config';
 import { hash2, mulberry32 } from '../core/random';
-import { BLOCKS, BLOCKS_SKY } from '../engine/blocks';
+import { BLOCKS, BLOCKS_SKY, FLUID_LEVELS } from '../engine/blocks';
 import { biomeAt, biomeByIndex, biomeIndex, precipitationAt, temperatureAt } from './biomes';
 import { ClimateSampler, detailAmpMeters, heightMeters } from './climate';
 import { treeCells, unpackTreeCell, type TreeSpecies } from './trees';
@@ -21,6 +21,9 @@ const S = (key: string) => BLOCKS.state(key);
 const AIR = S('air'), STONE = S('stone'), DIRT = S('dirt'), GRASS = S('grass'), SAND = S('sand'), GRAVEL = S('gravel');
 const WATER = S('water'), LOG = S('log'), LEAVES = S('leaves'), COBBLE = S('cobblestone'), CLAY = S('clay');
 const REED = S('reed'), LILY = S('lily_pad'), LAVA = S('lava');
+/** Flowing water at full level, resting and falling (variants: level - 1, plus FLUID_LEVELS when falling). */
+const SPILL = BLOCKS.state('flowing_water', FLUID_LEVELS - 1), FALLING = BLOCKS.state('flowing_water', 2 * FLUID_LEVELS - 1);
+const N4 = [[1, 0], [-1, 0], [0, 1], [0, -1]] as const;
 const COVER = { tall: S('tall_grass'), fern: S('fern'), poppy: S('poppy'), dandelion: S('dandelion'),
   brown: S('brown_mushroom'), red: S('red_mushroom') };
 
@@ -65,9 +68,9 @@ export interface ColumnData {
 type Base = Omit<ColumnData, 'skyTop' | 'features' | 'maxTop'> & { terrainMax: number };
 
 const quantize = (v: number) => Math.max(0, Math.min(15, Math.round((v + 1) * 7.5)));
-/** Leaves only grow into open air; logs and cacti also push through leaves and plants. */
+/** Leaves only grow into open air; logs and cacti also push through leaves and plants; anything replaces lily pads. */
 const replaceableBy = (state: number, cell: number) =>
-  cell === AIR || (state !== LEAVES && (cell === LEAVES || BLOCKS.types[BLOCKS.typeIndex[cell]!]!.shape === 'cross'));
+  cell === AIR || cell === LILY || (state !== LEAVES && (cell === LEAVES || BLOCKS.types[BLOCKS.typeIndex[cell]!]!.shape === 'cross'));
 
 /**
  * Terrain from climate fields and 3D density, with biomes, bent rock strata, caves, ore veins, trees, ground cover,
@@ -238,6 +241,26 @@ export class Generator {
           if ((BLOCKS.flags[state]! & BLOCKS_SKY) !== 0) skyTop[i] = Math.max(skyTop[i]!, y);
           maxTop = Math.max(maxTop, y);
         }
+      }
+    }
+    // Waterfalls: where a neighbour's water stands higher, it spills over the step as a curtain of flowing water, the
+    // top cell level beside the neighbour's source and the rest falling (what the block updates would settle on). A
+    // one-cell step just gets a source: water beside sources and on a source would become one anyway.
+    for (let i = 0; i < AREA; i++) {
+      const water = base.water[i]!;
+      if (water <= base.top[i]! + 1 || base.open[i]) continue;
+      const x = x0 + (i & 15), z = z0 + (i >> 4);
+      let spill = -1;
+      for (const [dx, dz] of N4) {
+        const [c, j] = this.cellBase(x + dx, z + dz);
+        const w = c.water[j]!;
+        if (w > water && w > SEA_CELL && c.top[j]! < w - 1) spill = Math.max(spill, w - 1);
+      }
+      for (let y = water; y <= spill; y++) {
+        const state = spill === water ? WATER : y === spill ? SPILL : FALLING;
+        features.push(i, y, state);
+        if ((BLOCKS.flags[state]! & BLOCKS_SKY) !== 0) skyTop[i] = Math.max(skyTop[i]!, y);
+        maxTop = Math.max(maxTop, y);
       }
     }
     const data: ColumnData = { ...base, skyTop, features: Int32Array.from(features), maxTop };
