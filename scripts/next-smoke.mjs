@@ -29,6 +29,7 @@ try {
     ['next-high', 'seed=1&x=0.5&y=200&z=0.5&pitch=-0.6&fly=1&world=smoke-high&new=1'],
     ['next-evening', 'seed=1&time=0.77&world=smoke-evening&new=1'],
     ['next-night', 'seed=1&time=0.02&world=smoke-night&new=1&pitch=0.3'],
+    ['next-river', 'seed=1&x=10&y=50&z=-130&yaw=0.3&pitch=-0.45&fly=1&world=smoke-river&new=1'],
     ['next-forest', 'seed=1&x=-950&y=95&z=-950&yaw=0.6&pitch=-0.25&fly=1&world=smoke-forest&new=1'],
     ['next-cave', 'seed=1&x=8&y=-60&z=8&fly=1&world=smoke-cave&new=1'],
   ]) {

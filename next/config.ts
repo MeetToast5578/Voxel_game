@@ -233,3 +233,20 @@ export const SNOW_SETTLE_CHANCE = 0.05;
 export const SNOW_MELT_CHANCE = 0.1;
 export const ICE_FREEZE_CHANCE = 0.05;
 export const ICE_THAW_CHANCE = 0.1;
+
+// ---- Rivers and lakes ----
+/**
+ * Levels of the drainage network, from streams to big rivers: node spacing, the share of segments that carry water,
+ * and channel width and depth.
+ */
+export const RIVER_LEVELS = [
+  { spacingM: 200, share: 0.35, widthM: 2.4, depthM: 1.2 },
+  { spacingM: 420, share: 0.6, widthM: 4.8, depthM: 1.8 },
+  { spacingM: 900, share: 1, widthM: 9.6, depthM: 3 },
+] as const;
+/** Rivers wander off the straight line between nodes by up to this much. */
+export const RIVER_MEANDER_M = 18;
+export const RIVER_MEANDER_WAVELENGTH_M = 90;
+/** Share of the water's edge (where the ground is just above the water) that grows reeds. */
+export const REED_CHANCE = 0.15;
+export const LILY_PAD_CHANCE = 0.04;

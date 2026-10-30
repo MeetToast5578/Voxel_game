@@ -112,6 +112,20 @@ Phase 8: atmosphere.
 - **Cave culling fix:** the walk is now bounded by the highest generated terrain and 64 chunks down, not by the view
   radius vertically. That radius had hidden water and ponds below sea level when seen from high up.
 
+Phase 7b: rivers and lakes (`next/worldgen/rivers.ts`). This closes T-C6 by design.
+- **Network:** a drainage network over the whole world, with no regions. There are three levels of jittered nodes:
+  every 200 m (35% carry streams, 2.4 m wide), every 420 m (60%, 4.8 m) and every 900 m (all, 9.6 m).
+  - A node drains to its lowest neighbour on the same grid.
+  - The water falls linearly along each segment, and never stands above the land.
+  - A node lower than all its neighbours holds a lake.
+  - Paths meander through a domain warp.
+- **No seams:** every decision reads only nearby nodes, so places agree whatever order they are generated in.
+  Tests follow one river across more than 8 chunks and swap the generation order.
+- **Carving:** channels and banks cut into the surface and calm its 3D detail. Beds are sand, gravel and clay.
+  Reeds grow on the edge, lily pads on lakes. Trees, boulders and logs keep out of the water. Caves keep a roof
+  under rivers and lakes as they do under the sea. Rivers also show on the far terrain.
+- **Still missing:** waterfalls are just steps of still water; there are no stony shores or sandbars.
+
 ## 2026-10-24 — performance (Claude)
 
 T-J13: an edit remeshes at once only the chunks the changed cell faces (at most 4, was 8). T-J6: chunk budgets
