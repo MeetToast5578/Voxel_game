@@ -1,6 +1,6 @@
 import { CHUNK_SIZE } from '../config';
 import { tileIndex } from '../render/tilePixels';
-import { BLOCKS, OPAQUE, type RenderLayer } from './blocks';
+import { BLOCKS, FLUID_LEVELS, OPAQUE, type RenderLayer } from './blocks';
 
 // Imported constants copied locally: hot loops then read a plain constant, not a module binding.
 const CHUNK_SIZE_ = CHUNK_SIZE;
@@ -77,7 +77,10 @@ const BOX_Y0 = new Uint8Array(COUNT);
 const BOX_Y1 = new Uint8Array(COUNT);
 /** Faces between two cells of the same group are hidden (0: no group). */
 const GROUP = new Uint16Array(COUNT);
-const WATER = new Uint8Array(COUNT);
+/** Fluid cells: 1 water, 2 lava (faces between the same fluid are hidden; their tops sit lower). */
+const FLUID_KIND = new Uint8Array(COUNT);
+/** How far a fluid cell's top sits below the cell top when no fluid is above it, in sixteenths. */
+const FLUID_DROP = new Uint8Array(COUNT);
 
 const TINT_KIND: Record<string, number> = { grass_top: 1, grass_side: 1, tall_grass: 1, fern: 1, leaves: 2 };
 for (const t of BLOCKS.types) {
@@ -85,8 +88,13 @@ for (const t of BLOCKS.types) {
     const v = s - t.id;
     PASS[s] = Math.max(0, LAYERS.indexOf(t.layer));
     KIND[s] = t.layer === 'none' ? 0 : t.shape === 'cube' ? 1 : t.shape === 'cross' ? 2 : 3;
-    GROUP[s] = t.layer === 'water' ? 0xffff : t.cullSame ? BLOCKS.typeIndex[s]! + 1 : 0;
-    WATER[s] = t.layer === 'water' ? 1 : 0;
+    GROUP[s] = t.layer === 'water' ? 0xffff : t.key === 'lava' || t.key === 'flowing_lava' ? 0xfffe : t.cullSame ? BLOCKS.typeIndex[s]! + 1 : 0;
+    FLUID_KIND[s] = t.layer === 'water' ? 1 : t.key === 'lava' || t.key === 'flowing_lava' ? 2 : 0;
+    if (FLUID_KIND[s]) {
+      // A source's surface is 14/16 high; flowing fluid of level 1..8 scales that down; falling fluid fills the cell.
+      const level = t.flows ? (v >= FLUID_LEVELS ? -1 : v + 1) : FLUID_LEVELS + 1;
+      FLUID_DROP[s] = level < 0 ? 0 : 16 - Math.max(2, Math.round((14 * Math.min(level, FLUID_LEVELS)) / FLUID_LEVELS));
+    }
     if (t.shape === 'slab') {
       BOX_Y0[s] = v === 0 ? 0 : 8;
       BOX_Y1[s] = v === 0 ? 8 : 16;
@@ -205,7 +213,8 @@ function greedyCubes(states: Uint16Array, light: Uint8Array, climate: Uint8Array
           pos[ua] = u;
           pos[va] = v;
           cornerShading(states, light, p, f);
-          const lowered = f === 2 && WATER[s] === 1 && WATER[states[p + SY]!] === 0 ? 1 : 0;
+          // The top cell of a fluid has its top, and the upper edge of its sides, lowered to its level.
+          const lowered = f !== 3 && FLUID_KIND[s] !== 0 && FLUID_KIND[states[p + SY]!] !== FLUID_KIND[s] ? FLUID_DROP[s]! : 0;
           const tint = FACE_TINT[s * 6 + f]!;
           const clim = tint === 0 ? 0 : climate[pos[2]! * CHUNK_SIZE_ + pos[0]!]!;
           maskA[m] = (1 + FACE_TILE[s * 6 + f]!) | (PASS[s]! << 11) | (tint << 13) | (clim << 15) | (lowered << 23);
@@ -250,7 +259,7 @@ function greedyCubes(states: Uint16Array, light: Uint8Array, climate: Uint8Array
 
 function emitGreedy(buf: QuadBuffer, f: number, pos: number[], ua: number, va: number, w: number, h: number,
   ka: number, kb: number, kc: number): void {
-  const tile = (ka & 0x7ff) - 1, tint = (ka >> 13) & 3, clim = (ka >> 15) & 0xff, lowered = (ka >> 23) & 1;
+  const tile = (ka & 0x7ff) - 1, tint = (ka >> 13) & 3, clim = (ka >> 15) & 0xff, lowered = (ka >> 23) & 31;
   const size = [16, 16, 16];
   size[ua] = 16 * w;
   size[va] = 16 * h;
@@ -258,7 +267,7 @@ function emitGreedy(buf: QuadBuffer, f: number, pos: number[], ua: number, va: n
   for (let c = 0; c < 4; c++) {
     const cr = corners[c]!;
     const x = pos[0]! * 16 + cr[0] * size[0]!;
-    const y = pos[1]! * 16 + cr[1] * size[1]! - (lowered && cr[1] === 1 ? 2 : 0);
+    const y = pos[1]! * 16 + cr[1] * size[1]! - (cr[1] === 1 ? lowered : 0);
     const z = pos[2]! * 16 + cr[2] * size[2]!;
     const ao = (kc >> (c * 2)) & 3;
     w0[c] = (x | (y << 9) | (z << 18) | (ao << 27) | (f << 29)) >>> 0;

@@ -180,7 +180,8 @@ const BASE: BlockSpec[] = [
   { key: 'flowing_lava', name: 'Flowing lava', tiles: all('lava'), ...fluid, opaque: false, lightEmission: 15, flows: true, variants: 2 * FLUID_LEVELS, density: 3100 },
   { key: 'ice', name: 'Ice', tiles: all('ice'), layer: 'ice', opaque: false, cullSame: true, hardness: 0.5, density: 917 },
   { key: 'log', name: 'Log', tiles: { top: 'log_top', side: 'log_side', bottom: 'log_top' }, hardness: 2, density: 600 },
-  { key: 'leaves', name: 'Leaves', tiles: all('leaves'), layer: 'cutout', hardness: 0.3, supports: false, density: 300 },
+  // Variant 1 is placed by the player and never decays.
+  { key: 'leaves', name: 'Leaves', tiles: all('leaves'), layer: 'cutout', hardness: 0.3, supports: false, density: 300, variants: 2 },
   { key: 'planks', name: 'Planks', tiles: all('planks'), hardness: 2, density: 600 },
   { key: 'glass', name: 'Glass', tiles: all('glass'), layer: 'cutout', cullSame: true, hardness: 0.3 },
   stone('bedrock', 'Bedrock', { hardness: Infinity }),
@@ -214,7 +215,8 @@ const BASE: BlockSpec[] = [
   thin('lily_pad', 'Lily pad'),
   thin('moss', 'Moss'),
   thin('leaf_litter', 'Leaf litter'),
-  thin('snow', 'Snow', { layer: 'opaque', variants: SNOW_LAYERS, hardness: 0.1 }),
+  // Snow is walked on, unlike the other thin layers.
+  thin('snow', 'Snow', { layer: 'opaque', variants: SNOW_LAYERS, hardness: 0.1, solid: true }),
 ];
 
 /** Slabs of every full solid cube: variant 0 is the bottom half, 1 the top half. */

@@ -63,9 +63,18 @@ export class WorkerPool {
     return -1;
   }
 
-  /** Whether worker i can take another job now. */
-  hasRoom(i: number): boolean {
-    return i >= 0 && this.alive[i]! && this.inFlight[i]! < JOBS_PER_WORKER;
+  /** Whether worker i can take another job now; `extra` lets urgent work past the usual limit. */
+  hasRoom(i: number, extra = 0): boolean {
+    return i >= 0 && this.alive[i]! && this.inFlight[i]! < JOBS_PER_WORKER + extra;
+  }
+
+  /** The healthy worker with the fewest jobs in flight, or -1. Meshing has no cache to keep warm, so any will do. */
+  leastBusy(): number {
+    let best = -1;
+    for (let i = 0; i < this.workers.length; i++) {
+      if (this.alive[i] && (best < 0 || this.inFlight[i]! < this.inFlight[best]!)) best = i;
+    }
+    return best;
   }
 
   get busy(): number {

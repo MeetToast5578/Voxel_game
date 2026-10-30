@@ -29,6 +29,32 @@ is assumed (edits stored in unloaded chunks are not seen). Day and night: `T` sk
 Benchmark gates now also cover worker light and stitching (here 0.6 ms and 0.3 ms per chunk). Hot modules copy
 imported constants into locals, because the benchmark's module loader turns each into a getter call.
 
+Phases 4 to 6 (same PR):
+- **Player** (`next/game`): swept-box physics in cells (`physics.ts`). Stepping is one step per move, also right
+  after landing, and steps down so stairs and slabs are walked, not fallen down. A body stuck in solid is pushed to
+  the nearest free spot. Swimming uses buoyancy from how much of the body is in water. Raycast with exact slab and
+  snow boxes. Keyboard, mouse and gamepad (`input.ts`); touch controls wait for the UI phase. Break and place with
+  a 9-slot hotbar; F flies.
+- **Edits**: `setBlock` in `next/main.ts` is the one path. Player edits remesh first (urgent). In the browser smoke
+  test a typical edit took 0.5 to 1.1 ms on the main thread, and every edit was on screen within 2 frames. An
+  opaque block next to glowstone, which removes a lot of light, took up to 5.7 ms under software rendering.
+- **Saves** (`next/storage`, IndexedDB database `voxel-next`):
+  - Whole chunks that differ from generation are saved, with their light, deflated and with states stored by
+    name. Their columns' sky tops and a meta record are saved too.
+  - Unloading chunks are encoded at once.
+  - A revision check refuses to overwrite a save from another tab.
+  - World backups export and import as JSON (`archive.ts`). Settings live in localStorage.
+  - URL: `world=name`, `new=1`.
+  - Saves from 0.3 m blocks are not read; the old game keeps its own database.
+- **Simulation** (`next/sim`):
+  - Scheduled ticks (fluids, falling sand and gravel, plants losing their ground) at 20 Hz. Ticks of unloaded
+    chunks wait with their remaining delay and are saved.
+  - Water and lava spread with levels (lava loses two per cell) and harden into obsidian or cobblestone where
+    they meet. Fluid speeds are set in m/s.
+  - Random ticks (grass spread and dieback, leaf decay; placed leaves are variant 1) run at a fixed rate per chunk
+    within `SIM_RADIUS_CHUNKS` of the player, so their speed does not depend on the view distance.
+  - Snow, ice, crops and saplings come with weather (phase 8) and gameplay (phase 9).
+
 ## 2026-10-24 — performance (Claude)
 
 T-J13: an edit remeshes at once only the chunks the changed cell faces (at most 4, was 8). T-J6: chunk budgets

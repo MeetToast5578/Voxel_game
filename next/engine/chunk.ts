@@ -32,6 +32,11 @@ export class Chunk {
     return this.indices === null;
   }
 
+  /** The states this chunk may hold (possibly including some no cell uses any more). */
+  get states(): readonly number[] {
+    return this.palette;
+  }
+
   get paletteSize(): number {
     return this.palette.length;
   }
@@ -130,6 +135,26 @@ export class Chunk {
     const first = bytes[0]!;
     this.light = bytes.length < CHUNK_VOLUME || bytes.every((b) => b === first) ? null : Uint8Array.from(bytes);
     this.uniformLight = first;
+    this.version++;
+  }
+
+  /** The raw storage, for saving: palette states, per-cell palette indices (null when uniform) and light. */
+  snapshot(): { palette: number[]; indices: Uint8Array | Uint16Array | null; light: Uint8Array | null; uniformLight: number } {
+    return { palette: this.palette.slice(), indices: this.indices?.slice() ?? null, light: this.light?.slice() ?? null, uniformLight: this.uniformLight };
+  }
+
+  /** Replaces the storage from a snapshot (as `snapshot` returns, or decoded from a save). */
+  restore(palette: number[], indices: Uint8Array | Uint16Array | null, light: Uint8Array | null, uniformLight: number): void {
+    if (palette.length === 0 || (indices === null) !== (palette.length === 1) || (indices !== null && indices.length !== CHUNK_VOLUME)) {
+      throw new Error('Invalid chunk snapshot');
+    }
+    if (indices) for (let i = 0; i < CHUNK_VOLUME; i++) if (indices[i]! >= palette.length) throw new Error('Chunk index out of palette');
+    this.palette = palette.slice();
+    this.lookup.clear();
+    this.palette.forEach((s, i) => this.lookup.set(s, i));
+    this.indices = indices;
+    this.light = light;
+    this.uniformLight = uniformLight;
     this.version++;
   }
 

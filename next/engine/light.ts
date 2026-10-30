@@ -1,5 +1,5 @@
 import { CHUNK_AREA, CHUNK_SIZE, CHUNK_VOLUME, MAX_LIGHT } from '../config';
-import { columnIndex, localIndex, toChunk, toLocal } from '../core/coords';
+import { columnIndex, forEachChunkReading, localIndex, toChunk, toLocal } from '../core/coords';
 import { IntQueue } from '../core/queue';
 import { BLOCKS, BLOCKS_SKY, OPAQUE } from './blocks';
 import type { Chunk } from './chunk';
@@ -104,31 +104,36 @@ export class LightEngine {
     return this.world.column(toChunk(x), toChunk(z))?.skyTop[columnIndex(toLocal(x), toLocal(z))] ?? -Infinity;
   }
 
+  private last: Chunk | undefined;
+
+  /** The chunk holding a cell; flood fills mostly stay in one chunk, so the last one found is tried first. */
   private chunk(x: number, y: number, z: number): Chunk | undefined {
-    return this.world.chunkAt(x, y, z);
+    const l = this.last, cx = toChunk(x), cy = toChunk(y), cz = toChunk(z);
+    if (l !== undefined && l.cx === cx && l.cy === cy && l.cz === cz && this.world.chunks.get(l.key) === l) return l;
+    const c = this.world.chunk(cx, cy, cz);
+    if (c) this.last = c;
+    return c;
   }
 
-  private touch(chunk: Chunk, x: number, y: number, z: number): void {
-    // A mesh reads a one-cell border, so a change on a chunk face also affects the chunks across it.
+  private touch(x: number, y: number, z: number): void {
     const lx = toLocal(x), ly = toLocal(y), lz = toLocal(z);
-    const xs = lx === 0 ? -1 : lx === 15 ? 1 : 0, ys = ly === 0 ? -1 : ly === 15 ? 1 : 0, zs = lz === 0 ? -1 : lz === 15 ? 1 : 0;
-    this.changed.add(chunk.key);
-    if (xs === 0 && ys === 0 && zs === 0) return;
-    for (let dy = Math.min(0, ys); dy <= Math.max(0, ys); dy++) {
-      for (let dz = Math.min(0, zs); dz <= Math.max(0, zs); dz++) {
-        for (let dx = Math.min(0, xs); dx <= Math.max(0, xs); dx++) {
-          const n = this.world.chunk(chunk.cx + dx, chunk.cy + dy, chunk.cz + dz);
-          if (n) this.changed.add(n.key);
-        }
-      }
+    if (lx > 0 && lx < 15 && ly > 0 && ly < 15 && lz > 0 && lz < 15) {
+      // Interior cell: only its own chunk's mesh reads it.
+      const c = this.chunk(x, y, z);
+      if (c) this.changed.add(c.key);
+      return;
     }
+    forEachChunkReading(x, y, z, (cx, cy, cz) => {
+      const n = this.world.chunk(cx, cy, cz);
+      if (n) this.changed.add(n.key);
+    });
   }
 
   private setLight(chunk: Chunk, x: number, y: number, z: number, sky: number, block: number): void {
-    const i = localIndex(toLocal(x), toLocal(y), toLocal(z));
+    const i = localIndex(x & 15, y & 15, z & 15);
     if (chunk.lightByte(i) === ((sky << 4) | block)) return;
     chunk.setLight(i, sky, block);
-    this.touch(chunk, x, y, z);
+    this.touch(x, y, z);
   }
 
   private push(q: IntQueue, x: number, y: number, z: number, level = 0): void {
@@ -247,19 +252,24 @@ export class LightEngine {
     const q = this.removeQueue;
     while (q.length > 0) {
       const x = q.shift(), y = q.shift(), z = q.shift(), level = q.shift();
+      const c = this.chunk(x, y, z);
+      const lx = toLocal(x), ly = toLocal(y), lz = toLocal(z);
       for (let d = 0; d < 6; d++) {
+        const ax = lx + DX[d]!, ay = ly + DY[d]!, az = lz + DZ[d]!;
+        const inside = c !== undefined && ax >= 0 && ax < CHUNK_SIZE_ && ay >= 0 && ay < CHUNK_SIZE_ && az >= 0 && az < CHUNK_SIZE_;
         const nx = x + DX[d]!, ny = y + DY[d]!, nz = z + DZ[d]!;
-        const c = this.chunk(nx, ny, nz);
-        if (!c) continue;
-        const i = localIndex(toLocal(nx), toLocal(ny), toLocal(nz));
-        const nl = sky ? c.skyLight(i) : c.blockLight(i);
+        const n = inside ? c : this.chunk(nx, ny, nz);
+        if (!n) continue;
+        const i = localIndex(ax & 15, ay & 15, az & 15);
+        const v = n.lightByte(i);
+        const nl = sky ? v >> 4 : v & 15;
         if (nl === 0) continue;
-        const source = sky ? ny > this.skyTop(nx, nz) : EMISSION[c.get(i)]! >= nl;
+        const source = sky ? ny > this.skyTop(nx, nz) : EMISSION[n.get(i)]! >= nl;
         if (nl < level && !source) {
-          if (sky) this.setLight(c, nx, ny, nz, 0, c.blockLight(i));
+          if (sky) this.setLight(n, nx, ny, nz, 0, v & 15);
           else {
-            const own = EMISSION[c.get(i)]!;
-            this.setLight(c, nx, ny, nz, c.skyLight(i), own);
+            const own = EMISSION[n.get(i)]!;
+            this.setLight(n, nx, ny, nz, v >> 4, own);
             if (own > 0) this.push(this.addQueue, nx, ny, nz);
           }
           this.push(q, nx, ny, nz, nl);

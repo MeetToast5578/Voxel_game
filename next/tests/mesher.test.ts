@@ -56,6 +56,19 @@ describe('mesher', () => {
     expect(decodeVertex(words[0]!, words[1]!).y).toBeCloseTo(4 - 2 / 16);
   });
 
+  it('draws flowing water lower than a source, and falling water full height', () => {
+    const top = (state: number) => {
+      const out = buildMesh(input((x, y, z) => (x === 1 && y === 1 && z === 1 ? state : y < 1 ? S('stone') : 0)));
+      const words = out[pass('water')]!;
+      let max = 0;
+      for (let i = 0; i < words.length; i += 2) max = Math.max(max, decodeVertex(words[i]!, words[i + 1]!).y);
+      return max - 1;
+    };
+    expect(top(S('water'))).toBeCloseTo(14 / 16);
+    expect(top(S('flowing_water', 3))).toBeCloseTo(7 / 16);
+    expect(top(S('flowing_water', 8))).toBeCloseTo(1);
+  });
+
   it('draws plants as two swaying crossed quads in the cutout pass', () => {
     const out = buildMesh(input((x, y, z) => (x === 1 && y === 1 && z === 1 ? S('tall_grass') : 0)));
     const words = out[pass('cutout')]!;

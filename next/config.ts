@@ -65,3 +65,56 @@ export const EYE_HEIGHT_M = 1.62;
 export const DAY_LENGTH_S = 1200;
 /** Sky light multiplier at midnight (moonlight). */
 export const NIGHT_DAYLIGHT = 0.22;
+
+// ---- Player ----
+/** Half the body's width: a little under half a cell, so the player fits one-cell gaps. */
+export const PLAYER_HALF_WIDTH_M = 0.28;
+export const PLAYER_HEIGHT_M = 1.75;
+export const WALK_SPEED_M_S = 4.3;
+export const SPRINT_SPEED_M_S = 6;
+export const GRAVITY_M_S2 = 28;
+/** Jump height is about 1.35 m. */
+export const JUMP_SPEED_M_S = 8.7;
+export const TERMINAL_SPEED_M_S = 50;
+/** How quickly velocity reaches the target speed, per second, on the ground and in the air. */
+export const GROUND_ACCEL = 20;
+export const AIR_ACCEL = 5;
+/** Highest ledge the player walks up onto (and down from) without jumping. */
+export const STEP_HEIGHT_M = 0.6;
+/** Seconds the camera takes to catch up after a step. */
+export const STEP_SMOOTH_S = 0.12;
+export const REACH_M = 6;
+/** Holding a mouse button repeats breaking or placing this often. */
+export const REPEAT_S = 0.25;
+export const MOUSE_SENSITIVITY = 0.0025;
+
+// ---- Swimming: buoyancy and quadratic drag ----
+export const WATER_DENSITY = 1000;
+/** The body floats with about 80% under water. */
+export const PLAYER_DENSITY = 800;
+/** Quadratic drag in water, a = -k |v| v, in 1/m. */
+export const WATER_DRAG_PER_M = 0.9;
+export const SWIM_THRUST_M_S2 = 6;
+export const SWIM_UP_M_S2 = 6;
+
+// ---- Saving ----
+export const AUTOSAVE_S = 30;
+
+// ---- Simulation ----
+/** Block updates (fluids, falling blocks, plants) run at this rate. */
+export const SIM_HZ = 20;
+/** How fast fluids spread, one cell per (cell size / speed) seconds. */
+export const WATER_FLOW_M_S = 3;
+export const LAVA_FLOW_M_S = 0.5;
+/** Seconds a sand or gravel cell waits before dropping one cell. */
+export const FALL_DELAY_S = 0.05;
+/** Random updates per loaded chunk per simulation tick (grass, leaves), within the simulation distance. */
+export const RANDOM_TICKS_PER_CHUNK = 3;
+/** Chunks this far from the player (horizontally) are simulated. Independent of the view distance. */
+export const SIM_RADIUS_CHUNKS = 6;
+/** Most scheduled updates handled per simulation tick; the rest wait for the next. */
+export const MAX_TICKS_PER_STEP = 4000;
+/** Leaves farther than this from a log decay. */
+export const LEAF_REACH_M = 2.4;
+/** Grass spreads onto dirt whose cell above has at least this much light. */
+export const GRASS_MIN_LIGHT = 9;

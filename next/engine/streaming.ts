@@ -1,5 +1,5 @@
 import { CHUNK_AREA, CHUNK_SIZE, CHUNK_VOLUME, NEAR_HEIGHT_CHUNKS, NEAR_RADIUS_CHUNKS } from '../config';
-import { chunkKey, columnKey, localIndex } from '../core/coords';
+import { chunkKey, columnKey, forEachChunkReading, localIndex } from '../core/coords';
 import { SEA_CELL } from '../worldgen/generator';
 import type { WorkerPool } from '../workers/pool';
 import { AIR, BLOCKS } from './blocks';
@@ -12,6 +12,14 @@ import type { World } from './world';
 export interface MeshSink {
   set(key: number, cx: number, cy: number, cz: number, layers: Uint32Array[]): void;
   remove(key: number): void;
+}
+
+/** Chunks kept in a save: loaded from there instead of generated, and handed back before they unload. */
+export interface SavedChunks {
+  has(key: number): boolean;
+  load(cx: number, cy: number, cz: number, key: number): Promise<Chunk | null>;
+  skyTop(cx: number, cz: number): Int32Array | undefined;
+  unload(chunk: Chunk, world: World): void;
 }
 
 interface ColumnInfo {
@@ -49,6 +57,8 @@ export class Streamer {
   private readonly meshJobs = new Set<number>();
   /** Chunks whose mesh is missing or out of date. */
   private readonly dirty = new Set<number>();
+  /** Chunks to remesh before anything else, because the player just changed them. */
+  private readonly urgent = new Set<number>();
   /** Chunks with a current or in-progress mesh (empty meshes included). */
   private readonly meshed = new Set<number>();
   /** Chunks that should have a mesh, and chunks that should be loaded, by key. */
@@ -64,6 +74,12 @@ export class Streamer {
   private readonly scratchStates = new Uint16Array(CHUNK_VOLUME);
   private readonly scratchLight = new Uint8Array(CHUNK_VOLUME);
   failures = 0;
+  saves: SavedChunks | null = null;
+  /** Called after a chunk joins the world, and before one leaves it. */
+  onLoad: ((chunk: Chunk) => void) | null = null;
+  onUnload: ((chunk: Chunk) => void) | null = null;
+  /** Mesh results applied so far (for tests measuring edit latency). */
+  meshesApplied = 0;
 
   constructor(private readonly world: World, private readonly pool: WorkerPool, private readonly meshes: MeshSink,
     private readonly light: LightEngine, viewChunks: number) {
@@ -95,13 +111,30 @@ export class Streamer {
     this.stale = true;
   }
 
-  /** Marks single chunks for remeshing, such as those whose light changed. */
-  markChunks(keys: Iterable<number>): void {
+  /** Nothing left to plan, load or mesh for the current position. */
+  get idle(): boolean {
+    return this.center !== null && !this.stale && this.columnJobs.size === 0 && this.genJobs.size === 0 &&
+      this.meshJobs.size === 0 && this.dirty.size === 0 && this.columns.every((c) => this.infos.has(columnKey(c.cx, c.cz)));
+  }
+
+  /** Whether a chunk's mesh is out of date or being rebuilt. */
+  isPending(key: number): boolean {
+    return this.dirty.has(key) || this.meshJobs.has(key);
+  }
+
+  /** Marks single chunks for remeshing, such as those whose light changed; `urgent` ones go first. */
+  markChunks(keys: Iterable<number>, urgent = false): void {
     for (const key of keys) {
       if (!this.world.chunks.has(key)) continue;
       this.dirty.add(key);
+      if (urgent) this.urgent.add(key);
       this.stale = true;
     }
+  }
+
+  /** After a cell changed: remesh, first of all, the chunks whose meshes read it. */
+  markCell(x: number, y: number, z: number): void {
+    forEachChunkReading(x, y, z, (cx, cy, cz) => this.markChunks([chunkKey(cx, cy, cz)], true));
   }
 
   /** Re-plans columns, for example after the view distance changed. */
@@ -206,6 +239,8 @@ export class Streamer {
     for (const key of [...this.world.chunks.keys()]) {
       if (genSet.has(key)) continue;
       const ch = this.world.chunks.get(key)!;
+      this.onUnload?.(ch);
+      this.saves?.unload(ch, this.world);
       this.world.remove(ch.cx, ch.cy, ch.cz);
       this.meshes.remove(key);
       this.meshed.delete(key);
@@ -238,46 +273,76 @@ export class Streamer {
       }
       const [cx, cy, cz] = this.coords.get(key)!;
       const info = this.infos.get(columnKey(cx, cz));
-      // Open sky above the terrain needs no worker.
-      if (info && cy * CHUNK_SIZE > info.maxTop && cy * CHUNK_SIZE >= SEA_CELL) {
+      // Open sky above the terrain needs no worker (unless something was built there).
+      if (info && cy * CHUNK_SIZE > info.maxTop && cy * CHUNK_SIZE >= SEA_CELL && !this.saves?.has(key)) {
         this.addChunk(new Chunk(cx, cy, cz, AIR, 15), info);
         this.genCursor++;
+        continue;
+      }
+      if (this.saves?.has(key)) {
+        this.genCursor++;
+        this.loadSaved(key, cx, cy, cz);
         continue;
       }
       const w = this.pool.workerFor(cx, cz);
       if (!this.pool.hasRoom(w)) return;
       this.genCursor++;
-      this.genJobs.add(key);
-      this.pool.run(w, { type: 'generate', cx, cy, cz }).then((r) => {
-        this.genJobs.delete(key);
-        if (!this.genSet.has(key) || this.world.chunks.has(key)) return;
-        const chunk = new Chunk(cx, cy, cz, r.uniform >= 0 ? r.uniform : AIR);
-        if (r.states) chunk.load(r.states);
-        if (r.light) chunk.loadLight(r.light);
-        else chunk.loadLight(new Uint8Array(1).fill(r.uniformLight));
-        chunk.version = 0;
-        this.addChunk(chunk, this.infos.get(columnKey(cx, cz)));
-      }, () => {
-        this.genJobs.delete(key);
-        this.failures++;
-        this.stale = true;
-      });
+      this.generate(key, cx, cy, cz, w);
     }
+  }
+
+  private loadSaved(key: number, cx: number, cy: number, cz: number): void {
+    this.genJobs.add(key);
+    this.saves!.load(cx, cy, cz, key).then((chunk) => {
+      this.genJobs.delete(key);
+      if (!this.genSet.has(key) || this.world.chunks.has(key)) return;
+      if (chunk) this.addChunk(chunk, this.infos.get(columnKey(cx, cz)));
+      else this.generate(key, cx, cy, cz, this.pool.workerFor(cx, cz));
+    });
+  }
+
+  private generate(key: number, cx: number, cy: number, cz: number, w: number): void {
+    this.genJobs.add(key);
+    this.pool.run(w, { type: 'generate', cx, cy, cz }).then((r) => {
+      this.genJobs.delete(key);
+      if (!this.genSet.has(key) || this.world.chunks.has(key)) return;
+      const chunk = new Chunk(cx, cy, cz, r.uniform >= 0 ? r.uniform : AIR);
+      if (r.states) chunk.load(r.states);
+      if (r.light) chunk.loadLight(r.light);
+      else chunk.loadLight(new Uint8Array(1).fill(r.uniformLight));
+      chunk.version = 0;
+      this.addChunk(chunk, this.infos.get(columnKey(cx, cz)));
+    }, () => {
+      this.genJobs.delete(key);
+      this.failures++;
+      this.stale = true;
+    });
   }
 
   private addChunk(chunk: Chunk, info: ColumnInfo | undefined): void {
     const column = this.world.add(chunk);
     if (column.chunkCount === 1 && info) {
+      // A column with changed chunks has its sky tops in the save.
+      const skyTop = this.saves?.skyTop(chunk.cx, chunk.cz) ?? info.skyTop;
       column.surface.set(info.top);
-      column.skyTop.set(info.skyTop);
-      column.generatedSkyTop.set(info.skyTop);
+      column.skyTop.set(skyTop);
+      column.generatedSkyTop.set(skyTop);
     }
     this.light.stitch(chunk);
+    this.onLoad?.(chunk);
     this.markDirty(chunk.cx, chunk.cy, chunk.cz);
     this.markChunks(this.light.drainChanged());
   }
 
   private dispatchMeshes(): void {
+    for (const key of this.urgent) {
+      const coords = this.coords.get(key);
+      if (!coords || this.meshJobs.has(key)) continue;
+      const w = this.pool.leastBusy();
+      if (!this.pool.hasRoom(w, 2)) break;
+      this.urgent.delete(key);
+      if (this.dirty.has(key) && this.meshSet.has(key)) this.startMesh(key, coords, w);
+    }
     while (this.meshCursor < this.meshQueue.length) {
       const key = this.meshQueue[this.meshCursor]!;
       const coords = this.coords.get(key);
@@ -299,26 +364,31 @@ export class Streamer {
         this.meshCursor++;
         continue;
       }
-      const w = this.pool.workerFor(cx, cz);
+      const w = this.pool.leastBusy();
       if (!this.pool.hasRoom(w)) return;
       this.meshCursor++;
-      this.dirty.delete(key);
-      this.meshed.add(key);
-      this.meshJobs.add(key);
-      const input = this.meshInput(cx, cy, cz);
-      this.pool.run(w, { type: 'mesh', ...input }, [input.states.buffer, input.light.buffer, input.climate.buffer]).then((r) => {
-        this.meshJobs.delete(key);
-        if (!this.world.chunks.has(key) || !this.meshSet.has(key)) return;
-        this.meshes.set(key, cx, cy, cz, r.layers);
-        if (this.dirty.has(key)) this.stale = true;
-      }, () => {
-        this.meshJobs.delete(key);
-        this.meshed.delete(key);
-        this.dirty.add(key);
-        this.failures++;
-        this.stale = true;
-      });
+      this.startMesh(key, coords, w);
     }
+  }
+
+  private startMesh(key: number, [cx, cy, cz]: [number, number, number], worker: number): void {
+    this.dirty.delete(key);
+    this.meshed.add(key);
+    this.meshJobs.add(key);
+    const input = this.meshInput(cx, cy, cz);
+    this.pool.run(worker, { type: 'mesh', ...input }, [input.states.buffer, input.light.buffer, input.climate.buffer]).then((r) => {
+      this.meshJobs.delete(key);
+      if (!this.world.chunks.has(key) || !this.meshSet.has(key)) return;
+      this.meshes.set(key, cx, cy, cz, r.layers);
+      this.meshesApplied++;
+      if (this.dirty.has(key)) this.stale = true;
+    }, () => {
+      this.meshJobs.delete(key);
+      this.meshed.delete(key);
+      this.dirty.add(key);
+      this.failures++;
+      this.stale = true;
+    });
   }
 
   private neighboursLoaded(cx: number, cy: number, cz: number): boolean {

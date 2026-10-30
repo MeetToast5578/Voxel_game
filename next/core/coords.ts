@@ -57,3 +57,16 @@ export function columnIndex(lx: number, lz: number): number {
 export function inChunk(lx: number, ly: number, lz: number): boolean {
   return lx >= 0 && lx < CHUNK_SIZE && ly >= 0 && ly < CHUNK_SIZE && lz >= 0 && lz < CHUNK_SIZE;
 }
+
+/**
+ * Calls fn for every chunk whose mesh reads cell (x, y, z): its own chunk, plus the chunks across each face, edge
+ * or corner the cell touches (a mesh reads a one-cell border around its chunk).
+ */
+export function forEachChunkReading(x: number, y: number, z: number, fn: (cx: number, cy: number, cz: number) => void): void {
+  const cx = toChunk(x), cy = toChunk(y), cz = toChunk(z);
+  const lx = toLocal(x), ly = toLocal(y), lz = toLocal(z);
+  const x0 = lx === 0 ? -1 : 0, x1 = lx === CHUNK_MASK ? 1 : 0;
+  const y0 = ly === 0 ? -1 : 0, y1 = ly === CHUNK_MASK ? 1 : 0;
+  const z0 = lz === 0 ? -1 : 0, z1 = lz === CHUNK_MASK ? 1 : 0;
+  for (let dy = y0; dy <= y1; dy++) for (let dz = z0; dz <= z1; dz++) for (let dx = x0; dx <= x1; dx++) fn(cx + dx, cy + dy, cz + dz);
+}
