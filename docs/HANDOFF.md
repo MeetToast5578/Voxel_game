@@ -205,6 +205,9 @@ Polish:
   main thread's own share darker; lines at 60 and 30 fps), and a line with averages and maxima. In headless
   SwiftShader at view 8 the main thread takes about 4 ms per frame, at most 19 ms while flying at 22 m/s through new
   terrain; the rest of each frame is software rasterising.
+- **Path-finding for hunters** (`next/creatures/pathfinding.ts`, ported A* with integer keys): a hunting land
+  creature plans a path to its target every second and walks it cell by cell, so a zombie goes round a wall instead
+  of pressing against it.
 
 ## 2026-10-24 — performance (Claude)
 

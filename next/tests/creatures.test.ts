@@ -5,6 +5,7 @@ import { Chunk } from '../engine/chunk';
 import { World } from '../engine/world';
 import { COLLISION } from '../game/collision';
 import { Creatures, meatOf, type CreatureContext } from '../creatures/creatures';
+import { findPath } from '../creatures/pathfinding';
 import { SPECIES_BY_KEY } from '../creatures/species';
 import { biomeIndex } from '../worldgen/biomes';
 
@@ -75,5 +76,34 @@ describe('creatures', () => {
     const back = new Creatures(world, mulberry32(5), { bite: () => undefined, sound: () => undefined });
     back.load(JSON.parse(JSON.stringify(cs.save())));
     expect(back.save()).toEqual(cs.save());
+  });
+
+  it('hunters walk round a wall to reach the player', () => {
+    const world = plain();
+    for (let z = -5; z <= 5; z++) for (let y = 0; y < 5; y++) world.set(3, y, z, BLOCKS.state('stone'));
+    let bitten = 0;
+    const cs = new Creatures(world, mulberry32(3), { bite: (d) => (bitten += d), sound: () => undefined });
+    cs.add(SPECIES_BY_KEY.get('zombie')!, 7.5, 0, 0.5, 20);
+    for (let i = 0; i < 60 * 20 && bitten === 0; i++) cs.update(1 / 60, ctx(world, player(), true, false));
+    expect(bitten).toBeGreaterThan(0);
+  });
+});
+
+describe('path-finding', () => {
+  const flat = (walls: Set<string>) => (x: number, y: number, z: number) => y < 0 || walls.has(`${x},${y},${z}`);
+  const cells = (p: number[]) => Array.from({ length: p.length / 3 }, (_, i) => p.slice(i * 3, i * 3 + 3).join(','));
+  const limits = { height: 3, step: 2, fall: 10, maxNodes: 2000 };
+
+  it('goes round a wall, climbs a step, and stops nearest an unreachable goal', () => {
+    const wall = new Set<string>();
+    for (let z = -5; z <= 5; z++) for (let y = 0; y < 8; y++) wall.add(`3,${y},${z}`);
+    const around = cells(findPath(flat(wall), 0, 0, 0, 6, 0, 0, limits));
+    expect(around.at(-1)).toBe('6,0,0');
+    expect(around.every((c) => !wall.has(c))).toBe(true);
+    const ledge = new Set(['1,0,0', '1,1,0', '2,0,0', '2,1,0']);
+    expect(cells(findPath(flat(ledge), 0, 0, 0, 2, 2, 0, limits)).at(-1)).toBe('2,2,0');
+    const boxed = new Set<string>();
+    for (const [x, z] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) for (let y = 0; y < 8; y++) boxed.add(`${x},${y},${z}`);
+    expect(findPath(flat(boxed), 0, 0, 0, 9, 0, 0, limits)).toEqual([]);
   });
 });

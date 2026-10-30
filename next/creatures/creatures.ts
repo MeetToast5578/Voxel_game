@@ -8,6 +8,7 @@ import type { World } from '../engine/world';
 import type { BoxAt } from '../game/collision';
 import { moveBody, type Body } from '../game/physics';
 import { biomeByIndex } from '../worldgen/biomes';
+import { findPath } from './pathfinding';
 import { SPECIES, SPECIES_BY_KEY, type Species } from './species';
 
 export type Mode = 'wander' | 'idle' | 'flee' | 'hunt' | 'sleep';
@@ -27,6 +28,9 @@ export interface Creature {
   /** Walk cycle phase, and a short red flash after being hit. */
   walk: number;
   hurt: number;
+  /** While hunting on land: cells to walk through (flat x, y, z), and seconds until it is planned again. */
+  path: number[];
+  replan: number;
 }
 
 /** What creatures need to know about the world and the player each tick. */
@@ -43,6 +47,9 @@ const GRAVITY = toCells(GRAVITY_M_S2);
 const STEP = cells(STEP_HEIGHT_M);
 const FALL = cells(CREATURE_FALL_M);
 const THINK_S = 0.25;
+/** Seconds between path plans while hunting, and the search budget of one plan. */
+const REPLAN_S = 1;
+const PATH_NODES = 300;
 
 /**
  * Wildlife and monsters: spawning around the player by biome and time of day, simple minds (wander, graze, herd,
@@ -148,6 +155,21 @@ export class Creatures {
     }
   }
 
+  /** The next cell centre on a path to `t`, planned again every second (around walls, up ledges); null if none. */
+  private waypoint(c: Creature, t: Body, dt: number, ctx: CreatureContext): [number, number] | null {
+    const b = c.body;
+    c.replan -= dt;
+    if (c.replan <= 0) {
+      c.replan = REPLAN_S;
+      const solid = (x: number, y: number, z: number) => ctx.boxAt(x, y, z) !== 0;
+      c.path = findPath(solid, Math.floor(b.x), Math.floor(b.y + 0.01), Math.floor(b.z), Math.floor(t.x), Math.floor(t.y + 0.01),
+        Math.floor(t.z), { height: Math.ceil(b.height), step: STEP, fall: FALL - 1, maxNodes: PATH_NODES });
+    }
+    // Drop the cells already reached.
+    while (c.path.length >= 3 && Math.abs(c.path[0]! + 0.5 - b.x) < 0.45 && Math.abs(c.path[2]! + 0.5 - b.z) < 0.45) c.path.splice(0, 3);
+    return c.path.length >= 3 ? [c.path[0]! + 0.5, c.path[2]! + 0.5] : null;
+  }
+
   private move(c: Creature, dt: number, ctx: CreatureContext): void {
     const s = c.species, b = c.body;
     let speed = toCells(s.speedM_S);
@@ -155,6 +177,7 @@ export class Creatures {
     if (c.mode === 'hunt' && c.target) {
       const t = c.target === 'player' ? ctx.player : c.target.body;
       goal = [t.x, t.z];
+      if (s.medium === 'land') goal = this.waypoint(c, t, dt, ctx) ?? goal;
       const reach = toCells(ATTACK_REACH_M) + b.halfWidth + t.halfWidth;
       if (Math.hypot(t.x - b.x, t.z - b.z) < reach && Math.abs(t.y - b.y) < b.height && c.cooldown <= 0) {
         c.cooldown = ATTACK_COOLDOWN_S;
@@ -275,7 +298,7 @@ export class Creatures {
   add(s: Species, x: number, y: number, z: number, health: number): Creature {
     const c: Creature = {
       id: this.nextId++, species: s, yaw: this.rand() * Math.PI * 2, health, mode: 'idle', goal: null, target: null,
-      think: this.rand() * THINK_S, cooldown: 0, walk: 0, hurt: 0,
+      think: this.rand() * THINK_S, cooldown: 0, walk: 0, hurt: 0, path: [], replan: 0,
       body: { x, y, z, vx: 0, vy: 0, vz: 0, onGround: false, halfWidth: toCells(s.halfWidthM), height: toCells(s.heightM) },
     };
     this.list.push(c);

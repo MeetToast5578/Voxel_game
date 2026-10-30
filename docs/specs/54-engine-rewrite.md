@@ -85,8 +85,10 @@ The owner chose a full rewrite with 0.6 m blocks and 16³ chunks (9.6 m).
 
 ## Known shortcuts and open items
 
-- **Collision:** stairs and closed doors collide as whole cells.
-- **Creatures:** steer instead of path-finding.
+- **Collision:** stairs and closed doors collide as whole cells. The step height is a whole cell, so stairs still
+  climb, and a closed door blocks its doorway either way.
+- **Creatures:** only hunters path-find (A* on the cell grid, 300 nodes, replanned every second); other creatures
+  steer and turn back at water, cliffs and walls.
 - **Drops:** items lie in the world only when they do not fit, are thrown (Q) or are scattered on death; broken
   blocks still go straight into the inventory.
 - **Rivers:** there are no stony shores or sandbars. Waterfalls are generated only where a river steps down more
