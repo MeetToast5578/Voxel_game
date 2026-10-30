@@ -114,3 +114,37 @@ describe('play', () => {
     expect(back.furnaces.get('1,0,1')!.fuel).toEqual({ state: S('coal'), count: 2 });
   });
 });
+
+describe('creative building', () => {
+  it('undoes and redoes edits, and fills and clears boxes between two corners', () => {
+    const { world, play, player, input, press } = setup('creative');
+    play.inventory.slots[0] = { state: S('brick'), count: 64 };
+    play.update(0.05, input, player);
+    const t = play.target!;
+    const at = [t.x + t.nx, t.y + t.ny, t.z + t.nz] as const;
+    press('place');
+    play.update(0.05, input, player);
+    expect(world.get(...at)).toBe(S('brick'));
+    press('undo');
+    play.update(0.05, input, player);
+    expect(world.get(...at)).toBe(0);
+    press('redo');
+    play.update(0.05, input, player);
+    expect(world.get(...at)).toBe(S('brick'));
+
+    // A box from the cell in front of the target face to a second corner 3 cells further along +z.
+    press('fill');
+    play.update(0.05, input, player);
+    expect(play.corner).not.toBeNull();
+    play.corner = [at[0], at[1], at[2] + 3];
+    press('fill');
+    play.update(0.05, input, player);
+    play.update(0.05, input, player);
+    let filled = 0;
+    for (let z = at[2]; z <= at[2] + 3; z++) if (world.get(at[0], at[1], z) === S('brick')) filled++;
+    expect(filled).toBe(4);
+    press('undo');
+    play.update(0.05, input, player);
+    for (let z = at[2] + 1; z <= at[2] + 3; z++) expect(world.get(at[0], at[1], z)).toBe(0);
+  });
+});

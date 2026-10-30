@@ -172,6 +172,15 @@ Phase 10: creatures (`next/creatures`, `next/render/creatureMeshes.ts`).
   flashing red when hit. Only the used part of the instance buffers is uploaded.
 - **Saving:** creatures go in the meta record.
 
+Phase 11, the rest:
+- **Touch controls** (`next/ui/touch.ts`): on coarse-pointer devices or with `?touch=1`. A stick moves, dragging on
+  the right looks, and buttons cover jump, down, break, place, fly, inventory, slots and pause. `Input.playing` and
+  `start()`/`stop()` stand in for pointer lock.
+- **Creative building** (`Play.build`):
+  - B marks a corner; B again fills the box (up to 19.2 m a side) with the held block. G does the same to clear.
+  - Boxes are applied 1,500 cells per tick.
+  - Every player edit goes into a 32-step undo history: Ctrl+Z to undo, Ctrl+Y to redo.
+
 ## 2026-10-24 — performance (Claude)
 
 T-J13: an edit remeshes at once only the chunks the changed cell faces (at most 4, was 8). T-J6: chunk budgets

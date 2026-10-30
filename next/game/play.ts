@@ -1,4 +1,4 @@
-import { AXE_DAMAGE, HAND_DAMAGE, REACH_M, REPEAT_S, TOOL_DAMAGE, toCells } from '../config';
+import { AXE_DAMAGE, BUILD_CELLS_PER_TICK, BUILD_MAX_M, HAND_DAMAGE, REACH_M, REPEAT_S, TOOL_DAMAGE, UNDO_STEPS, cells, toCells } from '../config';
 import { meatOf, type Creatures } from '../creatures/creatures';
 import { AIR, BLOCKS, SOLID } from '../engine/blocks';
 import type { World } from '../engine/world';
@@ -48,10 +48,85 @@ export class Play {
   version = 0;
   /** Creatures the player can hit, if any live in this world. */
   creatures: Creatures | null = null;
+  /** Creative building: the first corner of a box, edits waiting to be applied, and undo/redo history. */
+  corner: [number, number, number] | null = null;
+  private queue: [number, number, number, number][] = [];
+  private readonly undoStack: [number, number, number, number, number][][] = [];
+  private readonly redoStack: [number, number, number, number, number][][] = [];
+  private group: [number, number, number, number, number][] | null = null;
+  private readonly setBlock: (x: number, y: number, z: number, s: number) => void;
 
-  constructor(private readonly world: World, private readonly setBlock: (x: number, y: number, z: number, s: number) => void,
+  constructor(private readonly world: World, setBlock: (x: number, y: number, z: number, s: number) => void,
     private readonly events: { sound(name: 'break' | 'place'): void; sleep(): boolean }, mode: Mode = 'creative') {
     this.mode = mode;
+    // Every change the player makes is recorded for undo while a group is open.
+    this.setBlock = (x, y, z, s) => {
+      const before = world.get(x, y, z);
+      if (before === s) return;
+      setBlock(x, y, z, s);
+      this.group?.push([x, y, z, before, s]);
+    };
+  }
+
+  /** Runs `fn` as one undoable step. */
+  private record(fn: () => void): void {
+    this.group = [];
+    try {
+      fn();
+    } finally {
+      if (this.group.length) {
+        this.undoStack.push(this.group);
+        if (this.undoStack.length > UNDO_STEPS) this.undoStack.shift();
+        this.redoStack.length = 0;
+      }
+      this.group = null;
+    }
+  }
+
+  /** Creative building keys: undo, redo, and filling or clearing the box between two marked corners. */
+  private build(input: Input): void {
+    if (input.consume('undo')) this.replay(this.undoStack, this.redoStack, true);
+    if (input.consume('redo')) this.replay(this.redoStack, this.undoStack, false);
+    const fill = input.consume('fill'), clear = input.consume('clear');
+    if ((!fill && !clear) || !this.target) return;
+    const t = this.target, at: [number, number, number] = fill ? [t.x + t.nx, t.y + t.ny, t.z + t.nz] : [t.x, t.y, t.z];
+    if (!this.corner) {
+      this.corner = at;
+      this.version++;
+      return;
+    }
+    const [a, b] = [this.corner, at];
+    this.corner = null;
+    const max = cells(BUILD_MAX_M);
+    if ([0, 1, 2].some((k) => Math.abs(a[k]! - b[k]!) + 1 > max)) return;
+    const held = this.held, state = clear ? AIR : held && !BLOCKS.type(held.state).item ? held.state : -1;
+    if (state < 0) return;
+    for (let y = Math.min(a[1], b[1]); y <= Math.max(a[1], b[1]); y++) {
+      for (let z = Math.min(a[2], b[2]); z <= Math.max(a[2], b[2]); z++) {
+        for (let x = Math.min(a[0], b[0]); x <= Math.max(a[0], b[0]); x++) this.queue.push([x, y, z, state]);
+      }
+    }
+    this.undoStack.push([]);
+    this.redoStack.length = 0;
+    this.version++;
+  }
+
+  /** Applies queued box edits, a share per tick, into the latest undo step. */
+  private drainQueue(): void {
+    if (this.queue.length === 0) return;
+    const step = this.undoStack[this.undoStack.length - 1]!;
+    this.group = step;
+    for (const [x, y, z, s] of this.queue.splice(0, BUILD_CELLS_PER_TICK)) if (this.world.isLoaded(x, y, z)) this.setBlock(x, y, z, s);
+    this.group = null;
+  }
+
+  private replay(from: [number, number, number, number, number][][], to: [number, number, number, number, number][][], undo: boolean): void {
+    const step = from.pop();
+    if (!step) return;
+    this.queue.length = 0;
+    for (const [x, y, z, before, after] of undo ? [...step].reverse() : step) this.setBlock(x, y, z, undo ? before : after);
+    to.push(step);
+    this.version++;
   }
 
   get held(): ItemStack | null {
@@ -66,6 +141,10 @@ export class Play {
   }
 
   update(dt: number, input: Input, player: Player, roll = Math.random()): void {
+    if (this.mode === 'creative') {
+      this.build(input);
+      this.drainQueue();
+    }
     if (input.slot >= 0) this.select(input.slot);
     input.slot = -1;
     if (input.consume('slotNext')) this.select((this.inventory.selected + 1) % 9);
@@ -78,11 +157,11 @@ export class Play {
     const placeNow = input.consume('place') || (input.placing && this.repeat <= 0);
     if (placeNow) {
       this.repeat = REPEAT_S;
-      this.use(player);
+      this.record(() => this.use(player));
     }
     const clicked = input.consume('break');
     if (clicked && this.creatures && this.attack(b.x, player.eyeY, b.z, dx, dy, dz)) return;
-    if (input.breaking && this.target) this.dig(dt, clicked, roll);
+    if (input.breaking && this.target) this.record(() => this.dig(dt, clicked, roll));
     else {
       this.breaking = 0;
       this.breakingCell = '';

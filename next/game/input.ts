@@ -1,7 +1,10 @@
 
-export type Action = 'fly' | 'break' | 'place' | 'pick' | 'slotNext' | 'slotPrev' | 'time' | 'viewUp' | 'viewDown' | 'inventory' | 'debug';
+export type Action = 'fly' | 'break' | 'place' | 'pick' | 'slotNext' | 'slotPrev' | 'time' | 'viewUp' | 'viewDown' | 'inventory' | 'debug' |
+  'undo' | 'redo' | 'fill' | 'clear';
 
-const KEY_ACTIONS: Record<string, Action> = { KeyF: 'fly', KeyT: 'time', Equal: 'viewUp', Minus: 'viewDown', KeyE: 'inventory', F3: 'debug' };
+const KEY_ACTIONS: Record<string, Action> = {
+  KeyF: 'fly', KeyT: 'time', Equal: 'viewUp', Minus: 'viewDown', KeyE: 'inventory', F3: 'debug', KeyB: 'fill', KeyG: 'clear',
+};
 const DEADZONE = 0.15;
 const STICK_LOOK = 2.6; // radians per second at full right-stick deflection
 
@@ -32,6 +35,12 @@ export class Input {
       if (e.repeat) return;
       if (e.code === 'F3') e.preventDefault();
       this.keys.add(e.code);
+      // Ctrl+Z undoes and Ctrl+Y (or Ctrl+Shift+Z) redoes; otherwise keys map to actions directly.
+      if ((e.ctrlKey || e.metaKey) && (e.code === 'KeyZ' || e.code === 'KeyY')) {
+        e.preventDefault();
+        this.actions.add(e.code === 'KeyY' || e.shiftKey ? 'redo' : 'undo');
+        return;
+      }
       const action = KEY_ACTIONS[e.code];
       if (action) this.actions.add(action);
       if (/^Digit[1-9]$/.test(e.code)) this.slot = Number(e.code.slice(5)) - 1;
@@ -68,8 +77,8 @@ export class Input {
   /** Reads the keyboard and the first gamepad into the held state. Call once per frame. */
   poll(dt: number): void {
     const k = this.keys;
-    this.moveZ = (k.has('KeyW') ? 1 : 0) - (k.has('KeyS') ? 1 : 0);
-    this.moveX = (k.has('KeyD') ? 1 : 0) - (k.has('KeyA') ? 1 : 0);
+    this.moveZ = Math.max(-1, Math.min(1, (k.has('KeyW') ? 1 : 0) - (k.has('KeyS') ? 1 : 0) + this.stickZ));
+    this.moveX = Math.max(-1, Math.min(1, (k.has('KeyD') ? 1 : 0) - (k.has('KeyA') ? 1 : 0) + this.stickX));
     this.jump = k.has('Space');
     this.descend = k.has('ShiftLeft') || k.has('ShiftRight');
     this.sprint = k.has('ControlLeft') || k.has('ControlRight');
@@ -120,4 +129,50 @@ export class Input {
   get locked(): boolean {
     return document.pointerLockElement === this.canvas;
   }
+
+  /** Touch screens have no pointer lock: the on-screen controls set whether the game is being played. */
+  touch = false;
+  touchPlaying = false;
+
+  /** The game takes input: the pointer is captured, or touch play is on. */
+  get playing(): boolean {
+    return this.locked || (this.touch && this.touchPlaying);
+  }
+
+  /** Starts play: captures the pointer, or on touch screens just resumes. */
+  start(): void {
+    if (this.touch) this.touchPlaying = true;
+    else this.canvas.requestPointerLock();
+  }
+
+  /** Stops play (a screen or menu opens). */
+  stop(): void {
+    if (this.touch) this.touchPlaying = false;
+    else document.exitPointerLock();
+  }
+
+  // Virtual controls (touch).
+  setKey(code: string, down: boolean): void {
+    if (down) this.keys.add(code);
+    else this.keys.delete(code);
+  }
+
+  press(action: Action): void {
+    this.actions.add(action);
+  }
+
+  setButton(which: 'break' | 'place', down: boolean): void {
+    if (which === 'break') this.breakHeld = down;
+    else this.placeHeld = down;
+    if (down) this.actions.add(which);
+  }
+
+  addLook(dx: number, dy: number): void {
+    this.lookYaw -= dx * this.sensitivity;
+    this.lookPitch -= dy * this.sensitivity;
+  }
+
+  /** Stick input in [-1, 1] on both axes, added to the keys. */
+  stickX = 0;
+  stickZ = 0;
 }

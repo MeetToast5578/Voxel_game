@@ -19,6 +19,7 @@ import { mulberry32 } from './core/random';
 import { Environment } from './sim/environment';
 import { Simulation } from './sim/simulation';
 import { drawUi, type UiModel } from './ui/app';
+import { installTouchControls, wantsTouch } from './ui/touch';
 import { exportWorld, importWorld } from './storage/archive';
 import { Saver } from './storage/saver';
 import { loadSettings, saveSettings } from './storage/settings';
@@ -157,7 +158,7 @@ function update(dt: number): void {
   // Physics waits for the ground under the player to load.
   if (!world.isLoaded(Math.floor(player.body.x), Math.floor(player.body.y), Math.floor(player.body.z))) return;
   const before = { x: player.body.x, z: player.body.z };
-  const active = input.locked && play.screen === 'none' && !play.survival.dead;
+  const active = input.playing && play.screen === 'none' && !play.survival.dead;
   if (play.mode === 'survival') player.flying = false;
   else if (!active) input.consume('fly');
   const falling = -player.body.vy;
@@ -174,7 +175,7 @@ function update(dt: number): void {
       inLava: BLOCKS.type(eye).key.endsWith('lava') || BLOCKS.type(feet).key.endsWith('lava'),
     });
     if (play.survival.dead) {
-      document.exitPointerLock();
+      input.stop();
       play.version++;
     }
   }
@@ -208,7 +209,7 @@ function respawn(): void {
   Object.assign(player.body, { x: at[0], y: at[1], z: at[2], vx: 0, vy: 0, vz: 0 });
   if (!Number.isFinite(at[1])) placed = false;
   play.version++;
-  canvas.requestPointerLock();
+  input.start();
 }
 
 let debugText = true;
@@ -216,10 +217,10 @@ function handleActions(): void {
   if (input.consume('inventory')) {
     if (play.screen !== 'none') {
       play.closeScreen();
-      canvas.requestPointerLock();
-    } else if (input.locked) {
+      input.start();
+    } else if (input.playing) {
       play.openScreen('inventory', 2);
-      document.exitPointerLock();
+      input.stop();
     }
   }
   if (input.consume('debug')) {
@@ -240,9 +241,12 @@ function handleActions(): void {
 let worlds: Awaited<ReturnType<WorldStore['listWorlds']>> = [];
 const ui: UiModel = {
   play, settings, worldName, worlds,
-  get paused() { return !input.locked && placed; },
+  get paused() { return !input.playing && placed; },
   get dead() { return play.survival.dead; },
-  resume: () => canvas.requestPointerLock(),
+  resume: () => {
+    input.start();
+    redraw();
+  },
   respawn,
   changeSettings(s) {
     Object.assign(settings, s);
@@ -267,6 +271,12 @@ const ui: UiModel = {
   async deleteWorld(name) {
     await store.deleteWorld(name);
     ui.refreshWorlds();
+if (wantsTouch()) {
+  installTouchControls(document.body, input, () => {
+    input.stop();
+    ui.refreshWorlds();
+  });
+}
   },
   async exportWorld(name) {
     if (name === worldName) await save();

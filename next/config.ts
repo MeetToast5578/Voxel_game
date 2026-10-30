@@ -299,3 +299,11 @@ export const HAND_DAMAGE = 1;
 export const AXE_DAMAGE = 4;
 export const TOOL_DAMAGE = 2;
 export const KNOCKBACK_M_S = 5;
+
+// ---- Building (creative) ----
+/** Largest box fill, along each side. */
+export const BUILD_MAX_M = 19.2;
+/** Cells a box fill changes per tick; the rest follow on the next ticks. */
+export const BUILD_CELLS_PER_TICK = 1500;
+/** Undo steps kept. */
+export const UNDO_STEPS = 32;

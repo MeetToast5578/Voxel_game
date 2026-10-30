@@ -170,7 +170,8 @@ function Menu({ m }: { m: UiModel }) {
       <h2>Controls</h2>
       <p class="help">WASD move · Space jump / swim · Shift down (flying) · Ctrl sprint · F fly (creative) · E inventory ·
         left mouse break · right mouse place / use / eat · middle mouse pick (creative) · 1–9 or wheel hotbar · T skip an hour ·
-        +/− view distance · F3 debug text</p>
+        +/− view distance · F3 debug text. Creative building: B marks a corner, B again fills the box with the held
+        block; G does the same to clear it; Ctrl+Z undo, Ctrl+Y redo.</p>
     </div>
   );
 }

@@ -48,6 +48,14 @@
       .hint { color: #bbb; font-size: 12px; }
       .death { text-align: center; }
       .death h1 { color: #e55; }
+      .touch-look { position: fixed; top: 0; right: 0; width: 55%; height: 75%; touch-action: none; }
+      .touch-stick { position: fixed; left: 24px; bottom: 90px; width: 120px; height: 120px; border-radius: 50%;
+        background: rgba(255, 255, 255, 0.12); border: 2px solid rgba(255, 255, 255, 0.3); touch-action: none; }
+      .touch-knob { position: absolute; left: 36px; top: 36px; width: 48px; height: 48px; border-radius: 50%; background: rgba(255, 255, 255, 0.45); }
+      .touch-buttons { position: fixed; right: 12px; bottom: 80px; display: grid; grid-template-columns: repeat(4, 58px); gap: 8px; }
+      .touch-buttons button, .touch-pause { height: 50px; border-radius: 10px; border: 1px solid rgba(255, 255, 255, 0.4);
+        background: rgba(20, 20, 24, 0.55); color: #fff; font-size: 14px; touch-action: none; }
+      .touch-pause { position: fixed; top: 10px; right: 10px; width: 50px; }
     </style>
   </head>
   <body>
