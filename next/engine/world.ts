@@ -14,6 +14,8 @@ export class Column {
   readonly skyTop = new Int32Array(CHUNK_AREA);
   /** The sky top as generated, used below the loaded chunks. */
   readonly generatedSkyTop = new Int32Array(CHUNK_AREA);
+  /** Per cell: temperature << 4 | humidity from generation (see `climateTemperature`). */
+  readonly climate = new Uint8Array(CHUNK_AREA);
   /** Highest generated cell of the column (terrain or trees): above it is open sky. */
   maxTop = 0;
 

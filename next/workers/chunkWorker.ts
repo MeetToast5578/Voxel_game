@@ -34,6 +34,19 @@ self.onmessage = (e: MessageEvent<WorkerRequest>) => {
         type: 'generate', id: req.id, uniform, uniformLight,
         ...(uniform < 0 ? { states } : {}), ...(uniformLight < 0 ? { light } : {}),
       }, transfer);
+    } else if (req.type === 'horizon') {
+      const n = req.radii.length * req.segments;
+      const heights = new Float32Array(n), colors = new Uint8Array(n * 3);
+      const s = { height: 0, r: 0, g: 0, b: 0 };
+      for (let ring = 0; ring < req.radii.length; ring++) {
+        for (let k = 0; k < req.segments; k++) {
+          const a = (k / req.segments) * Math.PI * 2, i = ring * req.segments + k;
+          generator!.horizonSample(Math.floor(req.x + Math.cos(a) * req.radii[ring]!), Math.floor(req.z + Math.sin(a) * req.radii[ring]!), s);
+          heights[i] = s.height;
+          colors.set([s.r, s.g, s.b], i * 3);
+        }
+      }
+      post({ type: 'horizon', id: req.id, heights, colors }, [heights.buffer, colors.buffer]);
     } else {
       const layers = buildMesh(req);
       const states = req.states;

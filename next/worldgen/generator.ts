@@ -271,6 +271,30 @@ export class Generator {
     }
   }
 
+  /**
+   * A coarse sample for far terrain: surface height in cells (the sea surface over water) and an RGB colour for what
+   * covers it. Uses the climate surface only, without the 3D detail, so it costs a few noise lookups.
+   */
+  horizonSample(x: number, z: number, out: { height: number; r: number; g: number; b: number }): void {
+    const f = this.climate.fields((x + 0.5) * B, (z + 0.5) * B);
+    const h = heightMeters(f), amp = detailAmpMeters(f);
+    const set = (r: number, g: number, b: number) => { out.r = r; out.g = g; out.b = b; };
+    if (h < SEA_LEVEL_M) {
+      out.height = SEA_CELL - 0.15;
+      set(48, 90, 180);
+      return;
+    }
+    out.height = h / B;
+    const temp = temperatureAt(f, h);
+    const biome = biomeAt(temp, precipitationAt(f, amp), h, amp, f.weirdness);
+    if (temp < -6) set(232, 238, 244);
+    else if (h <= BEACH_TOP_M) set(214, 202, 160);
+    else if (amp >= BARE_ROCK_AMP_M) set(122, 122, 122);
+    else if (biome.surface === 'sand') set(214, 202, 160);
+    else if (biome.surface === 'grass') set(biome.trees && biome.trees !== 'bush' ? 70 : 92, biome.trees && biome.trees !== 'bush' ? 128 : 150, 50);
+    else set(118, 116, 112);
+  }
+
   /** Grass, ferns, flowers and mushrooms on a grass cell, weighted by biome. */
   private groundCover(x: number, z: number, biome: number): number {
     const [poppy, dandelion] = biomeByIndex(biome).flowers;

@@ -8,11 +8,14 @@ uniform mat4 projectionMatrix;
 uniform mat4 modelMatrix;
 uniform vec3 cameraPosition;
 uniform float time;
+uniform float autumn;
+uniform float summer;
 out vec2 vUv;
 flat out float vTile;
 out vec3 vColor;
 out vec2 vLight;
 out float vDepth;
+out vec2 vWorldXZ;
 
 const float SHADE[8] = float[8](0.6, 0.6, 1.0, 0.5, 0.8, 0.8, 0.85, 0.85);
 const float AO[4] = float[4](0.45, 0.65, 0.82, 1.0);
@@ -45,11 +48,19 @@ void main() {
     vec3 cold = mix(vec3(0.82, 0.92, 0.86), vec3(0.72, 0.9, 0.82), hum);
     vec3 warm = mix(vec3(1.12, 1.0, 0.62), vec3(0.85, 1.05, 0.7), hum);
     tint = mix(cold, warm, temp);
-    if (kind == 2u) tint *= vec3(0.85, 0.95, 0.85);
+    if (kind == 2u) {
+      tint *= vec3(0.85, 0.95, 0.85);
+      // Leaves turn orange and red through autumn, more in cold places.
+      tint = mix(tint, vec3(1.5, 0.75, 0.3), autumn * (0.55 + 0.35 * (1.0 - temp)));
+    } else {
+      // Grass dries in high summer where it is warm and dry.
+      tint = mix(tint, vec3(1.2, 1.0, 0.55), summer * temp * (1.0 - hum) * 0.6);
+    }
   }
   vColor = tint * SHADE[n] * AO[(w0 >> 27u) & 3u];
   // Fog by horizontal distance, so looking down from high up does not fog the ground.
   vDepth = length(world.xz - cameraPosition.xz);
+  vWorldXZ = world.xz;
   gl_Position = projectionMatrix * viewMatrix * world;
 }`;
 
@@ -62,7 +73,9 @@ uniform vec3 fogColor;
 uniform float fogNear;
 uniform float fogFar;
 uniform float opacity;
+uniform float time;
 in vec2 vUv;
+in vec2 vWorldXZ;
 flat in float vTile;
 in vec3 vColor;
 in vec2 vLight;
@@ -79,6 +92,11 @@ void main() {
   vec2 curved = vLight * vLight;
   float light = 0.03 + 0.97 * max(curved.x * daylight, curved.y);
   vec3 color = tex.rgb * vColor * light;
+#ifdef WATER
+  // Moving ripples on the water.
+  float ripple = sin(vWorldXZ.x * 1.3 + time * 1.7) * sin(vWorldXZ.y * 1.1 - time * 1.3);
+  color *= 1.0 + 0.1 * ripple;
+#endif
   color = mix(color, fogColor, smoothstep(fogNear, fogFar, vDepth));
   outColor = vec4(color, opacity);
 }`;
@@ -90,7 +108,7 @@ export function terrainMaterial(layer: RenderLayer, uniforms: Record<string, THR
     glslVersion: THREE.GLSL3,
     vertexShader: 'precision highp float;\nuniform mat4 viewMatrix;\n' + VERTEX,
     fragmentShader: FRAGMENT,
-    defines: layer === 'cutout' ? { CUTOUT: 1 } : {},
+    defines: layer === 'cutout' ? { CUTOUT: 1 } : layer === 'water' ? { WATER: 1 } : {},
     uniforms: { ...uniforms, opacity: { value: layer === 'water' ? 0.72 : layer === 'ice' ? 0.82 : 1 } },
     transparent,
     depthWrite: layer !== 'water',

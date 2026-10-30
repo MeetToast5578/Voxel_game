@@ -183,3 +183,53 @@ export const BOULDER_RADIUS_M = 0.9;
 export const FALLEN_LOG_DENSITY_PER_M2 = 0.004;
 export const FALLEN_LOG_MIN_M = 1.2;
 export const FALLEN_LOG_MAX_M = 2.4;
+
+// ---- Calendar ----
+/** Days per season; a year is four seasons. */
+export const DAYS_PER_SEASON = 7;
+export const MOON_CYCLES_PER_YEAR = 4;
+/** How high the sun gets at noon (radians above the horizon) in midwinter and midsummer. */
+export const SUN_NOON_WINTER_RAD = 0.75;
+export const SUN_NOON_SUMMER_RAD = 1.35;
+
+// ---- Sky, fog and horizon ----
+/** Far terrain is drawn as a coarse heightfield out to this distance. */
+export const HORIZON_RADIUS_M = 2000;
+/** The heightfield is rebuilt when the player is this far from where it was last built. */
+export const HORIZON_RECENTER_M = 40;
+/** Fog starts at this share of the view distance and is complete at the horizon. */
+export const FOG_START_SHARE = 0.5;
+/** Under ground: fog closes in to this distance and turns dark. */
+export const CAVE_FOG_M = 30;
+/** Under water: blue fog this far. */
+export const UNDERWATER_FOG_M = 9;
+
+// ---- Weather ----
+export const WEATHER_PRESSURE_WAVELENGTH_M = 6000;
+export const WEATHER_HUMIDITY_WAVELENGTH_M = 3000;
+/** Weather fronts drift east at this speed. */
+export const WEATHER_WIND_SPEED_M_S = 3;
+export const WEATHER_SEASONAL_AMPLITUDE_C = 10;
+export const WEATHER_PRECIP_THRESHOLD = 0.1;
+export const WEATHER_TEMP_SNOW_C = -2;
+export const WEATHER_TEMP_RAIN_C = 2;
+export const WEATHER_STORM_PRESSURE = -0.5;
+export const WEATHER_STORM_HUMIDITY = 0.62;
+export const WEATHER_STORM_TEMP_C = 10;
+/** Seconds between weather samples at the player; values ease between samples. */
+export const WEATHER_SAMPLE_S = 2;
+export const CLOUD_HEIGHT_M = 100;
+export const CLOUD_TEXEL_M = 12;
+export const RAIN_SPEED_M_S = 9;
+export const SNOW_SPEED_M_S = 1.5;
+/** Precipitation particles fill a box this wide and tall around the camera. */
+export const PRECIP_BOX_M = 24;
+export const LIGHTNING_MEAN_INTERVAL_S = 12;
+export const THUNDER_DELAY_MIN_S = 1;
+export const THUNDER_DELAY_MAX_S = 6;
+/** Snow and ice: random updates per loaded column near the player per simulation tick. */
+export const WEATHER_TICKS_PER_COLUMN = 1;
+export const SNOW_SETTLE_CHANCE = 0.05;
+export const SNOW_MELT_CHANCE = 0.1;
+export const ICE_FREEZE_CHANCE = 0.05;
+export const ICE_THAW_CHANCE = 0.1;

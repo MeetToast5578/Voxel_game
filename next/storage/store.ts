@@ -25,6 +25,8 @@ export interface WorldMeta {
   ticks?: unknown;
   /** The simulation's tick counter. */
   simTick?: number;
+  /** Time of year, 0..1 from the spring equinox. */
+  yearTime?: number;
 }
 
 export interface WorldStore {
@@ -61,6 +63,7 @@ export function parseMeta(value: unknown): WorldMeta | null {
     player: { x: p.x as number, y: p.y as number, z: p.z as number, yaw: p.yaw as number, pitch: p.pitch as number, flying: p.flying },
     ...(Array.isArray(m.ticks) ? { ticks: m.ticks } : {}),
     ...(num(m.simTick) ? { simTick: m.simTick as number } : {}),
+    ...(num(m.yearTime) ? { yearTime: m.yearTime as number } : {}),
   };
 }
 

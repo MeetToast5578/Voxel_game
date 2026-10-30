@@ -84,6 +84,34 @@ Phase 7a: world generation without water bodies (`next/worldgen`).
 - **Still to do in phase 7b:** rivers, lakes, coasts and reeds. Caves out of sight under ground show the sky colour
   until phase 8's dark underground fog.
 
+Phase 8: atmosphere.
+- **Calendar** (`next/sim/clock.ts`): days and seasons (7 days each), moon phases, and the sun's path, which stands
+  higher at noon in summer. `yearTime` is saved.
+- **Weather** (`next/sim/weather.ts`): ported. Pressure and humidity fields drift east and give cloud cover, rain,
+  snow or sleet by temperature, and storms. `Environment` (`next/sim/environment.ts`) samples it at the player every
+  2 s and eases cloud cover. Storms flash lightning, with thunder a few seconds later. The F3 line shows the season,
+  day, time and weather.
+- **Sky** (`next/render/sky.ts`):
+  - The sky is a gradient dome, warm around the sun at dusk. Sun and moon are drawn as square discs, and the moon's
+    lit part follows its phase. Stars turn with the night.
+  - Fog takes the sky's horizon colour and reaches all the way to the far terrain.
+  - Under ground (from the sky light where the camera is) the fog turns dark and closes in to 30 m; the dome, stars
+    and clouds go dark or hide too. Under water the fog is blue and 9 m.
+- **Clouds and precipitation** (`clouds.ts`, `precipitation.ts`): clouds are a blocky layer at 100 m that thickens
+  with cover. Rain falls as streaks at 9 m/s and snow at 1.5 m/s, never under a roof.
+- **Seasons in the world:**
+  - Leaves turn orange and red in autumn and grass browns in high summer (terrain shader). Water ripples.
+  - Snow settles in layers while it snows below freezing, still water freezes, and both melt when warm (random
+    ticks at the top of columns near the player, `Simulation.weatherTicks`).
+- **Far terrain** (`render/horizon.ts`, worker job `horizon`):
+  - 48 rings × 128 samples of the climate surface out to 2 km, coloured by biome; rebuilt every 40 m the player
+    moves.
+  - It writes depth, sits behind the real chunks (polygon offset), and is cut out where they are drawn.
+- **Sounds** (`next/audio/sounds.ts`): the old procedural noise bursts for breaking, placing, footsteps, splashes
+  and thunder.
+- **Cave culling fix:** the walk is now bounded by the highest generated terrain and 64 chunks down, not by the view
+  radius vertically. That radius had hidden water and ponds below sea level when seen from high up.
+
 ## 2026-10-24 — performance (Claude)
 
 T-J13: an edit remeshes at once only the chunks the changed cell faces (at most 4, was 8). T-J6: chunk budgets

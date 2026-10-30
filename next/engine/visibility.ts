@@ -57,10 +57,11 @@ export function faceConnectivity(cell: (i: number) => number): number {
 }
 
 /**
- * Chunks visible from the camera chunk, as keys. `maskOf` gives a loaded chunk's face-pair mask (unknown chunks
- * count as fully connected). The walk is bounded by `radius` chunks horizontally.
+ * Chunks visible from the camera chunk, as keys. `maskOf` gives a chunk's face-pair mask. The walk is bounded by
+ * `radius` chunks horizontally and by chunk heights [yMin, yMax].
  */
-export function visibleChunks(cx: number, cy: number, cz: number, radius: number, maskOf: (key: number) => number): Set<number> {
+export function visibleChunks(cx: number, cy: number, cz: number, radius: number, yMin: number, yMax: number,
+  maskOf: (key: number) => number): Set<number> {
   const seen = new Set<number>();
   // Queue entries: chunk coords, the face it was entered by (-1 at the start), and the directions taken so far.
   const q: [number, number, number, number, number][] = [[cx, cy, cz, -1, 0]];
@@ -74,7 +75,7 @@ export function visibleChunks(cx: number, cy: number, cz: number, radius: number
       if (entered >= 0 && (mask & PAIR[entered]![d]!) === 0) continue;
       const [dx, dy, dz] = DIRS[d]!;
       const nx = x + dx, ny = y + dy, nz = z + dz;
-      if (Math.abs(nx - cx) > radius || Math.abs(nz - cz) > radius || Math.abs(ny - cy) > radius) continue;
+      if (Math.abs(nx - cx) > radius || Math.abs(nz - cz) > radius || ny < yMin || ny > yMax) continue;
       const key = chunkKey(nx, ny, nz);
       if (seen.has(key)) continue;
       seen.add(key);

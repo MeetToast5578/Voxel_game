@@ -23,7 +23,7 @@ describe('cave culling', () => {
       }
       return 0;
     };
-    const seen = visibleChunks(0, 1, 0, 3, mask);
+    const seen = visibleChunks(0, 1, 0, 3, -3, 3, mask);
     expect(seen.has(chunkKey(2, 1, -2))).toBe(true);
     expect(seen.has(chunkKey(0, 0, 0))).toBe(true); // the ground itself is drawn
     expect(seen.has(chunkKey(0, -1, 0))).toBe(false);

@@ -337,6 +337,7 @@ export class Streamer {
       const skyTop = this.saves?.skyTop(chunk.cx, chunk.cz) ?? info.skyTop;
       column.surface.set(info.top);
       column.maxTop = info.maxTop;
+      column.climate.set(info.climate);
       column.skyTop.set(skyTop);
       column.generatedSkyTop.set(skyTop);
     }

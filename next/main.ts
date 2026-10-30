@@ -1,4 +1,5 @@
-import { AUTOSAVE_S, BLOCK_SIZE_M, CHUNK_SIZE, DAY_LENGTH_S, MAX_VIEW_CHUNKS, MIN_VIEW_CHUNKS, SIM_HZ, toCells } from './config';
+import { AUTOSAVE_S, BLOCK_SIZE_M, CHUNK_SIZE, DAY_LENGTH_S, HORIZON_RECENTER_M, MAX_VIEW_CHUNKS, MIN_VIEW_CHUNKS, SIM_HZ, toCells } from './config';
+import { Sounds } from './audio/sounds';
 import { chunkKey, forEachChunkReading, unpackChunkKey } from './core/coords';
 import { FixedStepLoop } from './core/loop';
 import { BLOCKS } from './engine/blocks';
@@ -12,6 +13,7 @@ import { HOTBAR, Interaction } from './game/interaction';
 import { Player } from './game/player';
 import { Highlight } from './render/highlight';
 import { Renderer } from './render/renderer';
+import { Environment } from './sim/environment';
 import { Simulation } from './sim/simulation';
 import { Saver } from './storage/saver';
 import { loadSettings, saveSettings } from './storage/settings';
@@ -44,7 +46,9 @@ const seed = saver.worldMeta.seed;
 const canvas = document.querySelector<HTMLCanvasElement>('#game')!;
 const overlay = document.querySelector<HTMLDivElement>('#overlay')!;
 const hotbar = document.querySelector<HTMLDivElement>('#hotbar')!;
-const renderer = new Renderer(canvas);
+const renderer = new Renderer(canvas, seed, viewChunks * CHUNK_SIZE);
+const sounds = new Sounds();
+canvas.addEventListener('click', () => sounds.unlock());
 const world = new World();
 const pool = new WorkerPool(seed);
 const light = new LightEngine(world);
@@ -94,14 +98,17 @@ player.pitch = usePosition ? Number(params.get('pitch') ?? -0.2) : saved.pitch;
 player.flying = usePosition ? params.get('fly') === '1' : saved.flying;
 let placed = Number.isFinite(player.body.y);
 if (!placed) player.body.y = toCells(60);
-const interaction = new Interaction(world, (x, y, z, s) => setBlock(x, y, z, s, true));
-/** Time of day in [0, 1): 0 is midnight, 0.5 noon. */
-let dayTime = Number(params.get('time') ?? saver.worldMeta.dayTime);
+const interaction = new Interaction(world, (x, y, z, s) => {
+  sounds.play(s === BLOCKS.state('air') ? 'break' : 'place');
+  setBlock(x, y, z, s, true);
+});
+const env = new Environment(seed, Number(params.get('time') ?? saver.worldMeta.dayTime),
+  Number(params.get('year') ?? saver.worldMeta.yearTime ?? 0), () => sounds.play('thunder'));
 
 function save(): Promise<void> {
   const b = player.body;
   return saver.save(world, {
-    dayTime, ticks: simulation.ticks.save(), simTick: simulation.ticks.now, player: { x: b.x, y: b.y, z: b.z, yaw: player.yaw, pitch: player.pitch, flying: player.flying },
+    dayTime: env.clock.dayTime, yearTime: env.clock.yearTime, ticks: simulation.ticks.save(), simTick: simulation.ticks.now, player: { x: b.x, y: b.y, z: b.z, yaw: player.yaw, pitch: player.pitch, flying: player.flying },
   }).catch((err) => console.error('Saving failed:', err));
 }
 setInterval(() => void save(), AUTOSAVE_S * 1000);
@@ -110,8 +117,9 @@ document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'hidden') void save();
 });
 
+let walked = 0, wasWet = false;
 function update(dt: number): void {
-  dayTime = (dayTime + dt / DAY_LENGTH_S) % 1;
+  env.tick(dt);
   if (!placed) {
     const ground = world.surfaceAt(Math.floor(player.body.x), Math.floor(player.body.z));
     if (ground === undefined) return;
@@ -120,8 +128,19 @@ function update(dt: number): void {
   }
   // Physics waits for the ground under the player to load.
   if (!world.isLoaded(Math.floor(player.body.x), Math.floor(player.body.y), Math.floor(player.body.z))) return;
+  const before = { x: player.body.x, z: player.body.z };
   player.update(dt, input, boxAt, waterAt);
   interaction.update(dt, input, player);
+  if (player.body.onGround && !player.flying) {
+    walked += Math.hypot(player.body.x - before.x, player.body.z - before.z);
+    if (walked > toCells(1.8)) {
+      walked = 0;
+      sounds.play('step');
+    }
+  }
+  const wet = player.submerged > 0.3;
+  if (wet && !wasWet) sounds.play('splash');
+  wasWet = wet;
   simAccumulator += dt;
   while (simAccumulator >= 1 / SIM_HZ) {
     simAccumulator -= 1 / SIM_HZ;
@@ -131,7 +150,7 @@ function update(dt: number): void {
 let simAccumulator = 0;
 
 function handleActions(): void {
-  if (input.consume('time')) dayTime = (dayTime + 1 / 24) % 1;
+  if (input.consume('time')) env.clock.advance(DAY_LENGTH_S / 24);
   const up = input.consume('viewUp'), down = input.consume('viewDown');
   if (up || down) {
     viewChunks = Math.max(MIN_VIEW_CHUNKS, Math.min(MAX_VIEW_CHUNKS, viewChunks + (up ? 2 : -2)));
@@ -156,7 +175,10 @@ function cull(): void {
   if (key === cullKey || ++cullFrame < 6) return;
   cullKey = key;
   cullFrame = 0;
-  const visible = visibleChunks(cx, cy, cz, viewChunks + 1, (k) => {
+  // The walk stays between the camera (or the highest terrain) and a fixed depth below it.
+  let top = cy;
+  for (const column of world.columns.values()) top = Math.max(top, Math.floor(column.maxTop / CHUNK_SIZE) + 1);
+  const visible = visibleChunks(cx, cy, cz, viewChunks + 1, cy - 64, top, (k) => {
     const chunk = world.chunks.get(k);
     if (!chunk) {
       // Unloaded space is open sky above its column's highest generated cell, and unknown (closed) below it.
@@ -172,6 +194,22 @@ function cull(): void {
 }
 let culled = 0;
 
+/** Far terrain: rebuilt in a worker when the player has moved far enough from where it was built. */
+let horizonPending = false;
+function updateHorizon(x: number, z: number): void {
+  const h = renderer.horizon;
+  if (horizonPending || (h.center && Math.hypot(x - h.center[0], z - h.center[1]) < toCells(HORIZON_RECENTER_M))) return;
+  const worker = pool.leastBusy();
+  if (worker < 0) return;
+  horizonPending = true;
+  const cx = Math.round(x), cz = Math.round(z);
+  pool.run(worker, { type: 'horizon', x: cx, z: cz, radii: h.radii.slice(), segments: h.segments }).then((r) => {
+    h.set(cx, cz, r.heights, r.colors);
+  }).catch((err) => console.warn('Far terrain failed:', err)).finally(() => {
+    horizonPending = false;
+  });
+}
+
 let frames = 0, fps = 0, fpsTime = performance.now(), lastSlot = -1;
 const loop = new FixedStepLoop(1 / 60, 0.25, update, (_alpha, frameDt) => {
   const now = performance.now();
@@ -185,7 +223,15 @@ const loop = new FixedStepLoop(1 / 60, 0.25, update, (_alpha, frameDt) => {
   renderer.camera.rotation.set(player.pitch, player.yaw, 0, 'YXZ');
   highlight.set(interaction.target);
   cull();
-  renderer.setDayTime(dayTime);
+  const cam = renderer.camera.position;
+  renderer.setAtmosphere(env.frame(frameDt, cam.x, cam.y, cam.z, world));
+  const sample = env.sample;
+  simulation.weather = sample && { precipitation: sample.precipitation, seasonC: sample.seasonC };
+  renderer.clouds.update(cam.x, cam.z, frameDt, sample?.windSpeed ?? 3, env.atmosphere.cloudCover,
+    (renderer.uniforms.daylight!.value as number) * (1 - 0.4 * env.atmosphere.cloudCover));
+  renderer.precipitation.update(cam.x, cam.y, cam.z, frameDt, env.atmosphere.underground > 0.5 ? 'none' : env.falling,
+    env.atmosphere.cloudCover, sample?.windSpeed ?? 3, (x, z) => world.column(x >> 4, z >> 4)?.skyTop[((z & 15) << 4) | (x & 15)] ?? -Infinity);
+  updateHorizon(cam.x, cam.z);
   renderer.render(now / 1000);
   if (interaction.slot !== lastSlot) {
     lastSlot = interaction.slot;
@@ -200,7 +246,7 @@ const loop = new FixedStepLoop(1 / 60, 0.25, update, (_alpha, frameDt) => {
     const m = (v: number) => (v * BLOCK_SIZE_M).toFixed(1);
     const b = player.body;
     overlay.textContent = [
-      `${fps} fps  time ${String(Math.floor(dayTime * 24)).padStart(2, '0')}:${String(Math.floor((dayTime * 1440) % 60)).padStart(2, '0')} [T]  view ${viewChunks} chunks (${Math.round(viewChunks * CHUNK_SIZE * BLOCK_SIZE_M)} m) [+/-]`,
+      `${fps} fps  ${env.clock.season} day ${env.clock.day}  ${String(Math.floor(env.clock.dayTime * 24)).padStart(2, '0')}:${String(Math.floor((env.clock.dayTime * 1440) % 60)).padStart(2, '0')} [T]  ${env.sample?.storm ? 'storm' : env.sample?.precipitation ?? ''}  view ${viewChunks} chunks (${Math.round(viewChunks * CHUNK_SIZE * BLOCK_SIZE_M)} m) [+/-]`,
       `pos ${m(b.x)} ${m(b.y)} ${m(b.z)} m  ${player.flying ? 'flying' : b.onGround ? 'ground' : player.submerged > 0.05 ? 'swimming' : 'air'} [F]`,
       `chunks ${world.chunks.size}  meshes ${renderer.chunks.count}  quads ${renderer.chunks.quads}  culled ${culled}  draw calls ${info.render.calls}`,
       `world ${worldName} (seed ${seed})${saver.conflict ? '  NOT SAVING: opened in another tab' : ''}`,
@@ -216,7 +262,8 @@ loop.start();
   world, streamer, renderer, pool, light, player, interaction, setBlock, blocks: BLOCKS, saver, save, seed, simulation,
   get fps() { return fps; },
   get idle() { return placed && streamer.idle; },
-  setTime(t: number) { dayTime = t; },
+  env,
+  setTime(t: number) { env.clock.dayTime = t; },
   setView(x: number, y: number, z: number, yaw: number, pitch: number) {
     Object.assign(player.body, { x, y, z, vx: 0, vy: 0, vz: 0 });
     player.yaw = yaw;

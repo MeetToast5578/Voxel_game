@@ -1,12 +1,14 @@
 import {
   BLOCK_SIZE_M, CHUNK_SIZE, FALL_DELAY_S, GRASS_MIN_LIGHT, LAVA_FLOW_M_S, LEAF_REACH_M, MAX_TICKS_PER_STEP,
-  RANDOM_TICKS_PER_CHUNK, SIM_HZ, SIM_RADIUS_CHUNKS, WATER_FLOW_M_S, cells,
+  ICE_FREEZE_CHANCE, ICE_THAW_CHANCE, RANDOM_TICKS_PER_CHUNK, SIM_HZ, SIM_RADIUS_CHUNKS, SNOW_MELT_CHANCE,
+  SNOW_SETTLE_CHANCE, WATER_FLOW_M_S, WEATHER_TICKS_PER_COLUMN, cells,
 } from '../config';
 import { localIndex, toChunk, toLocal } from '../core/coords';
 import { mulberry32 } from '../core/random';
-import { AIR, BLOCKS, FLUID_LEVELS, OPAQUE, SOLID } from '../engine/blocks';
+import { AIR, BLOCKS, FLUID_LEVELS, OPAQUE, SNOW_LAYERS, SOLID } from '../engine/blocks';
 import type { World } from '../engine/world';
 import { TickKind, TickScheduler } from './ticks';
+import { climateTemperature, type Precipitation } from './weather';
 
 const S = (key: string, v = 0) => BLOCKS.state(key, v);
 const FLAGS = BLOCKS.flags;
@@ -41,7 +43,7 @@ const flowing = (f: Fluid, level: number, falling = false) => f.flowing + (level
 
 const SAND = new Set([S('sand'), S('gravel')]);
 const GRASS = S('grass'), DIRT = S('dirt'), LOG = S('log'), LEAVES = S('leaves'), LEAVES_PLACED = S('leaves', 1);
-const LILY = S('lily_pad'), OBSIDIAN = S('obsidian'), COBBLE = S('cobblestone');
+const LILY = S('lily_pad'), OBSIDIAN = S('obsidian'), COBBLE = S('cobblestone'), ICE = S('ice'), SNOW = S('snow');
 /** Cells fluids wash away: air, plants and thin layers (not snow, which is solid). */
 const REPLACEABLE = new Uint8Array(BLOCKS.stateCount);
 /** Cells that pop off without a solid cell below. */
@@ -62,6 +64,8 @@ const DX = [1, -1, 0, 0, 0, 0], DY = [0, 0, 1, -1, 0, 0], DZ = [0, 0, 0, 0, 1, -
  */
 export class Simulation {
   readonly ticks = new TickScheduler();
+  /** What is falling near the player and the season's temperature offset; snow settles and ice forms from it. */
+  weather: { precipitation: Precipitation; seasonC: number } | null = null;
   private readonly rand: () => number;
 
   constructor(private readonly world: World, private readonly setBlock: (x: number, y: number, z: number, s: number) => void, seed = 1) {
@@ -102,6 +106,37 @@ export class Simulation {
       else this.support(t.x, t.y, t.z);
     }
     this.randomTicks(toChunk(Math.floor(px)), toChunk(Math.floor(pz)));
+    this.weatherTicks(toChunk(Math.floor(px)), toChunk(Math.floor(pz)));
+  }
+
+  /**
+   * Snow and ice at the top of each column near the player: snow settles in layers while it snows and below
+   * freezing, still water freezes over when cold, and both melt again when it is warm.
+   */
+  private weatherTicks(pcx: number, pcz: number): void {
+    const w = this.weather;
+    if (!w) return;
+    for (const column of this.world.columns.values()) {
+      if (Math.abs(column.cx - pcx) > SIM_RADIUS_CHUNKS || Math.abs(column.cz - pcz) > SIM_RADIUS_CHUNKS) continue;
+      for (let n = 0; n < WEATHER_TICKS_PER_COLUMN; n++) {
+        const i = Math.floor(this.rand() * 256);
+        const x = column.cx * CHUNK_SIZE + (i & 15), z = column.cz * CHUNK_SIZE + (i >> 4), y = column.skyTop[i]!;
+        if (!this.world.isLoaded(x, y + 1, z)) continue;
+        const temp = climateTemperature(column.climate[i]!) + w.seasonC;
+        const s = this.world.get(x, y, z), above = this.world.get(x, y + 1, z);
+        const r = this.rand();
+        if (temp <= 0) {
+          if (s === WATER.source && above === AIR && r < ICE_FREEZE_CHANCE) this.setBlock(x, y, z, ICE);
+          else if (w.precipitation === 'snow' && r < SNOW_SETTLE_CHANCE) {
+            if (above >= SNOW && above < SNOW + SNOW_LAYERS - 1) this.setBlock(x, y + 1, z, above + 1);
+            else if (above === AIR && (FLAGS[s]! & OPAQUE) !== 0) this.setBlock(x, y + 1, z, SNOW);
+          }
+        } else if (temp > 2) {
+          if (s === ICE && r < ICE_THAW_CHANCE) this.setBlock(x, y, z, WATER.source);
+          else if (above >= SNOW && above < SNOW + SNOW_LAYERS && r < SNOW_MELT_CHANCE) this.setBlock(x, y + 1, z, above === SNOW ? AIR : above - 1);
+        }
+      }
+    }
   }
 
   private flow(x: number, y: number, z: number): void {
