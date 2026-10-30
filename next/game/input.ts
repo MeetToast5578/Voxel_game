@@ -1,7 +1,7 @@
 
-export type Action = 'fly' | 'break' | 'place' | 'pick' | 'slotNext' | 'slotPrev' | 'time' | 'viewUp' | 'viewDown';
+export type Action = 'fly' | 'break' | 'place' | 'pick' | 'slotNext' | 'slotPrev' | 'time' | 'viewUp' | 'viewDown' | 'inventory' | 'debug';
 
-const KEY_ACTIONS: Record<string, Action> = { KeyF: 'fly', KeyT: 'time', Equal: 'viewUp', Minus: 'viewDown' };
+const KEY_ACTIONS: Record<string, Action> = { KeyF: 'fly', KeyT: 'time', Equal: 'viewUp', Minus: 'viewDown', KeyE: 'inventory', F3: 'debug' };
 const DEADZONE = 0.15;
 const STICK_LOOK = 2.6; // radians per second at full right-stick deflection
 
@@ -27,9 +27,10 @@ export class Input {
   private padBreak = false;
   private padPlace = false;
 
-  constructor(private readonly canvas: HTMLCanvasElement, private readonly sensitivity: number) {
+  constructor(private readonly canvas: HTMLCanvasElement, public sensitivity: number) {
     addEventListener('keydown', (e) => {
       if (e.repeat) return;
+      if (e.code === 'F3') e.preventDefault();
       this.keys.add(e.code);
       const action = KEY_ACTIONS[e.code];
       if (action) this.actions.add(action);
@@ -38,7 +39,7 @@ export class Input {
     addEventListener('keyup', (e) => this.keys.delete(e.code));
     addEventListener('blur', () => this.keys.clear());
     canvas.addEventListener('click', () => {
-      if (document.pointerLockElement !== canvas) canvas.requestPointerLock();
+      if (document.pointerLockElement !== canvas && this.canLock()) canvas.requestPointerLock();
     });
     canvas.addEventListener('mousedown', (e) => {
       if (document.pointerLockElement !== canvas) return;
@@ -61,6 +62,9 @@ export class Input {
     });
   }
 
+  /** Whether a click on the game may capture the pointer (not while a screen is open). */
+  canLock: () => boolean = () => true;
+
   /** Reads the keyboard and the first gamepad into the held state. Call once per frame. */
   poll(dt: number): void {
     const k = this.keys;
@@ -82,6 +86,7 @@ export class Input {
     this.descend ||= button(1);
     this.sprint ||= button(10);
     if (pressed(3)) this.actions.add('fly');
+    if (pressed(2)) this.actions.add('inventory');
     if (pressed(4)) this.actions.add('slotPrev');
     if (pressed(5)) this.actions.add('slotNext');
     if (pressed(7)) this.actions.add('break');

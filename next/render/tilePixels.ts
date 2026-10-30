@@ -21,8 +21,94 @@ const GRASS: RGB = [95, 159, 53];
 const BARK: RGB = [102, 81, 51];
 const LITTER_COLOURS: readonly RGB[] = [[176, 92, 32], [196, 140, 46], [140, 52, 30], [112, 78, 40]];
 
+
+/** A fixed random rank for each pixel of a tile, so each crack stage keeps the one before it. */
+const crackRandom = mulberry32(77);
+const CRACK_RANK = Array.from({ length: TILE_SIZE * TILE_SIZE }, () => crackRandom());
+const CRACK_SHADE: RGB = [25, 22, 20];
+/** Stage 0 has a few cracks; each later stage adds more, up to about a third of the pixels at stage 9. */
+function crackPainter(stage: number): PixelFn {
+  const limit = ((stage + 1) / 10) * 0.35;
+  return (x, y) => (CRACK_RANK[y * TILE_SIZE + x]! < limit ? shade(CRACK_SHADE, 1, 255) : [0, 0, 0, 0]);
+}
+const HANDLE: RGB = [120, 86, 50];
+const onHandle = (x: number, y: number) => x + y === 15 && x >= 1 && x <= 12;
+/** A tool sprite: a handle on the diagonal and a head by kind (pickaxe bar, axe blade, shovel blade). */
+function toolPainter(kind: string, head: RGB): PixelFn {
+  const inHead = (x: number, y: number) => {
+    const along = x + y, across = x - y;
+    if (kind === 'pickaxe') return Math.abs(across - 7) <= 1 && Math.abs(along - 15) <= 6;
+    if (kind === 'axe') return along >= 14 && along <= 19 && across >= 5 && across <= 10;
+    return Math.hypot(x - 12.5, y - 2.5) <= 2.6;
+  };
+  return (x, y, r) => inHead(x, y) ? shade(head, 0.85 + r() * 0.3) : onHandle(x, y) ? shade(HANDLE, 0.9 + r() * 0.2) : [0, 0, 0, 0];
+}
+const TOOL_HEADS: Record<string, RGB> = { wooden: [162, 130, 78], stone: [125, 125, 125], iron: [216, 216, 216] };
+const COBBLE: RGB = [118, 118, 118];
+/** A furnace front: cobble with a dark mouth in the lower half, glowing when lit. */
+function furnaceFront(lit: boolean): PixelFn {
+  return (x, y, r) => {
+    if (x >= 4 && x <= 11 && y >= 8 && y <= 13) return lit ? shade(y >= 11 ? [255, 150, 40] : [230, 90, 20], 0.8 + r() * 0.4) : shade([30, 28, 26], 1);
+    return shade(COBBLE, (y === 7 && x >= 3 && x <= 12 ? 0.6 : 1) + (r() - 0.5) * 0.3);
+  };
+}
+/** One tile per crop growth stage: shoots grow taller; the ripe stage shows the crop's colour. */
+function cropPainters(key: string, ripe: RGB): Record<string, PixelFn> {
+  const out: Record<string, PixelFn> = {};
+  for (let stage = 0; stage < 4; stage++) {
+    const top = 15 - Math.round(((stage + 1) * 12) / 4);
+    out[key + '_' + stage] = (x, y, r) => {
+      const shoot = (x % 5 === 1 || x % 5 === 3) && y >= top && x > 0 && x < 15;
+      if (!shoot) return [0, 0, 0, 0];
+      const head = stage === 3 && (key === 'wheat' ? y < top + 4 : y > 12);
+      return head ? shade(ripe, 0.85 + r() * 0.3) : shade([80, 150, 50], 0.8 + r() * 0.3);
+    };
+  }
+  return out;
+}
+
 /** Painters by tile name, ported from the old atlas. */
 const PAINTERS: Record<string, PixelFn> = {
+  furnace_side: (_x, _y, r) => shade(COBBLE, 1 + (r() - 0.5) * 0.3),
+  furnace_top: (x, y, r) => shade(COBBLE, (x === 0 || y === 0 || x === 15 || y === 15 ? 0.7 : 1.1) + (r() - 0.5) * 0.2),
+  furnace_front: furnaceFront(false),
+  furnace_front_lit: furnaceFront(true),
+  iron_ingot: (x, y, r) => (y >= 6 && y <= 10 && x >= 2 + (10 - y) && x <= 13 - (10 - y) / 2 ? shade([216, 216, 216], (y === 6 ? 1.15 : 0.9) + r() * 0.1) : [0, 0, 0, 0]),
+  coal: (x, y, r) => (Math.hypot(x - 7.5, (y - 8) * 1.2) <= 5.5 ? shade([40, 40, 44], 0.7 + r() * 0.6) : [0, 0, 0, 0]),
+  baked_potato: (x, y, r) => (Math.hypot((x - 7.5) * 0.8, y - 8) <= 4.5 ? shade([196, 140, 60], 0.8 + r() * 0.35) : [0, 0, 0, 0]),
+  door: (x, _y, r) => shade([150, 112, 66], (x % 5 === 0 ? 0.6 : 1) + (r() - 0.5) * 0.12),
+  raw_meat: (x, y, r) => (Math.hypot((x - 7.5) * 0.75, y - 8) <= 5 ? shade(Math.hypot(x - 9, y - 7) < 1.5 ? [235, 225, 215] : [200, 70, 70], 0.85 + r() * 0.3) : [0, 0, 0, 0]),
+  cooked_meat: (x, y, r) => (Math.hypot((x - 7.5) * 0.75, y - 8) <= 5 ? shade(Math.hypot(x - 9, y - 7) < 1.5 ? [235, 225, 215] : [130, 76, 44], 0.85 + r() * 0.3) : [0, 0, 0, 0]),
+  stick: (x, y, r) => (x + y === 15 && x >= 2 && x <= 13 ? shade(HANDLE, 0.9 + r() * 0.2) : [0, 0, 0, 0]),
+  crafting_table_top: (x, y, r) => shade([162, 130, 78], (x % 5 === 0 || y % 5 === 0 ? 0.55 : 1) + (r() - 0.5) * 0.1),
+  crafting_table_side: (x, y, r) => {
+    const tool = (x === 4 || x === 11) && y >= 3 && y <= 9;
+    return shade(tool ? [110, 110, 110] : [150, 116, 70], (y === 0 || y === 15 ? 0.65 : 1) + (r() - 0.5) * 0.1);
+  },
+  bed_top: (x, y, r) => shade(y < 4 ? [232, 228, 220] : [168, 38, 42], (x === 0 || x === 15 ? 0.8 : 1) + (r() - 0.5) * 0.1),
+  bed_side: (_x, y, r) => shade(y < 6 ? [150, 32, 36] : [150, 112, 66], 0.9 + r() * 0.15),
+  sapling: (x, y, r) => {
+    // A thin stem with a few leaves near the top; image row 0 is the top of the tile.
+    const stem = x === 7 && y >= 6;
+    const leaf = y >= 2 && y <= 7 && Math.abs(x - 7.5) + Math.abs(y - 4.5) <= 3.2 && r() < 0.8;
+    return stem ? shade(BARK, 0.9 + r() * 0.2) : leaf ? shade([70, 140, 45], 0.85 + r() * 0.3) : [0, 0, 0, 0];
+  },
+  crack_0: crackPainter(0),
+  crack_1: crackPainter(1),
+  crack_2: crackPainter(2),
+  crack_3: crackPainter(3),
+  crack_4: crackPainter(4),
+  crack_5: crackPainter(5),
+  crack_6: crackPainter(6),
+  crack_7: crackPainter(7),
+  crack_8: crackPainter(8),
+  crack_9: crackPainter(9),
+  ...cropPainters('wheat', [205, 175, 70]),
+  ...cropPainters('carrots', [235, 125, 35]),
+  ...cropPainters('potatoes', [225, 215, 160]),
+  ...Object.fromEntries(Object.entries(TOOL_HEADS).flatMap(([tier, head]) => ['pickaxe', 'axe', 'shovel'].map((k) => [tier + '_' + k, toolPainter(k, head)]))),
+  // A torch: a stick with a glowing tip, drawn on the stick's 2-pixel width.
+  torch: (x, y, r) => (x >= 7 && x <= 8 ? (y <= 5 ? shade(y <= 2 ? [255, 236, 140] : [240, 150, 40], 0.9 + r() * 0.2) : shade(HANDLE, 0.9 + r() * 0.2)) : [0, 0, 0, 0]),
   // Items: an ingot bar, a lump of coal and a browned potato, each on a clear background.
   // A door (T-K5): upright boards; every cell of the door shows the same tile, so it has no frame or handle.
   // Creatures (T-H4): a light fur tile, coloured per species and part by vertex colour.
@@ -157,8 +243,11 @@ const PAINTERS: Record<string, PixelFn> = {
   lapis_ore: orePainter([50, 90, 180]),};
 
 /** Every tile name the block table uses, in a fixed order: the layer index of each tile. */
-export const TILE_NAMES: readonly string[] = [...new Set(BLOCKS.types.filter((t) => t.layer !== 'none')
-  .flatMap((t) => [t.tiles.top, t.tiles.side, t.tiles.bottom]))];
+export const TILE_NAMES: readonly string[] = [...new Set([
+  ...BLOCKS.types.filter((t) => t.layer !== 'none')
+    .flatMap((t) => t.variantTiles ?? [t.tiles.top, t.tiles.side, t.tiles.bottom, ...(t.front ? [t.front] : [])]),
+  ...Array.from({ length: 10 }, (_, i) => 'crack_' + i),
+])];
 
 export function tileIndex(name: string): number {
   const i = TILE_NAMES.indexOf(name);

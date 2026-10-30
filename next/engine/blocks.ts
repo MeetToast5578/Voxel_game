@@ -4,7 +4,10 @@
  */
 
 export type RenderLayer = 'none' | 'opaque' | 'cutout' | 'water' | 'ice';
-export type BlockShape = 'cube' | 'cross' | 'layer' | 'slab';
+export type BlockShape = 'cube' | 'cross' | 'layer' | 'slab' | 'boxes';
+export type ToolKind = 'pickaxe' | 'axe' | 'shovel';
+/** A box inside a cell, in sixteenths: [x0, y0, z0, x1, y1, z1]. */
+export type Box = readonly [number, number, number, number, number, number];
 
 export interface BlockTiles {
   top: string;
@@ -40,6 +43,31 @@ export interface BlockType {
   readonly density: number;
   /** For a slab: the key of its full block. */
   readonly slabOf?: string;
+  /** Not a block at all, only held (sticks, tools, food): it cannot be placed. */
+  readonly item?: boolean;
+  /** Most of it in one inventory slot (default 64). */
+  readonly maxStack?: number;
+  /** A tile per variant for every face (crop growth stages). */
+  readonly variantTiles?: readonly string[];
+  /** Tile of the face the block looks towards: variant % 4 is the facing (+x, -x, +z, -z). */
+  readonly front?: string;
+  /** The boxes of a 'boxes' shape, by variant. */
+  readonly boxes?: (variant: number) => readonly Box[];
+  /** Hunger restored by eating it. */
+  readonly food?: number;
+  /** For a tool: what it is, its tier (0 wood, 1 stone, 2 iron) and how many uses it has. */
+  readonly tool?: { readonly kind: ToolKind; readonly tier: number; readonly durability: number };
+  /** The tool that breaks this faster, and the tier needed for it to drop anything (unset: drops by hand). */
+  readonly mineWith?: ToolKind;
+  readonly needsTier?: number;
+  /** What breaking it gives: another key, or '' for nothing (default: itself, variant 0). */
+  readonly drops?: string;
+  /** Seconds it burns in a furnace. */
+  readonly fuel?: number;
+  /** What a furnace makes of it. */
+  readonly smeltsTo?: string;
+  /** It falls off without a solid cell below (plants, torches). */
+  readonly needsSupport?: boolean;
 }
 
 export type BlockSpec = Pick<BlockType, 'key' | 'name' | 'tiles'> & Partial<Omit<BlockType, 'id' | 'key' | 'name' | 'tiles'>>;
@@ -154,11 +182,16 @@ export class BlockRegistry {
 }
 
 const all = (t: string): BlockTiles => ({ top: t, side: t, bottom: t });
-const stone = (key: string, name: string, extra: Partial<BlockSpec> = {}): BlockSpec => ({ key, name, tiles: all(key), density: 2600, ...extra });
-const plant = (key: string, name: string): BlockSpec =>
-  ({ key, name, tiles: all(key), solid: false, layer: 'cutout', shape: 'cross', hardness: 0, density: 300 });
+const stone = (key: string, name: string, extra: Partial<BlockSpec> = {}): BlockSpec =>
+  ({ key, name, tiles: all(key), density: 2600, mineWith: 'pickaxe', needsTier: 0, ...extra });
+const plant = (key: string, name: string, extra: Partial<BlockSpec> = {}): BlockSpec =>
+  ({ key, name, tiles: all(key), solid: false, layer: 'cutout', shape: 'cross', hardness: 0, density: 300, needsSupport: true, ...extra });
+const item = (key: string, name: string, extra: Partial<BlockSpec> = {}): BlockSpec =>
+  ({ key, name, tiles: all(key), item: true, solid: false, layer: 'cutout', shape: 'cross', hardness: 0, ...extra });
+const soil = { mineWith: 'shovel' } as const;
+const wood = { mineWith: 'axe', fuel: 15 } as const;
 const thin = (key: string, name: string, extra: Partial<BlockSpec> = {}): BlockSpec =>
-  ({ key, name, tiles: all(key), solid: false, layer: 'cutout', shape: 'layer', hardness: 0, supports: false, density: 300, ...extra });
+  ({ key, name, tiles: all(key), solid: false, layer: 'cutout', shape: 'layer', hardness: 0, supports: false, density: 300, needsSupport: true, ...extra });
 const fluid = { solid: false, cullSame: true, hardness: 0, supports: false } as const;
 
 /** Flowing fluids have 8 levels, each with a falling and a resting variant. */
@@ -168,25 +201,25 @@ export const SNOW_LAYERS = 8;
 
 const BASE: BlockSpec[] = [
   { key: 'air', name: 'Air', tiles: all('air'), solid: false, layer: 'none', hardness: 0, density: 1 },
-  stone('stone', 'Stone'),
-  { key: 'dirt', name: 'Dirt', tiles: all('dirt'), hardness: 0.5, density: 1300 },
-  { key: 'grass', name: 'Grass', tiles: { top: 'grass_top', side: 'grass_side', bottom: 'dirt' }, hardness: 0.5, density: 1300 },
-  { key: 'sand', name: 'Sand', tiles: all('sand'), hardness: 0.5, falls: true, density: 1600 },
-  { key: 'gravel', name: 'Gravel', tiles: all('gravel'), hardness: 0.6, falls: true, density: 1900 },
-  { key: 'clay', name: 'Clay', tiles: all('clay'), hardness: 0.6, density: 1700 },
+  stone('stone', 'Stone', { drops: 'cobblestone' }),
+  { key: 'dirt', name: 'Dirt', tiles: all('dirt'), hardness: 0.5, density: 1300, ...soil },
+  { key: 'grass', name: 'Grass', tiles: { top: 'grass_top', side: 'grass_side', bottom: 'dirt' }, hardness: 0.6, density: 1300, drops: 'dirt', ...soil },
+  { key: 'sand', name: 'Sand', tiles: all('sand'), hardness: 0.5, falls: true, density: 1600, smeltsTo: 'glass', ...soil },
+  { key: 'gravel', name: 'Gravel', tiles: all('gravel'), hardness: 0.6, falls: true, density: 1900, ...soil },
+  { key: 'clay', name: 'Clay', tiles: all('clay'), hardness: 0.6, density: 1700, smeltsTo: 'brick', ...soil },
   { key: 'water', name: 'Water', tiles: all('water'), layer: 'water', ...fluid, density: 1000 },
   { key: 'flowing_water', name: 'Flowing water', tiles: all('water'), layer: 'water', ...fluid, flows: true, variants: 2 * FLUID_LEVELS, density: 1000 },
   { key: 'lava', name: 'Lava', tiles: all('lava'), ...fluid, opaque: false, lightEmission: 15, density: 3100 },
   { key: 'flowing_lava', name: 'Flowing lava', tiles: all('lava'), ...fluid, opaque: false, lightEmission: 15, flows: true, variants: 2 * FLUID_LEVELS, density: 3100 },
-  { key: 'ice', name: 'Ice', tiles: all('ice'), layer: 'ice', opaque: false, cullSame: true, hardness: 0.5, density: 917 },
-  { key: 'log', name: 'Log', tiles: { top: 'log_top', side: 'log_side', bottom: 'log_top' }, hardness: 2, density: 600 },
+  { key: 'ice', name: 'Ice', tiles: all('ice'), layer: 'ice', opaque: false, cullSame: true, hardness: 0.5, density: 917, mineWith: 'pickaxe', drops: '' },
+  { key: 'log', name: 'Log', tiles: { top: 'log_top', side: 'log_side', bottom: 'log_top' }, hardness: 2, density: 600, smeltsTo: 'coal', ...wood },
   // Variant 1 is placed by the player and never decays.
   // Faces between leaves are hidden (dense crowns would otherwise be thousands of quads); leaves still shade the ground.
-  { key: 'leaves', name: 'Leaves', tiles: all('leaves'), layer: 'cutout', hardness: 0.3, supports: false, density: 300, variants: 2, cullSame: true, blocksSky: true },
-  { key: 'planks', name: 'Planks', tiles: all('planks'), hardness: 2, density: 600 },
-  { key: 'glass', name: 'Glass', tiles: all('glass'), layer: 'cutout', cullSame: true, hardness: 0.3 },
+  { key: 'leaves', name: 'Leaves', tiles: all('leaves'), layer: 'cutout', hardness: 0.3, supports: false, density: 300, variants: 2, cullSame: true, blocksSky: true, drops: '' },
+  { key: 'planks', name: 'Planks', tiles: all('planks'), hardness: 2, density: 600, ...wood },
+  { key: 'glass', name: 'Glass', tiles: all('glass'), layer: 'cutout', cullSame: true, hardness: 0.3, drops: '' },
   stone('bedrock', 'Bedrock', { hardness: Infinity }),
-  stone('cobblestone', 'Cobblestone'),
+  stone('cobblestone', 'Cobblestone', { smeltsTo: 'stone' }),
   stone('brick', 'Brick'),
   stone('glowstone', 'Glowstone', { lightEmission: 15, hardness: 0.3 }),
   stone('granite', 'Granite'),
@@ -197,16 +230,17 @@ const BASE: BlockSpec[] = [
   stone('slate', 'Slate'),
   stone('basalt', 'Basalt'),
   stone('deepslate', 'Deepslate'),
-  stone('obsidian', 'Obsidian', { hardness: 8 }),
-  stone('coal_ore', 'Coal ore', { hardness: 2 }),
-  stone('iron_ore', 'Iron ore', { hardness: 3 }),
-  stone('gold_ore', 'Gold ore', { hardness: 3 }),
-  stone('redstone_ore', 'Redstone ore', { hardness: 3 }),
-  stone('diamond_ore', 'Diamond ore', { hardness: 4 }),
-  stone('emerald_ore', 'Emerald ore', { hardness: 4 }),
-  stone('lapis_ore', 'Lapis ore', { hardness: 3 }),
+  stone('obsidian', 'Obsidian', { hardness: 25, needsTier: 2 }),
+  stone('coal_ore', 'Coal ore', { hardness: 2, drops: 'coal' }),
+  stone('iron_ore', 'Iron ore', { hardness: 3, needsTier: 1, smeltsTo: 'iron_ingot' }),
+  stone('gold_ore', 'Gold ore', { hardness: 3, needsTier: 2 }),
+  stone('redstone_ore', 'Redstone ore', { hardness: 3, needsTier: 2 }),
+  stone('diamond_ore', 'Diamond ore', { hardness: 4, needsTier: 2 }),
+  stone('emerald_ore', 'Emerald ore', { hardness: 4, needsTier: 2 }),
+  stone('lapis_ore', 'Lapis ore', { hardness: 3, needsTier: 1 }),
   { key: 'cactus', name: 'Cactus', tiles: { top: 'cactus_top', side: 'cactus_side', bottom: 'cactus_top' }, hardness: 0.5, density: 700 },
-  plant('tall_grass', 'Tall grass'),
+  // Tall grass sometimes gives wheat seeds (handled where blocks are broken).
+  plant('tall_grass', 'Tall grass', { drops: '' }),
   plant('fern', 'Fern'),
   plant('poppy', 'Poppy'),
   plant('dandelion', 'Dandelion'),
@@ -217,12 +251,64 @@ const BASE: BlockSpec[] = [
   thin('moss', 'Moss'),
   thin('leaf_litter', 'Leaf litter'),
   // Snow is walked on, unlike the other thin layers.
-  thin('snow', 'Snow', { layer: 'opaque', variants: SNOW_LAYERS, hardness: 0.1, solid: true }),
+  thin('snow', 'Snow', { layer: 'opaque', variants: SNOW_LAYERS, hardness: 0.1, solid: true, needsSupport: false, mineWith: 'shovel' }),
 ];
 
+/** The facing of a variant (+x, -x, +z, -z) and the side a quarter-turn on. */
+const PANEL: Record<number, Box> = { 0: [13, 0, 0, 16, 16, 16], 1: [0, 0, 0, 3, 16, 16], 2: [0, 0, 13, 16, 16, 16], 3: [0, 0, 0, 16, 16, 3] };
+const TURN = [2, 3, 1, 0];
+const HIGH_HALF: Record<number, Box> = { 0: [8, 8, 0, 16, 16, 16], 1: [0, 8, 0, 8, 16, 16], 2: [0, 8, 8, 16, 16, 16], 3: [0, 8, 0, 16, 16, 8] };
+const STAIR_MATERIALS = ['planks', 'cobblestone', 'stone', 'brick', 'sandstone'];
+export const TOOL_TIERS = ['wooden', 'stone', 'iron'] as const;
+export const TOOL_KINDS: readonly ToolKind[] = ['pickaxe', 'axe', 'shovel'];
+const DURABILITY = [60, 132, 251];
+export const CROP_STAGES = 4;
+/** Sapling variants: the tree species each grows into. */
+export const SAPLING_SPECIES = ['oak', 'birch', 'spruce', 'maple', 'pine', 'acacia', 'jungle_giant', 'palm'] as const;
+
+/** Blocks and items of play: light, crafting, smelting, doors, beds, stairs, crops, saplings, tools and food. */
+function gameplay(): BlockSpec[] {
+  const crop = (key: string, name: string, food: number): BlockSpec => plant(key, name, {
+    variants: CROP_STAGES, variantTiles: Array.from({ length: CROP_STAGES }, (_, v) => `${key}_${v}`), food,
+  });
+  return [
+    { key: 'torch', name: 'Torch', tiles: all('torch'), shape: 'boxes', boxes: () => [[7, 0, 7, 9, 10, 9]], solid: false,
+      layer: 'cutout', lightEmission: 14, hardness: 0, needsSupport: true, supports: false },
+    { key: 'crafting_table', name: 'Crafting table', tiles: { top: 'crafting_table_top', side: 'crafting_table_side', bottom: 'planks' },
+      hardness: 2.5, density: 600, ...wood },
+    stone('furnace', 'Furnace', { tiles: { top: 'furnace_top', side: 'furnace_side', bottom: 'furnace_top' }, front: 'furnace_front', variants: 4, hardness: 3.5 }),
+    stone('lit_furnace', 'Lit furnace', { tiles: { top: 'furnace_top', side: 'furnace_side', bottom: 'furnace_top' }, front: 'furnace_front_lit',
+      variants: 4, hardness: 3.5, lightEmission: 13, drops: 'furnace' }),
+    // A door is a column of door cells (variant: facing + 4 when open); closed it fills its cell for collision.
+    { key: 'door', name: 'Door', tiles: all('door'), shape: 'boxes', variants: 8, hardness: 3, density: 600, mineWith: 'axe',
+      boxes: (v) => [PANEL[v < 4 ? v : TURN[v - 4]!]!], fuel: 10 },
+    // A bed covers two cells: variant facing + 4 for the head end.
+    { key: 'bed', name: 'Bed', tiles: { top: 'bed_top', side: 'bed_side', bottom: 'planks' }, shape: 'boxes', variants: 8,
+      boxes: () => [[0, 0, 0, 16, 9, 16]], hardness: 0.5, density: 300 },
+    ...STAIR_MATERIALS.map((m): BlockSpec => ({
+      key: `${m}_stairs`, name: `${m[0]!.toUpperCase()}${m.slice(1)} stairs`, tiles: all(m), shape: 'boxes', variants: 4,
+      boxes: (v) => [[0, 0, 0, 16, 8, 16], HIGH_HALF[v]!], hardness: 2, mineWith: m === 'planks' ? 'axe' : 'pickaxe',
+      needsTier: m === 'planks' ? undefined : 0, blocksSky: false,
+    })),
+    crop('wheat', 'Wheat', 0),
+    crop('carrots', 'Carrots', 3),
+    { ...crop('potatoes', 'Potatoes', 1), smeltsTo: 'baked_potato' },
+    plant('sapling', 'Sapling', { variants: SAPLING_SPECIES.length, fuel: 5 }),
+    item('stick', 'Stick', { fuel: 5 }),
+    item('coal', 'Coal', { fuel: 80 }),
+    item('iron_ingot', 'Iron ingot'),
+    item('baked_potato', 'Baked potato', { food: 5 }),
+    item('raw_meat', 'Raw meat', { food: 2, smeltsTo: 'cooked_meat' }),
+    item('cooked_meat', 'Cooked meat', { food: 6 }),
+    ...TOOL_TIERS.flatMap((tier, t) => TOOL_KINDS.map((kind) => item(`${tier}_${kind}`, `${tier[0]!.toUpperCase()}${tier.slice(1)} ${kind}`, {
+      maxStack: 1, tool: { kind, tier: t, durability: DURABILITY[t]! }, fuel: tier === 'wooden' ? 10 : undefined,
+    }))),
+  ];
+}
 /** Slabs of every full solid cube: variant 0 is the bottom half, 1 the top half. */
 const SLABS: BlockSpec[] = BASE.filter((s) => (s.solid ?? true) && (s.layer ?? 'opaque') === 'opaque' && !s.falls && s.key !== 'bedrock' && !s.lightEmission)
-  .map((s) => ({ ...s, key: `${s.key}_slab`, name: `${s.name} slab`, shape: 'slab', variants: 2, slabOf: s.key, opaque: false, blocksSky: false }));
+  .map((s) => ({ ...s, key: `${s.key}_slab`, name: `${s.name} slab`, shape: 'slab', variants: 2, slabOf: s.key, opaque: false, blocksSky: false,
+    drops: undefined, smeltsTo: undefined }));
 
-export const BLOCKS = new BlockRegistry([...BASE, ...SLABS]);
+export const BLOCKS = new BlockRegistry([...BASE, ...SLABS, ...gameplay()]);
 export const AIR = 0;

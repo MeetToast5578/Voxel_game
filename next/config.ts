@@ -250,3 +250,28 @@ export const RIVER_MEANDER_WAVELENGTH_M = 90;
 /** Share of the water's edge (where the ground is just above the water) that grows reeds. */
 export const REED_CHANCE = 0.15;
 export const LILY_PAD_CHANCE = 0.04;
+
+// ---- Survival ----
+export const MAX_HEALTH = 20;
+export const MAX_HUNGER = 20;
+/** Hunger lost per second, and extra while sprinting. */
+export const HUNGER_PER_S = 0.012;
+export const SPRINT_HUNGER_PER_S = 0.05;
+/** Health regained per second while hunger is at least REGEN_HUNGER. */
+export const REGEN_PER_S = 0.25;
+export const REGEN_HUNGER = 18;
+/** Health lost per second while starving (hunger 0). */
+export const STARVE_PER_S = 0.25;
+/** Falls faster than this (m/s) on landing hurt, one point per m/s beyond it. */
+export const SAFE_FALL_SPEED_M_S = 10;
+export const BREATH_S = 15;
+export const DROWN_PER_S = 2;
+export const LAVA_PER_S = 8;
+/** Seconds a furnace takes per item. */
+export const SMELT_S = 8;
+/** Chance a broken tall grass gives wheat seeds, and broken or decayed natural leaves a sapling. */
+export const SEED_CHANCE = 0.12;
+export const SAPLING_CHANCE = 0.05;
+/** Chance a random tick on a lit crop grows it a stage, or on a lit sapling grows its tree. */
+export const CROP_GROW_CHANCE = 0.3;
+export const SAPLING_GROW_CHANCE = 0.1;

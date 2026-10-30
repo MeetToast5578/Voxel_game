@@ -5,7 +5,9 @@ export const TARGET = new Uint16Array(BLOCKS.stateCount);
 for (const t of BLOCKS.types) {
   if (t.layer === 'none' || (BLOCKS.flags[t.id]! & FLUID) !== 0) continue;
   for (let v = 0; v < t.variants; v++) {
-    const [y0, y1] = t.shape === 'slab' ? (v === 0 ? [0, 8] : [8, 16]) : t.key === 'snow' ? [0, (v + 1) * 2] : t.shape === 'layer' ? [0, 2] : [0, 16];
+    const boxes = t.boxes?.(v);
+    const [y0, y1] = t.shape === 'slab' ? (v === 0 ? [0, 8] : [8, 16]) : t.key === 'snow' ? [0, (v + 1) * 2] : t.shape === 'layer' ? [0, 2]
+      : boxes ? [Math.min(...boxes.map((b) => b[1])), Math.max(...boxes.map((b) => b[4]))] : [0, 16];
     TARGET[t.id + v] = y0 | (y1 << 5);
   }
 }

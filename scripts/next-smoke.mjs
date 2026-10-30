@@ -41,7 +41,30 @@ try {
         visible: [...n.renderer.chunks.keys()].length };
     });
     console.log(name, JSON.stringify({ ...stats, loadMs }));
+    // The pause menu shows whenever the pointer is free, which it always is here: hide the UI for the views.
+    await page.evaluate(() => { document.querySelector('#ui').style.display = 'none'; });
     await page.screenshot({ path: `screenshots/${name}.png` });
+    await page.close();
+  }
+  // The UI: the pause menu with the world list, and a survival inventory with crafting.
+  {
+    const { page } = await open('seed=1&world=smoke-ui&new=1&mode=survival');
+    await page.waitForTimeout(500);
+    await page.screenshot({ path: 'screenshots/next-menu.png' });
+    await page.evaluate(() => {
+      const n = window.__next, S = (k) => n.blocks.state(k);
+      n.play.inventory.add({ state: S('log'), count: 5 });
+      n.play.inventory.add({ state: S('cobblestone'), count: 20 });
+      n.play.inventory.add({ state: S('stone_pickaxe'), count: 1, wear: 40 });
+      n.play.craft[0] = { state: S('planks'), count: 2 };
+      n.play.craft[2] = { state: S('planks'), count: 2 };
+      n.play.openScreen('inventory', 2);
+    });
+    await page.waitForTimeout(500);
+    await page.screenshot({ path: 'screenshots/next-inventory.png' });
+    const ui = await page.evaluate(() => ({ slots: document.querySelectorAll('.slot').length, menu: !!document.querySelector('.menu') }));
+    console.log('ui', JSON.stringify(ui));
+    if (ui.slots < 40) errors.push(`inventory screen shows too few slots: ${ui.slots}`);
     await page.close();
   }
 

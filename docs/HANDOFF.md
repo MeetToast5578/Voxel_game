@@ -126,6 +126,35 @@ Phase 7b: rivers and lakes (`next/worldgen/rivers.ts`). This closes T-C6 by desi
   under rivers and lakes as they do under the sea. Rivers also show on the far terrain.
 - **Still missing:** waterfalls are just steps of still water; there are no stony shores or sandbars.
 
+Phase 9 with the UI part of phase 11: play.
+- **New blocks and items** (`next/engine/blocks.ts`): torch (light 14), crafting table, furnace and lit furnace
+  (facing fronts), doors (4 cells, 2.4 m), beds (2 cells), stairs of five materials, wheat, carrots and potatoes (4
+  growth stages), saplings of 8 species, sticks, coal, iron ingots, food, and wooden, stone and iron tools.
+  - Block types now carry: tool kind and tier, drops, fuel, smelting result, food, `needsSupport` and per-variant
+    tiles.
+  - The mesher draws any list of boxes per state.
+  - Shortcut: stairs and closed doors collide as whole cells, as in the old game.
+- **Rules** (`next/game`), all tested:
+  - inventory stacks with tool wear (`inventory.ts`);
+  - shaped recipes ported by name (`crafting.ts`);
+  - furnaces that burn fuel and light up (`furnace.ts`);
+  - break times by tool and tier, with drops (`mining.ts`);
+  - health, hunger, breath, fall damage, drowning and lava (`survival.ts`).
+- **`Play`** (`game/play.ts`) ties it together:
+  - creative breaks at once and places freely; survival digs over time, drops into the inventory and uses items up;
+  - right click opens tables and furnaces, toggles doors, sleeps in beds (skips the night, sets the spawn) and eats;
+  - furnaces keep running; everything is saved in the meta record's `play` field;
+  - death clears the inventory and respawns at the bed or the first spawn.
+- **Growth:** crops grow and saplings become trees on random ticks.
+- **UI** (`next/ui/app.tsx`, Preact):
+  - hotbar with icons drawn from the tile textures, plus health, hunger and air bars;
+  - the inventory screen (E) with 2×2 crafting, 3×3 at a table, a furnace screen, and a block palette in creative;
+  - a pause menu whenever the pointer is free: settings sliders, the world list (open, export, delete), a new world
+    form (name, seed, mode) and import from a file;
+  - a death screen; F3 hides the debug text; a crack overlay while digging.
+- **URL `mode`:** `creative` or `survival` for a new world. Worlds made from the URL default to creative, worlds made
+  from the menu to the mode picked there.
+
 ## 2026-10-24 — performance (Claude)
 
 T-J13: an edit remeshes at once only the chunks the changed cell faces (at most 4, was 8). T-J6: chunk budgets

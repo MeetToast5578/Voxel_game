@@ -1,6 +1,6 @@
 import { CHUNK_SIZE } from '../config';
 import { tileIndex } from '../render/tilePixels';
-import { BLOCKS, FLUID_LEVELS, OPAQUE, type RenderLayer } from './blocks';
+import { BLOCKS, FLUID_LEVELS, OPAQUE, type Box, type RenderLayer } from './blocks';
 
 // Imported constants copied locally: hot loops then read a plain constant, not a module binding.
 const CHUNK_SIZE_ = CHUNK_SIZE;
@@ -70,11 +70,10 @@ const COUNT = BLOCKS.stateCount;
 const FACE_TILE = new Uint16Array(COUNT * 6);
 const FACE_TINT = new Uint8Array(COUNT * 6);
 const PASS = new Uint8Array(COUNT);
-/** 0: no faces; 1: greedy cube; 2: cross plant; 3: box (slab or layer). */
+/** 0: no faces; 1: greedy cube; 2: cross plant; 3: boxes (slabs, layers, stairs, doors, torches). */
 const KIND = new Uint8Array(COUNT);
-/** Box shapes: bottom and top height in sixteenths. */
-const BOX_Y0 = new Uint8Array(COUNT);
-const BOX_Y1 = new Uint8Array(COUNT);
+/** The boxes of each box-shaped state, in sixteenths. */
+const BOXES: (readonly Box[])[] = [];
 /** Faces between two cells of the same group are hidden (0: no group). */
 const GROUP = new Uint16Array(COUNT);
 /** Fluid cells: 1 water, 2 lava (faces between the same fluid are hidden; their tops sit lower). */
@@ -95,15 +94,14 @@ for (const t of BLOCKS.types) {
       const level = t.flows ? (v >= FLUID_LEVELS ? -1 : v + 1) : FLUID_LEVELS + 1;
       FLUID_DROP[s] = level < 0 ? 0 : 16 - Math.max(2, Math.round((14 * Math.min(level, FLUID_LEVELS)) / FLUID_LEVELS));
     }
-    if (t.shape === 'slab') {
-      BOX_Y0[s] = v === 0 ? 0 : 8;
-      BOX_Y1[s] = v === 0 ? 8 : 16;
-    } else if (t.shape === 'layer') {
-      BOX_Y1[s] = t.key === 'snow' ? (v + 1) * 2 : 1;
-    }
+    if (t.shape === 'slab') BOXES[s] = [[0, v === 0 ? 0 : 8, 0, 16, v === 0 ? 8 : 16, 16]];
+    else if (t.shape === 'layer') BOXES[s] = [[0, 0, 0, 16, t.key === 'snow' ? (v + 1) * 2 : 1, 16]];
+    else if (t.shape === 'boxes') BOXES[s] = t.boxes!(v);
     if (KIND[s] === 0) continue;
+    // A facing block shows its front tile on the side it faces (variant % 4: +x, -x, +z, -z).
+    const frontFace = t.front ? [0, 1, 4, 5][v % 4]! : -1;
     for (let f = 0; f < 6; f++) {
-      const name = f === 2 ? t.tiles.top : f === 3 ? t.tiles.bottom : t.tiles.side;
+      const name = t.variantTiles ? t.variantTiles[v]! : f === frontFace ? t.front! : f === 2 ? t.tiles.top : f === 3 ? t.tiles.bottom : t.tiles.side;
       FACE_TILE[s * 6 + f] = tileIndex(name);
       FACE_TINT[s * 6 + f] = TINT_KIND[name] ?? 0;
     }
@@ -295,12 +293,18 @@ function plant(buf: QuadBuffer, s: number, x: number, y: number, z: number, ligh
   }
 }
 
-/** A box from BOX_Y0 to BOX_Y1 (slabs, snow, thin layers). Faces on the cell boundary are culled by opaque neighbours. */
+/** The state's boxes (slabs, snow, thin layers, stairs, doors, torches). Faces on the cell boundary are culled by opaque neighbours. */
 function box(buf: QuadBuffer, states: Uint16Array, light: Uint8Array, s: number, x: number, y: number, z: number, p: number,
   clim: number): void {
-  const y0 = BOX_Y0[s]!, y1 = BOX_Y1[s]!;
+  for (const b of BOXES[s]!) boxFaces(buf, states, light, s, x, y, z, p, clim, b);
+}
+
+function boxFaces(buf: QuadBuffer, states: Uint16Array, light: Uint8Array, s: number, x: number, y: number, z: number, p: number,
+  clim: number, b: Box): void {
+  const lo = [b[0], b[1], b[2]], hi = [b[3], b[4], b[5]];
   for (let f = 0; f < 6; f++) {
-    const onBoundary = f === 2 ? y1 === 16 : f === 3 ? y0 === 0 : true;
+    const axis = f >> 1, positive = (f & 1) === 0;
+    const onBoundary = positive ? hi[axis] === 16 : lo[axis] === 0;
     const dir = DIRS[f]!;
     const n = p + dir[0] + dir[1] * SY + dir[2] * SZ;
     if (onBoundary && (FLAGS[states[n]!]! & OPAQUE) !== 0) continue;
@@ -309,7 +313,7 @@ function box(buf: QuadBuffer, states: Uint16Array, light: Uint8Array, s: number,
     const corners = CORNERS[f]!;
     for (let c = 0; c < 4; c++) {
       const cr = corners[c]!;
-      const px = x * 16 + cr[0] * 16, py = y * 16 + (cr[1] ? y1 : y0), pz = z * 16 + cr[2] * 16;
+      const px = x * 16 + (cr[0] ? hi[0]! : lo[0]!), py = y * 16 + (cr[1] ? hi[1]! : lo[1]!), pz = z * 16 + (cr[2] ? hi[2]! : lo[2]!);
       w0[c] = (px | (py << 9) | (pz << 18) | (3 << 27) | (f << 29)) >>> 0;
       w1[c] = (tile | ((lightByte >> 4) << 10) | ((lightByte & 15) << 14) | ((UVS[c]![0] | (UVS[c]![1] << 1)) << 18) |
         (tint << 20) | ((tint ? clim : 0) << 22)) >>> 0;

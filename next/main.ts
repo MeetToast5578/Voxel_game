@@ -9,12 +9,14 @@ import { ALL_CONNECTED, visibleChunks } from './engine/visibility';
 import { World } from './engine/world';
 import { COLLISION } from './game/collision';
 import { Input } from './game/input';
-import { HOTBAR, Interaction } from './game/interaction';
+import { Play, type Mode } from './game/play';
 import { Player } from './game/player';
 import { Highlight } from './render/highlight';
 import { Renderer } from './render/renderer';
 import { Environment } from './sim/environment';
 import { Simulation } from './sim/simulation';
+import { drawUi, type UiModel } from './ui/app';
+import { exportWorld, importWorld } from './storage/archive';
 import { Saver } from './storage/saver';
 import { loadSettings, saveSettings } from './storage/settings';
 import { IdbStore, MemoryStore, SAVE_VERSION, type WorldStore } from './storage/store';
@@ -45,7 +47,7 @@ const seed = saver.worldMeta.seed;
 
 const canvas = document.querySelector<HTMLCanvasElement>('#game')!;
 const overlay = document.querySelector<HTMLDivElement>('#overlay')!;
-const hotbar = document.querySelector<HTMLDivElement>('#hotbar')!;
+const uiRoot = document.querySelector<HTMLDivElement>('#ui')!;
 const renderer = new Renderer(canvas, seed, viewChunks * CHUNK_SIZE);
 const sounds = new Sounds();
 canvas.addEventListener('click', () => sounds.unlock());
@@ -98,17 +100,26 @@ player.pitch = usePosition ? Number(params.get('pitch') ?? -0.2) : saved.pitch;
 player.flying = usePosition ? params.get('fly') === '1' : saved.flying;
 let placed = Number.isFinite(player.body.y);
 if (!placed) player.body.y = toCells(60);
-const interaction = new Interaction(world, (x, y, z, s) => {
-  sounds.play(s === BLOCKS.state('air') ? 'break' : 'place');
-  setBlock(x, y, z, s, true);
-});
+const play = new Play(world, (x, y, z, s) => setBlock(x, y, z, s, true), {
+  sound: (name) => sounds.play(name),
+  // Sleeping: only at night, and the night passes.
+  sleep: () => {
+    const night = env.clock.dayTime < 0.23 || env.clock.dayTime > 0.77;
+    if (night) env.clock.advance(((1.25 - env.clock.dayTime) % 1) * DAY_LENGTH_S);
+    return night;
+  },
+}, (params.get('mode') as Mode | null) ?? (existed ? 'survival' : 'creative'));
+if (saver.worldMeta.play) play.load(saver.worldMeta.play);
+else if (play.mode === 'creative') play.creativeHotbar();
+/** Where the player starts: where they first stood, or their bed. */
+let worldSpawn: [number, number, number] | null = null;
 const env = new Environment(seed, Number(params.get('time') ?? saver.worldMeta.dayTime),
   Number(params.get('year') ?? saver.worldMeta.yearTime ?? 0), () => sounds.play('thunder'));
 
 function save(): Promise<void> {
   const b = player.body;
   return saver.save(world, {
-    dayTime: env.clock.dayTime, yearTime: env.clock.yearTime, ticks: simulation.ticks.save(), simTick: simulation.ticks.now, player: { x: b.x, y: b.y, z: b.z, yaw: player.yaw, pitch: player.pitch, flying: player.flying },
+    dayTime: env.clock.dayTime, yearTime: env.clock.yearTime, play: play.save(), ticks: simulation.ticks.save(), simTick: simulation.ticks.now, player: { x: b.x, y: b.y, z: b.z, yaw: player.yaw, pitch: player.pitch, flying: player.flying },
   }).catch((err) => console.error('Saving failed:', err));
 }
 setInterval(() => void save(), AUTOSAVE_S * 1000);
@@ -126,11 +137,30 @@ function update(dt: number): void {
     player.body.y = ground + 1;
     placed = true;
   }
+  worldSpawn ??= [player.body.x, player.body.y, player.body.z];
   // Physics waits for the ground under the player to load.
   if (!world.isLoaded(Math.floor(player.body.x), Math.floor(player.body.y), Math.floor(player.body.z))) return;
   const before = { x: player.body.x, z: player.body.z };
-  player.update(dt, input, boxAt, waterAt);
-  interaction.update(dt, input, player);
+  const active = input.locked && play.screen === 'none' && !play.survival.dead;
+  if (play.mode === 'survival') player.flying = false;
+  else if (!active) input.consume('fly');
+  const falling = -player.body.vy;
+  player.update(dt, active ? input : idleInput, boxAt, waterAt);
+  if (active) play.update(dt, input, player);
+  play.tickFurnaces(dt);
+  if (play.mode === 'survival' && !play.survival.dead) {
+    if (player.body.onGround && falling > 0 && player.submerged < 0.2) play.survival.land(falling * BLOCK_SIZE_M);
+    const eye = world.get(Math.floor(player.body.x), Math.floor(player.eyeY), Math.floor(player.body.z));
+    const feet = world.get(Math.floor(player.body.x), Math.floor(player.body.y + 0.2), Math.floor(player.body.z));
+    play.survival.update(dt, {
+      sprinting: input.sprint && player.body.onGround, headInWater: waterAt(Math.floor(player.body.x), Math.floor(player.eyeY), Math.floor(player.body.z)),
+      inLava: BLOCKS.type(eye).key.endsWith('lava') || BLOCKS.type(feet).key.endsWith('lava'),
+    });
+    if (play.survival.dead) {
+      document.exitPointerLock();
+      play.version++;
+    }
+  }
   if (player.body.onGround && !player.flying) {
     walked += Math.hypot(player.body.x - before.x, player.body.z - before.z);
     if (walked > toCells(1.8)) {
@@ -149,7 +179,36 @@ function update(dt: number): void {
 }
 let simAccumulator = 0;
 
+/** The player's controls while a screen or menu is open: nothing pressed. */
+const idleInput = Object.assign(Object.create(Input.prototype) as Input, {
+  moveX: 0, moveZ: 0, jump: false, sprint: false, descend: false, consume: () => false,
+});
+
+function respawn(): void {
+  play.inventory.clear();
+  play.survival.reset();
+  const at = play.spawn ?? worldSpawn ?? [0.5, NaN, 0.5];
+  Object.assign(player.body, { x: at[0], y: at[1], z: at[2], vx: 0, vy: 0, vz: 0 });
+  if (!Number.isFinite(at[1])) placed = false;
+  play.version++;
+  canvas.requestPointerLock();
+}
+
+let debugText = true;
 function handleActions(): void {
+  if (input.consume('inventory')) {
+    if (play.screen !== 'none') {
+      play.closeScreen();
+      canvas.requestPointerLock();
+    } else if (input.locked) {
+      play.openScreen('inventory', 2);
+      document.exitPointerLock();
+    }
+  }
+  if (input.consume('debug')) {
+    debugText = !debugText;
+    overlay.style.display = debugText ? '' : 'none';
+  }
   if (input.consume('time')) env.clock.advance(DAY_LENGTH_S / 24);
   const up = input.consume('viewUp'), down = input.consume('viewDown');
   if (up || down) {
@@ -161,9 +220,71 @@ function handleActions(): void {
   }
 }
 
-function drawHotbar(): void {
-  hotbar.textContent = HOTBAR.map((key, i) => (i === interaction.slot ? `[${i + 1} ${key}]` : ` ${i + 1} ${key} `)).join(' ');
+let worlds: Awaited<ReturnType<WorldStore['listWorlds']>> = [];
+const ui: UiModel = {
+  play, settings, worldName, worlds,
+  get paused() { return !input.locked && placed; },
+  get dead() { return play.survival.dead; },
+  resume: () => canvas.requestPointerLock(),
+  respawn,
+  changeSettings(s) {
+    Object.assign(settings, s);
+    saveSettings(settings);
+    if (s.viewChunks !== viewChunks) {
+      viewChunks = s.viewChunks;
+      streamer.viewChunks = viewChunks;
+      streamer.replan();
+      renderer.setViewDistance(viewChunks * CHUNK_SIZE);
+    }
+    renderer.camera.fov = s.fov;
+    renderer.camera.updateProjectionMatrix();
+    input.sensitivity = s.mouseSensitivity;
+    redraw();
+  },
+  async openWorld(name, create) {
+    await save();
+    const q = new URLSearchParams({ world: name, view: String(viewChunks) });
+    if (create) Object.entries({ new: '1', seed: String(create.seed), mode: create.mode }).forEach(([k, v]) => q.set(k, v));
+    location.search = q.toString();
+  },
+  async deleteWorld(name) {
+    await store.deleteWorld(name);
+    ui.refreshWorlds();
+  },
+  async exportWorld(name) {
+    if (name === worldName) await save();
+    const text = await exportWorld(store, name);
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([text], { type: 'application/json' }));
+    a.download = `${name}.world.json`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  },
+  async importWorld(file) {
+    try {
+      const name = await importWorld(store, await file.text());
+      alert(`Imported world '${name}'.`);
+    } catch (err) {
+      alert(`Could not import: ${(err as Error).message}`);
+    }
+    ui.refreshWorlds();
+  },
+  refreshWorlds() {
+    void store.listWorlds().then((list) => {
+      ui.worlds = list.sort((a, b) => b.lastPlayed - a.lastPlayed);
+      redraw();
+    });
+  },
+};
+input.canLock = () => play.screen === 'none' && !play.survival.dead;
+document.addEventListener('pointerlockchange', () => {
+  if (!input.locked) ui.refreshWorlds();
+  redraw();
+});
+function redraw(): void {
+  drawUi(uiRoot, ui);
 }
+ui.refreshWorlds();
 
 /** Cave culling: recomputed when the camera changes chunk or new meshes arrive, at most every few frames. */
 let cullKey = '', cullFrame = 0;
@@ -210,7 +331,7 @@ function updateHorizon(x: number, z: number): void {
   });
 }
 
-let frames = 0, fps = 0, fpsTime = performance.now(), lastSlot = -1;
+let frames = 0, fps = 0, fpsTime = performance.now(), lastVersion = -1, lastUiDraw = 0;
 const loop = new FixedStepLoop(1 / 60, 0.25, update, (_alpha, frameDt) => {
   const now = performance.now();
   input.poll(frameDt);
@@ -221,7 +342,7 @@ const loop = new FixedStepLoop(1 / 60, 0.25, update, (_alpha, frameDt) => {
   streamer.update(player.body.x, player.body.y, player.body.z, now);
   renderer.camera.position.set(player.body.x, player.eyeY, player.body.z);
   renderer.camera.rotation.set(player.pitch, player.yaw, 0, 'YXZ');
-  highlight.set(interaction.target);
+  highlight.set(play.target, play.breaking);
   cull();
   const cam = renderer.camera.position;
   renderer.setAtmosphere(env.frame(frameDt, cam.x, cam.y, cam.z, world));
@@ -233,9 +354,11 @@ const loop = new FixedStepLoop(1 / 60, 0.25, update, (_alpha, frameDt) => {
     env.atmosphere.cloudCover, sample?.windSpeed ?? 3, (x, z) => world.column(x >> 4, z >> 4)?.skyTop[((z & 15) << 4) | (x & 15)] ?? -Infinity);
   updateHorizon(cam.x, cam.z);
   renderer.render(now / 1000);
-  if (interaction.slot !== lastSlot) {
-    lastSlot = interaction.slot;
-    drawHotbar();
+  // The UI redraws when the play state changes, and a few times a second for the survival bars.
+  if (play.version !== lastVersion || (play.mode === 'survival' && now - lastUiDraw > 250)) {
+    lastVersion = play.version;
+    lastUiDraw = now;
+    redraw();
   }
   frames++;
   if (now - fpsTime >= 500) {
@@ -251,7 +374,7 @@ const loop = new FixedStepLoop(1 / 60, 0.25, update, (_alpha, frameDt) => {
       `chunks ${world.chunks.size}  meshes ${renderer.chunks.count}  quads ${renderer.chunks.quads}  culled ${culled}  draw calls ${info.render.calls}`,
       `world ${worldName} (seed ${seed})${saver.conflict ? '  NOT SAVING: opened in another tab' : ''}`,
       `block updates ${simulation.ticks.size} (${simulation.ticks.dormantCount} waiting)  jobs ${streamer.pendingChunks}  columns ${streamer.pendingColumns}  dirty ${streamer.dirtyCount}  failures ${streamer.failures}`,
-      input.locked ? '' : 'click to play: WASD, space, shift, ctrl sprint, F fly, mouse break/place, 1-9 / wheel',
+      `${play.mode} [F3 hides this]`,
     ].join('\n');
   }
 });
@@ -259,7 +382,7 @@ loop.start();
 
 /** For browser tests. */
 (window as unknown as { __next: unknown }).__next = {
-  world, streamer, renderer, pool, light, player, interaction, setBlock, blocks: BLOCKS, saver, save, seed, simulation,
+  world, streamer, renderer, pool, light, player, play, setBlock, blocks: BLOCKS, saver, save, seed, simulation,
   get fps() { return fps; },
   get idle() { return placed && streamer.idle; },
   env,

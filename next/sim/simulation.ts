@@ -1,11 +1,12 @@
 import {
   BLOCK_SIZE_M, CHUNK_SIZE, FALL_DELAY_S, GRASS_MIN_LIGHT, LAVA_FLOW_M_S, LEAF_REACH_M, MAX_TICKS_PER_STEP,
-  ICE_FREEZE_CHANCE, ICE_THAW_CHANCE, RANDOM_TICKS_PER_CHUNK, SIM_HZ, SIM_RADIUS_CHUNKS, SNOW_MELT_CHANCE,
+  CROP_GROW_CHANCE, ICE_FREEZE_CHANCE, ICE_THAW_CHANCE, SAPLING_GROW_CHANCE, RANDOM_TICKS_PER_CHUNK, SIM_HZ, SIM_RADIUS_CHUNKS, SNOW_MELT_CHANCE,
   SNOW_SETTLE_CHANCE, WATER_FLOW_M_S, WEATHER_TICKS_PER_COLUMN, cells,
 } from '../config';
 import { localIndex, toChunk, toLocal } from '../core/coords';
 import { mulberry32 } from '../core/random';
-import { AIR, BLOCKS, FLUID_LEVELS, OPAQUE, SNOW_LAYERS, SOLID } from '../engine/blocks';
+import { AIR, BLOCKS, FLUID_LEVELS, OPAQUE, SAPLING_SPECIES, SNOW_LAYERS, SOLID } from '../engine/blocks';
+import { treeCells, unpackTreeCell } from '../worldgen/trees';
 import type { World } from '../engine/world';
 import { TickKind, TickScheduler } from './ticks';
 import { climateTemperature, type Precipitation } from './weather';
@@ -50,12 +51,18 @@ const REPLACEABLE = new Uint8Array(BLOCKS.stateCount);
 const NEEDS_SUPPORT = new Uint8Array(BLOCKS.stateCount);
 for (const t of BLOCKS.types) {
   for (let s = t.id; s < t.id + t.variants; s++) {
-    const thin = t.shape === 'cross' || (t.shape === 'layer' && !t.solid);
-    REPLACEABLE[s] = s === AIR || thin ? 1 : 0;
-    NEEDS_SUPPORT[s] = thin ? 1 : 0;
+    REPLACEABLE[s] = s === AIR || (t.needsSupport && !t.solid) ? 1 : 0;
+    NEEDS_SUPPORT[s] = t.needsSupport ? 1 : 0;
   }
 }
 const LEAF_REACH = cells(LEAF_REACH_M);
+const SAPLING_TYPE = BLOCKS.typeIndex[BLOCKS.state('sapling')]!;
+/** States random ticks act on: grass, crops still growing, saplings. */
+const GROWS = new Uint8Array(BLOCKS.stateCount);
+for (const t of BLOCKS.types) {
+  if (t.key === 'grass' || t.key === 'sapling') for (let v = 0; v < t.variants; v++) GROWS[t.id + v] = 1;
+  else if (t.variantTiles && t.shape === 'cross') for (let v = 0; v < t.variants - 1; v++) GROWS[t.id + v] = 1;
+}
 const DX = [1, -1, 0, 0, 0, 0], DY = [0, 0, 1, -1, 0, 0], DZ = [0, 0, 0, 0, 1, -1];
 
 /**
@@ -230,11 +237,15 @@ export class Simulation {
   private randomTicks(pcx: number, pcz: number): void {
     for (const chunk of this.world.chunks.values()) {
       if (Math.abs(chunk.cx - pcx) > SIM_RADIUS_CHUNKS || Math.abs(chunk.cz - pcz) > SIM_RADIUS_CHUNKS) continue;
-      if (!chunk.states.includes(GRASS)) continue;
+      if (!chunk.states.some((s) => GROWS[s])) continue;
       for (let n = 0; n < RANDOM_TICKS_PER_CHUNK; n++) {
         const i = Math.floor(this.rand() * 4096);
-        if (chunk.get(i) !== GRASS) continue;
-        this.grass(chunk.cx * CHUNK_SIZE + (i & 15), chunk.cy * CHUNK_SIZE + (i >> 8), chunk.cz * CHUNK_SIZE + ((i >> 4) & 15));
+        const s = chunk.get(i);
+        if (!GROWS[s]) continue;
+        const x = chunk.cx * CHUNK_SIZE + (i & 15), y = chunk.cy * CHUNK_SIZE + (i >> 8), z = chunk.cz * CHUNK_SIZE + ((i >> 4) & 15);
+        if (s === GRASS) this.grass(x, y, z);
+        else if (BLOCKS.typeIndex[s] === SAPLING_TYPE) this.sapling(x, y, z, s);
+        else this.crop(x, y, z, s);
       }
     }
   }
@@ -257,6 +268,24 @@ export class Simulation {
     if (this.world.get(tx, ty, tz) !== DIRT) return;
     if ((FLAGS[this.world.get(tx, ty + 1, tz)]! & OPAQUE) !== 0 || this.lightAbove(tx, ty, tz) < GRASS_MIN_LIGHT) return;
     this.setBlock(tx, ty, tz, GRASS);
+  }
+
+  /** Crops grow a stage now and then where it is light enough. */
+  private crop(x: number, y: number, z: number, s: number): void {
+    const t = BLOCKS.type(s);
+    if (s - t.id < t.variants - 1 && this.lightAbove(x, y - 1, z) >= GRASS_MIN_LIGHT && this.rand() < CROP_GROW_CHANCE) this.setBlock(x, y, z, s + 1);
+  }
+
+  /** A sapling with light grows into its species' tree, where the tree has room. */
+  private sapling(x: number, y: number, z: number, s: number): void {
+    if (this.lightAbove(x, y - 1, z) < GRASS_MIN_LIGHT || this.rand() >= SAPLING_GROW_CHANCE) return;
+    const species = SAPLING_SPECIES[s - BLOCKS.types[SAPLING_TYPE]!.id]!;
+    for (const [key, state] of treeCells(Math.floor(this.rand() * 1e9), x, z, species)) {
+      const [dx, dy, dz] = unpackTreeCell(key);
+      const cx = x + dx, cy = y - 1 + dy, cz = z + dz;
+      const here = this.world.get(cx, cy, cz);
+      if (this.world.isLoaded(cx, cy, cz) && (here === AIR || REPLACEABLE[here] || (here === s && dx === 0 && dz === 0))) this.setBlock(cx, cy, cz, state);
+    }
   }
 
   /** Natural leaves with no log within reach (through leaves and logs) decay. */

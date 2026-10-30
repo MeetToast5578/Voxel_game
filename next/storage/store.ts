@@ -27,6 +27,8 @@ export interface WorldMeta {
   simTick?: number;
   /** Time of year, 0..1 from the spring equinox. */
   yearTime?: number;
+  /** The player's game state (mode, inventory, health, furnaces); checked when loaded. */
+  play?: unknown;
 }
 
 export interface WorldStore {
@@ -64,6 +66,7 @@ export function parseMeta(value: unknown): WorldMeta | null {
     ...(Array.isArray(m.ticks) ? { ticks: m.ticks } : {}),
     ...(num(m.simTick) ? { simTick: m.simTick as number } : {}),
     ...(num(m.yearTime) ? { yearTime: m.yearTime as number } : {}),
+    ...(typeof m.play === 'object' && m.play !== null ? { play: m.play } : {}),
   };
 }
 
