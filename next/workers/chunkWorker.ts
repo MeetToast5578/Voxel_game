@@ -1,4 +1,5 @@
 import { CHUNK_VOLUME } from '../config';
+import { chunkLight } from '../engine/light';
 import { buildMesh } from '../engine/mesher';
 import { Generator } from '../worldgen/generator';
 import type { WorkerRequest, WorkerResponse } from './protocol';
@@ -15,13 +16,23 @@ self.onmessage = (e: MessageEvent<WorkerRequest>) => {
   try {
     if (req.type === 'column') {
       const c = generator!.column(req.cx, req.cz);
-      const top = c.top.slice(), climate = c.climate.slice();
-      post({ type: 'column', id: req.id, top, climate, minTop: c.minTop, maxTop: c.maxTop }, [top.buffer, climate.buffer]);
+      const top = c.top.slice(), skyTop = c.skyTop.slice(), climate = c.climate.slice();
+      post({ type: 'column', id: req.id, top, skyTop, climate, minTop: c.minTop, maxTop: c.maxTop },
+        [top.buffer, skyTop.buffer, climate.buffer]);
     } else if (req.type === 'generate') {
       const states = new Uint16Array(CHUNK_VOLUME);
       const uniform = generator!.generate(req.cx, req.cy, req.cz, states);
-      if (uniform >= 0) post({ type: 'generate', id: req.id, uniform });
-      else post({ type: 'generate', id: req.id, uniform, states }, [states.buffer]);
+      if (uniform >= 0) states.fill(uniform);
+      const light = chunkLight(states, req.cy, generator!.column(req.cx, req.cz).skyTop);
+      const first = light[0]!;
+      const uniformLight = light.every((v) => v === first) ? first : -1;
+      const transfer: Transferable[] = [];
+      if (uniform < 0) transfer.push(states.buffer);
+      if (uniformLight < 0) transfer.push(light.buffer);
+      post({
+        type: 'generate', id: req.id, uniform, uniformLight,
+        ...(uniform < 0 ? { states } : {}), ...(uniformLight < 0 ? { light } : {}),
+      }, transfer);
     } else {
       const layers = buildMesh(req);
       post({ type: 'mesh', id: req.id, layers }, layers.map((l) => l.buffer));

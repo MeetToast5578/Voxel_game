@@ -75,8 +75,9 @@ void main() {
 #ifdef CUTOUT
   if (tex.a < 0.5) discard;
 #endif
-  float light = max(vLight.x * daylight, vLight.y);
-  light = 0.04 + 0.96 * light * light;
+  // Light levels follow a curve (dark falls off quickly); the sky's share is then scaled by daylight.
+  vec2 curved = vLight * vLight;
+  float light = 0.03 + 0.97 * max(curved.x * daylight, curved.y);
   vec3 color = tex.rgb * vColor * light;
   color = mix(color, fogColor, smoothstep(fogNear, fogFar, vDepth));
   outColor = vec4(color, opacity);

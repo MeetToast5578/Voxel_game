@@ -17,7 +17,17 @@ array so merged faces repeat them (`next/render/tilePixels.ts`). Four passes: op
 Streaming (`next/engine/streaming.ts`) never discards a mesh result; a chunk changed meanwhile is meshed again.
 `node scripts/next-benchmark.mjs --assert` gates generation under 2 ms and meshing under 1 ms per chunk (here 0.42 and
 0.79 ms). `node scripts/next-smoke.mjs` (after a build) loads the page headless and screenshots it; at 12 chunks
-(115 m) SwiftShader showed 2,422 chunks, 762 meshes and 192 draw calls. Light is full sky everywhere until phase 3.
+(115 m) SwiftShader showed 2,422 chunks, 762 meshes and 192 draw calls.
+
+Phase 3 stores light (`next/engine/light.ts`). Sky light is 15 above each column's sky top (the highest cell that stops
+sunlight; kept on the `Column`) and both channels fall by one per cell. Workers compute a chunk's own light
+(`chunkLight`); the main thread joins it to loaded neighbours (`LightEngine.stitch`, only where light can cross) and
+keeps it exact through edits with remove/add flood fills (`onBlockChanged`). `drainChanged` names the chunks to
+remesh: the changed chunk plus neighbours across a changed border cell, not all 26. A test checks the result equals
+a full recompute after random edits. Shortcut: when the sky top drops below the loaded chunks, the generated sky top
+is assumed (edits stored in unloaded chunks are not seen). Day and night: `T` skips an hour; `time` URL parameter.
+Benchmark gates now also cover worker light and stitching (here 0.6 ms and 0.3 ms per chunk). Hot modules copy
+imported constants into locals, because the benchmark's module loader turns each into a getter call.
 
 ## 2026-10-24 — performance (Claude)
 

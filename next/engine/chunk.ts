@@ -128,7 +128,7 @@ export class Chunk {
   /** Sets every cell's light at once (for example from the generator), keeping it uniform when it is. */
   loadLight(bytes: Uint8Array): void {
     const first = bytes[0]!;
-    this.light = bytes.every((b) => b === first) ? null : Uint8Array.from(bytes);
+    this.light = bytes.length < CHUNK_VOLUME || bytes.every((b) => b === first) ? null : Uint8Array.from(bytes);
     this.uniformLight = first;
     this.version++;
   }

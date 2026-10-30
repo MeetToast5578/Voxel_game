@@ -4,6 +4,7 @@ import { SEA_CELL } from '../worldgen/generator';
 import type { WorkerPool } from '../workers/pool';
 import { AIR, BLOCKS } from './blocks';
 import { Chunk } from './chunk';
+import type { LightEngine } from './light';
 import { PAD_VOLUME, padIndex } from './mesher';
 import type { World } from './world';
 
@@ -17,6 +18,7 @@ interface ColumnInfo {
   cx: number;
   cz: number;
   top: Int32Array;
+  skyTop: Int32Array;
   climate: Uint8Array;
   minTop: number;
   maxTop: number;
@@ -29,8 +31,6 @@ interface Planned {
   d2: number;
 }
 
-/** Fully lit sky everywhere until stored light exists (phase 3). */
-const FULL_SKY = 0xf0;
 const REBUILD_MS = 100;
 
 /**
@@ -65,7 +65,8 @@ export class Streamer {
   private readonly scratchLight = new Uint8Array(CHUNK_VOLUME);
   failures = 0;
 
-  constructor(private readonly world: World, private readonly pool: WorkerPool, private readonly meshes: MeshSink, viewChunks: number) {
+  constructor(private readonly world: World, private readonly pool: WorkerPool, private readonly meshes: MeshSink,
+    private readonly light: LightEngine, viewChunks: number) {
     this.viewChunks = viewChunks;
   }
 
@@ -92,6 +93,15 @@ export class Streamer {
       }
     }
     this.stale = true;
+  }
+
+  /** Marks single chunks for remeshing, such as those whose light changed. */
+  markChunks(keys: Iterable<number>): void {
+    for (const key of keys) {
+      if (!this.world.chunks.has(key)) continue;
+      this.dirty.add(key);
+      this.stale = true;
+    }
   }
 
   /** Re-plans columns, for example after the view distance changed. */
@@ -143,7 +153,7 @@ export class Streamer {
       this.columnJobs.add(key);
       this.pool.run(w, { type: 'column', cx: col.cx, cz: col.cz }).then((r) => {
         this.columnJobs.delete(key);
-        this.infos.set(key, { cx: col.cx, cz: col.cz, top: r.top, climate: r.climate, minTop: r.minTop, maxTop: r.maxTop });
+        this.infos.set(key, { cx: col.cx, cz: col.cz, top: r.top, skyTop: r.skyTop, climate: r.climate, minTop: r.minTop, maxTop: r.maxTop });
         this.stale = true;
       }, () => {
         this.columnJobs.delete(key);
@@ -241,8 +251,10 @@ export class Streamer {
       this.pool.run(w, { type: 'generate', cx, cy, cz }).then((r) => {
         this.genJobs.delete(key);
         if (!this.genSet.has(key) || this.world.chunks.has(key)) return;
-        const chunk = new Chunk(cx, cy, cz, r.uniform >= 0 ? r.uniform : AIR, 15);
+        const chunk = new Chunk(cx, cy, cz, r.uniform >= 0 ? r.uniform : AIR);
         if (r.states) chunk.load(r.states);
+        if (r.light) chunk.loadLight(r.light);
+        else chunk.loadLight(new Uint8Array(1).fill(r.uniformLight));
         chunk.version = 0;
         this.addChunk(chunk, this.infos.get(columnKey(cx, cz)));
       }, () => {
@@ -255,8 +267,14 @@ export class Streamer {
 
   private addChunk(chunk: Chunk, info: ColumnInfo | undefined): void {
     const column = this.world.add(chunk);
-    if (info) column.surface.set(info.top);
+    if (column.chunkCount === 1 && info) {
+      column.surface.set(info.top);
+      column.skyTop.set(info.skyTop);
+      column.generatedSkyTop.set(info.skyTop);
+    }
+    this.light.stitch(chunk);
     this.markDirty(chunk.cx, chunk.cy, chunk.cz);
+    this.markChunks(this.light.drainChanged());
   }
 
   private dispatchMeshes(): void {
@@ -315,7 +333,7 @@ export class Streamer {
   /** The chunk's cells with a one-cell border from its neighbours, plus their light and the column's climate. */
   meshInput(cx: number, cy: number, cz: number): { states: Uint16Array; light: Uint8Array; climate: Uint8Array } {
     const states = new Uint16Array(PAD_VOLUME);
-    const light = new Uint8Array(PAD_VOLUME).fill(FULL_SKY);
+    const light = new Uint8Array(PAD_VOLUME);
     for (let dy = -1; dy <= 1; dy++) {
       for (let dz = -1; dz <= 1; dz++) {
         for (let dx = -1; dx <= 1; dx++) {

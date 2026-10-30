@@ -10,6 +10,10 @@ export class Column {
   chunkCount = 0;
   /** Generated ground height per cell (cell y of the top solid block), from the generator. */
   readonly surface = new Int32Array(CHUNK_AREA);
+  /** Highest cell that stops direct sunlight, per cell; kept current through edits by the light engine. */
+  readonly skyTop = new Int32Array(CHUNK_AREA);
+  /** The sky top as generated, used below the loaded chunks. */
+  readonly generatedSkyTop = new Int32Array(CHUNK_AREA);
 
   constructor(readonly cx: number, readonly cz: number) {
     this.key = columnKey(cx, cz);

@@ -1,4 +1,6 @@
 import * as THREE from 'three';
+import { NIGHT_DAYLIGHT } from '../config';
+import { smoothstep } from '../worldgen/climate';
 import { LAYERS } from '../engine/mesher';
 import { TILE_NAMES, TILE_SIZE, tilePixels } from './tilePixels';
 import { ChunkMeshes } from './chunkMeshes';
@@ -7,7 +9,8 @@ import { terrainMaterial } from './terrainMaterial';
 // Colors are written and shown as given (gamma space); the terrain shader does no color conversion either.
 THREE.ColorManagement.enabled = false;
 
-const SKY = new THREE.Color(0x9cc8f0);
+const DAY_SKY = new THREE.Color(0x9cc8f0);
+const NIGHT_SKY = new THREE.Color(0x0b1020);
 
 /** Scene, camera and terrain passes. World units are cells. */
 export class Renderer {
@@ -21,7 +24,7 @@ export class Renderer {
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance' });
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     this.renderer.outputColorSpace = THREE.LinearSRGBColorSpace;
-    this.renderer.setClearColor(SKY);
+    this.renderer.setClearColor(DAY_SKY);
     this.camera = new THREE.PerspectiveCamera(70, 1, 0.05, 1000);
     const tiles = new THREE.DataArrayTexture(tilePixels(), TILE_SIZE, TILE_SIZE, TILE_NAMES.length);
     tiles.magFilter = THREE.NearestFilter;
@@ -32,7 +35,7 @@ export class Renderer {
       tiles: { value: tiles },
       daylight: { value: 1 },
       time: { value: 0 },
-      fogColor: { value: SKY },
+      fogColor: { value: DAY_SKY.clone() },
       fogNear: { value: 100 },
       fogFar: { value: 200 },
     };
@@ -47,6 +50,15 @@ export class Renderer {
     this.uniforms.fogFar!.value = cells;
     this.camera.far = cells * 1.5;
     this.camera.updateProjectionMatrix();
+  }
+
+  /** Sets daylight and the sky colour for a time of day in [0, 1) (0 is midnight). */
+  setDayTime(t: number): void {
+    const sun = Math.sin((t - 0.25) * Math.PI * 2);
+    const day = smoothstep(-0.15, 0.25, sun);
+    this.uniforms.daylight!.value = NIGHT_DAYLIGHT + (1 - NIGHT_DAYLIGHT) * day;
+    const sky = (this.uniforms.fogColor!.value as THREE.Color).copy(NIGHT_SKY).lerp(DAY_SKY, day);
+    this.renderer.setClearColor(sky);
   }
 
   resize(): void {

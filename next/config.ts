@@ -59,3 +59,9 @@ export const JOBS_PER_WORKER = 4;
 export const FLY_SPEED_M_S = 12;
 export const FLY_FAST_FACTOR = 4;
 export const EYE_HEIGHT_M = 1.62;
+
+// ---- Time ----
+/** Seconds in one full day and night. */
+export const DAY_LENGTH_S = 1200;
+/** Sky light multiplier at midnight (moonlight). */
+export const NIGHT_DAYLIGHT = 0.22;

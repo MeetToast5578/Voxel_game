@@ -16,6 +16,7 @@ try {
   const poses = [
     { name: 'next-spawn', url: `?seed=1&view=${view}` },
     { name: 'next-high', url: `?seed=1&view=${view}&x=0.5&y=200&z=0.5&pitch=-0.6` },
+    { name: 'next-evening', url: `?seed=1&view=${view}&time=0.77` },
   ];
   for (const pose of poses) {
     await page.goto(`http://localhost:4174/next.html${pose.url}`);

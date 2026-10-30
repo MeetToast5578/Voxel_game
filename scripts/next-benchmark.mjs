@@ -1,5 +1,6 @@
 // Times the new engine's chunk generation and meshing on a fixed surface fixture.
-// Usage: node scripts/next-benchmark.mjs [--assert]   (gates: generation < 2 ms, meshing < 1 ms per chunk)
+// Usage: node scripts/next-benchmark.mjs [--assert]   (gates per chunk: generation < 2 ms, meshing < 1 ms,
+// worker light < 1 ms, main-thread light stitching < 1 ms)
 import { fileURLToPath } from 'node:url';
 import { createHash } from 'node:crypto';
 import { createServer } from 'vite';
@@ -11,12 +12,16 @@ try {
   const { Chunk } = await vite.ssrLoadModule('/next/engine/chunk.ts');
   const { World } = await vite.ssrLoadModule('/next/engine/world.ts');
   const { buildMesh, PAD_VOLUME, padIndex } = await vite.ssrLoadModule('/next/engine/mesher.ts');
+  const { chunkLight, LightEngine } = await vite.ssrLoadModule('/next/engine/light.ts');
   const { CHUNK_SIZE, CHUNK_VOLUME } = await vite.ssrLoadModule('/next/config.ts');
   const seed = Number(process.env.BENCHMARK_SEED || 1);
   const span = 5; // a 5 x 5 block of columns; the inner 3 x 3 surface band is meshed
   const gen = new Generator(seed);
   const world = new World();
   const genTimes = [];
+  const lightTimes = [];
+  const stitchTimes = [];
+  const light = new LightEngine(world);
   const surface = [];
   for (let cx = -2; cx <= 2; cx++) {
     for (let cz = -2; cz <= 2; cz++) {
@@ -27,9 +32,18 @@ try {
         const t = performance.now();
         const u = gen.generate(cx, cy, cz, out);
         genTimes.push(performance.now() - t);
-        const chunk = new Chunk(cx, cy, cz, u >= 0 ? u : 0, 15);
+        if (u >= 0) out.fill(u);
+        let t2 = performance.now();
+        const bytes = chunkLight(out, cy, col.skyTop);
+        lightTimes.push(performance.now() - t2);
+        const chunk = new Chunk(cx, cy, cz, u >= 0 ? u : 0);
         if (u < 0) chunk.load(out);
-        world.add(chunk);
+        chunk.loadLight(bytes);
+        const column = world.add(chunk);
+        if (column.chunkCount === 1) { column.skyTop.set(col.skyTop); column.generatedSkyTop.set(col.skyTop); }
+        t2 = performance.now();
+        light.stitch(chunk);
+        stitchTimes.push(performance.now() - t2);
         if (Math.abs(cx) <= 1 && Math.abs(cz) <= 1 && cy > lo && cy < hi) surface.push([cx, cy, cz, col.climate]);
       }
     }
@@ -38,7 +52,12 @@ try {
     const states = new Uint16Array(PAD_VOLUME);
     for (let y = -1; y <= CHUNK_SIZE; y++) for (let z = -1; z <= CHUNK_SIZE; z++) for (let x = -1; x <= CHUNK_SIZE; x++)
       states[padIndex(x, y, z)] = world.get(cx * CHUNK_SIZE + x, cy * CHUNK_SIZE + y, cz * CHUNK_SIZE + z);
-    return { states, light: new Uint8Array(PAD_VOLUME).fill(0xf0), climate };
+    const lightBytes = new Uint8Array(PAD_VOLUME);
+    for (let y = -1; y <= CHUNK_SIZE; y++) for (let z = -1; z <= CHUNK_SIZE; z++) for (let x = -1; x <= CHUNK_SIZE; x++) {
+      const c = world.chunkAt(cx * CHUNK_SIZE + x, cy * CHUNK_SIZE + y, cz * CHUNK_SIZE + z);
+      if (c) lightBytes[padIndex(x, y, z)] = c.lightByte((((y + 16) % 16) * 16 + ((z + 16) % 16)) * 16 + ((x + 16) % 16));
+    }
+    return { states, light: lightBytes, climate };
   };
   const inputs = surface.map(inputFor);
   const hash = createHash('sha256');
@@ -69,12 +88,15 @@ try {
     chunks: genTimes.length, surfaceChunksMeshed: inputs.length,
     generationMeanMs: mean(surfaceGen), generationAllMeanMs: mean(genTimes), coldSurfaceMs: mean(coldTimes),
     meshMeanMs: mean(meshTimes), meshMaxMs: Math.max(...meshTimes),
+    chunkLightMeanMs: mean(lightTimes), stitchMeanMs: mean(stitchTimes), stitchMaxMs: Math.max(...stitchTimes),
     meshSha256: hash.digest('hex'),
   };
   console.log(JSON.stringify(report, null, 2));
   if (process.argv.includes('--assert')) {
     if (report.generationMeanMs > 2) throw new Error(`generation ${report.generationMeanMs.toFixed(3)} ms > 2 ms`);
     if (report.meshMeanMs > 1) throw new Error(`meshing ${report.meshMeanMs.toFixed(3)} ms > 1 ms`);
+    if (report.chunkLightMeanMs > 1) throw new Error(`chunk light ${report.chunkLightMeanMs.toFixed(3)} ms > 1 ms`);
+    if (report.stitchMeanMs > 1) throw new Error(`light stitching ${report.stitchMeanMs.toFixed(3)} ms > 1 ms`);
   }
 } finally {
   await vite.close();

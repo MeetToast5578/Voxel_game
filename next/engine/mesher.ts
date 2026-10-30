@@ -2,6 +2,8 @@ import { CHUNK_SIZE } from '../config';
 import { tileIndex } from '../render/tilePixels';
 import { BLOCKS, OPAQUE, type RenderLayer } from './blocks';
 
+// Imported constants copied locally: hot loops then read a plain constant, not a module binding.
+const CHUNK_SIZE_ = CHUNK_SIZE;
 /**
  * Chunk mesher. Input is the chunk's cells plus a one-cell border from its neighbours (18³), with their light.
  * Full cubes are merged greedily into larger quads where tile, tint, ambient occlusion and light all match;
@@ -14,7 +16,7 @@ import { BLOCKS, OPAQUE, type RenderLayer } from './blocks';
  * Quads are 4 vertices drawn as (0, 1, 2) and (0, 2, 3).
  */
 
-export const PAD = CHUNK_SIZE + 2;
+export const PAD = CHUNK_SIZE_ + 2;
 export const PAD_VOLUME = PAD * PAD * PAD;
 const SY = PAD * PAD;
 const SZ = PAD;
@@ -52,6 +54,16 @@ const UVS = [[0, 0], [1, 0], [1, 1], [0, 1]] as const;
 /** For each face: its normal axis and the two axes of the face plane. */
 const AXES = [[0, 2, 1], [0, 2, 1], [1, 0, 2], [1, 0, 2], [2, 0, 1], [2, 0, 1]] as const;
 const STRIDE = [1, SY, SZ] as const;
+/** Per face: padded-index offset of the cell in front, and per corner the offsets towards that corner (u, v). */
+const FRONT = DIRS.map((d) => d[0] + d[1] * SY + d[2] * SZ);
+const CORNER_DU = new Int32Array(24), CORNER_DV = new Int32Array(24);
+for (let f = 0; f < 6; f++) {
+  const [, ua, va] = AXES[f]!;
+  for (let c = 0; c < 4; c++) {
+    CORNER_DU[f * 4 + c] = CORNERS[f]![c]![ua]! === 1 ? STRIDE[ua]! : -STRIDE[ua]!;
+    CORNER_DV[f * 4 + c] = CORNERS[f]![c]![va]! === 1 ? STRIDE[va]! : -STRIDE[va]!;
+  }
+}
 
 // Per-state tables, built once.
 const COUNT = BLOCKS.stateCount;
@@ -127,30 +139,26 @@ const blockC = new Uint8Array(4);
  * and blockC. Light is the average over the non-opaque cells around each corner in front of the face.
  */
 function cornerShading(states: Uint16Array, light: Uint8Array, p: number, f: number): void {
-  const dir = DIRS[f]!;
-  const front = p + dir[0] + dir[1] * SY + dir[2] * SZ;
-  const [, ua, va] = AXES[f]!;
-  const su = STRIDE[ua]!, sv = STRIDE[va]!;
-  const corners = CORNERS[f]!;
+  const front = p + FRONT[f]!;
+  const lf = light[front]!;
   for (let c = 0; c < 4; c++) {
-    const du = corners[c]![ua]! === 1 ? su : -su;
-    const dv = corners[c]![va]! === 1 ? sv : -sv;
+    const du = CORNER_DU[f * 4 + c]!, dv = CORNER_DV[f * 4 + c]!;
     const s1 = (FLAGS[states[front + du]!]! & OPAQUE) !== 0;
     const s2 = (FLAGS[states[front + dv]!]! & OPAQUE) !== 0;
     const cornerCell = front + du + dv;
     const cc = (FLAGS[states[cornerCell]!]! & OPAQUE) !== 0;
     aoC[c] = s1 && s2 ? 0 : 3 - (+s1 + +s2 + +cc);
-    let sky = light[front]! >> 4, block = light[front]! & 15, n = 1;
-    if (!s1) { sky += light[front + du]! >> 4; block += light[front + du]! & 15; n++; }
-    if (!s2) { sky += light[front + dv]! >> 4; block += light[front + dv]! & 15; n++; }
-    if (!cc && !(s1 && s2)) { sky += light[cornerCell]! >> 4; block += light[cornerCell]! & 15; n++; }
-    skyC[c] = Math.round(sky / n);
-    blockC[c] = Math.round(block / n);
+    let sky = lf >> 4, block = lf & 15, n = 1;
+    if (!s1) { const l = light[front + du]!; sky += l >> 4; block += l & 15; n++; }
+    if (!s2) { const l = light[front + dv]!; sky += l >> 4; block += l & 15; n++; }
+    if (!cc && !(s1 && s2)) { const l = light[cornerCell]!; sky += l >> 4; block += l & 15; n++; }
+    skyC[c] = n === 1 ? sky : n === 2 ? (sky + 1) >> 1 : n === 4 ? (sky + 2) >> 2 : Math.round(sky / 3);
+    blockC[c] = n === 1 ? block : n === 2 ? (block + 1) >> 1 : n === 4 ? (block + 2) >> 2 : Math.round(block / 3);
   }
 }
 
 // Greedy masks for one slice: 0 means no face; otherwise the words that must match for faces to merge.
-const AREA = CHUNK_SIZE * CHUNK_SIZE;
+const AREA = CHUNK_SIZE_ * CHUNK_SIZE_;
 const maskA = new Int32Array(AREA);
 const maskB = new Int32Array(AREA);
 const maskC = new Int32Array(AREA);
@@ -160,52 +168,46 @@ export function buildMesh(input: MeshInput): MeshOutput {
   const { states, light, climate } = input;
   const out = LAYERS.map(() => new QuadBuffer());
   greedyCubes(states, light, climate, out);
-  for (let y = 0; y < CHUNK_SIZE; y++) {
-    for (let z = 0; z < CHUNK_SIZE; z++) {
-      for (let x = 0; x < CHUNK_SIZE; x++) {
+  for (let y = 0; y < CHUNK_SIZE_; y++) {
+    for (let z = 0; z < CHUNK_SIZE_; z++) {
+      for (let x = 0; x < CHUNK_SIZE_; x++) {
         const p = padIndex(x, y, z);
         const s = states[p]!;
         const kind = KIND[s]!;
-        if (kind === 2) plant(out[PASS[s]!]!, s, x, y, z, light[p]!, climate[z * CHUNK_SIZE + x]!);
-        else if (kind === 3) box(out[PASS[s]!]!, states, light, s, x, y, z, p, climate[z * CHUNK_SIZE + x]!);
+        if (kind === 2) plant(out[PASS[s]!]!, s, x, y, z, light[p]!, climate[z * CHUNK_SIZE_ + x]!);
+        else if (kind === 3) box(out[PASS[s]!]!, states, light, s, x, y, z, p, climate[z * CHUNK_SIZE_ + x]!);
       }
     }
   }
   return out.map((b) => b.result());
 }
 
-/** Whether face f of state s at padded index p shows. */
-function faceVisible(states: Uint16Array, s: number, p: number, f: number): boolean {
-  const dir = DIRS[f]!;
-  const n = states[p + dir[0] + dir[1] * SY + dir[2] * SZ]!;
-  if ((FLAGS[n]! & OPAQUE) !== 0) return false;
-  const g = GROUP[s]!;
-  return g === 0 || g !== GROUP[n]!;
-}
-
 function greedyCubes(states: Uint16Array, light: Uint8Array, climate: Uint8Array, out: QuadBuffer[]): void {
   const pos = [0, 0, 0];
   for (let f = 0; f < 6; f++) {
     const [a, ua, va] = AXES[f]!;
-    for (let k = 0; k < CHUNK_SIZE; k++) {
+    for (let k = 0; k < CHUNK_SIZE_; k++) {
       // Build the mask of this slice.
       let any = false;
-      for (let v = 0; v < CHUNK_SIZE; v++) {
-        for (let u = 0; u < CHUNK_SIZE; u++) {
-          pos[a] = k;
-          pos[ua] = u;
-          pos[va] = v;
-          const p = padIndex(pos[0]!, pos[1]!, pos[2]!);
+      const sa = STRIDE[a]!, su = STRIDE[ua]!, sv = STRIDE[va]!, front = FRONT[f]!;
+      const base = padIndex(0, 0, 0) + k * sa;
+      for (let v = 0; v < CHUNK_SIZE_; v++) {
+        for (let u = 0; u < CHUNK_SIZE_; u++) {
+          const p = base + u * su + v * sv;
           const s = states[p]!;
-          const m = v * CHUNK_SIZE + u;
-          if (KIND[s] !== 1 || !faceVisible(states, s, p, f)) {
+          const m = v * CHUNK_SIZE_ + u;
+          const n = states[p + front]!;
+          if (KIND[s] !== 1 || (FLAGS[n]! & OPAQUE) !== 0 || (GROUP[s] !== 0 && GROUP[s] === GROUP[n])) {
             maskA[m] = 0;
             continue;
           }
+          pos[a] = k;
+          pos[ua] = u;
+          pos[va] = v;
           cornerShading(states, light, p, f);
           const lowered = f === 2 && WATER[s] === 1 && WATER[states[p + SY]!] === 0 ? 1 : 0;
           const tint = FACE_TINT[s * 6 + f]!;
-          const clim = tint === 0 ? 0 : climate[pos[2]! * CHUNK_SIZE + pos[0]!]!;
+          const clim = tint === 0 ? 0 : climate[pos[2]! * CHUNK_SIZE_ + pos[0]!]!;
           maskA[m] = (1 + FACE_TILE[s * 6 + f]!) | (PASS[s]! << 11) | (tint << 13) | (clim << 15) | (lowered << 23);
           maskB[m] = (skyC[0]! | (skyC[1]! << 4) | (skyC[2]! << 8) | (skyC[3]! << 12)) |
             ((blockC[0]! | (blockC[1]! << 4) | (blockC[2]! << 8) | (blockC[3]! << 12)) << 16);
@@ -215,9 +217,9 @@ function greedyCubes(states: Uint16Array, light: Uint8Array, climate: Uint8Array
       }
       if (!any) continue;
       // Merge rectangles.
-      for (let v = 0; v < CHUNK_SIZE; v++) {
-        for (let u = 0; u < CHUNK_SIZE;) {
-          const m = v * CHUNK_SIZE + u;
+      for (let v = 0; v < CHUNK_SIZE_; v++) {
+        for (let u = 0; u < CHUNK_SIZE_;) {
+          const m = v * CHUNK_SIZE_ + u;
           const ka = maskA[m]!;
           if (ka === 0) {
             u++;
@@ -225,16 +227,16 @@ function greedyCubes(states: Uint16Array, light: Uint8Array, climate: Uint8Array
           }
           const kb = maskB[m]!, kc = maskC[m]!;
           let w = 1;
-          while (u + w < CHUNK_SIZE && maskA[m + w] === ka && maskB[m + w] === kb && maskC[m + w] === kc) w++;
+          while (u + w < CHUNK_SIZE_ && maskA[m + w] === ka && maskB[m + w] === kb && maskC[m + w] === kc) w++;
           let h = 1;
-          grow: while (v + h < CHUNK_SIZE) {
-            const row = (v + h) * CHUNK_SIZE + u;
+          grow: while (v + h < CHUNK_SIZE_) {
+            const row = (v + h) * CHUNK_SIZE_ + u;
             for (let i = 0; i < w; i++) {
               if (maskA[row + i] !== ka || maskB[row + i] !== kb || maskC[row + i] !== kc) break grow;
             }
             h++;
           }
-          for (let j = 0; j < h; j++) maskA.fill(0, (v + j) * CHUNK_SIZE + u, (v + j) * CHUNK_SIZE + u + w);
+          for (let j = 0; j < h; j++) maskA.fill(0, (v + j) * CHUNK_SIZE_ + u, (v + j) * CHUNK_SIZE_ + u + w);
           pos[a] = k;
           pos[ua] = u;
           pos[va] = v;
