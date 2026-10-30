@@ -55,6 +55,35 @@ Phases 4 to 6 (same PR):
     within `SIM_RADIUS_CHUNKS` of the player, so their speed does not depend on the view distance.
   - Snow, ice, crops and saplings come with weather (phase 8) and gameplay (phase 9).
 
+Phase 7a: world generation without water bodies (`next/worldgen`).
+- **Biomes** (`biomes.ts`): the old table, with temperature and precipitation per cell; surface and soil come from
+  the biome. Steep ground is bare rock. Shortcut: no dithering between neighbouring biomes' surfaces yet.
+- **Underground** (`underground.ts`):
+  - bent rock strata, and deepslate below -100 m;
+  - the four cave systems, with sizes in meters, and a 5 m roof under ground near sea level so the sea cannot drain
+    into caves;
+  - ore veins placed at a rate per 1000 m³.
+- **Trees** (`trees.ts`): every species in meters. Each tree is built whole and clipped per column. Canopies count
+  in the column's sky top, so the ground under them is shaded.
+- **Ground cover and features:** grass, ferns, flowers and mushrooms weighted per biome; boulders and fallen logs.
+- **Leaves:**
+  - Faces between leaves are hidden ("fast leaves"). That took the forest views in software rendering from 3-8
+    fps to 15-17.
+  - Generated leaves only check for decay when a log near them is removed. A random tick per leaf (a flood fill
+    each) cost about 100 ms a second.
+- **Cave culling** (`engine/visibility.ts`): workers record which pairs of a chunk's faces connect. A walk from the
+  camera hides chunks it cannot reach (sealed caves); unloaded space above a column's top counts as open sky.
+- **Streaming:** never-meshed chunks go before remeshes, so block updates near the player cannot starve the view.
+  `idle` means loaded and meshed once.
+- **Smoke test** adds forest and cave views.
+- **Measurements:**
+  - Generation is about 1.1 ms per surface chunk.
+  - A column with trees takes 1.6 ms to prepare when its neighbours are cached, and 7.4 ms when they are not.
+  - Draw calls rose to about 520 at the spawn view, because chunks now also need a cutout pass for trees and
+    plants.
+- **Still to do in phase 7b:** rivers, lakes, coasts and reeds. Caves out of sight under ground show the sky colour
+  until phase 8's dark underground fog.
+
 ## 2026-10-24 — performance (Claude)
 
 T-J13: an edit remeshes at once only the chunks the changed cell faces (at most 4, was 8). T-J6: chunk budgets

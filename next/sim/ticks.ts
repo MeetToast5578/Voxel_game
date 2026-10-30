@@ -5,6 +5,7 @@ export const enum TickKind {
   Flow = 0,
   Fall = 1,
   Support = 2,
+  Decay = 3,
 }
 
 export interface Tick {
@@ -93,7 +94,7 @@ export class TickScheduler {
   load(ticks: unknown): void {
     if (!Array.isArray(ticks)) return;
     for (const t of ticks) {
-      if (!Array.isArray(t) || t.length !== 5 || !t.every((v) => Number.isSafeInteger(v)) || t[3] < 0 || t[3] > 2) continue;
+      if (!Array.isArray(t) || t.length !== 5 || !t.every((v) => Number.isSafeInteger(v)) || t[3] < 0 || t[3] > 3) continue;
       const [x, y, z, kind, delay] = t as SavedTick;
       const key = chunkKey(toChunk(x), toChunk(y), toChunk(z));
       const list = this.dormant.get(key) ?? [];

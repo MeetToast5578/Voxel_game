@@ -57,8 +57,8 @@ const LEAF_REACH = cells(LEAF_REACH_M);
 const DX = [1, -1, 0, 0, 0, 0], DY = [0, 0, 1, -1, 0, 0], DZ = [0, 0, 0, 0, 1, -1];
 
 /**
- * Block updates: fluids, falling sand and gravel, plants losing their ground (scheduled ticks), and grass and leaves
- * (random ticks near the player). It changes cells only through `setBlock`, so light, meshes and saving follow.
+ * Block updates: fluids, falling sand and gravel, plants losing their ground and leaves losing their log (scheduled
+ * ticks), and grass (random ticks near the player). It changes cells only through `setBlock`, so light, meshes and saving follow.
  */
 export class Simulation {
   readonly ticks = new TickScheduler();
@@ -68,10 +68,19 @@ export class Simulation {
     this.rand = mulberry32(seed ^ 0x51ed);
   }
 
-  /** Schedules the updates a change at (x, y, z) may cause in it and its six neighbours. */
-  onCellChanged(x: number, y: number, z: number): void {
+  /**
+   * Schedules the updates a change at (x, y, z) may cause in it and its six neighbours. A removed log also makes the
+   * natural leaves within reach check, over the next few seconds, whether another log still holds them.
+   */
+  onCellChanged(x: number, y: number, z: number, previous = AIR): void {
     this.wake(x, y, z);
     for (let d = 0; d < 6; d++) this.wake(x + DX[d]!, y + DY[d]!, z + DZ[d]!);
+    if (previous !== LOG || this.world.get(x, y, z) === LOG) return;
+    for (let dy = -LEAF_REACH; dy <= LEAF_REACH; dy++) for (let dz = -LEAF_REACH; dz <= LEAF_REACH; dz++) for (let dx = -LEAF_REACH; dx <= LEAF_REACH; dx++) {
+      if (this.world.get(x + dx, y + dy, z + dz) === LEAVES) {
+        this.ticks.schedule(x + dx, y + dy, z + dz, TickKind.Decay, SIM_HZ + Math.floor(this.rand() * 4 * SIM_HZ));
+      }
+    }
   }
 
   private wake(x: number, y: number, z: number): void {
@@ -89,6 +98,7 @@ export class Simulation {
       if (!this.world.isLoaded(t.x, t.y, t.z)) continue;
       if (t.kind === TickKind.Flow) this.flow(t.x, t.y, t.z);
       else if (t.kind === TickKind.Fall) this.fall(t.x, t.y, t.z);
+      else if (t.kind === TickKind.Decay) { if (this.world.get(t.x, t.y, t.z) === LEAVES) this.leaves(t.x, t.y, t.z); }
       else this.support(t.x, t.y, t.z);
     }
     this.randomTicks(toChunk(Math.floor(px)), toChunk(Math.floor(pz)));
@@ -185,14 +195,11 @@ export class Simulation {
   private randomTicks(pcx: number, pcz: number): void {
     for (const chunk of this.world.chunks.values()) {
       if (Math.abs(chunk.cx - pcx) > SIM_RADIUS_CHUNKS || Math.abs(chunk.cz - pcz) > SIM_RADIUS_CHUNKS) continue;
-      if (!chunk.states.some((s) => s === GRASS || s === LEAVES)) continue;
+      if (!chunk.states.includes(GRASS)) continue;
       for (let n = 0; n < RANDOM_TICKS_PER_CHUNK; n++) {
         const i = Math.floor(this.rand() * 4096);
-        const s = chunk.get(i);
-        if (s !== GRASS && s !== LEAVES) continue;
-        const x = chunk.cx * CHUNK_SIZE + (i & 15), y = chunk.cy * CHUNK_SIZE + (i >> 8), z = chunk.cz * CHUNK_SIZE + ((i >> 4) & 15);
-        if (s === GRASS) this.grass(x, y, z);
-        else this.leaves(x, y, z);
+        if (chunk.get(i) !== GRASS) continue;
+        this.grass(chunk.cx * CHUNK_SIZE + (i & 15), chunk.cy * CHUNK_SIZE + (i >> 8), chunk.cz * CHUNK_SIZE + ((i >> 4) & 15));
       }
     }
   }
@@ -219,14 +226,15 @@ export class Simulation {
 
   /** Natural leaves with no log within reach (through leaves and logs) decay. */
   private leaves(x: number, y: number, z: number): void {
-    const seen = new Set<string>([`${x},${y},${z}`]);
+    const seen = new Set<number>([0]);
     let frontier = [[x, y, z]];
     for (let step = 0; step < LEAF_REACH && frontier.length > 0; step++) {
       const next: number[][] = [];
       for (const [cx, cy, cz] of frontier) {
         for (let d = 0; d < 6; d++) {
           const nx = cx! + DX[d]!, ny = cy! + DY[d]!, nz = cz! + DZ[d]!;
-          const key = `${nx},${ny},${nz}`;
+          // Offsets stay within the reach, so they pack into one number.
+          const key = ((nx - x + 64) * 128 + (ny - y + 64)) * 128 + (nz - z + 64) - (64 * 128 + 64) * 128 - 64;
           if (seen.has(key)) continue;
           seen.add(key);
           if (!this.world.isLoaded(nx, ny, nz)) return; // unknown: decide later

@@ -28,12 +28,15 @@ try {
     ['next-spawn', 'seed=1&world=smoke-spawn&new=1'],
     ['next-high', 'seed=1&x=0.5&y=200&z=0.5&pitch=-0.6&fly=1&world=smoke-high&new=1'],
     ['next-evening', 'seed=1&time=0.77&world=smoke-evening&new=1'],
+    ['next-forest', 'seed=1&x=-950&y=95&z=-950&yaw=0.6&pitch=-0.25&fly=1&world=smoke-forest&new=1'],
+    ['next-cave', 'seed=1&x=8&y=-60&z=8&fly=1&world=smoke-cave&new=1'],
   ]) {
     const { page, loadMs } = await open(query);
     const stats = await page.evaluate(() => {
       const n = window.__next;
       return { fps: n.fps, chunks: n.world.chunks.size, meshes: n.renderer.chunks.count, quads: n.renderer.chunks.quads,
-        calls: n.renderer.renderer.info.render.calls, failures: n.streamer.failures };
+        calls: n.renderer.renderer.info.render.calls, failures: n.streamer.failures,
+        visible: [...n.renderer.chunks.keys()].length };
     });
     console.log(name, JSON.stringify({ ...stats, loadMs }));
     await page.screenshot({ path: `screenshots/${name}.png` });

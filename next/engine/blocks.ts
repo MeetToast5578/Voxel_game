@@ -181,7 +181,8 @@ const BASE: BlockSpec[] = [
   { key: 'ice', name: 'Ice', tiles: all('ice'), layer: 'ice', opaque: false, cullSame: true, hardness: 0.5, density: 917 },
   { key: 'log', name: 'Log', tiles: { top: 'log_top', side: 'log_side', bottom: 'log_top' }, hardness: 2, density: 600 },
   // Variant 1 is placed by the player and never decays.
-  { key: 'leaves', name: 'Leaves', tiles: all('leaves'), layer: 'cutout', hardness: 0.3, supports: false, density: 300, variants: 2 },
+  // Faces between leaves are hidden (dense crowns would otherwise be thousands of quads); leaves still shade the ground.
+  { key: 'leaves', name: 'Leaves', tiles: all('leaves'), layer: 'cutout', hardness: 0.3, supports: false, density: 300, variants: 2, cullSame: true, blocksSky: true },
   { key: 'planks', name: 'Planks', tiles: all('planks'), hardness: 2, density: 600 },
   { key: 'glass', name: 'Glass', tiles: all('glass'), layer: 'cutout', cullSame: true, hardness: 0.3 },
   stone('bedrock', 'Bedrock', { hardness: Infinity }),

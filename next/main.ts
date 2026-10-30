@@ -1,9 +1,10 @@
 import { AUTOSAVE_S, BLOCK_SIZE_M, CHUNK_SIZE, DAY_LENGTH_S, MAX_VIEW_CHUNKS, MIN_VIEW_CHUNKS, SIM_HZ, toCells } from './config';
-import { chunkKey, forEachChunkReading } from './core/coords';
+import { chunkKey, forEachChunkReading, unpackChunkKey } from './core/coords';
 import { FixedStepLoop } from './core/loop';
 import { BLOCKS } from './engine/blocks';
 import { LightEngine } from './engine/light';
 import { Streamer } from './engine/streaming';
+import { ALL_CONNECTED, visibleChunks } from './engine/visibility';
 import { World } from './engine/world';
 import { COLLISION } from './game/collision';
 import { Input } from './game/input';
@@ -73,7 +74,7 @@ function setBlock(x: number, y: number, z: number, state: number, urgent = false
   if (urgent) streamer.markCell(x, y, z);
   else forEachChunkReading(x, y, z, (cx, cy, cz) => streamer.markChunks([chunkKey(cx, cy, cz)]));
   streamer.markChunks(light.drainChanged(), urgent);
-  simulation.onCellChanged(x, y, z);
+  simulation.onCellChanged(x, y, z, previous);
 }
 const simulation = new Simulation(world, setBlock, seed);
 simulation.ticks.now = saver.worldMeta.simTick ?? 0;
@@ -145,6 +146,32 @@ function drawHotbar(): void {
   hotbar.textContent = HOTBAR.map((key, i) => (i === interaction.slot ? `[${i + 1} ${key}]` : ` ${i + 1} ${key} `)).join(' ');
 }
 
+/** Cave culling: recomputed when the camera changes chunk or new meshes arrive, at most every few frames. */
+let cullKey = '', cullFrame = 0;
+const OPAQUE_UNIFORM = 0;
+function cull(): void {
+  const c = renderer.camera.position;
+  const cx = Math.floor(c.x / CHUNK_SIZE), cy = Math.floor(c.y / CHUNK_SIZE), cz = Math.floor(c.z / CHUNK_SIZE);
+  const key = `${cx},${cy},${cz},${streamer.meshesApplied},${viewChunks}`;
+  if (key === cullKey || ++cullFrame < 6) return;
+  cullKey = key;
+  cullFrame = 0;
+  const visible = visibleChunks(cx, cy, cz, viewChunks + 1, (k) => {
+    const chunk = world.chunks.get(k);
+    if (!chunk) {
+      // Unloaded space is open sky above its column's highest generated cell, and unknown (closed) below it.
+      const [x, y, z] = unpackChunkKey(k);
+      const column = world.column(x!, z!);
+      return column && y! * CHUNK_SIZE > column.maxTop ? ALL_CONNECTED : 0;
+    }
+    if (chunk.uniform) return BLOCKS.isOpaque(chunk.get(0)) ? OPAQUE_UNIFORM : ALL_CONNECTED;
+    return streamer.visibility.get(k) ?? ALL_CONNECTED;
+  });
+  renderer.chunks.applyVisibility(visible);
+  culled = renderer.chunks.count - [...renderer.chunks.keys()].filter((k) => visible.has(k)).length;
+}
+let culled = 0;
+
 let frames = 0, fps = 0, fpsTime = performance.now(), lastSlot = -1;
 const loop = new FixedStepLoop(1 / 60, 0.25, update, (_alpha, frameDt) => {
   const now = performance.now();
@@ -157,6 +184,7 @@ const loop = new FixedStepLoop(1 / 60, 0.25, update, (_alpha, frameDt) => {
   renderer.camera.position.set(player.body.x, player.eyeY, player.body.z);
   renderer.camera.rotation.set(player.pitch, player.yaw, 0, 'YXZ');
   highlight.set(interaction.target);
+  cull();
   renderer.setDayTime(dayTime);
   renderer.render(now / 1000);
   if (interaction.slot !== lastSlot) {
@@ -174,7 +202,7 @@ const loop = new FixedStepLoop(1 / 60, 0.25, update, (_alpha, frameDt) => {
     overlay.textContent = [
       `${fps} fps  time ${String(Math.floor(dayTime * 24)).padStart(2, '0')}:${String(Math.floor((dayTime * 1440) % 60)).padStart(2, '0')} [T]  view ${viewChunks} chunks (${Math.round(viewChunks * CHUNK_SIZE * BLOCK_SIZE_M)} m) [+/-]`,
       `pos ${m(b.x)} ${m(b.y)} ${m(b.z)} m  ${player.flying ? 'flying' : b.onGround ? 'ground' : player.submerged > 0.05 ? 'swimming' : 'air'} [F]`,
-      `chunks ${world.chunks.size}  meshes ${renderer.chunks.count}  quads ${renderer.chunks.quads}  draw calls ${info.render.calls}`,
+      `chunks ${world.chunks.size}  meshes ${renderer.chunks.count}  quads ${renderer.chunks.quads}  culled ${culled}  draw calls ${info.render.calls}`,
       `world ${worldName} (seed ${seed})${saver.conflict ? '  NOT SAVING: opened in another tab' : ''}`,
       `block updates ${simulation.ticks.size} (${simulation.ticks.dormantCount} waiting)  jobs ${streamer.pendingChunks}  columns ${streamer.pendingColumns}  dirty ${streamer.dirtyCount}  failures ${streamer.failures}`,
       input.locked ? '' : 'click to play: WASD, space, shift, ctrl sprint, F fly, mouse break/place, 1-9 / wheel',

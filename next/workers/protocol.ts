@@ -12,5 +12,6 @@ export type WorkerResponse =
    * light byte of every cell, or -1 when `light` holds one per cell.
    */
   | { type: 'generate'; id: number; uniform: number; states?: Uint16Array; uniformLight: number; light?: Uint8Array }
-  | { type: 'mesh'; id: number; layers: Uint32Array[] }
+  /** `visibility`: which pairs of the chunk's faces are joined through open cells (see engine/visibility.ts). */
+  | { type: 'mesh'; id: number; layers: Uint32Array[]; visibility: number }
   | { type: 'error'; id: number; message: string };

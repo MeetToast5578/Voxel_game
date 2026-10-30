@@ -12,6 +12,7 @@ import type { World } from './world';
 export interface MeshSink {
   set(key: number, cx: number, cy: number, cz: number, layers: Uint32Array[]): void;
   remove(key: number): void;
+  has(key: number): boolean;
 }
 
 /** Chunks kept in a save: loaded from there instead of generated, and handed back before they unload. */
@@ -59,6 +60,8 @@ export class Streamer {
   private readonly dirty = new Set<number>();
   /** Chunks to remesh before anything else, because the player just changed them. */
   private readonly urgent = new Set<number>();
+  /** Face-pair connectivity of meshed chunks, for cave culling. */
+  readonly visibility = new Map<number, number>();
   /** Chunks with a current or in-progress mesh (empty meshes included). */
   private readonly meshed = new Set<number>();
   /** Chunks that should have a mesh, and chunks that should be loaded, by key. */
@@ -111,10 +114,15 @@ export class Streamer {
     this.stale = true;
   }
 
-  /** Nothing left to plan, load or mesh for the current position. */
+  /**
+   * Everything around the current position is loaded and has been meshed at least once. Remeshing after block updates
+   * (grass spreading, leaves decaying) never stops in a live world, so it does not count.
+   */
   get idle(): boolean {
-    return this.center !== null && !this.stale && this.columnJobs.size === 0 && this.genJobs.size === 0 &&
-      this.meshJobs.size === 0 && this.dirty.size === 0 && this.columns.every((c) => this.infos.has(columnKey(c.cx, c.cz)));
+    if (this.center === null || this.stale || this.columnJobs.size > 0 || this.genJobs.size > 0) return false;
+    if (!this.columns.every((c) => this.infos.has(columnKey(c.cx, c.cz)))) return false;
+    for (const key of this.meshSet) if (!this.meshed.has(key) || (this.meshJobs.has(key) && !this.meshes.has(key))) return false;
+    return true;
   }
 
   /** Whether a chunk's mesh is out of date or being rebuilt. */
@@ -242,6 +250,7 @@ export class Streamer {
       this.onUnload?.(ch);
       this.saves?.unload(ch, this.world);
       this.world.remove(ch.cx, ch.cy, ch.cz);
+      this.visibility.delete(key);
       this.meshes.remove(key);
       this.meshed.delete(key);
       this.dirty.delete(key);
@@ -259,7 +268,9 @@ export class Streamer {
       return (x - pcx) ** 2 + ((y - pcy) * 2) ** 2 + (z - pcz) ** 2;
     };
     this.genQueue = [...genSet].filter((k) => !this.world.chunks.has(k)).sort((a, b) => dist(a) - dist(b));
-    this.meshQueue = [...this.dirty].filter((k) => meshSet.has(k)).sort((a, b) => dist(a) - dist(b));
+    // Chunks with no mesh at all go before remeshes, so block updates near the player cannot starve the view.
+    const order = (k: number) => dist(k) + (this.meshes.has(k) ? 1e9 : 0);
+    this.meshQueue = [...this.dirty].filter((k) => meshSet.has(k)).sort((a, b) => order(a) - order(b));
     this.genCursor = 0;
     this.meshCursor = 0;
   }
@@ -325,6 +336,7 @@ export class Streamer {
       // A column with changed chunks has its sky tops in the save.
       const skyTop = this.saves?.skyTop(chunk.cx, chunk.cz) ?? info.skyTop;
       column.surface.set(info.top);
+      column.maxTop = info.maxTop;
       column.skyTop.set(skyTop);
       column.generatedSkyTop.set(skyTop);
     }
@@ -380,6 +392,7 @@ export class Streamer {
       this.meshJobs.delete(key);
       if (!this.world.chunks.has(key) || !this.meshSet.has(key)) return;
       this.meshes.set(key, cx, cy, cz, r.layers);
+      this.visibility.set(key, r.visibility);
       this.meshesApplied++;
       if (this.dirty.has(key)) this.stale = true;
     }, () => {

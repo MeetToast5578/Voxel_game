@@ -77,6 +77,14 @@ export class ChunkMeshes {
     this.meshes.delete(key);
   }
 
+  /** Shows only the chunks in `visible` (cave culling); the rest stay loaded but are not drawn. */
+  applyVisibility(visible: Set<number>): void {
+    for (const [key, list] of this.meshes) {
+      const show = visible.has(key);
+      for (const mesh of list) mesh.visible = show;
+    }
+  }
+
   keys(): IterableIterator<number> {
     return this.meshes.keys();
   }

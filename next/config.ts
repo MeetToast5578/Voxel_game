@@ -114,7 +114,72 @@ export const RANDOM_TICKS_PER_CHUNK = 3;
 export const SIM_RADIUS_CHUNKS = 6;
 /** Most scheduled updates handled per simulation tick; the rest wait for the next. */
 export const MAX_TICKS_PER_STEP = 4000;
-/** Leaves farther than this from a log decay. */
-export const LEAF_REACH_M = 2.4;
+/** Leaves farther than this from a log (through other leaves) decay; as far as a tree's crown reaches. */
+export const LEAF_REACH_M = 4.8;
 /** Grass spreads onto dirt whose cell above has at least this much light. */
 export const GRASS_MIN_LIGHT = 9;
+
+// ---- Climate and biomes ----
+export const TEMPERATURE_MIN_C = -30;
+export const TEMPERATURE_MAX_C = 30;
+export const TEMPERATURE_LAPSE_C_PER_KM = 6.5;
+export const PRECIPITATION_MAX_MM = 2000;
+/** Precipitation boost per unit of the largest detail amplitude (22 m): rain falls on rugged ground. */
+export const OROGRAPHIC_LIFT = 0.3;
+/** Surface blocks dither into the next biome over this distance from its border. */
+export const BIOME_BLEND_M = 0.9;
+/** Ground this rugged (detail amplitude) has no soil: bare rock. */
+export const BARE_ROCK_AMP_M = 12;
+
+// ---- Geology ----
+export const GEOLOGY_LAYER_M = 12;
+export const GEOLOGY_WARP_M = 400;
+export const DEEPSLATE_DEPTH_M = -100;
+
+// ---- Caves ----
+export const CAVE_SCALE_H_M = 40;
+export const CAVE_SCALE_V_M = 24;
+export const CAVE_THRESHOLD = 0.012;
+export const CAVE_CHEESE_SCALE_H_M = 96;
+export const CAVE_CHEESE_SCALE_V_M = 48;
+export const CAVE_CHEESE_THRESHOLD = 0.68;
+/** The higher value a cavern needs to break through to the surface: a few mouths, not a sieve. */
+export const CAVE_CHEESE_OPENING = 0.84;
+/** Depth of cover over which a cavern grows back to full size. */
+export const CAVE_CHEESE_FADE_M = 7.2;
+export const CAVE_NOODLE_SCALE_H_M = 18;
+export const CAVE_NOODLE_SCALE_V_M = 14;
+export const CAVE_NOODLE_STRETCH = 2.5;
+export const CAVE_NOODLE_THRESHOLD = 0.004;
+/** No tunnel comes closer than this to the surface; only caverns break through. */
+export const CAVE_NOODLE_ROOF_M = 1.2;
+export const RAVINE_SCALE_M = 160;
+export const RAVINE_BAND = 0.012;
+export const RAVINE_ROOF_M = 1.8;
+export const RAVINE_DEPTH_M = 30;
+/** Ground this close above sea level keeps a solid roof this thick, so the sea does not drain into caves. */
+export const SHORE_CAVE_BAND_M = 3;
+export const SHORE_ROOF_M = 5;
+export const SHORE_ROOF_CELLS = cells(SHORE_ROOF_M);
+
+// ---- Trees and features ----
+/** Tree anchors per square metre where the biome grows trees. */
+export const TREE_DENSITY_PER_M2 = 0.012;
+/** Share of a biome's trees that are its second species. */
+export const SECONDARY_TREE_CHANCE = 0.3;
+/** Farthest a tree reaches from its anchor; chunks look this far for trees that cross into them. */
+export const TREE_REACH_M = 4.8;
+export const TREE_REACH_CELLS = cells(TREE_REACH_M);
+export const TREE_BRANCH_MIN_M = 1.2;
+export const TREE_BRANCH_MAX_M = 2.4;
+/** Per grass cell: chances of each kind of ground cover (flowers are weighted per biome). */
+export const TALL_GRASS_CHANCE = 0.3;
+export const FERN_CHANCE = 0.1;
+export const FLOWER_CHANCE = 0.01;
+export const MUSHROOM_CHANCE = 0.005;
+/** Boulders and fallen logs: anchors per square metre on open ground. */
+export const BOULDER_DENSITY_PER_M2 = 0.006;
+export const BOULDER_RADIUS_M = 0.9;
+export const FALLEN_LOG_DENSITY_PER_M2 = 0.004;
+export const FALLEN_LOG_MIN_M = 1.2;
+export const FALLEN_LOG_MAX_M = 2.4;

@@ -18,7 +18,8 @@ function setup(fill?: (x: number, y: number, z: number) => number) {
   // eslint-disable-next-line prefer-const
   let sim: Simulation;
   const setBlock = (x: number, y: number, z: number, s: number) => {
-    if (world.set(x, y, z, s)) sim.onCellChanged(x, y, z);
+    const previous = world.get(x, y, z);
+    if (world.set(x, y, z, s)) sim.onCellChanged(x, y, z, previous);
   };
   sim = new Simulation(world, setBlock, 1);
   const run = (steps: number) => { for (let i = 0; i < steps; i++) sim.step(0, 0); };
@@ -105,16 +106,20 @@ describe('random ticks', () => {
     expect(world.get(0, -1, 0)).toBe(S('dirt'));
   });
 
-  it('decays leaves away from logs but keeps placed leaves and leaves near a log', () => {
+  it('decays leaves when their log goes, but keeps placed leaves and leaves another log holds', () => {
     const { world, setBlock, run } = setup();
     setBlock(0, 5, 0, S('log'));
-    setBlock(0, 6, 0, S('leaves'));
-    setBlock(8, 5, 8, S('leaves'));
-    setBlock(-8, 5, -8, S('leaves', 1));
-    run(30000);
-    expect(world.get(0, 6, 0)).toBe(S('leaves'));
-    expect(world.get(8, 5, 8)).toBe(0);
-    expect(world.get(-8, 5, -8)).toBe(S('leaves', 1));
+    setBlock(1, 5, 0, S('leaves'));
+    setBlock(-1, 5, 0, S('leaves', 1));
+    setBlock(6, 5, 0, S('log'));
+    setBlock(5, 5, 0, S('leaves'));
+    run(200);
+    expect(world.get(1, 5, 0)).toBe(S('leaves'));
+    setBlock(0, 5, 0, 0);
+    run(200);
+    expect(world.get(1, 5, 0)).toBe(0);
+    expect(world.get(-1, 5, 0)).toBe(S('leaves', 1));
+    expect(world.get(5, 5, 0)).toBe(S('leaves'));
   });
 });
 

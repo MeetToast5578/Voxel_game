@@ -1,6 +1,7 @@
 import { CHUNK_VOLUME } from '../config';
 import { chunkLight } from '../engine/light';
-import { buildMesh } from '../engine/mesher';
+import { buildMesh, padIndex } from '../engine/mesher';
+import { faceConnectivity } from '../engine/visibility';
 import { Generator } from '../worldgen/generator';
 import type { WorkerRequest, WorkerResponse } from './protocol';
 
@@ -35,7 +36,9 @@ self.onmessage = (e: MessageEvent<WorkerRequest>) => {
       }, transfer);
     } else {
       const layers = buildMesh(req);
-      post({ type: 'mesh', id: req.id, layers }, layers.map((l) => l.buffer));
+      const states = req.states;
+      const visibility = faceConnectivity((i) => states[padIndex(i & 15, i >> 8, (i >> 4) & 15)]!);
+      post({ type: 'mesh', id: req.id, layers, visibility }, layers.map((l) => l.buffer));
     }
   } catch (err) {
     post({ type: 'error', id: req.id, message: err instanceof Error ? err.message : String(err) });
