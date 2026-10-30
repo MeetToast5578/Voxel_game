@@ -260,6 +260,12 @@ export function tileIndex(name: string): number {
   return i;
 }
 
+/** The tile that shows a state as an item (slot icons, dropped items): its front, side or own tile. */
+export function itemTile(state: number): string {
+  const t = BLOCKS.type(state);
+  return t.variantTiles ? t.variantTiles[state - t.id]! : t.front ?? (t.shape === 'cube' ? t.tiles.side : t.tiles.top);
+}
+
 export function hasPainter(name: string): boolean {
   return name in PAINTERS;
 }

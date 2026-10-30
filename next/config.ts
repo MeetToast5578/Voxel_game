@@ -282,6 +282,15 @@ export const SAPLING_CHANCE = 0.05;
 export const CROP_GROW_CHANCE = 0.3;
 export const SAPLING_GROW_CHANCE = 0.1;
 
+/** Dropped items: cube size, pick-up reach, delay before a thrown item can be picked up again, lifetime and cap. */
+export const DROP_SIZE_M = 0.25;
+export const DROP_PICKUP_M = 1.5;
+export const DROP_PICKUP_DELAY_S = 1;
+export const DROP_LIFETIME_S = 300;
+export const DROP_CAP = 256;
+/** Speed (m/s) of an item thrown with Q. */
+export const DROP_THROW_M_S = 5;
+
 // ---- Creatures ----
 /** Most creatures alive near the player at once. */
 export const CREATURE_CAP = 48;

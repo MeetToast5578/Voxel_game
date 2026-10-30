@@ -173,4 +173,22 @@ describe('chests', () => {
     expect(play.inventory.count(S('coal'))).toBe(9);
     expect(play.inventory.count(S('chest'))).toBe(1);
   });
+
+  it('drops what does not fit into the world, and throws the held item with Q', () => {
+    const { world, play, player, input, press } = setup('survival');
+    for (let i = 0; i < play.inventory.slots.length; i++) play.inventory.slots[i] = { state: S('glass'), count: 64 };
+    play.inventory.slots[0] = { state: S('wooden_pickaxe'), count: 1 };
+    (input as { breaking: boolean }).breaking = true;
+    play.update(0.05, input, player);
+    const t = play.target!;
+    for (let steps = 0; world.get(t.x, t.y, t.z) !== 0 && steps < 100; steps++) play.update(0.05, input, player);
+    expect(play.drops.list.map((d) => d.stack)).toEqual([{ state: S('cobblestone'), count: 1 }]);
+    (input as { breaking: boolean }).breaking = false;
+    play.inventory.selected = 1;
+    press('drop');
+    play.update(0.05, input, player);
+    expect(play.inventory.slots[1]!.count).toBe(63);
+    expect(play.drops.list.length).toBe(2);
+    expect(play.drops.list[1]!.body.vx).toBeGreaterThan(0); // thrown along +x, where the player looks
+  });
 });

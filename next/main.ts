@@ -15,6 +15,7 @@ import { Highlight } from './render/highlight';
 import { Renderer } from './render/renderer';
 import { Creatures } from './creatures/creatures';
 import { CreatureMeshes } from './render/creatureMeshes';
+import { DropMeshes } from './render/dropMeshes';
 import { mulberry32 } from './core/random';
 import { Environment } from './sim/environment';
 import { climateTemperature } from './sim/weather';
@@ -128,6 +129,7 @@ const creatures = new Creatures(world, mulberry32(seed ^ 0xc0ffee), {
 creatures.load(saver.worldMeta.creatures);
 play.creatures = creatures;
 const creatureMeshes = new CreatureMeshes(renderer.scene);
+const dropMeshes = new DropMeshes(renderer.scene, renderer.uniforms.tiles!.value as ConstructorParameters<typeof DropMeshes>[1]);
 if (saver.worldMeta.play) play.load(saver.worldMeta.play);
 else if (play.mode === 'creative') play.creativeHotbar();
 /** Where the player starts: where they first stood, or their bed. */
@@ -168,6 +170,7 @@ function update(dt: number): void {
   if (active) play.update(dt, input, player);
   play.tickFurnaces(dt);
   creatures.update(dt, { player: player.body, survival: play.mode === 'survival', day: env.atmosphere.sun[1] > -0.05, boxAt, waterAt });
+  if (play.drops.update(dt, boxAt, play.survival.dead ? null : player.body, play.inventory)) play.version++;
   if (play.mode === 'survival' && !play.survival.dead) {
     if (player.body.onGround && falling > 0 && player.submerged < 0.2) play.survival.land(falling * BLOCK_SIZE_M);
     const eye = world.get(Math.floor(player.body.x), Math.floor(player.eyeY), Math.floor(player.body.z));
@@ -177,6 +180,7 @@ function update(dt: number): void {
       inLava: BLOCKS.type(eye).key.endsWith('lava') || BLOCKS.type(feet).key.endsWith('lava'),
     });
     if (play.survival.dead) {
+      play.dropAll();
       input.stop();
       play.version++;
     }
@@ -384,13 +388,16 @@ const loop = new FixedStepLoop(1 / 60, 0.25, update, (_alpha, frameDt) => {
   renderer.camera.rotation.set(player.pitch, player.yaw, 0, 'YXZ');
   highlight.set(play.target, play.breaking);
   const daylight = renderer.uniforms.daylight!.value as number;
-  creatureMeshes.update(creatures.list, (c) => {
-    const x = Math.floor(c.body.x), y = Math.floor(c.body.y + c.body.height * 0.6), z = Math.floor(c.body.z);
+  /** Brightness (0..1) of a cell for things drawn outside the terrain. */
+  const lightAt = (cx: number, cy: number, cz: number) => {
+    const x = Math.floor(cx), y = Math.floor(cy), z = Math.floor(cz);
     const chunk = world.chunkAt(x, y, z);
     if (!chunk) return daylight;
     const i = localIndex(x & 15, y & 15, z & 15), sky = chunk.skyLight(i) / 15, block = chunk.blockLight(i) / 15;
     return 0.06 + 0.94 * Math.max(sky * sky * daylight, block * block);
-  });
+  };
+  creatureMeshes.update(creatures.list, (c) => lightAt(c.body.x, c.body.y + c.body.height * 0.6, c.body.z));
+  dropMeshes.update(play.drops.list, now / 1000, (d) => lightAt(d.body.x, d.body.y + d.body.height / 2, d.body.z));
   cull();
   const cam = renderer.camera.position;
   renderer.setAtmosphere(env.frame(frameDt, cam.x, cam.y, cam.z, world));

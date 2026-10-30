@@ -65,6 +65,21 @@ try {
     const ui = await page.evaluate(() => ({ slots: document.querySelectorAll('.slot').length, menu: !!document.querySelector('.menu') }));
     console.log('ui', JSON.stringify(ui));
     if (ui.slots < 40) errors.push(`inventory screen shows too few slots: ${ui.slots}`);
+    // Dropped items lying in front of the player (too far to be picked up).
+    const drops = await page.evaluate(async () => {
+      const n = window.__next, S = (k) => n.blocks.state(k), b = n.player.body;
+      n.play.closeScreen();
+      Object.assign(n.player, { yaw: 0, pitch: -0.35 });
+      ['dirt', 'torch', 'stone_pickaxe', 'cooked_meat', 'log'].forEach((k, i) => {
+        const x = Math.floor(b.x) - 2 + i, z = Math.floor(b.z) - 6;
+        n.play.drops.spawn({ state: S(k), count: 1 }, x + 0.5, n.world.surfaceAt(x, z) + 2, z + 0.5);
+      });
+      for (let f = 0; f < 30; f++) await new Promise(requestAnimationFrame);
+      return n.play.drops.list.length;
+    });
+    await page.evaluate(() => { document.querySelector('#ui').style.display = 'none'; });
+    await page.screenshot({ path: 'screenshots/next-drops.png' });
+    if (drops !== 5) errors.push(`expected 5 dropped items, found ${drops}`);
     await page.close();
   }
 

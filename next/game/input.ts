@@ -1,9 +1,9 @@
 
 export type Action = 'fly' | 'break' | 'place' | 'pick' | 'slotNext' | 'slotPrev' | 'time' | 'viewUp' | 'viewDown' | 'inventory' | 'debug' |
-  'undo' | 'redo' | 'fill' | 'clear';
+  'undo' | 'redo' | 'fill' | 'clear' | 'drop';
 
 const KEY_ACTIONS: Record<string, Action> = {
-  KeyF: 'fly', KeyT: 'time', Equal: 'viewUp', Minus: 'viewDown', KeyE: 'inventory', F3: 'debug', KeyB: 'fill', KeyG: 'clear',
+  KeyF: 'fly', KeyT: 'time', Equal: 'viewUp', Minus: 'viewDown', KeyE: 'inventory', F3: 'debug', KeyB: 'fill', KeyG: 'clear', KeyQ: 'drop',
 };
 const DEADZONE = 0.15;
 const STICK_LOOK = 2.6; // radians per second at full right-stick deflection

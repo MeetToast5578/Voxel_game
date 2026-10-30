@@ -1,9 +1,10 @@
-import { AXE_DAMAGE, BUILD_CELLS_PER_TICK, BUILD_MAX_M, HAND_DAMAGE, REACH_M, REPEAT_S, TOOL_DAMAGE, UNDO_STEPS, cells, toCells } from '../config';
+import { AXE_DAMAGE, BUILD_CELLS_PER_TICK, BUILD_MAX_M, DROP_PICKUP_DELAY_S, DROP_THROW_M_S, HAND_DAMAGE, REACH_M, REPEAT_S, TOOL_DAMAGE, UNDO_STEPS, cells, toCells } from '../config';
 import { meatOf, type Creatures } from '../creatures/creatures';
 import { AIR, BLOCKS, SOLID } from '../engine/blocks';
 import type { World } from '../engine/world';
 import { COLLISION } from './collision';
 import { consumeIngredients, craftResult } from './crafting';
+import { Drops } from './drops';
 import { newFurnace, tickFurnace, type FurnaceState } from './furnace';
 import type { Input } from './input';
 import { Inventory, type ItemStack } from './inventory';
@@ -44,6 +45,9 @@ export class Play {
   /** The item on the mouse in a screen. */
   cursor: ItemStack | null = null;
   spawn: [number, number, number] | null = null;
+  /** Items lying in the world, and where the player's feet were last update (for items that do not fit). */
+  readonly drops = new Drops();
+  private feet: [number, number, number] = [0, 0, 0];
   target: RayHit | null = null;
   /** 0..1 progress breaking the target, or 0. */
   breaking = 0;
@@ -138,6 +142,30 @@ export class Play {
     return this.inventory.held;
   }
 
+  /** Puts items in the inventory; what does not fit drops at (x, y, z). */
+  private give(stack: ItemStack, x: number, y: number, z: number): void {
+    const left = this.inventory.add(stack);
+    if (left > 0) this.drops.spawn({ ...stack, count: left }, x, y, z, 0, 3, 0);
+  }
+
+  /** Throws one of the held item (Q) where the player looks. */
+  private throwHeld(player: Player): void {
+    const held = this.held;
+    if (!held) return;
+    const [dx, dy, dz] = player.direction(), v = toCells(DROP_THROW_M_S);
+    this.drops.spawn({ ...held, count: 1 }, player.body.x + dx * 0.5, player.eyeY - 0.3, player.body.z + dz * 0.5, dx * v, dy * v + 2, dz * v, DROP_PICKUP_DELAY_S);
+    if (--held.count <= 0) this.inventory.slots[this.inventory.selected] = null;
+    this.version++;
+  }
+
+  /** Scatters the whole inventory where the player died. */
+  dropAll(): void {
+    const [x, y, z] = this.feet;
+    for (const s of this.inventory.slots) if (s) this.drops.spawn(s, x, y + 0.5, z, (Math.random() - 0.5) * 6, 4, (Math.random() - 0.5) * 6, DROP_PICKUP_DELAY_S);
+    this.inventory.clear();
+    this.version++;
+  }
+
   /** Starting kit in creative: one of each common block in the hotbar. */
   creativeHotbar(): void {
     ['stone', 'dirt', 'grass', 'planks', 'glass', 'torch', 'cobblestone', 'log', 'water'].forEach((k, i) => {
@@ -154,8 +182,10 @@ export class Play {
     input.slot = -1;
     if (input.consume('slotNext')) this.select((this.inventory.selected + 1) % 9);
     if (input.consume('slotPrev')) this.select((this.inventory.selected + 8) % 9);
+    if (input.consume('drop')) this.throwHeld(player);
     const [dx, dy, dz] = player.direction();
     const b = player.body;
+    this.feet = [b.x, b.y, b.z];
     this.target = raycast(b.x, player.eyeY, b.z, dx, dy, dz, toCells(REACH_M), (x, y, z) => TARGET[this.world.get(x, y, z)]!);
     this.repeat -= dt;
     if (input.consume('pick') && this.target && this.mode === 'creative') this.pick(this.target);
@@ -182,7 +212,7 @@ export class Play {
     const c = hit.creature;
     if (this.creatures!.damage(c, damage, ox, oz) && this.mode === 'survival') {
       const meat = meatOf(c);
-      if (meat) this.inventory.add(meat);
+      if (meat) this.give(meat, c.body.x, c.body.y, c.body.z);
     }
     if (held && tool && this.mode === 'survival' && !wearTool(held)) this.inventory.slots[this.inventory.selected] = null;
     this.events.sound('break');
@@ -231,7 +261,7 @@ export class Play {
   private breakCell(x: number, y: number, z: number, state: number, survival: boolean, roll: number): void {
     const type = BLOCKS.type(state);
     if (survival) {
-      for (const d of dropsOf(state, this.held, roll)) this.inventory.add(d);
+      for (const d of dropsOf(state, this.held, roll)) this.give(d, x + 0.5, y, z + 0.5);
       const tool = this.held;
       if (tool && BLOCKS.type(tool.state).tool && !wearTool(tool)) this.inventory.slots[this.inventory.selected] = null;
     }
@@ -246,7 +276,7 @@ export class Play {
     if (type === FURNACE || type === LIT) this.dropFurnace(x, y, z, survival);
     if (type === CHEST) {
       const key = `${x},${y},${z}`;
-      if (survival) for (const s of this.chests.get(key) ?? []) if (s) this.inventory.add(s);
+      if (survival) for (const s of this.chests.get(key) ?? []) if (s) this.give(s, x + 0.5, y, z + 0.5);
       this.chests.delete(key);
     }
     this.setBlock(x, y, z, AIR);
@@ -256,7 +286,7 @@ export class Play {
 
   private dropFurnace(x: number, y: number, z: number, survival: boolean): void {
     const key = `${x},${y},${z}`, f = this.furnaces.get(key);
-    if (f && survival) for (const s of [f.input, f.fuel, f.output]) if (s) this.inventory.add(s);
+    if (f && survival) for (const s of [f.input, f.fuel, f.output]) if (s) this.give(s, x + 0.5, y, z + 0.5);
     this.furnaces.delete(key);
   }
 
@@ -379,10 +409,10 @@ export class Play {
   /** Closes any screen; the crafting grid and the cursor go back to the inventory. */
   closeScreen(): void {
     for (let i = 0; i < 9; i++) {
-      if (this.craft[i]) this.inventory.add(this.craft[i]!);
+      if (this.craft[i]) this.give(this.craft[i]!, ...this.feet);
       this.craft[i] = null;
     }
-    if (this.cursor) this.inventory.add(this.cursor);
+    if (this.cursor) this.give(this.cursor, ...this.feet);
     this.cursor = null;
     this.screen = 'none';
     this.openFurnace = null;
@@ -429,7 +459,7 @@ export class Play {
   save(): unknown {
     const s = (st: ItemStack | null) => (st ? [BLOCKS.stateName(st.state), st.count] : null);
     return {
-      mode: this.mode, inventory: this.inventory.save(), selected: this.inventory.selected,
+      mode: this.mode, inventory: this.inventory.save(), selected: this.inventory.selected, drops: this.drops.save(),
       health: this.survival.health, hunger: this.survival.hunger, air: this.survival.air, spawn: this.spawn,
       furnaces: [...this.furnaces].map(([k, f]) => [k, s(f.input), s(f.fuel), s(f.output), f.burn, f.progress]),
       chests: [...this.chests].map(([k, slots]) => [k, slots.map((st) => (st ? [BLOCKS.stateName(st.state), st.count, st.wear ?? 0] : null))]),
@@ -443,6 +473,7 @@ export class Play {
     const num = (v: unknown, d: number) => (typeof v === 'number' && Number.isFinite(v) ? v : d);
     if (p.mode === 'creative' || p.mode === 'survival') this.mode = p.mode;
     this.inventory.load(p.inventory);
+    this.drops.load(p.drops);
     this.inventory.selected = Math.max(0, Math.min(8, Math.floor(num(p.selected, 0))));
     this.survival.health = num(p.health, this.survival.health);
     this.survival.hunger = num(p.hunger, this.survival.hunger);
