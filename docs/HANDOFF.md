@@ -1,5 +1,14 @@
 # Handoff: Voxel Game (MeetToast5578/Voxel_game)
 
+## 2026-10-30 — engine rewrite, phase 1 (Claude)
+
+The owner chose a full rewrite at 0.6 m blocks (16³ chunks, 9.6 m). It is built in `next/` beside the old game, which
+stays in `src/` and keeps working until the switch-over phase. Plan: engine review findings and 12 phases (core,
+generation and meshing, stored lighting, player, saves, simulation, worldgen, atmosphere, gameplay, creatures, UI,
+switch-over). Phase 1 adds `next/config.ts` (meters only; cell counts come from `cells()`), packed integer chunk keys,
+a growable `IntQueue`, a name-based block registry (`next/engine/blocks.ts`), palette-compressed chunks with nibble
+light (`next/engine/chunk.ts`) and the `World` store. Tests are in `next/tests`. Nothing is wired to a page yet.
+
 ## 2026-10-24 — performance (Claude)
 
 T-J13: an edit remeshes at once only the chunks the changed cell faces (at most 4, was 8). T-J6: chunk budgets
