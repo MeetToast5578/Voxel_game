@@ -201,6 +201,10 @@ Polish:
   settle on, so a test can tick every waterfall cell and see nothing change. A one-cell step gets a source instead,
   because water between two sources becomes one. Real falls are rare: 2 in a 768 m square of seed 1, with one at
   (-591, 32, -468) in cells.
+- **F3 frame graph** (`next/ui/frameGraph.ts`): the last 120 frames as bars (time since the previous frame, with the
+  main thread's own share darker; lines at 60 and 30 fps), and a line with averages and maxima. In headless
+  SwiftShader at view 8 the main thread takes about 4 ms per frame, at most 19 ms while flying at 22 m/s through new
+  terrain; the rest of each frame is software rasterising.
 
 ## 2026-10-24 — performance (Claude)
 

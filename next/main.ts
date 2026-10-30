@@ -16,6 +16,7 @@ import { Renderer } from './render/renderer';
 import { Creatures } from './creatures/creatures';
 import { CreatureMeshes } from './render/creatureMeshes';
 import { DropMeshes } from './render/dropMeshes';
+import { FrameGraph } from './ui/frameGraph';
 import { mulberry32 } from './core/random';
 import { Environment } from './sim/environment';
 import { climateTemperature } from './sim/weather';
@@ -54,6 +55,8 @@ const seed = saver.worldMeta.seed;
 
 const canvas = document.querySelector<HTMLCanvasElement>('#game')!;
 const overlay = document.querySelector<HTMLDivElement>('#overlay')!;
+const frameGraph = new FrameGraph();
+document.body.append(frameGraph.canvas);
 const uiRoot = document.querySelector<HTMLDivElement>('#ui')!;
 const renderer = new Renderer(canvas, seed, viewChunks * CHUNK_SIZE);
 const sounds = new Sounds();
@@ -231,7 +234,7 @@ function handleActions(): void {
   }
   if (input.consume('debug')) {
     debugText = !debugText;
-    overlay.style.display = debugText ? '' : 'none';
+    overlay.style.display = frameGraph.canvas.style.display = debugText ? '' : 'none';
   }
   if (input.consume('time')) env.clock.advance(DAY_LENGTH_S / 24);
   const up = input.consume('viewUp'), down = input.consume('viewDown');
@@ -376,7 +379,14 @@ function updateHorizon(x: number, z: number): void {
 }
 
 let frames = 0, fps = 0, fpsTime = performance.now(), lastVersion = -1, lastUiDraw = 0;
-const loop = new FixedStepLoop(1 / 60, 0.25, update, (_alpha, frameDt) => {
+/** Main-thread time of this frame's fixed steps, and when the previous frame started (for the F3 graph). */
+let updateMs = 0, lastFrame = performance.now();
+const timedUpdate = (dt: number) => {
+  const t = performance.now();
+  update(dt);
+  updateMs += performance.now() - t;
+};
+const loop = new FixedStepLoop(1 / 60, 0.25, timedUpdate, (_alpha, frameDt) => {
   const now = performance.now();
   input.poll(frameDt);
   const [dyaw, dpitch] = input.takeLook();
@@ -415,6 +425,10 @@ const loop = new FixedStepLoop(1 / 60, 0.25, update, (_alpha, frameDt) => {
     lastUiDraw = now;
     redraw();
   }
+  frameGraph.push(now - lastFrame, updateMs + performance.now() - now);
+  lastFrame = now;
+  updateMs = 0;
+  if (debugText) frameGraph.draw();
   frames++;
   if (now - fpsTime >= 500) {
     fps = Math.round((frames * 1000) / (now - fpsTime));
@@ -430,6 +444,7 @@ const loop = new FixedStepLoop(1 / 60, 0.25, update, (_alpha, frameDt) => {
       `world ${worldName} (seed ${seed})${saver.conflict ? '  NOT SAVING: opened in another tab' : ''}`,
       describeHere(),
       `creatures ${creatures.list.length}  block updates ${simulation.ticks.size} (${simulation.ticks.dormantCount} waiting)  jobs ${streamer.pendingChunks}  columns ${streamer.pendingColumns}  dirty ${streamer.dirtyCount}  failures ${streamer.failures}`,
+      frameGraph.summary(),
       `${play.mode} [F3 hides this]`,
     ].join('\n');
   }
