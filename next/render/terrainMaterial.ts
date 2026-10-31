@@ -101,7 +101,8 @@ void main() {
 #endif
   // Light levels follow a curve (dark falls off quickly); the sky's share is then scaled by daylight.
   vec2 curved = vLight * vLight;
-  float light = 0.03 + 0.97 * max(curved.x * daylight, curved.y);
+  // A faint floor so unlit caves still show their shapes.
+  float light = 0.07 + 0.93 * max(curved.x * daylight, curved.y);
   vec3 color = tex.rgb * vColor * light;
 #ifdef WATER
   // Moving ripples on the water.

@@ -404,7 +404,7 @@ const loop = new FixedStepLoop(1 / 60, 0.25, timedUpdate, (_alpha, frameDt) => {
     const chunk = world.chunkAt(x, y, z);
     if (!chunk) return daylight;
     const i = localIndex(x & 15, y & 15, z & 15), sky = chunk.skyLight(i) / 15, block = chunk.blockLight(i) / 15;
-    return 0.06 + 0.94 * Math.max(sky * sky * daylight, block * block);
+    return 0.07 + 0.93 * Math.max(sky * sky * daylight, block * block);
   };
   creatureMeshes.update(creatures.list, (c) => lightAt(c.body.x, c.body.y + c.body.height * 0.6, c.body.z));
   dropMeshes.update(play.drops.list, now / 1000, (d) => lightAt(d.body.x, d.body.y + d.body.height / 2, d.body.z));
