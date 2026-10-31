@@ -13,6 +13,9 @@ The owner merged the rewrite (PR #58) and asked for the old game to go (spec 54,
 - **Saves:** old saves are not migrated; worlds made in the new game keep working (database `voxel-next`).
 - **Docs:** README rewritten for the new game. ROADMAP, tasks, OPEN-TASKS, REFERENCE-GAPS and specs 1–53 carry a note
   that they describe the old code. Entries below this one use the old names (`next/`, `next.html`).
+- **Ice** grows from the banks inward: water freezes only beside solid ground or ice, instead of in random cells.
+- **Drops:** in survival, broken blocks (and broken chests, furnaces and hunted creatures) pop their items out into
+  the world, as the old game did; walk within 1.5 m to pick them up.
 
 ## 2026-10-30 — engine rewrite, phase 1 (Claude)
 

@@ -142,6 +142,11 @@ export class Play {
     return this.inventory.held;
   }
 
+  /** Pops items out into the world at (x, y, z) (broken blocks, opened containers, hunted creatures). */
+  private drop(stack: ItemStack, x: number, y: number, z: number): void {
+    this.drops.spawn(stack, x, y, z, (Math.random() - 0.5) * 3, 4, (Math.random() - 0.5) * 3);
+  }
+
   /** Puts items in the inventory; what does not fit drops at (x, y, z). */
   private give(stack: ItemStack, x: number, y: number, z: number): void {
     const left = this.inventory.add(stack);
@@ -212,7 +217,7 @@ export class Play {
     const c = hit.creature;
     if (this.creatures!.damage(c, damage, ox, oz) && this.mode === 'survival') {
       const meat = meatOf(c);
-      if (meat) this.give(meat, c.body.x, c.body.y, c.body.z);
+      if (meat) this.drop(meat, c.body.x, c.body.y, c.body.z);
     }
     if (held && tool && this.mode === 'survival' && !wearTool(held)) this.inventory.slots[this.inventory.selected] = null;
     this.events.sound('break');
@@ -261,7 +266,7 @@ export class Play {
   private breakCell(x: number, y: number, z: number, state: number, survival: boolean, roll: number): void {
     const type = BLOCKS.type(state);
     if (survival) {
-      for (const d of dropsOf(state, this.held, roll)) this.give(d, x + 0.5, y, z + 0.5);
+      for (const d of dropsOf(state, this.held, roll)) this.drop(d, x + 0.5, y, z + 0.5);
       const tool = this.held;
       if (tool && BLOCKS.type(tool.state).tool && !wearTool(tool)) this.inventory.slots[this.inventory.selected] = null;
     }
@@ -276,7 +281,7 @@ export class Play {
     if (type === FURNACE || type === LIT) this.dropFurnace(x, y, z, survival);
     if (type === CHEST) {
       const key = `${x},${y},${z}`;
-      if (survival) for (const s of this.chests.get(key) ?? []) if (s) this.give(s, x + 0.5, y, z + 0.5);
+      if (survival) for (const s of this.chests.get(key) ?? []) if (s) this.drop(s, x + 0.5, y, z + 0.5);
       this.chests.delete(key);
     }
     this.setBlock(x, y, z, AIR);
@@ -286,7 +291,7 @@ export class Play {
 
   private dropFurnace(x: number, y: number, z: number, survival: boolean): void {
     const key = `${x},${y},${z}`, f = this.furnaces.get(key);
-    if (f && survival) for (const s of [f.input, f.fuel, f.output]) if (s) this.give(s, x + 0.5, y, z + 0.5);
+    if (f && survival) for (const s of [f.input, f.fuel, f.output]) if (s) this.drop(s, x + 0.5, y, z + 0.5);
     this.furnaces.delete(key);
   }
 

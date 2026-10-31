@@ -185,4 +185,3 @@ describe('weather', () => {
     expect(frozen).toBe(49);
   });
 });
-

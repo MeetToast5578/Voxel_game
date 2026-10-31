@@ -90,8 +90,8 @@ The owner chose a full rewrite with 0.6 m blocks and 16³ chunks (9.6 m).
   climb, and a closed door blocks its doorway either way.
 - **Creatures:** only hunters path-find (A* on the cell grid, 300 nodes, replanned every second); other creatures
   steer and turn back at water, cliffs and walls.
-- **Drops:** items lie in the world only when they do not fit, are thrown (Q) or are scattered on death; broken
-  blocks still go straight into the inventory.
+- **Drops:** in survival, broken blocks, opened containers and hunted creatures pop their items out into the world,
+  picked up within 1.5 m. Items that don't fit stay on the ground; Q throws one; death scatters the inventory.
 - **Rivers:** there are no stony shores or sandbars. Waterfalls are generated only where a river steps down more
   than one cell. Where a lake spills over a wide edge, the waterfall is as wide as the edge.
 - **Pools:** `ChunkMeshes` reaches into `BatchedMesh`'s private geometry table (three is pinned at 0.186.0); a test

@@ -3,6 +3,7 @@ import { BLOCKS } from '../engine/blocks';
 import { Chunk } from '../engine/chunk';
 import { World } from '../engine/world';
 import type { Input } from '../game/input';
+import { COLLISION } from '../game/collision';
 import { Play } from '../game/play';
 import { Player } from '../game/player';
 
@@ -23,6 +24,16 @@ function setup(mode: 'creative' | 'survival') {
   } as unknown as Input & { breaking: boolean };
   const press = (a: string) => actions.add(a);
   return { world, play, player, input, press };
+}
+
+/** Lets dropped items land for a second, then walks the player over them, as in the game loop. */
+function collect(world: World, play: Play, player: Player): void {
+  const boxAt = (x: number, y: number, z: number) => COLLISION[world.get(x, y, z)]!;
+  for (let i = 0; i < 20; i++) play.drops.update(0.05, boxAt, null, play.inventory);
+  for (const d of [...play.drops.list]) {
+    Object.assign(player.body, { x: d.body.x, y: d.body.y, z: d.body.z });
+    play.drops.update(0.05, boxAt, player.body, play.inventory);
+  }
 }
 
 describe('play', () => {
@@ -55,6 +66,9 @@ describe('play', () => {
       steps++;
     }
     expect(steps * 0.05).toBeCloseTo(0.75, 1);
+    // The block pops out as an item, picked up when near.
+    expect(play.inventory.count(S('cobblestone'))).toBe(0);
+    collect(world, play, player);
     expect(play.inventory.count(S('cobblestone'))).toBe(1);
     expect(play.inventory.slots[0]!.wear).toBe(1);
   });
@@ -150,7 +164,7 @@ describe('creative building', () => {
 });
 
 describe('chests', () => {
-  it('opens, keeps items, saves them, and empties into the inventory when broken in survival', () => {
+  it('opens, keeps items, saves them, and spills its items when broken in survival', () => {
     const { world, play, player, input, press } = setup('survival');
     play.inventory.slots[0] = { state: S('chest'), count: 1 };
     play.update(0.05, input, player);
@@ -170,6 +184,7 @@ describe('chests', () => {
     play.closeScreen();
     (play as unknown as { breakCell(x: number, y: number, z: number, s: number, survival: boolean, roll: number): void })
       .breakCell(at[0], at[1], at[2], world.get(...at), true, 0.5);
+    collect(world, play, player);
     expect(play.inventory.count(S('coal'))).toBe(9);
     expect(play.inventory.count(S('chest'))).toBe(1);
   });
