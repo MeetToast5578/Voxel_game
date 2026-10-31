@@ -340,3 +340,9 @@ export class Creatures {
 export function meatOf(c: Creature): { state: number; count: number } | null {
   return c.species.meat > 0 ? { state: BLOCKS.state('raw_meat'), count: c.species.meat } : null;
 }
+
+/** Everything a dead creature leaves: meat, and leather from hides. */
+export function lootOf(c: Creature): { state: number; count: number }[] {
+  const meat = meatOf(c);
+  return [...(meat ? [meat] : []), ...(c.species.leather ? [{ state: BLOCKS.state('leather'), count: c.species.leather }] : [])];
+}

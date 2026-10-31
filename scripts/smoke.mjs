@@ -105,6 +105,20 @@ try {
     });
     await page.evaluate(() => { document.querySelector('#ui').style.display = 'none'; });
     await page.screenshot({ path: 'screenshots/drops.png' });
+    // The map and the compass show while held.
+    const tools = await page.evaluate(async () => {
+      const n = window.__game, S = (k) => n.blocks.state(k), shown = (el) => el && getComputedStyle(el).display !== 'none';
+      n.play.inventory.slots[0] = { state: S('map'), count: 1 };
+      n.play.inventory.slots[1] = { state: S('compass'), count: 1 };
+      n.play.inventory.selected = 0;
+      for (let f = 0; f < 30; f++) await new Promise(requestAnimationFrame);
+      const map = shown(document.querySelector('.minimap'));
+      n.play.inventory.selected = 1;
+      for (let f = 0; f < 5; f++) await new Promise(requestAnimationFrame);
+      return { map, compass: shown(document.querySelector('#compass')) };
+    });
+    await page.screenshot({ path: 'screenshots/compass.png' });
+    if (!tools.map || !tools.compass) errors.push(`held map or compass not shown: ${JSON.stringify(tools)}`);
     if (drops !== 5) errors.push(`expected 5 dropped items, found ${drops}`);
     await page.close();
   }

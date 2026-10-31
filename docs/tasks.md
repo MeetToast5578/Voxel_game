@@ -105,29 +105,29 @@ iron, real danger, places worth finding and an end point. Onboarding, sound and 
 
 ## 3. Progression past iron
 
-- [ ] **3.1 Decide what each ore is for.**
+- [x] **3.1 Decide what each ore is for.**
   **Decide.** Proposed default:
   - gold becomes ingots for the compass and clock;
   - diamond gives tier-3 tools and armour;
   - lapis is a dye for maps and the journal;
   - redstone and emerald come out of generation until they have a use.
   **Done when:** every generated ore has a use or is no longer generated.
-- [ ] **3.2 Smelting and tier 3.**
+- [x] **3.2 Smelting and tier 3.**
   - Gold ore smelts to ingots, and diamond ore drops a diamond.
   - Diamond pickaxe, axe, shovel and sword.
   - `needsTier: 3` exists for the deep material in 3.4.
   **Done when:** recipe and break-time tests pass, and a survival world runs through to diamond tools.
-- [ ] **3.3 Armour.**
+- [x] **3.3 Armour.**
   - Head, chest, legs and feet slots in the inventory.
   - Leather (warm, little protection), iron and diamond.
   - Armour reduces damage and wears out, and the HUD shows it.
   **Done when:** a damage-reduction test passes, and leather counts in body temperature (2.1).
-- [ ] **3.4 A deep material.**
+- [x] **3.4 A deep material.** Built as *ember ore* (ember crystals), the proposed default.
   **Decide** its name and look.
   - It is found only below −100 m, in deepslate near lava, and needs a diamond pickaxe.
   - It feeds the end goal (6.1).
   **Done when:** the generation test finds it only in its depth band.
-- [ ] **3.5 Compass, map and lantern.**
+- [x] **3.5 Compass, map and lantern.** Shortcut: the map shows only loaded land and remembers nothing.
   - A compass points to your bed, or the spawn if you have none.
   - A map shows the explored area from above, reusing the far-terrain colour sampling.
   - A lantern is a hanging light.

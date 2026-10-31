@@ -1,4 +1,4 @@
-import { BLOCKS } from '../engine/blocks';
+import { ARMOUR_PIECES, BLOCKS } from '../engine/blocks';
 import type { ItemStack } from './inventory';
 
 /**
@@ -11,7 +11,9 @@ export interface Recipe {
   result: readonly [key: string, count: number];
 }
 
-const TOOL_HEADS = { wooden: ['planks'], stone: ['cobblestone'], iron: ['iron_ingot'] } as const;
+const TOOL_HEADS = { wooden: ['planks'], stone: ['cobblestone'], iron: ['iron_ingot'], diamond: ['diamond'] } as const;
+const ARMOUR_PATTERNS = [['MMM', 'M M'], ['M M', 'MMM', 'MMM'], ['MMM', 'M M', 'M M'], ['M M', 'M M']] as const;
+const ARMOUR_FROM = { leather: 'leather', iron: 'iron_ingot', diamond: 'diamond' } as const;
 const TOOL_PATTERNS = { pickaxe: ['MMM', ' S ', ' S '], axe: ['MM', 'MS', ' S'], shovel: ['M', 'S', 'S'], sword: ['M', 'M', 'S'] } as const;
 
 export const RECIPES: readonly Recipe[] = [
@@ -27,6 +29,12 @@ export const RECIPES: readonly Recipe[] = [
   { pattern: ['SS', 'LL'], key: { S: ['stick'], L: ['log'] }, result: ['campfire', 1] },
   { pattern: ['S S', 'SSS', 'S S'], key: { S: ['stick'] }, result: ['ladder', 3] },
   { pattern: ['I I', ' I '], key: { I: ['iron_ingot'] }, result: ['bucket', 1] },
+  { pattern: ['RRR'], key: { R: ['reed'] }, result: ['paper', 3] },
+  { pattern: [' G ', 'GIG', ' G '], key: { G: ['gold_ingot'], I: ['iron_ingot'] }, result: ['compass', 1] },
+  { pattern: ['PPP', 'PCP', 'PLP'], key: { P: ['paper'], C: ['compass'], L: ['lapis'] }, result: ['map', 1] },
+  { pattern: [' I ', 'ITI', ' I '], key: { I: ['iron_ingot'], T: ['torch'] }, result: ['lantern', 1] },
+  ...Object.entries(ARMOUR_FROM).flatMap(([m, from]) => ARMOUR_PATTERNS.map((pattern, slot) =>
+    ({ pattern, key: { M: [from] }, result: [`${m}_${ARMOUR_PIECES[slot]}`, 1] as const }))),
   ...Object.entries(TOOL_HEADS).flatMap(([tier, head]) => Object.entries(TOOL_PATTERNS).map(([kind, pattern]) =>
     ({ pattern, key: { M: head, S: ['stick'] }, result: [`${tier}_${kind}`, 1] as const }))),
   ...BLOCKS.types.filter((t) => t.key.endsWith('_stairs')).map((t) => ({

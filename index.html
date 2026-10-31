@@ -70,6 +70,10 @@
         background: rgba(20, 22, 28, 0.82); border: 1px solid #6a7; border-radius: 6px; text-align: center; }
       .hintbox small { color: #9a9; }
       #hurt { position: fixed; inset: 0; pointer-events: none; opacity: 0; background: radial-gradient(transparent 40%, rgba(200, 0, 0, 0.9)); }
+      #compass { position: fixed; top: 70px; right: 24px; width: 44px; height: 44px; line-height: 44px; text-align: center;
+        font-size: 26px; color: #e33; background: rgba(230, 225, 200, 0.85); border: 3px solid #c9a63a; border-radius: 50%; }
+      .minimap { position: fixed; top: 130px; right: 16px; width: 192px; height: 192px; image-rendering: pixelated;
+        border: 3px solid #c9b78a; background: #141418; display: none; }
       #burn { position: fixed; inset: 0; pointer-events: none; opacity: 0; transition: opacity 0.3s;
         background: linear-gradient(transparent 60%, rgba(255, 110, 20, 0.55)); }
       .death h1 { color: #e55; }
@@ -89,6 +93,7 @@
     <div id="crosshair"></div>
     <div id="hurt"></div>
     <div id="burn"></div>
+    <div id="compass" style="display: none">▲</div>
     <div id="ui"></div>
     <script type="module" src="/src/main.ts"></script>
   </body>

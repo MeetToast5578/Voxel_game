@@ -58,6 +58,7 @@ export function tooltip(s: ItemStack): string {
   if (t.food) lines.push(`Food: restores ${t.food} hunger`);
   if (t.tool) lines.push(`${TIERS[t.tool.tier] ?? ''} ${t.tool.kind}, ${t.tool.durability - (s.wear ?? 0)} of ${t.tool.durability} uses left`);
   if (t.mineWith && t.needsTier !== undefined) lines.push(`Needs a ${TIERS[t.needsTier]} ${t.mineWith} or better`);
+  if (t.armour) lines.push(`Armour: stops ${t.armour.protection * 4}% of harm, ${t.armour.warmth} °C warmer, ${t.armour.durability - (s.wear ?? 0)} hits left`);
   if (t.fuel) lines.push(`Fuel: burns ${t.fuel} s`);
   if (t.smeltsTo) lines.push(`Smelts into ${BLOCKS.type(BLOCKS.state(t.smeltsTo)).name}`);
   return lines.join('\n');
@@ -65,7 +66,8 @@ export function tooltip(s: ItemStack): string {
 
 function Slot(props: { stack: ItemStack | null; onClick?: (right: boolean) => void; selected?: boolean; big?: boolean; title?: string; dim?: boolean }) {
   const s = props.stack;
-  const tool = s ? BLOCKS.type(s.state).tool : undefined;
+  const t = s ? BLOCKS.type(s.state) : undefined;
+  const tool = t?.tool ?? (t?.armour && { durability: t.armour.durability });
   return (
     <div class={`slot${props.selected ? ' selected' : ''}${props.big ? ' big' : ''}${props.dim ? ' dim' : ''}`} title={props.title ?? (s ? tooltip(s) : '')} tabIndex={0}
       onMouseDown={(e) => { e.preventDefault(); props.onClick?.(e.button === 2); }} onContextMenu={(e) => e.preventDefault()}>
@@ -151,6 +153,9 @@ function InventoryScreen({ play }: { play: Play }) {
       ) : (
         <>
           <div class="row">
+            <div class="col armour" title="Armour: head, chest, legs, feet">
+              {play.armour.map((a, i) => <Slot stack={a} onClick={(right) => play.clickArmour(i, right)} />)}
+            </div>
             <Grid slots={play.craft} from={0} to={play.craftSize * play.craftSize} play={play} cols={play.craftSize} />
             <span class="arrow">→</span>
             <Slot big stack={play.craftOutput} onClick={() => play.takeCraft()} />

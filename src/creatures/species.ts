@@ -24,8 +24,9 @@ export interface Species {
   biomes: readonly string[];
   group: readonly [number, number];
   colours: { body: RGB; head: RGB; legs: RGB };
-  /** Raw meat dropped on death. */
+  /** Raw meat dropped on death, and leather (from hide). */
   meat: number;
+  leather?: number;
   /** Sound pitch, 0..1: low for big animals. */
   voice: number;
 }
@@ -35,7 +36,7 @@ const FORESTS = ['temperate_deciduous', 'birch', 'old_growth_dark_forest', 'taig
 const GRASSLAND = ['plains', 'meadow', 'steppe', 'savanna', 'shrubland', 'alpine_meadow'];
 
 export const SPECIES: readonly Species[] = [
-  { ...BASE, key: 'deer', name: 'Deer', halfWidthM: 0.35, heightM: 1.4, speedM_S: 2.2, health: 10, grazer: true, herds: true,
+  { ...BASE, key: 'deer', leather: 1, name: 'Deer', halfWidthM: 0.35, heightM: 1.4, speedM_S: 2.2, health: 10, grazer: true, herds: true,
     biomes: [...FORESTS, 'plains', 'meadow'], group: [2, 4], colours: { body: [150, 104, 62], head: [128, 88, 52], legs: [110, 78, 48] }, meat: 3, voice: 0.6 },
   { ...BASE, key: 'rabbit', name: 'Rabbit', halfWidthM: 0.15, heightM: 0.35, speedM_S: 2.6, health: 3, grazer: true,
     biomes: [...GRASSLAND, 'tundra', 'desert', 'birch'], group: [1, 3], colours: { body: [168, 140, 110], head: [176, 150, 120], legs: [200, 190, 175] }, voice: 0.9 },
@@ -50,7 +51,7 @@ export const SPECIES: readonly Species[] = [
     biomes: ['taiga', 'birch', 'meadow', 'tundra'], group: [1, 2], colours: { body: [206, 110, 44], head: [216, 124, 56], legs: [60, 40, 32] }, voice: 0.75 },
   { ...BASE, key: 'sheep', name: 'Sheep', halfWidthM: 0.4, heightM: 1.1, speedM_S: 1.4, health: 8, grazer: true, herds: true,
     biomes: ['plains', 'meadow', 'alpine_meadow', 'steppe'], group: [3, 5], colours: { body: [232, 230, 222], head: [70, 62, 56], legs: [70, 62, 56] }, meat: 2, voice: 0.7 },
-  { ...BASE, key: 'cow', name: 'Cow', halfWidthM: 0.45, heightM: 1.4, speedM_S: 1.3, health: 10, grazer: true, herds: true,
+  { ...BASE, key: 'cow', leather: 1, name: 'Cow', halfWidthM: 0.45, heightM: 1.4, speedM_S: 1.3, health: 10, grazer: true, herds: true,
     biomes: ['plains', 'meadow', 'savanna'], group: [2, 4], colours: { body: [74, 56, 44], head: [230, 226, 220], legs: [60, 46, 38] }, meat: 3, voice: 0.25 },
   { ...BASE, key: 'goat', name: 'Mountain goat', halfWidthM: 0.3, heightM: 1, speedM_S: 2, health: 8, grazer: true, herds: true,
     biomes: ['alpine_meadow', 'snowcapped_peaks', 'scree'], group: [2, 3], colours: { body: [220, 216, 204], head: [200, 196, 186], legs: [120, 116, 108] }, meat: 2, voice: 0.8 },

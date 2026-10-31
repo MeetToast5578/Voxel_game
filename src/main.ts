@@ -26,6 +26,7 @@ import { feltTemperature } from './game/bodyTemperature';
 import { drawTitle, drawUi, type UiModel, type WorldsModel } from './ui/app';
 import { worldActions } from './ui/worldActions';
 import { PadMenu } from './ui/padMenu';
+import { bearing, Minimap } from './ui/minimap';
 import { installTouchControls, wantsTouch } from './ui/touch';
 import { Saver } from './storage/saver';
 import { keyLabel, loadSettings, saveSettings } from './storage/settings';
@@ -171,7 +172,7 @@ if (urlDifficulty && urlDifficulty in DIFFICULTY) play.difficulty = urlDifficult
 const creatures = new Creatures(world, mulberry32(seed ^ 0xc0ffee), {
   bite: (damage, by) => {
     if (play.mode === 'survival' && !play.survival.dead) {
-      play.survival.hurt(damage * DIFFICULTY[play.difficulty].damage, `killed by a ${by.toLowerCase()}`);
+      play.survival.hurt(play.protect(damage * DIFFICULTY[play.difficulty].damage), `killed by a ${by.toLowerCase()}`);
       sounds.play('break', 0.6);
       play.version++;
     }
@@ -230,7 +231,7 @@ function updateExposure(dt: number): void {
   const night = env.clock.dayTime > 1 - NIGHT_BEFORE || env.clock.dayTime < NIGHT_BEFORE;
   feltC = feltTemperature({
     airC, night: night && !underground, sheltered: sheltered || underground, wet: wetS > 0, windM_S: env.sample?.windSpeed ?? 3,
-    heatC: heatAround(x, y, z), insulationC: 0,
+    heatC: heatAround(x, y, z), insulationC: play.warmth,
   });
 }
 function update(dt: number): void {
@@ -502,6 +503,21 @@ function updateHorizon(x: number, z: number): void {
 
 const hurtFlash = document.querySelector<HTMLDivElement>('#hurt')!, burnGlow = document.querySelector<HTMLDivElement>('#burn')!;
 let lastHealth = play.survival.health, kick = 0;
+const compass = document.querySelector<HTMLDivElement>('#compass')!, minimap = new Minimap();
+document.body.append(minimap.canvas);
+let mapClock = 0;
+/** Held compass: a needle to the bed (or where the world began). Held map: the land around, redrawn a few times a second. */
+function updateHeldTools(now: number): void {
+  const key = play.held ? BLOCKS.type(play.held.state).key : '';
+  const target = play.spawn ?? worldSpawn;
+  compass.style.display = key === 'compass' && target ? '' : 'none';
+  if (key === 'compass' && target) compass.style.transform = `rotate(${bearing(player.body.x, player.body.z, player.yaw, target[0], target[2])}rad)`;
+  minimap.canvas.style.display = key === 'map' ? '' : 'none';
+  if (key === 'map' && now - mapClock > 300) {
+    mapClock = now;
+    minimap.draw(world, player.body.x, player.body.z, player.yaw);
+  }
+}
 let frames = 0, fps = 0, fpsTime = performance.now(), lastVersion = -1, lastUiDraw = 0;
 /** Main-thread time of this frame's fixed steps, and when the previous frame started (for the F3 graph). */
 let updateMs = 0, lastFrame = performance.now();
@@ -534,6 +550,7 @@ const loop = new FixedStepLoop(1 / 60, 0.25, timedUpdate, (_alpha, frameDt) => {
   } else if (lost < 0) lastHealth = health;
   kick *= Math.max(0, 1 - frameDt * 8);
   burnGlow.style.opacity = play.survival.burning > 0 ? '1' : '0';
+  updateHeldTools(now);
   renderer.camera.rotation.set(player.pitch + kick, player.yaw, 0, 'YXZ');
   highlight.set(play.target, play.breaking);
   const daylight = renderer.uniforms.daylight!.value as number;

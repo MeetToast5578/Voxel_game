@@ -1,5 +1,5 @@
 import { AXE_DAMAGE, BUILD_CELLS_PER_TICK, CAMPFIRE_COOK_S, CAMPFIRE_SLOTS, DIFFICULTY, PLAYER_ATTACK_COOLDOWN_S, SWORD_DAMAGE, type Difficulty, BUILD_MAX_M, DROP_PICKUP_DELAY_S, DROP_THROW_M_S, HAND_DAMAGE, REACH_M, REPEAT_S, TOOL_DAMAGE, UNDO_STEPS, cells, toCells } from '../config';
-import { meatOf, type Creatures } from '../creatures/creatures';
+import { lootOf, type Creatures } from '../creatures/creatures';
 import { AIR, BLOCKS, SOLID } from '../engine/blocks';
 import type { World } from '../engine/world';
 import { COLLISION } from './collision';
@@ -8,7 +8,7 @@ import { Drops } from './drops';
 import { Hints } from './hints';
 import { newFurnace, tickFurnace, type FurnaceState } from './furnace';
 import type { Input } from './input';
-import { Inventory, type ItemStack } from './inventory';
+import { clickSlot, Inventory, type ItemStack } from './inventory';
 import { breakSeconds, dropsOf, wearTool } from './mining';
 import { overlapsSolid } from './physics';
 import type { Player } from './player';
@@ -72,6 +72,8 @@ export class Play {
   private readonly redoStack: [number, number, number, number, number][][] = [];
   private group: [number, number, number, number, number][] | null = null;
   private readonly setBlock: (x: number, y: number, z: number, s: number) => void;
+  /** Worn armour: head, chest, legs, feet. */
+  readonly armour: (ItemStack | null)[] = [null, null, null, null];
   /** Seconds since the player last hit a creature. */
   private sinceAttack = PLAYER_ATTACK_COOLDOWN_S;
   /** Food cooking on campfires by cell key: the raw item's state and seconds left for each. */
@@ -194,8 +196,9 @@ export class Play {
   /** Scatters the whole inventory where the player died. */
   dropAll(): void {
     const [x, y, z] = this.feet;
-    for (const s of this.inventory.slots) if (s) this.drops.spawn(s, x, y + 0.5, z, (Math.random() - 0.5) * 6, 4, (Math.random() - 0.5) * 6, DROP_PICKUP_DELAY_S);
+    for (const s of [...this.inventory.slots, ...this.armour]) if (s) this.drops.spawn(s, x, y + 0.5, z, (Math.random() - 0.5) * 6, 4, (Math.random() - 0.5) * 6, DROP_PICKUP_DELAY_S);
     this.inventory.clear();
+    this.armour.fill(null);
     this.version++;
   }
 
@@ -248,13 +251,50 @@ export class Play {
     const damage = strength * weaponDamage(held);
     const c = hit.creature;
     if (this.creatures!.damage(c, damage, ox, oz) && this.mode === 'survival') {
-      const meat = meatOf(c);
-      if (meat) this.drop(meat, c.body.x, c.body.y, c.body.z);
+      for (const loot of lootOf(c)) this.drop(loot, c.body.x, c.body.y, c.body.z);
     }
     if (held && tool && this.mode === 'survival' && !wearTool(held)) this.inventory.slots[this.inventory.selected] = null;
     this.events.sound('break');
     this.version++;
     return true;
+  }
+
+  /** Damage left after worn armour (each protection point stops 4%, at most 80%); every hit wears each piece. */
+  protect(damage: number): number {
+    let points = 0;
+    this.armour.forEach((a, i) => {
+      if (!a) return;
+      const def = BLOCKS.type(a.state).armour!;
+      points += def.protection;
+      a.wear = (a.wear ?? 0) + 1;
+      if (a.wear >= def.durability) this.armour[i] = null;
+    });
+    this.version++;
+    return damage * (1 - Math.min(0.8, points * 0.04));
+  }
+
+  /** °C of cold the worn armour keeps off. */
+  get warmth(): number {
+    return this.armour.reduce((sum, a) => sum + (a ? BLOCKS.type(a.state).armour!.warmth : 0), 0);
+  }
+
+  /** Puts the held armour on, swapping with what was worn there. */
+  private wear(held: ItemStack): void {
+    const slot = BLOCKS.type(held.state).armour!.slot;
+    this.inventory.slots[this.inventory.selected] = this.armour[slot] ?? null;
+    this.armour[slot] = held;
+    this.events.sound('place');
+    this.version++;
+  }
+
+  /** A click on armour slot `slot` in the inventory screen: only that slot's armour goes in. */
+  clickArmour(slot: number, right: boolean): void {
+    const c = this.cursor;
+    if (c && BLOCKS.type(c.state).armour?.slot !== slot) return;
+    const box = [this.armour[slot] ?? null];
+    this.cursor = clickSlot(box, 0, c, right);
+    this.armour[slot] = box[0]!;
+    this.version++;
   }
 
   /** Puts the held raw food on the campfire at `key`, if it has room. */
@@ -411,6 +451,10 @@ export class Play {
     const held = this.held;
     if (!held) return;
     const heldType = BLOCKS.type(held.state);
+    if (heldType.armour) {
+      this.wear(held);
+      return;
+    }
     // Food is eaten when hungry, unless it is a crop being planted on grass or dirt.
     if (heldType.food && this.mode === 'survival') {
       const ground = t ? this.world.get(t.x, t.y, t.z) : AIR;
@@ -598,6 +642,7 @@ export class Play {
       mode: this.mode, difficulty: this.difficulty, hints: this.hints.save(), inventory: this.inventory.save(), selected: this.inventory.selected, drops: this.drops.save(),
       health: this.survival.health, hunger: this.survival.hunger, air: this.survival.air, bodyC: this.survival.temperature.coreC, spawn: this.spawn,
       furnaces: [...this.furnaces].map(([k, f]) => [k, s(f.input), s(f.fuel), s(f.output), f.burn, f.progress]),
+      armour: this.armour.map((a) => (a ? [BLOCKS.stateName(a.state), 1, a.wear ?? 0] : null)),
       campfires: [...this.campfires].map(([k, c]) => [k, c.map(([st, left]) => [BLOCKS.stateName(st), left])]),
       chests: [...this.chests].map(([k, slots]) => [k, slots.map((st) => (st ? [BLOCKS.stateName(st.state), st.count, st.wear ?? 0] : null))]),
     };
@@ -629,6 +674,11 @@ export class Play {
         if (!Array.isArray(f) || typeof f[0] !== 'string' || !/^-?\d+,-?\d+,-?\d+$/.test(f[0])) continue;
         this.furnaces.set(f[0], { input: stack(f[1]), fuel: stack(f[2]), output: stack(f[3]), burn: num(f[4], 0), progress: num(f[5], 0) });
       }
+    }
+    if (Array.isArray(p.armour)) {
+      const worn = new Inventory();
+      worn.load(p.armour);
+      worn.slots.slice(0, 4).forEach((a, i) => (this.armour[i] = a && BLOCKS.type(a.state).armour?.slot === i ? a : null));
     }
     if (Array.isArray(p.campfires)) {
       for (const c of p.campfires) {

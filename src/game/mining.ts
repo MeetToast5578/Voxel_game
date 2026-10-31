@@ -2,8 +2,8 @@ import { SAPLING_CHANCE, SEED_CHANCE } from '../config';
 import { BLOCKS } from '../engine/blocks';
 import type { ItemStack } from './inventory';
 
-/** Speed of each tool tier on blocks it suits (wood, stone, iron). */
-const TIER_SPEED = [2, 4, 6];
+/** Speed of each tool tier on blocks it suits (wood, stone, iron, diamond). */
+const TIER_SPEED = [2, 4, 6, 8];
 /** Without the tool tier a block needs, breaking takes this many times longer and gives nothing. */
 const WRONG_TOOL_SLOWDOWN = 3.3;
 
