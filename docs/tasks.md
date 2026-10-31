@@ -1,7 +1,7 @@
 # Tasks: Voxel Game
 
 Written 2026-10-31 against `main` at 463450a. This replaces the task list for the deleted 0.3 m game; that list is in
-git history, and its `T-…` IDs still appear in `ROADMAP.md`, `OPEN-TASKS.md` and older `HANDOFF.md` entries.
+git history, and its `T-…` IDs still appear in `docs/history/` and older `HANDOFF.md` entries.
 
 **Direction (owner, 2026-10-31):** turn the sandbox into a survival game with goals. The player needs progression past
 iron, real danger, places worth finding and an end point. Onboarding, sound and polish come with it.
@@ -242,17 +242,17 @@ All of it stays procedural: no asset files.
   **Done when:** an owner playtest meets the targets.
 - [ ] **10.2 Default view distance and quality presets,** from the numbers in 0.2.
   **Done when:** the default holds 60 fps on the owner's machine.
-- [ ] **10.3 Save safety.**
+- [~] **10.3 Save safety.** The autosave note is done; save migration waits for the first change to the save format.
   - A save version with a migration step, and a backup made before migrating.
   - An autosave indicator.
   **Done when:** a test migrates a saved world from the version before.
-- [ ] **10.4 Hosting.**
+- [x] **10.4 Hosting.** A deploy workflow (`.github/workflows/deploy.yml`) publishes `main` to GitHub Pages; Pages must be turned on once (Settings → Pages → Source: GitHub Actions).
   **Decide** where. GitHub Pages is the default.
   - CI deploys the production build from `main`.
   **Done when:** a public URL plays offline after the first visit.
-- [ ] **10.5 Version and changelog,** shown on the title screen.
+- [x] **10.5 Version and changelog,** shown on the title screen.
   **Done when:** CI fails if the version did not change with the changelog.
-- [ ] **10.6 Docs.** Rewrite the README for players. Move `ROADMAP.md`, `OPEN-TASKS.md`, `REFERENCE-GAPS.md` and specs
+- [x] **10.6 Docs.** Rewrite the README for players. Move `ROADMAP.md`, `OPEN-TASKS.md`, `REFERENCE-GAPS.md` and specs
   1–53 into `docs/history/`.
   **Done when:** no current doc points at deleted code.
 

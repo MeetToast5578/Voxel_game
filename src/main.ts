@@ -238,11 +238,14 @@ let worldSpawn: [number, number, number] | null = null;
 const env = new Environment(seed, Number(params.get('time') ?? saver.worldMeta.dayTime),
   Number(params.get('year') ?? saver.worldMeta.yearTime ?? 0), () => sounds.play('thunder'));
 
+/** Saves the world; a small "Saving" note shows while it writes. */
+const savingNote = document.querySelector<HTMLDivElement>('#saving')!;
 function save(): Promise<void> {
   const b = player.body;
+  savingNote.style.opacity = '1';
   return saver.save(world, {
     dayTime: env.clock.dayTime, yearTime: env.clock.yearTime, play: play.save(), creatures: creatures.save(), ticks: simulation.ticks.save(), simTick: simulation.ticks.now, growth: simulation.saveGrowth(), player: { x: b.x, y: b.y, z: b.z, yaw: player.yaw, pitch: player.pitch, flying: player.flying },
-  }).catch((err) => console.error('Saving failed:', err));
+  }).catch((err) => console.error('Saving failed:', err)).finally(() => (savingNote.style.opacity = '0'));
 }
 setInterval(() => void save(), AUTOSAVE_S * 1000);
 addEventListener('pagehide', () => void save());
@@ -689,7 +692,8 @@ const loop = new FixedStepLoop(1 / 60, 0.25, timedUpdate, (_alpha, frameDt) => {
     ...play.particles.list.map((p) => ({ state: p.state, x: p.x, y: p.y, z: p.z, size: 0.15 })),
   ].map((f) => ({ stack: { state: f.state, count: 1 }, age: 0, wait: 0,
     body: { x: f.x, y: f.y, z: f.z, vx: 0, vy: 0, vz: 0, halfWidth: f.size / 2, height: f.size, onGround: false } }));
-  const drawn = flying.length ? [...play.drops.list, ...flying].slice(-DROP_CAP) : play.drops.list;
+  // Real drops first: when over the cap, arrows and bits are what is left out.
+  const drawn = flying.length ? [...play.drops.list, ...flying].slice(0, DROP_CAP) : play.drops.list;
   dropMeshes.update(drawn, now / 1000, (d) => lightAt(d.body.x, d.body.y + d.body.height / 2, d.body.z));
   cull();
   const cam = renderer.camera.position;

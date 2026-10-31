@@ -5,6 +5,7 @@ import { BLOCKS } from '../engine/blocks';
 import { clickSlot, type ItemStack } from '../game/inventory';
 import { fits, RECIPES, type Recipe } from '../game/crafting';
 import { MILESTONES } from '../game/journal';
+import { version } from '../../package.json';
 import type { Mode, Play } from '../game/play';
 import { BINDINGS, DEFAULT_KEYS, keyLabel, type Binding, type Settings } from '../storage/settings';
 import type { Difficulty } from '../config';
@@ -360,6 +361,7 @@ function Title({ m }: { m: WorldsModel }) {
   return (
     <div class="menu title">
       <h1>Voxel Game</h1>
+      <p class="version">Version {version}</p>
       {last && <button class="primary continue" onClick={() => m.openWorld(last.name)}>Continue: {last.name}</button>}
       <h2>New world</h2>
       <NewWorldForm m={m} />

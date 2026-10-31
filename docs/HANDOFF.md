@@ -23,9 +23,21 @@
   - per-box collision for stairs and doors;
   - path-finding for all creatures;
   - stony shores and sandbars.
-- **Docs:** ROADMAP, OPEN-TASKS, REFERENCE-GAPS and specs 1–53 describe the removed 0.3 m game; they are a feature
-  reference only. `docs/tasks.md` is the new task list for the rewrite (2026-10-31): a survival game with goals, in
+- **Docs:** ROADMAP, OPEN-TASKS, REFERENCE-GAPS, the plans and specs 1–53 describe the removed 0.3 m game; they are
+  a feature reference only and now live in `docs/history/`. Older entries below name them by their old paths. `docs/tasks.md` is the new task list for the rewrite (2026-10-31): a survival game with goals, in
   milestones 0–10, with the owner decisions it needs listed at the end.
+
+## 2026-10-31 — survival game with a goal, milestones 1–10 (Claude)
+
+The owner asked to build the game from `docs/tasks.md` autonomously. Version 0.2.0 (`CHANGELOG.md`), PR #61.
+- **Done:** milestones 1–9 except 9.5 (per-box collision for stairs and doors); 10.4–10.6. Each task's state and
+  shortcut is in `docs/tasks.md`. Owner defaults used: the ore uses, ember ore as the deep material, the three new
+  monsters, the beacon end goal, wool or wheat in beds, GitHub Pages hosting.
+- **Open for the owner:** milestone 0 (playtest, frame rate on real hardware), 10.1 balance, 10.2 default view
+  distance, turning on GitHub Pages (Settings → Pages → Source: GitHub Actions).
+- **Known limits:** ladders stay when their wall is broken; generated rivers do not push; the map remembers nothing;
+  catch-up covers crops only; old placed chests that were never opened roll loot once; save migration has no hook yet.
+- **Checks:** 175 tests, benchmark budgets and smoke pass locally and in CI. Audio is not tested headless.
 
 ## 2026-10-31 — switch-over: the rewrite is the game (Claude)
 

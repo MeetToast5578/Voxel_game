@@ -303,7 +303,7 @@ export class Play {
       input.consume('place');
       if (input.placing) this.drawS += dt;
       else if (this.drawS > 0) this.shootArrow(player);
-    }
+    } else this.drawS = 0;
     const placeNow = input.consume('place') || (input.placing && this.repeat <= 0);
     if (placeNow) {
       this.repeat = REPEAT_S;

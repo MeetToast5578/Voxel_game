@@ -207,6 +207,8 @@ export class Generator {
   private standable(x: number, z: number): number | null {
     const [c, i] = this.cellBase(x, z), top = c.top[i]!;
     if (top + 1 < c.water[i]! || c.open[i] || c.shore[i] || this.featureAt(x, z)) return null;
+    // Not in or against a building on the surface.
+    if (sitesNear(this.seed, x, z, x, z).some((s) => !isUnderground(s.kind) && this.structureBase(s.kind, s.x, s.z) !== null)) return null;
     for (const [dx, dz] of N4) {
       const [d, j] = this.cellBase(x + dx, z + dz);
       if (Math.abs(d.top[j]! - top) > 1 || d.top[j]! + 1 < d.water[j]! || d.open[j]) return null;
