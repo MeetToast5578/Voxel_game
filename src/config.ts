@@ -352,6 +352,20 @@ export const HAND_DAMAGE = 1;
 export const AXE_DAMAGE = 3;
 export const TOOL_DAMAGE = 2;
 export const SWORD_DAMAGE = 4;
+/** Arrows: speed at full draw (m/s), seconds to full draw, damage at full draw; projectiles vanish after PROJECTILE_LIFE_S. */
+export const ARROW_SPEED_M_S = 30;
+export const BOW_DRAW_S = 0.8;
+export const ARROW_DAMAGE = 6;
+export const PROJECTILE_LIFE_S = 8;
+/** Skulkers keep between these distances from the player and shoot bolts this often, this fast. */
+export const ARCHER_NEAR_M = 7;
+export const ARCHER_FAR_M = 15;
+export const ARCHER_SHOT_S = 2.5;
+export const BOLT_SPEED_M_S = 30;
+/** Hostiles get tougher with depth: this much more health per 100 m below sea level. */
+export const DEPTH_TOUGHNESS_PER_100M = 0.5;
+/** Hostiles never spawn where block light is at least this (torch-lit rooms are safe). */
+export const SAFE_LIGHT = 8;
 /** A hit at full strength needs this long since the last one; quicker hits do a share of the damage. */
 export const PLAYER_ATTACK_COOLDOWN_S = 0.6;
 /** Campfires: seconds to cook one item, and how many fit on one. */

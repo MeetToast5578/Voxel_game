@@ -34,10 +34,10 @@ A production build (`npm run build`, then `npm run preview`) can be installed fr
 |-------|--------|
 | Mouse, W A S D | Look, move |
 | Space | Jump; swim up; fly up |
-| Shift | Fly down |
+| Shift | Fly down; crouch (stops you walking off edges); climb down a ladder |
 | Ctrl | Sprint; fly faster |
 | Left click | Break (takes time in survival) or hit a creature |
-| Right click | Place, use (doors, beds, chests, furnaces, crafting tables), eat |
+| Right click | Place, use (doors, beds, chests, furnaces, crafting tables, campfires), eat, wear armour, fill or empty a bucket, bone meal on crops; hold with a bow to draw, let go to shoot |
 | Middle click | Creative: pick the block you look at |
 | 1–9, mouse wheel | Choose a hotbar slot |
 | E | Inventory and crafting |

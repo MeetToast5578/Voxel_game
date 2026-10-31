@@ -185,3 +185,18 @@ describe('weather', () => {
     expect(frozen).toBe(49);
   });
 });
+
+describe('bone meal', () => {
+  it('grows a crop one stage, stops at ripe, and turns a sapling into a tree', () => {
+    const { world, sim } = setup((_x, y) => (y < 0 ? S('grass') : 0));
+    world.set(1, 0, 1, S('wheat'));
+    expect(sim.fertilise(1, 0, 1)).toBe(true);
+    expect(world.get(1, 0, 1)).toBe(S('wheat', 1));
+    world.set(1, 0, 1, S('wheat', 3));
+    expect(sim.fertilise(1, 0, 1)).toBe(false);
+    world.set(5, 0, 5, S('sapling'));
+    expect(sim.fertilise(5, 0, 5)).toBe(true);
+    expect(BLOCKS.type(world.get(5, 0, 5)).key).toBe('log');
+    expect(sim.fertilise(2, 0, 2)).toBe(false);
+  });
+});

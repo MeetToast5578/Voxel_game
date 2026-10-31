@@ -27,6 +27,12 @@ export interface Species {
   /** Raw meat dropped on death, and leather (from hide). */
   meat: number;
   leather?: number;
+  /** Other items left on death: [item key, count]. */
+  loot?: readonly (readonly [string, number])[];
+  /** Keeps its distance and shoots bolts instead of biting. */
+  ranged?: boolean;
+  /** Climbs straight up walls. */
+  climbs?: boolean;
   /** Sound pitch, 0..1: low for big animals. */
   voice: number;
 }
@@ -61,6 +67,17 @@ export const SPECIES: readonly Species[] = [
     biomes: ['water'], group: [2, 5], colours: { body: [96, 140, 170], head: [110, 156, 186], legs: [80, 120, 150] }, voice: 1 },
   { ...BASE, key: 'zombie', name: 'Zombie', halfWidthM: 0.28, heightM: 1.8, speedM_S: 1.4, health: 20, hostile: true, nocturnal: true,
     attack: 3, biomes: ['dark'], group: [1, 2], colours: { body: [60, 110, 140], head: [96, 150, 90], legs: [70, 60, 120] }, meat: 0, voice: 0.35 },
+  // Hostiles spawn: 'dark' in darkness anywhere, 'cave' in dark caves, 'deep' in caves below -60 m, or in the dark in the
+  // biomes listed.
+  { ...BASE, key: 'skulker', name: 'Skulker', halfWidthM: 0.25, heightM: 1.7, speedM_S: 1.6, health: 14, hostile: true, nocturnal: true,
+    ranged: true, attack: 3, biomes: ['dark'], group: [1, 1], colours: { body: [70, 64, 82], head: [200, 196, 176], legs: [50, 46, 60] },
+    meat: 0, loot: [['feather', 2]], voice: 0.55 },
+  { ...BASE, key: 'crawler', name: 'Cave crawler', halfWidthM: 0.45, heightM: 0.6, speedM_S: 2.4, health: 10, hostile: true, nocturnal: true,
+    climbs: true, attack: 2, biomes: ['cave'], group: [1, 3], colours: { body: [44, 40, 38], head: [120, 30, 30], legs: [36, 32, 30] },
+    meat: 0, loot: [['string', 2]], voice: 0.85 },
+  { ...BASE, key: 'brute', name: 'Frost brute', halfWidthM: 0.5, heightM: 2.2, speedM_S: 1.1, health: 40, hostile: true, nocturnal: true,
+    attack: 7, biomes: ['deep', 'tundra', 'snowy_taiga', 'glacier', 'snowcapped_peaks'], group: [1, 1],
+    colours: { body: [170, 196, 214], head: [210, 226, 236], legs: [120, 140, 160] }, meat: 0, loot: [['bone', 3]], voice: 0.1 },
 ];
 
 export const SPECIES_BY_KEY = new Map(SPECIES.map((s) => [s.key, s]));

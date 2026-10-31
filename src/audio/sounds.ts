@@ -35,6 +35,27 @@ export class Sounds {
     this.ctx.resume().catch(() => undefined);
   }
 
+  /**
+   * A creature's voice: a short tone, low for big animals (`voice` near 0) and high for small ones; hurt is sharper and
+   * death falls away. `volume` is 0..1 (distance).
+   */
+  call(voice: number, kind: 'call' | 'hurt' | 'death', volume: number): void {
+    const ctx = this.ctx;
+    if (!ctx || ctx.state !== 'running' || this.volume <= 0) return;
+    const t = ctx.currentTime, f = (90 + voice * 700) * (kind === 'hurt' ? 1.4 : 1) * (0.9 + Math.random() * 0.2);
+    const duration = kind === 'death' ? 0.6 : kind === 'hurt' ? 0.15 : 0.3;
+    const osc = ctx.createOscillator(), gain = ctx.createGain();
+    osc.type = voice < 0.4 ? 'sawtooth' : 'triangle';
+    osc.frequency.setValueAtTime(f, t);
+    osc.frequency.exponentialRampToValueAtTime(kind === 'death' ? f * 0.4 : f * 0.8, t + duration);
+    gain.gain.setValueAtTime(0.0001, t);
+    gain.gain.exponentialRampToValueAtTime(Math.max(0.0002, 0.25 * volume * this.volume), t + 0.03);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t + duration);
+    osc.connect(gain).connect(ctx.destination);
+    osc.start(t);
+    osc.stop(t + duration);
+  }
+
   play(name: SoundName, volume = 1): void {
     const ctx = this.ctx;
     if (!ctx || !this.noise || ctx.state !== 'running' || this.volume <= 0) return;

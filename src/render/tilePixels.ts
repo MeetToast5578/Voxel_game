@@ -291,6 +291,14 @@ const PAINTERS: Record<string, PixelFn> = {
   lapis_ore: orePainter([50, 90, 180]),
   ember_ore: (_x, _y, r) => (r() < 0.16 ? shade([255, 110 + r() * 70, 30], 1) : shade([62, 60, 66], 1 + (r() - 0.5) * 0.25)),
   gold_ingot: ingotPainter([235, 200, 60]),
+  feather: (x, y, r) => (Math.abs(x + y - 15) <= 2 - Math.abs(x - 8) / 6 && x >= 3 && x <= 13 ? shade(x + y === 15 ? [170, 170, 170] : [238, 238, 232], 0.9 + r() * 0.1) : [0, 0, 0, 0]),
+  string: (x, y, r) => (Math.abs(x - 7.5 - Math.sin(y * 0.8) * 2.5) < 0.8 && y >= 1 && y <= 14 ? shade([225, 225, 225], 0.85 + r() * 0.2) : [0, 0, 0, 0]),
+  bone: (x, y, r) => ((x + y === 15 && x >= 3 && x <= 12) || Math.hypot(x - 2.5, y - 12.5) < 1.6 || Math.hypot(x - 12.5, y - 2.5) < 1.6 ? shade([232, 226, 206], 0.9 + r() * 0.15) : [0, 0, 0, 0]),
+  bone_meal: (x, y, r) => (Math.hypot(x - 7.5, (y - 9) * 1.3) <= 5 && r() < 0.8 ? shade([240, 238, 228], 0.85 + r() * 0.2) : [0, 0, 0, 0]),
+  arrow: (x, y, r) => (x + y === 15 && x >= 2 && x <= 11 ? shade(HANDLE, 0.9 + r() * 0.2)
+    : x >= 11 && y <= 4 && x + y >= 14 && x + y <= 16 ? shade([150, 150, 150], 1) : x <= 4 && y >= 11 && Math.abs(x - y + 9) <= 2 ? shade([240, 240, 236], 1) : [0, 0, 0, 0]),
+  bow: (x, y, r) => (Math.abs(Math.hypot(x - 2, y - 13) - 10.5) < 1 && x >= 2 && y <= 13 ? shade(HANDLE, 0.9 + r() * 0.2)
+    : x + y === 15 && x >= 2 && x <= 13 ? shade([230, 230, 230], 1) : [0, 0, 0, 0]),
   diamond: gemPainter([120, 220, 235]),
   ember_crystal: gemPainter([255, 120, 40]),
   lapis: (x, y, r) => (Math.hypot(x - 7.5, y - 8) <= 4.5 ? shade([45, 80, 190], 0.8 + r() * 0.4) : [0, 0, 0, 0]),

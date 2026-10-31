@@ -119,7 +119,7 @@ const highlight = new Highlight(renderer.scene);
 renderer.setViewDistance(viewChunks * CHUNK_SIZE);
 
 const WATER = BLOCKS.typeIndex[BLOCKS.state('water')]!, FLOWING = BLOCKS.typeIndex[BLOCKS.state('flowing_water')]!;
-const LADDER = BLOCKS.typeIndex[BLOCKS.state('ladder')]!, CAMPFIRE = BLOCKS.state('campfire');
+const LADDER = BLOCKS.typeIndex[BLOCKS.state('ladder')]!, CAMPFIRE = BLOCKS.state('campfire'), ARROW = BLOCKS.state('arrow');
 const climbAt = (x: number, y: number, z: number) => BLOCKS.typeIndex[world.get(x, y, z)] === LADDER;
 const boxAt = (x: number, y: number, z: number) => COLLISION[world.get(x, y, z)]!;
 const waterAt = (x: number, y: number, z: number) => {
@@ -166,6 +166,7 @@ const play = new Play(world, (x, y, z, s) => setBlock(x, y, z, s, true), {
     if (night) env.clock.advance(((1.25 - env.clock.dayTime) % 1) * DAY_LENGTH_S);
     return night;
   },
+  fertilise: (x, y, z) => simulation.fertilise(x, y, z),
 }, (params.get('mode') as Mode | null) ?? 'survival');
 const urlDifficulty = params.get('difficulty');
 if (urlDifficulty && urlDifficulty in DIFFICULTY) play.difficulty = urlDifficulty as Difficulty;
@@ -178,6 +179,12 @@ const creatures = new Creatures(world, mulberry32(seed ^ 0xc0ffee), {
     }
   },
   sound: (name, volume) => sounds.play(name, volume),
+  shoot: (c, x, y, z) => play.shootAtPlayer(x, y, z, player, c.species.attack),
+  // Calls carry 32 m; pitch follows the species' voice.
+  call: (c, kind) => {
+    const near = 1 - Math.hypot(c.body.x - player.body.x, c.body.y - player.body.y, c.body.z - player.body.z) * BLOCK_SIZE_M / 32;
+    if (near > 0) sounds.call(c.species.voice, kind, near);
+  },
 });
 creatures.load(saver.worldMeta.creatures);
 play.creatures = creatures;
@@ -254,6 +261,7 @@ function update(dt: number): void {
   if (active) play.update(dt, input, player);
   play.tickFurnaces(dt);
   play.tickCampfires(dt);
+  play.tickProjectiles(dt, boxAt, player);
   creatures.update(dt, {
     player: player.body, survival: play.mode === 'survival', day: env.atmosphere.sun[1] > -0.05, hostiles: DIFFICULTY[play.difficulty].hostiles, boxAt, waterAt,
   });
@@ -563,7 +571,10 @@ const loop = new FixedStepLoop(1 / 60, 0.25, timedUpdate, (_alpha, frameDt) => {
     return 0.07 + 0.93 * Math.max(sky * sky * daylight, block * block);
   };
   creatureMeshes.update(creatures.list, (c) => lightAt(c.body.x, c.body.y + c.body.height * 0.6, c.body.z));
-  dropMeshes.update(play.drops.list, now / 1000, (d) => lightAt(d.body.x, d.body.y + d.body.height / 2, d.body.z));
+  // Arrows in flight are drawn like dropped arrows.
+  const flying = play.projectiles.list.map((p) => ({ stack: { state: ARROW, count: 1 }, age: 0, wait: 0,
+    body: { x: p.x, y: p.y, z: p.z, vx: 0, vy: 0, vz: 0, halfWidth: 0.2, height: 0.4, onGround: false } }));
+  dropMeshes.update(flying.length ? [...play.drops.list, ...flying] : play.drops.list, now / 1000, (d) => lightAt(d.body.x, d.body.y + d.body.height / 2, d.body.z));
   cull();
   const cam = renderer.camera.position;
   renderer.setAtmosphere(env.frame(frameDt, cam.x, cam.y, cam.z, world));

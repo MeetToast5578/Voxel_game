@@ -1,5 +1,5 @@
 import {
-  ATTACK_COOLDOWN_S, ATTACK_REACH_M, BURN_PER_S, BURN_S, CREATURE_CAP, CREATURE_FALL_M, DESPAWN_M, FLEE_M, GRAVITY_M_S2, HOSTILE_CAP, HUNT_M,
+  ARCHER_FAR_M, ARCHER_NEAR_M, ARCHER_SHOT_S, ATTACK_COOLDOWN_S, ATTACK_REACH_M, BLOCK_SIZE_M, BURN_PER_S, BURN_S, DEPTH_TOUGHNESS_PER_100M, SAFE_LIGHT, CREATURE_CAP, CREATURE_FALL_M, DESPAWN_M, FLEE_M, GRAVITY_M_S2, HOSTILE_CAP, HUNT_M,
   KNOCKBACK_M_S, RUN_FACTOR, SPAWN_INTERVAL_S, SPAWN_MAX_M, SPAWN_MIN_M, STEP_HEIGHT_M, cells, toCells,
 } from '../config';
 import { columnIndex, localIndex, toChunk, toLocal } from '../core/coords';
@@ -65,7 +65,14 @@ export class Creatures {
   private spawnIn = 0;
 
   constructor(private readonly world: World, private readonly rand: () => number,
-    private readonly events: { bite(damage: number, by: string): void; sound(name: 'break' | 'place' | 'step', volume: number): void }) {}
+    private readonly events: {
+      bite(damage: number, by: string): void;
+      sound(name: 'break' | 'place' | 'step', volume: number): void;
+      /** A creature calls, is hurt or dies (for its sound). */
+      call?(c: Creature, kind: 'call' | 'hurt' | 'death'): void;
+      /** A ranged creature shoots at the player from (x, y, z). */
+      shoot?(c: Creature, x: number, y: number, z: number): void;
+    }) {}
 
   update(dt: number, ctx: CreatureContext): void {
     this.spawnIn -= dt;
@@ -91,7 +98,11 @@ export class Creatures {
         this.decide(c, ctx);
       }
       this.move(c, dt, ctx);
-      if (this.burn(c, dt, ctx)) this.list.splice(this.list.indexOf(c), 1);
+      if (c.mode !== 'sleep' && this.rand() < dt / 20) this.events.call?.(c, 'call');
+      if (this.burn(c, dt, ctx)) {
+        this.events.call?.(c, 'death');
+        this.list.splice(this.list.indexOf(c), 1);
+      }
     }
   }
 
@@ -103,7 +114,9 @@ export class Creatures {
   private light(c: Creature): number {
     const x = Math.floor(c.body.x), y = Math.floor(c.body.y + 0.5), z = Math.floor(c.body.z);
     const chunk = this.world.chunkAt(x, y, z);
-    return chunk ? chunk.skyLight(localIndex(toLocal(x), toLocal(y), toLocal(z))) : 15;
+    if (!chunk) return 15;
+    const i = localIndex(toLocal(x), toLocal(y), toLocal(z));
+    return Math.max(chunk.skyLight(i), chunk.blockLight(i));
   }
 
   /** Picks what to do: flee a threat, hunt prey, keep with the herd, wander or rest. */
@@ -161,7 +174,7 @@ export class Creatures {
   }
 
   /** The next cell centre on a path to `t`, planned again every second (around walls, up ledges); null if none. */
-  private waypoint(c: Creature, t: Body, dt: number, ctx: CreatureContext): [number, number] | null {
+  private waypoint(c: Creature, t: { x: number; y: number; z: number }, dt: number, ctx: CreatureContext): [number, number] | null {
     const b = c.body;
     c.replan -= dt;
     if (c.replan <= 0) {
@@ -179,10 +192,20 @@ export class Creatures {
     const s = c.species, b = c.body;
     let speed = toCells(s.speedM_S);
     let goal = c.goal;
-    if (c.mode === 'hunt' && c.target) {
+    if (c.mode === 'hunt' && c.target && s.ranged && c.target === 'player') {
+      // Archers keep between the near and far distance, and shoot when they can see the player.
+      const t = ctx.player, d = Math.hypot(t.x - b.x, t.z - b.z);
+      goal = d < toCells(ARCHER_NEAR_M) ? [b.x - (t.x - b.x), b.z - (t.z - b.z)] : d > toCells(ARCHER_FAR_M) ? this.waypoint(c, t, dt, ctx) ?? [t.x, t.z] : null;
+      c.yaw = Math.atan2(-(t.x - b.x), -(t.z - b.z));
+      const eye = b.y + b.height * 0.85;
+      if (c.cooldown <= 0 && d < toCells(ARCHER_FAR_M + 4) && this.sees(b.x, eye, b.z, t.x, t.y + t.height * 0.8, t.z, ctx)) {
+        c.cooldown = ARCHER_SHOT_S;
+        this.events.shoot?.(c, b.x, eye, b.z);
+      }
+    } else if (c.mode === 'hunt' && c.target) {
       const t = c.target === 'player' ? ctx.player : c.target.body;
       goal = [t.x, t.z];
-      if (s.medium === 'land') goal = this.waypoint(c, t, dt, ctx) ?? goal;
+      if (s.medium === 'land' && !s.climbs) goal = this.waypoint(c, t, dt, ctx) ?? goal;
       const reach = toCells(ATTACK_REACH_M) + b.halfWidth + t.halfWidth;
       if (Math.hypot(t.x - b.x, t.z - b.z) < reach && Math.abs(t.y - b.y) < b.height && c.cooldown <= 0) {
         c.cooldown = ATTACK_COOLDOWN_S;
@@ -190,8 +213,12 @@ export class Creatures {
         else this.damage(c.target, s.attack, b.x, b.z);
       }
     }
+    else if (goal && s.medium === 'land' && (c.mode === 'flee' || c.mode === 'wander')) {
+      // Walking somewhere: along a path round walls and up ledges, when one is found.
+      goal = this.waypoint(c, { x: goal[0], y: b.y, z: goal[1] }, dt, ctx) ?? goal;
+    }
     if (c.mode === 'flee' || c.mode === 'hunt') speed *= RUN_FACTOR;
-    let vx = 0, vz = 0;
+    let vx = 0, vz = 0, climbing = false;
     if (goal && c.mode !== 'sleep' && c.mode !== 'idle') {
       const dx = goal[0] - b.x, dz = goal[1] - b.z, len = Math.hypot(dx, dz);
       if (len > 0.3) {
@@ -203,8 +230,10 @@ export class Creatures {
         const fy = Math.floor(b.y);
         let ground = fy;
         while (ground > fy - FALL - 1 && ctx.boxAt(ax, ground - 1, az) === 0 && !ctx.waterAt(ax, ground - 1, az)) ground--;
-        const blocked = s.medium === 'land' && ((ctx.waterAt(ax, fy, az) && c.mode !== 'flee') || ground <= fy - FALL ||
-          (ctx.boxAt(ax, fy + STEP, az) !== 0 && ctx.boxAt(ax, fy, az) !== 0));
+        const wall = ctx.boxAt(ax, fy + STEP, az) !== 0 && ctx.boxAt(ax, fy, az) !== 0;
+        // Climbers go up anything in front of their feet, until over the top.
+        climbing = !!s.climbs && ctx.boxAt(ax, fy, az) !== 0;
+        const blocked = s.medium === 'land' && ((ctx.waterAt(ax, fy, az) && c.mode !== 'flee') || (ground <= fy - FALL && !s.climbs) || (wall && !s.climbs));
         if (blocked) {
           vx = vz = 0;
           c.goal = null;
@@ -225,6 +254,7 @@ export class Creatures {
         if (b.onGround && this.rand() < dt) this.damage(c, 1, b.x, b.z);
       }
     } else if (inWater) b.vy += (toCells(1.5) - b.vy) * Math.min(1, dt * 3); // float up and swim
+    else if (climbing) b.vy = toCells(2);
     else b.vy -= GRAVITY * dt;
     // Up a step when walking into one.
     const before = b.x + b.z;
@@ -245,6 +275,16 @@ export class Creatures {
     return c.health <= 0;
   }
 
+  /** Whether nothing solid stands on the straight line between two points (sampled every half cell). */
+  private sees(x0: number, y0: number, z0: number, x1: number, y1: number, z1: number, ctx: CreatureContext): boolean {
+    const n = Math.ceil(Math.hypot(x1 - x0, y1 - y0, z1 - z0) * 2);
+    for (let k = 1; k < n; k++) {
+      const f = k / n;
+      if (ctx.boxAt(Math.floor(x0 + (x1 - x0) * f), Math.floor(y0 + (y1 - y0) * f), Math.floor(z0 + (z1 - z0) * f)) !== 0) return false;
+    }
+    return true;
+  }
+
   /** Hurts a creature, knocking it away from (fromX, fromZ); returns whether it died (and was removed). */
   damage(c: Creature, amount: number, fromX: number, fromZ: number): boolean {
     c.health -= amount;
@@ -257,7 +297,11 @@ export class Creatures {
       c.mode = 'flee';
       c.goal = [c.body.x + (dx / len) * toCells(12), c.body.z + (dz / len) * toCells(12)];
     }
-    if (c.health > 0) return false;
+    if (c.health > 0) {
+      this.events.call?.(c, 'hurt');
+      return false;
+    }
+    this.events.call?.(c, 'death');
     this.list.splice(this.list.indexOf(c), 1);
     return true;
   }
@@ -285,7 +329,19 @@ export class Creatures {
     return best;
   }
 
-  /** Adds a group of a species fitting the place a random spot near the player offers. */
+  /** Block light and sky light at a cell (0 where nothing is loaded). */
+  private lightAt(x: number, y: number, z: number): [sky: number, block: number] {
+    const chunk = this.world.chunkAt(x, y, z);
+    if (!chunk) return [0, 15];
+    const i = localIndex(toLocal(x), toLocal(y), toLocal(z));
+    return [chunk.skyLight(i), chunk.blockLight(i)];
+  }
+
+  /**
+   * Adds a group of a species fitting a random spot near the player: on the surface, or (when the player is under
+   * ground) in a cave around them. Monsters only come where it is dark and never where torches light the cell, and the
+   * deeper they come the tougher they are.
+   */
   private spawn(ctx: CreatureContext): void {
     if (this.list.length >= CREATURE_CAP) return;
     const p = ctx.player;
@@ -295,20 +351,45 @@ export class Creatures {
     if (!column) return;
     const i = columnIndex(toLocal(x), toLocal(z));
     const top = column.surface[i]!;
+    const playerColumn = this.world.column(toChunk(Math.floor(p.x)), toChunk(Math.floor(p.z)));
+    const playerUnder = playerColumn !== undefined && p.y < playerColumn.surface[columnIndex(toLocal(Math.floor(p.x)), toLocal(Math.floor(p.z)))]! - 6;
+    const hostiles = this.list.filter((c) => c.species.hostile).length, room = hostiles < HOSTILE_CAP * ctx.hostiles;
+    if (playerUnder && this.rand() < 0.7) {
+      if (room) this.spawnInCave(x, z, p, ctx);
+      return;
+    }
     const water = column.water[i]! > top + 1;
     const y = water ? column.water[i]! - 2 : top + 1;
     if (!this.world.isLoaded(x, y, z) || (!water && ctx.boxAt(x, y, z) !== 0)) return;
     const biome = biomeByIndex(column.biome[i]!).key;
-    const hostiles = this.list.filter((c) => c.species.hostile).length;
-    const chunk = this.world.chunkAt(x, y, z)!;
-    const dark = chunk.skyLight(localIndex(toLocal(x), toLocal(y), toLocal(z))) < 7 || !ctx.day;
-    const options = SPECIES.filter((s) => (water ? s.medium === 'water' : s.medium === 'land' && (s.biomes.includes(biome) ||
-      (s.biomes.includes('dark') && dark && hostiles < HOSTILE_CAP * ctx.hostiles))));
+    const [sky, block] = this.lightAt(x, y, z);
+    const dark = (sky < 7 || !ctx.day) && block < SAFE_LIGHT;
+    const options = SPECIES.filter((s) => (water ? s.medium === 'water' : s.medium === 'land' && (s.hostile
+      ? room && dark && (s.biomes.includes('dark') || s.biomes.includes(biome))
+      : s.biomes.includes(biome))));
+    this.spawnGroup(options, x, y, z);
+  }
+
+  /** A monster in a dark cave cell near (x, z), within a few meters up or down of the player. */
+  private spawnInCave(x: number, z: number, p: Body, ctx: CreatureContext): void {
+    let y = Math.floor(p.y + (this.rand() - 0.5) * toCells(16));
+    // Down to a floor with room to stand on it.
+    for (let k = 0; k < 16 && ctx.boxAt(x, y - 1, z) === 0; k++) y--;
+    if (!this.world.isLoaded(x, y, z) || ctx.boxAt(x, y - 1, z) === 0) return;
+    for (let h = 0; h < 4; h++) if (ctx.boxAt(x, y + h, z) !== 0 || ctx.waterAt(x, y + h, z)) return;
+    const [sky, block] = this.lightAt(x, y, z);
+    if (sky > 0 || block >= SAFE_LIGHT) return;
+    const deep = y * BLOCK_SIZE_M < -60;
+    this.spawnGroup(SPECIES.filter((s) => s.hostile && (s.biomes.includes('dark') || s.biomes.includes('cave') || (deep && s.biomes.includes('deep')))), x, y, z);
+  }
+
+  private spawnGroup(options: readonly Species[], x: number, y: number, z: number): void {
     if (options.length === 0) return;
     const s = options[Math.floor(this.rand() * options.length)]!;
     const n = s.group[0] + Math.floor(this.rand() * (s.group[1] - s.group[0] + 1));
+    const tough = s.hostile ? 1 + Math.max(0, -y * BLOCK_SIZE_M) / 100 * DEPTH_TOUGHNESS_PER_100M : 1;
     for (let k = 0; k < n && this.list.length < CREATURE_CAP; k++) {
-      this.add(s, x + 0.5 + (this.rand() - 0.5) * 3, y, z + 0.5 + (this.rand() - 0.5) * 3, s.health);
+      this.add(s, x + 0.5 + (this.rand() - 0.5) * 3, y, z + 0.5 + (this.rand() - 0.5) * 3, Math.round(s.health * tough));
     }
   }
 
@@ -341,8 +422,9 @@ export function meatOf(c: Creature): { state: number; count: number } | null {
   return c.species.meat > 0 ? { state: BLOCKS.state('raw_meat'), count: c.species.meat } : null;
 }
 
-/** Everything a dead creature leaves: meat, and leather from hides. */
+/** Everything a dead creature leaves: meat, leather from hides, and its own loot. */
 export function lootOf(c: Creature): { state: number; count: number }[] {
   const meat = meatOf(c);
-  return [...(meat ? [meat] : []), ...(c.species.leather ? [{ state: BLOCKS.state('leather'), count: c.species.leather }] : [])];
+  return [...(meat ? [meat] : []), ...(c.species.leather ? [{ state: BLOCKS.state('leather'), count: c.species.leather }] : []),
+    ...(c.species.loot ?? []).map(([key, count]) => ({ state: BLOCKS.state(key), count }))];
 }

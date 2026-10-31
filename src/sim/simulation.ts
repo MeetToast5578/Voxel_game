@@ -289,6 +289,23 @@ export class Simulation {
   /** A sapling with light grows into its species' tree, where the tree has room. */
   private sapling(x: number, y: number, z: number, s: number): void {
     if (this.lightAbove(x, y - 1, z) < GRASS_MIN_LIGHT || this.rand() >= SAPLING_GROW_CHANCE) return;
+    this.growTree(x, y, z, s);
+  }
+
+  /** Bone meal: a crop grows a stage and a sapling becomes its tree at once. Returns whether anything grew. */
+  fertilise(x: number, y: number, z: number): boolean {
+    const s = this.world.get(x, y, z), t = BLOCKS.type(s);
+    if (BLOCKS.typeIndex[s] === SAPLING_TYPE) {
+      this.growTree(x, y, z, s);
+      return true;
+    }
+    if (!t.variantTiles || s - t.id >= t.variants - 1) return false;
+    this.setBlock(x, y, z, s + 1);
+    return true;
+  }
+
+  /** The sapling at (x, y, z) becomes its species' tree, wherever the tree has room. */
+  private growTree(x: number, y: number, z: number, s: number): void {
     const species = SAPLING_SPECIES[s - BLOCKS.types[SAPLING_TYPE]!.id]!;
     for (const [key, state] of treeCells(Math.floor(this.rand() * 1e9), x, z, species)) {
       const [dx, dy, dz] = unpackTreeCell(key);

@@ -1,4 +1,4 @@
-import { AXE_DAMAGE, BUILD_CELLS_PER_TICK, CAMPFIRE_COOK_S, CAMPFIRE_SLOTS, DIFFICULTY, PLAYER_ATTACK_COOLDOWN_S, SWORD_DAMAGE, type Difficulty, BUILD_MAX_M, DROP_PICKUP_DELAY_S, DROP_THROW_M_S, HAND_DAMAGE, REACH_M, REPEAT_S, TOOL_DAMAGE, UNDO_STEPS, cells, toCells } from '../config';
+import { ARROW_DAMAGE, ARROW_SPEED_M_S, BOLT_SPEED_M_S, BOW_DRAW_S, AXE_DAMAGE, BUILD_CELLS_PER_TICK, CAMPFIRE_COOK_S, CAMPFIRE_SLOTS, DIFFICULTY, PLAYER_ATTACK_COOLDOWN_S, SWORD_DAMAGE, type Difficulty, BUILD_MAX_M, DROP_PICKUP_DELAY_S, DROP_THROW_M_S, HAND_DAMAGE, REACH_M, REPEAT_S, TOOL_DAMAGE, UNDO_STEPS, cells, toCells } from '../config';
 import { lootOf, type Creatures } from '../creatures/creatures';
 import { AIR, BLOCKS, SOLID } from '../engine/blocks';
 import type { World } from '../engine/world';
@@ -14,6 +14,8 @@ import { overlapsSolid } from './physics';
 import type { Player } from './player';
 import { raycast, TARGET, type RayHit } from './raycast';
 import { Survival } from './survival';
+import { aimAt, Projectiles } from './projectiles';
+import type { BoxAt } from './collision';
 
 export type Mode = 'creative' | 'survival';
 
@@ -25,7 +27,7 @@ const TABLE = S('crafting_table'), TORCH = S('torch'), GRASS = S('grass'), DIRT 
 const LADDER = BLOCKS.byName('ladder');
 /** Fluid sources a bucket picks up, and the full bucket each gives. */
 const BUCKET_FILLS = new Map([[S('water'), S('water_bucket')], [S('lava'), S('lava_bucket')]]);
-const BUCKET = S('bucket');
+const BUCKET = S('bucket'), BOW = S('bow'), ARROW = S('arrow'), BONE_MEAL = S('bone_meal');
 /** Cells a door is tall: 2.1 m at 0.6 m cells rounds up to 4. */
 export const DOOR_CELLS = 4;
 const FACING_OFFSET = [[1, 0], [-1, 0], [0, 1], [0, -1]] as const;
@@ -72,6 +74,10 @@ export class Play {
   private readonly redoStack: [number, number, number, number, number][][] = [];
   private group: [number, number, number, number, number][] | null = null;
   private readonly setBlock: (x: number, y: number, z: number, s: number) => void;
+  /** Arrows and bolts in flight. */
+  readonly projectiles = new Projectiles();
+  /** Seconds the bow has been drawn, while right click is held with it. */
+  drawS = 0;
   /** Worn armour: head, chest, legs, feet. */
   readonly armour: (ItemStack | null)[] = [null, null, null, null];
   /** Seconds since the player last hit a creature. */
@@ -80,7 +86,7 @@ export class Play {
   readonly campfires = new Map<string, [number, number][]>();
 
   constructor(private readonly world: World, setBlock: (x: number, y: number, z: number, s: number) => void,
-    private readonly events: { sound(name: 'break' | 'place'): void; sleep(): boolean }, mode: Mode = 'creative') {
+    private readonly events: { sound(name: 'break' | 'place'): void; sleep(): boolean; fertilise?(x: number, y: number, z: number): boolean }, mode: Mode = 'creative') {
     this.mode = mode;
     // Every change the player makes is recorded for undo while a group is open.
     this.setBlock = (x, y, z, s) => {
@@ -226,6 +232,12 @@ export class Play {
     this.repeat -= dt;
     this.sinceAttack += dt;
     if (input.consume('pick') && this.target && this.mode === 'creative') this.pick(this.target);
+    if (this.held && this.held.state === BOW) {
+      // A bow: hold right click to draw, let go to shoot.
+      input.consume('place');
+      if (input.placing) this.drawS += dt;
+      else if (this.drawS > 0) this.shootArrow(player);
+    }
     const placeNow = input.consume('place') || (input.placing && this.repeat <= 0);
     if (placeNow) {
       this.repeat = REPEAT_S;
@@ -257,6 +269,51 @@ export class Play {
     this.events.sound('break');
     this.version++;
     return true;
+  }
+
+  /** Lets an arrow fly where the player looks, stronger the longer the bow was drawn; uses up an arrow in survival. */
+  private shootArrow(player: Player): void {
+    const strength = Math.min(1, this.drawS / BOW_DRAW_S);
+    this.drawS = 0;
+    if (strength < 0.15) return;
+    const arrows = this.inventory.slots.findIndex((s) => s?.state === ARROW);
+    if (this.mode === 'survival') {
+      if (arrows < 0) return;
+      if (--this.inventory.slots[arrows]!.count <= 0) this.inventory.slots[arrows] = null;
+    }
+    const [dx, dy, dz] = player.direction(), b = player.body;
+    this.projectiles.shoot(b.x + dx * 0.6, player.eyeY - 0.2, b.z + dz * 0.6, dx, dy, dz, toCells(ARROW_SPEED_M_S) * strength, ARROW_DAMAGE * strength, true);
+    this.version++;
+  }
+
+  /** A creature shoots a bolt at the player's chest from (x, y, z). */
+  shootAtPlayer(x: number, y: number, z: number, player: Player, damage: number): void {
+    const b = player.body, speed = toCells(BOLT_SPEED_M_S);
+    const [dx, dy, dz] = aimAt(x, y, z, b.x, b.y + b.height * 0.7, b.z, speed);
+    this.projectiles.shoot(x, y, z, dx, dy, dz, speed, damage, false);
+  }
+
+  /** Flies every arrow and bolt; hits hurt creatures or the player, and the player's arrows that miss can be picked up. */
+  tickProjectiles(dt: number, boxAt: BoxAt, player: Player): void {
+    const creatures = this.creatures;
+    const hits = this.projectiles.update(dt, boxAt, (fromPlayer) => (fromPlayer ? creatures?.list.map((c) => c.body) ?? []
+      : this.mode === 'survival' && !this.survival.dead ? [player.body] : []));
+    for (const h of hits) {
+      const p = h.p;
+      if (h.kind === 'ground') {
+        if (p.fromPlayer && this.mode === 'survival') this.drops.spawn({ state: ARROW, count: 1 }, p.x, p.y, p.z);
+        continue;
+      }
+      if (!p.fromPlayer) {
+        this.survival.hurt(this.protect(p.damage * DIFFICULTY[this.difficulty].damage), 'shot by a skulker');
+        this.version++;
+        continue;
+      }
+      const c = creatures?.list.find((k) => k.body === h.body);
+      if (c && creatures!.damage(c, p.damage, p.x - p.vx, p.z - p.vz) && this.mode === 'survival') {
+        for (const loot of lootOf(c)) this.drop(loot, c.body.x, c.body.y, c.body.z);
+      }
+    }
   }
 
   /** Damage left after worn armour (each protection point stops 4%, at most 80%); every hit wears each piece. */
@@ -453,6 +510,10 @@ export class Play {
     const heldType = BLOCKS.type(held.state);
     if (heldType.armour) {
       this.wear(held);
+      return;
+    }
+    if (held.state === BONE_MEAL && t && this.events.fertilise?.(t.x, t.y, t.z)) {
+      this.consumeHeld();
       return;
     }
     // Food is eaten when hungry, unless it is a crop being planted on grass or dirt.

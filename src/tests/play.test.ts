@@ -211,6 +211,35 @@ describe('play', () => {
     expect(play.inventory.count(S('ladder'))).toBe(2);
   });
 
+  it('draws the bow while right click is held and shoots an arrow on release, using one up', () => {
+    const { play, player, input } = setup('survival');
+    play.inventory.slots[0] = { state: S('bow'), count: 1 };
+    play.inventory.slots[1] = { state: S('arrow'), count: 3 };
+    const held = input as unknown as { placing: boolean };
+    held.placing = true;
+    for (let i = 0; i < 60; i++) play.update(1 / 60, input, player);
+    expect(play.projectiles.list).toHaveLength(0);
+    held.placing = false;
+    play.update(1 / 60, input, player);
+    expect(play.projectiles.list).toHaveLength(1);
+    expect(play.inventory.count(S('arrow'))).toBe(2);
+  });
+
+  it('grows a crop a stage with bone meal', () => {
+    const { world, play, player, input, press } = setup('survival');
+    let grown = 0;
+    const p = new Play(world, (x, y, z, st) => world.set(x, y, z, st), {
+      sound: () => undefined, sleep: () => true, fertilise: () => (grown++, true) }, 'survival');
+    world.set(2, 0, 0, S('wheat'));
+    player.pitch = -0.85;
+    p.inventory.slots[0] = { state: S('bone_meal'), count: 2 };
+    press('place');
+    p.update(0, input, player);
+    expect(grown).toBe(1);
+    expect(p.inventory.count(S('bone_meal'))).toBe(1);
+    void play;
+  });
+
   it('saves and restores the player state', () => {
     const { play, world } = setup('survival');
     play.inventory.add({ state: S('torch'), count: 7 });

@@ -87,7 +87,7 @@ iron, real danger, places worth finding and an end point. Onboarding, sound and 
   **Done when:** it warms the player (2.1) and cooks raw meat; unit test.
 - [x] **2.3 Weapons.** Swords for each tier, with an attack cooldown and damage by tier.
   **Done when:** a test pins the damage table, and an iron sword kills a zombie in fewer hits than a fist.
-- [ ] **2.4 Bow and arrows** (waits for string from 4.1). Ranged damage that falls off with distance, with arrows as items. The string comes from
+- [x] **2.4 Bow and arrows.** Ranged damage that falls off with distance, with arrows as items. The string comes from
   4.1.
   **Done when:** arrows fly, hit creatures, and can be picked up again; unit test on the flight path.
 - [x] **2.5 Taking damage feels like it.**
@@ -135,21 +135,21 @@ iron, real danger, places worth finding and an end point. Onboarding, sound and 
 
 ## 4. Danger
 
-- [ ] **4.1 More hostile creatures.** Add three of our own designs. Each gets drops that feed a recipe.
+- [x] **4.1 More hostile creatures.** Built: skulker (archer, feathers), cave crawler (climbs, string), frost brute (cold and deep, bones → bone meal). Add three of our own designs. Each gets drops that feed a recipe.
   **Decide** the designs. Suggested roles:
   - an archer that keeps its distance and drops bone or feathers;
   - a cave climber that drops string;
   - a cold or deep-dwelling brute.
   **Done when:** each spawns in its own conditions and hunts with the existing path-finding; behaviour tests.
-- [ ] **4.2 Danger by depth and light.**
+- [x] **4.2 Danger by depth and light.**
   - Spawn rate and toughness rise with depth and darkness.
   - Use the stored block light instead of today's shortcut, which judges darkness from the sky and nearby light
     sources.
   - Torches keep an area safe.
   **Done when:** a test shows no spawns in a torch-lit room, and more spawns at −100 m than at the surface.
-- [ ] **4.3 Creature sounds** (lost in the switch-over). Calls pitched per species, a hurt sound and a death sound.
+- [x] **4.3 Creature sounds** (lost in the switch-over). Calls pitched per species, a hurt sound and a death sound.
   **Done when:** every species has its sounds, and they are quieter with distance.
-- [ ] **4.4 Path-finding for every creature** (a handoff candidate). Grazers and fleeing animals plan paths too,
+- [x] **4.4 Path-finding for every creature** (a handoff candidate). Grazers and fleeing animals plan paths too,
   within a per-frame budget.
   **Done when:** a fleeing deer goes round a wall instead of turning back, and the frame cost stays inside the
   benchmark gate.
