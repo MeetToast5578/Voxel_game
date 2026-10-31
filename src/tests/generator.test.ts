@@ -173,3 +173,22 @@ describe('trees', () => {
     expect(gen.column(0, 0).caveFloor).toBe(Infinity);
   });
 });
+
+describe('shores', () => {
+  it('has both sandy and stony shores along the coasts of seed 1', () => {
+    const gen = new Generator(1);
+    const kinds = new Map<string, number>();
+    const base = (gen as unknown as { base(cx: number, cz: number): { top: Int32Array; surface: Uint16Array; water: Int32Array } }).base.bind(gen);
+    for (let cx = -60; cx <= 60; cx += 3) for (let cz = -60; cz <= 60; cz += 3) {
+      const c = base(cx, cz);
+      for (let i = 0; i < 256; i += 7) {
+        const top = c.top[i]!;
+        if (top < SEA_CELL - 1 || top > SEA_CELL + 1 || c.water[i]! > SEA_CELL) continue;
+        const k = BLOCKS.stateName(c.surface[i]!);
+        kinds.set(k, (kinds.get(k) ?? 0) + 1);
+      }
+    }
+    expect(kinds.get('sand') ?? 0).toBeGreaterThan(0);
+    expect((kinds.get('gravel') ?? 0) + (kinds.get('stone') ?? 0)).toBeGreaterThan(0);
+  });
+});

@@ -51,6 +51,7 @@ A production build (`npm run build`, then `npm run preview`) can be installed fr
 | T | Skip an hour |
 | + / − | View distance |
 | B / G | Creative: mark corners and fill / clear a box with the held block |
+| C / V | Creative: mark two corners to copy a box / paste it against the face you aim at |
 | Ctrl+Z / Ctrl+Y | Creative: undo / redo |
 | F3 | Debug text and frame-time graph |
 | Esc | Pause menu: difficulty, settings (keys, volume, invert Y, menu size), worlds, export and import |

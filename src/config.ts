@@ -74,6 +74,8 @@ export const WALK_SPEED_M_S = 4.3;
 /** Crouching walks at this share of the walking speed; ladders are climbed at CLIMB_SPEED_M_S. */
 export const CROUCH_FACTOR = 0.3;
 export const CLIMB_SPEED_M_S = 2.4;
+/** How hard flowing water pushes a swimmer along (m/s²). */
+export const CURRENT_ACCEL_M_S2 = 6;
 export const SPRINT_SPEED_M_S = 6;
 export const GRAVITY_M_S2 = 28;
 /** Jump height is about 1.35 m. */
@@ -136,6 +138,8 @@ export const BIOME_JITTER_C = 1.6;
 export const BIOME_JITTER_MM = 80;
 /** Ground this rugged (detail amplitude) has no soil: bare rock. */
 export const BARE_ROCK_AMP_M = 12;
+/** Typical length (m) of a stretch of stony (gravel and stone) or sandy shore. */
+export const STONY_SHORE_M = 60;
 
 // ---- Geology ----
 export const GEOLOGY_LAYER_M = 12;

@@ -3,7 +3,7 @@ import {
   BARE_ROCK_AMP_M, BEACH_BAND_M, BIOME_JITTER_C, BIOME_JITTER_MM, BLOCK_SIZE_M, BOULDER_DENSITY_PER_M2, BOULDER_RADIUS_M, CHUNK_AREA, CHUNK_SIZE,
   COLUMN_CACHE, DEEP_SEA_FLOOR_M, DETAIL_H_M, DETAIL_V_M, FALLEN_LOG_DENSITY_PER_M2, FALLEN_LOG_MAX_M,
   FALLEN_LOG_MIN_M, FERN_CHANCE, FLOWER_CHANCE, LILY_PAD_CHANCE, MUSHROOM_CHANCE, REED_CHANCE, SEA_LEVEL_M, SECONDARY_TREE_CHANCE,
-  SHORE_CAVE_BAND_M, SHORE_ROOF_CELLS, SOIL_DEPTH_M, SPAWN_SEARCH_M, TALL_GRASS_CHANCE, TREE_DENSITY_PER_M2, TREE_REACH_CELLS, cells,
+  SHORE_CAVE_BAND_M, SHORE_ROOF_CELLS, STONY_SHORE_M, SOIL_DEPTH_M, SPAWN_SEARCH_M, TALL_GRASS_CHANCE, TREE_DENSITY_PER_M2, TREE_REACH_CELLS, cells,
 } from '../config';
 import { hash2, mulberry32 } from '../core/random';
 import { BLOCKS, BLOCKS_SKY, FLUID_LEVELS } from '../engine/blocks';
@@ -33,6 +33,7 @@ const COVER = { tall: S('tall_grass'), fern: S('fern'), poppy: S('poppy'), dande
 /** Cells with y below this are under the sea. */
 export const SEA_CELL = Math.round(SEA_LEVEL_M / B);
 const SOIL_CELLS = cells(SOIL_DEPTH_M);
+const STONY_SHORE_CELLS = cells(STONY_SHORE_M);
 const BEACH_TOP_M = SEA_LEVEL_M + BEACH_BAND_M;
 const DEEP_FLOOR_M = SEA_LEVEL_M - DEEP_SEA_FLOOR_M;
 const TREE_CHANCE = TREE_DENSITY_PER_M2 * B * B;
@@ -160,7 +161,9 @@ export class Generator {
           const r = hash2(this.seed + 61, x, z);
           d.surface[i] = d.soil[i] = r < 0.4 ? SAND : r < 0.75 ? GRAVEL : CLAY;
         } else if (y + 1 <= SEA_CELL) d.surface[i] = d.soil[i] = topM < DEEP_FLOOR_M ? GRAVEL : SAND;
-        else if (topM <= BEACH_TOP_M) d.surface[i] = d.soil[i] = SAND;
+        // Shores: sandy, or stony (gravel and stone) along stretches chosen by a slow noise.
+        // shortcut: stony stretches follow noise, not wave exposure (coast detail is flattened, so slope cannot tell).
+        else if (topM <= BEACH_TOP_M) d.surface[i] = d.soil[i] = this.noise(x / STONY_SHORE_CELLS, 0, z / STONY_SHORE_CELLS) > 0.3 ? (hash2(this.seed + 62, x, z) < 0.6 ? GRAVEL : STONE) : SAND;
         else if (amp >= BARE_ROCK_AMP_M) d.surface[i] = d.soil[i] = this.underground.rockAt(y, warp);
         else {
           d.surface[i] = S(biome.surface);

@@ -260,6 +260,28 @@ describe('play', () => {
 });
 
 describe('creative building', () => {
+  it('copies the box between two corners and pastes it against the aimed face, undoably', () => {
+    const { world, play, player, input, press } = setup('creative');
+    world.set(4, 0, 0, S('brick'));
+    world.set(4, 1, 0, S('glass'));
+    play.update(0, input, player);
+    const aim = (x: number, y: number, z: number) => { play.target = { x, y, z, nx: 0, ny: 1, nz: 0, distance: 3 }; };
+    const act = (a: string) => {
+      press(a);
+      (play as unknown as { build(i: Input): void }).build(input);
+    };
+    aim(4, 0, 0); act('copy');
+    aim(4, 1, 0); act('copy');
+    expect(play.clipboard).toHaveLength(2);
+    aim(8, -1, 3); act('paste');
+    for (let i = 0; i < 3; i++) play.update(0.05, input, player);
+    expect(world.get(8, 0, 3)).toBe(S('brick'));
+    expect(world.get(8, 1, 3)).toBe(S('glass'));
+    press('undo');
+    play.update(0, input, player);
+    expect(world.get(8, 0, 3)).toBe(0);
+  });
+
   it('undoes and redoes edits, and fills and clears boxes between two corners', () => {
     const { world, play, player, input, press } = setup('creative');
     play.inventory.slots[0] = { state: S('brick'), count: 64 };

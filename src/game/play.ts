@@ -14,6 +14,7 @@ import { overlapsSolid } from './physics';
 import type { Player } from './player';
 import { raycast, TARGET, type RayHit } from './raycast';
 import { Survival } from './survival';
+import { Particles } from './particles';
 import { lootTableFor, rollLoot, type LootTable } from './loot';
 import { Journal, type Stats } from './journal';
 import { aimAt, Projectiles } from './projectiles';
@@ -77,6 +78,9 @@ export class Play {
   /** Creative building: the first corner of a box, edits waiting to be applied, and undo/redo history. */
   corner: [number, number, number] | null = null;
   private queue: [number, number, number, number][] = [];
+  /** Creative copy: the first corner while marking, and the copied cells relative to the box's lowest corner. */
+  copyCorner: [number, number, number] | null = null;
+  clipboard: [number, number, number, number][] | null = null;
   private readonly undoStack: [number, number, number, number, number][][] = [];
   private readonly redoStack: [number, number, number, number, number][][] = [];
   private group: [number, number, number, number, number][] | null = null;
@@ -98,6 +102,9 @@ export class Play {
   private messageS = 0;
   /** Arrows and bolts in flight. */
   readonly projectiles = new Projectiles();
+  /** Bits of broken blocks, and a count of swings of the hand (break, place, hit) for the first-person view. */
+  readonly particles = new Particles();
+  swings = 0;
   /** While fishing: seconds until a fish bites, or 0 when the line is not out. */
   fishingS = 0;
   /** Seconds the bow has been drawn, while right click is held with it. */
@@ -110,7 +117,7 @@ export class Play {
   readonly campfires = new Map<string, [number, number][]>();
 
   constructor(private readonly world: World, setBlock: (x: number, y: number, z: number, s: number) => void,
-    private readonly events: { sound(name: 'break' | 'place'): void; sleep(): boolean; fertilise?(x: number, y: number, z: number): boolean }, mode: Mode = 'creative') {
+    private readonly events: { sound(name: 'break' | 'place' | 'eat'): void; sleep(): boolean; fertilise?(x: number, y: number, z: number): boolean }, mode: Mode = 'creative') {
     this.mode = mode;
     // Every change the player makes is recorded for undo while a group is open.
     this.setBlock = (x, y, z, s) => {
@@ -140,6 +147,14 @@ export class Play {
   private build(input: Input): void {
     if (input.consume('undo')) this.replay(this.undoStack, this.redoStack, true);
     if (input.consume('redo')) this.replay(this.redoStack, this.undoStack, false);
+    if (input.consume('copy') && this.target) this.copy(this.target);
+    if (input.consume('paste') && this.target && this.clipboard) {
+      const t = this.target;
+      for (const [dx, dy, dz, s] of this.clipboard) this.queue.push([t.x + t.nx + dx, t.y + t.ny + dy, t.z + t.nz + dz, s]);
+      this.undoStack.push([]);
+      this.redoStack.length = 0;
+      this.version++;
+    }
     const fill = input.consume('fill'), clear = input.consume('clear');
     if ((!fill && !clear) || !this.target) return;
     const t = this.target, at: [number, number, number] = fill ? [t.x + t.nx, t.y + t.ny, t.z + t.nz] : [t.x, t.y, t.z];
@@ -162,6 +177,28 @@ export class Play {
     this.undoStack.push([]);
     this.redoStack.length = 0;
     this.version++;
+  }
+
+  /** C on a block marks a corner; C again copies the box between the corners (at most BUILD_MAX_M a side). */
+  private copy(t: RayHit): void {
+    if (!this.copyCorner) {
+      this.copyCorner = [t.x, t.y, t.z];
+      this.toast('Copy: corner marked. Press C again on the opposite corner.', 3);
+      return;
+    }
+    const a = this.copyCorner, b = [t.x, t.y, t.z], max = cells(BUILD_MAX_M);
+    this.copyCorner = null;
+    const lo = [0, 1, 2].map((k) => Math.min(a[k]!, b[k]!)), hi = [0, 1, 2].map((k) => Math.max(a[k]!, b[k]!));
+    if ([0, 1, 2].some((k) => hi[k]! - lo[k]! + 1 > max)) {
+      this.toast(`Too big to copy: at most ${BUILD_MAX_M} m a side.`, 3);
+      return;
+    }
+    const cellsOut: [number, number, number, number][] = [];
+    for (let y = lo[1]!; y <= hi[1]!; y++) for (let z = lo[2]!; z <= hi[2]!; z++) for (let x = lo[0]!; x <= hi[0]!; x++) {
+      cellsOut.push([x - lo[0]!, y - lo[1]!, z - lo[2]!, this.world.get(x, y, z)]);
+    }
+    this.clipboard = cellsOut;
+    this.toast(`Copied ${cellsOut.length} cells. V pastes against the face you aim at.`, 3);
   }
 
   /** Applies queued box edits, a share per tick, into the latest undo step. */
@@ -297,6 +334,7 @@ export class Play {
     }
     if (held && tool && this.mode === 'survival' && !wearTool(held)) this.inventory.slots[this.inventory.selected] = null;
     this.events.sound('break');
+    this.swings++;
     this.version++;
     return true;
   }
@@ -551,6 +589,8 @@ export class Play {
       if (survival) for (const s of this.chestSlots(key, state)) if (s) this.drop(s, x + 0.5, y, z + 0.5);
       this.chests.delete(key);
     }
+    this.particles.burst(state, x + 0.5, y + 0.5, z + 0.5);
+    this.swings++;
     this.setBlock(x, y, z, AIR);
     this.events.sound('break');
     this.version++;
@@ -647,6 +687,7 @@ export class Play {
       const ground = t ? this.world.get(t.x, t.y, t.z) : AIR;
       const planting = heldType.variantTiles !== undefined && t !== null && t.ny === 1 && (ground === GRASS || ground === DIRT || ground === FARMLAND);
       if (!planting && this.survival.eat(heldType.food)) {
+        this.events.sound('eat');
         this.consumeHeld();
         return;
       }
@@ -747,6 +788,7 @@ export class Play {
     // A chest the player places starts empty (generated ones roll their loot when first opened).
     if (type === CHEST) this.chests.set(`${x},${y},${z}`, new Array(CHEST_SLOTS).fill(null));
     this.consumeHeld();
+    this.swings++;
     this.events.sound('place');
   }
 

@@ -147,3 +147,13 @@ describe('crouching and ladders', () => {
     expect(p.body.y).toBeLessThan(up - 1.5);
   });
 });
+
+describe('currents', () => {
+  it('carry a swimmer along the flow', () => {
+    const p = new Player(0.5, 0, 0.5);
+    const keys = { moveX: 0, moveZ: 0, jump: false, sprint: false, descend: false, consume: () => false } as unknown as Input;
+    const water = () => true;
+    for (let i = 0; i < 120; i++) p.update(1 / 60, keys, () => 0, water, () => false, () => [1, 0, 0]);
+    expect(p.body.x).toBeGreaterThan(3);
+  });
+});

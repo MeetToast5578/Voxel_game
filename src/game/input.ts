@@ -1,10 +1,10 @@
 import { DEFAULT_KEYS, type Binding } from '../storage/settings';
 
 export type Action = 'fly' | 'break' | 'place' | 'pick' | 'slotNext' | 'slotPrev' | 'time' | 'viewUp' | 'viewDown' | 'inventory' | 'debug' |
-  'undo' | 'redo' | 'fill' | 'clear' | 'drop' | 'hint' | 'pause';
+  'undo' | 'redo' | 'fill' | 'clear' | 'drop' | 'hint' | 'pause' | 'copy' | 'paste';
 
 /** Bindings that fire an action when pressed (the others are held: movement, jump, crouch, sprint). */
-const PRESS_ACTIONS = ['fly', 'time', 'viewUp', 'viewDown', 'inventory', 'debug', 'fill', 'clear', 'drop', 'hint'] as const satisfies readonly (Binding & Action)[];
+const PRESS_ACTIONS = ['fly', 'time', 'viewUp', 'viewDown', 'inventory', 'debug', 'fill', 'clear', 'drop', 'hint', 'copy', 'paste'] as const satisfies readonly (Binding & Action)[];
 const DEADZONE = 0.15;
 const STICK_LOOK = 2.6; // radians per second at full right-stick deflection
 

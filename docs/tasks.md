@@ -210,29 +210,29 @@ iron, real danger, places worth finding and an end point. Onboarding, sound and 
 
 All of it stays procedural: no asset files.
 
-- [ ] **8.1 Ambient sound.** Wind by altitude and weather, rain, running water nearby, cave drips, and birds by day or
+- [x] **8.1 Ambient sound.** Wind by altitude and weather, rain, running water nearby, cave drips, and birds by day or
   insects at night, by biome.
   **Done when:** each layer fades in and out with its condition, and obeys the effects volume.
-- [ ] **8.2 Music.** Short generated pieces at random intervals: calm on the surface, tense underground.
+- [x] **8.2 Music.** Short generated pieces at random intervals: calm on the surface, tense underground.
   **Done when:** music plays, obeys its volume, and can be turned off.
-- [ ] **8.3 Sound effects.** Footsteps by material, eating, menu clicks and the journal toast.
+- [x] **8.3 Sound effects.** Footsteps by material, eating, menu clicks and the journal toast.
   **Done when:** each action has its sound.
 
 ## 9. Feel and polish
 
-- [ ] **9.1 Hand and held item.** A first-person hand that shows the held item and swings on break, hit and place.
+- [x] **9.1 Hand and held item.** Built as a 2D overlay of the item's picture (a fist when empty), not a 3D model. A first-person hand that shows the held item and swings on break, hit and place.
   **Done when:** the smoke test screenshot shows it.
-- [ ] **9.2 Break particles.** Bits of the block's own tile fly out when it breaks.
+- [x] **9.2 Break particles.** Bits of the block's own tile fly out when it breaks.
   **Done when:** they appear for every block, and stay within the draw-call budget.
-- [ ] **9.3 View bob and sprint FOV.** Both can be turned off in settings.
+- [x] **9.3 View bob and sprint FOV.** Both can be turned off in settings.
   **Done when:** both settings work.
-- [ ] **9.4 River currents** (lost in the switch-over). River and flowing water push the player and dropped items.
+- [x] **9.4 River currents** (flowing and falling water push; shortcut: generated rivers are still water and do not push) (lost in the switch-over). River and flowing water push the player and dropped items.
   **Done when:** a physics test shows the player carried downstream.
 - [ ] **9.5 Per-box collision for stairs and doors** (a handoff candidate).
   **Done when:** you walk up stairs without stepping, and an open door does not block its cell.
-- [ ] **9.6 Stony shores and sandbars** (a handoff candidate).
+- [x] **9.6 Stony shores and sandbars** (stony shores only, in stretches chosen by noise; no sandbars yet) (a handoff candidate).
   **Done when:** steep coasts and river bends show them on seed 1.
-- [ ] **9.7 Creative copy and paste** (lost in the switch-over). Low priority.
+- [x] **9.7 Creative copy and paste** (lost in the switch-over). Low priority.
   **Done when:** a copied box pastes at the aimed face, and Ctrl+Z undoes it.
 
 ## 10. Release

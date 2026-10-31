@@ -1,5 +1,6 @@
-import { NIGHT_BEFORE, AUTOSAVE_S, BLOCK_SIZE_M, CAVE_AIR_C, CHUNK_SIZE, DAY_LENGTH_S, DIFFICULTY, HEAT_REACH_M, HEAT_SOURCES_C, cells, type Difficulty, HORIZON_RECENTER_M, MAX_VIEW_CHUNKS, MIN_VIEW_CHUNKS, SIM_HZ, toCells } from './config';
+import { DROP_CAP, NIGHT_BEFORE, AUTOSAVE_S, BLOCK_SIZE_M, CAVE_AIR_C, CHUNK_SIZE, DAY_LENGTH_S, DIFFICULTY, HEAT_REACH_M, HEAT_SOURCES_C, cells, type Difficulty, HORIZON_RECENTER_M, MAX_VIEW_CHUNKS, MIN_VIEW_CHUNKS, SIM_HZ, toCells } from './config';
 import { Sounds } from './audio/sounds';
+import { Ambience, type Surroundings } from './audio/ambience';
 import { chunkKey, forEachChunkReading, localIndex, unpackChunkKey } from './core/coords';
 import { FixedStepLoop } from './core/loop';
 import { BLOCKS } from './engine/blocks';
@@ -27,6 +28,7 @@ import { drawTitle, drawUi, type UiModel, type WorldsModel } from './ui/app';
 import { worldActions } from './ui/worldActions';
 import { PadMenu } from './ui/padMenu';
 import { bearing, Minimap } from './ui/minimap';
+import { iconUrl } from './ui/icons';
 import { installTouchControls, wantsTouch } from './ui/touch';
 import { Saver } from './storage/saver';
 import { keyLabel, loadSettings, saveSettings } from './storage/settings';
@@ -97,6 +99,11 @@ const frameGraph = new FrameGraph();
 document.body.append(frameGraph.canvas);
 const renderer = new Renderer(canvas, seed, viewChunks * CHUNK_SIZE);
 const sounds = new Sounds();
+const ambience = new Ambience(sounds);
+// Menu buttons click.
+uiRoot.addEventListener('click', (e) => {
+  if ((e.target as HTMLElement).closest('button')) sounds.play('click');
+});
 canvas.addEventListener('click', () => sounds.unlock());
 const world = new World();
 const pool = new WorkerPool(seed);
@@ -112,6 +119,7 @@ function applySettings(): void {
   input.invertY = settings.invertY;
   input.bindings = settings.keys;
   sounds.volume = settings.effectsVolume;
+  ambience.musicVolume = settings.musicVolume;
   uiRoot.style.setProperty('zoom', String(settings.guiScale));
 }
 applySettings();
@@ -121,6 +129,31 @@ renderer.setViewDistance(viewChunks * CHUNK_SIZE);
 const WATER = BLOCKS.typeIndex[BLOCKS.state('water')]!, FLOWING = BLOCKS.typeIndex[BLOCKS.state('flowing_water')]!;
 const LADDER = BLOCKS.typeIndex[BLOCKS.state('ladder')]!, CAMPFIRE = BLOCKS.state('campfire'), ARROW = BLOCKS.state('arrow');
 const climbAt = (x: number, y: number, z: number) => BLOCKS.typeIndex[world.get(x, y, z)] === LADDER;
+const FLOWING_ID = BLOCKS.state('flowing_water'), LEVELS = 8;
+/** Level of water in a cell for working out flow (a source is full, air is empty, anything else blocks: -1). */
+const levelAt = (x: number, y: number, z: number) => {
+  const s = world.get(x, y, z);
+  if (BLOCKS.typeIndex[s] === WATER) return LEVELS;
+  if (BLOCKS.typeIndex[s] === FLOWING) return ((s - FLOWING_ID) % LEVELS) + 1;
+  return COLLISION[s] === 0 ? 0 : -1;
+};
+/** Flow of flowing water: down where it falls, otherwise toward lower neighbours. Still water does not push. */
+const currentAt = (x: number, y: number, z: number): [number, number, number] | null => {
+  const s = world.get(x, y, z);
+  if (BLOCKS.typeIndex[s] !== FLOWING) return null;
+  if (s - FLOWING_ID >= LEVELS) return [0, -1, 0];
+  const here = levelAt(x, y, z);
+  let fx = 0, fz = 0;
+  for (const [dx, dz] of [[1, 0], [-1, 0], [0, 1], [0, -1]] as const) {
+    const n = levelAt(x + dx, y, z + dz);
+    if (n >= 0 && n < here) {
+      fx += dx * (here - n);
+      fz += dz * (here - n);
+    }
+  }
+  const len = Math.hypot(fx, fz);
+  return len ? [fx / len, 0, fz / len] : null;
+};
 const boxAt = (x: number, y: number, z: number) => COLLISION[world.get(x, y, z)]!;
 const waterAt = (x: number, y: number, z: number) => {
   const t = BLOCKS.typeIndex[world.get(x, y, z)];
@@ -233,6 +266,8 @@ function heatAround(x: number, y: number, z: number): number {
 
 /** The temperature the player feels, worked out twice a second; wet for a while after swimming or rain. */
 let feltC = 20, exposureClock = 0, wetS = 0;
+/** What the ambience plays, from the same look around. */
+let surroundings: Surroundings = { wind: 0, rain: 0, water: 0, underground: false, day: true, wildlife: false };
 function updateExposure(dt: number): void {
   const x = Math.floor(player.body.x), y = Math.floor(player.eyeY), z = Math.floor(player.body.z);
   const column = world.column(x >> 4, z >> 4), chunk = world.chunkAt(x, y, z);
@@ -244,6 +279,15 @@ function updateExposure(dt: number): void {
   const underground = chunk.skyLight(localIndex(x & 15, y & 15, z & 15)) === 0 && y < column.surface[i]! - 8;
   const airC = underground ? CAVE_AIR_C : climateTemperature(column.climate[i]!) + (env.sample?.seasonC ?? 0);
   const night = env.clock.dayTime > 1 - NIGHT_BEFORE || env.clock.dayTime < NIGHT_BEFORE;
+  let water = 0;
+  for (let dz = -6; dz <= 6; dz += 2) for (let dx = -6; dx <= 6; dx += 2) if (waterAt(x + dx, y - 2, z + dz) || waterAt(x + dx, y - 1, z + dz)) water++;
+  const groundKey = BLOCKS.type(world.get(x, column.surface[i]!, z)).key;
+  surroundings = {
+    wind: sheltered || underground ? 0.1 : Math.min(1, (env.sample?.windSpeed ?? 3) / 12 + Math.max(0, y * BLOCK_SIZE_M) / 200),
+    rain: env.falling === 'rain' && !underground ? (sheltered ? 0.35 : 1) : 0,
+    water: Math.min(1, water / 6), underground, day: !night,
+    wildlife: !underground && (groundKey === 'grass' || column.skyTop[i]! > column.surface[i]! + 2),
+  };
   feltC = feltTemperature({
     airC, night: night && !underground, sheltered: sheltered || underground, wet: wetS > 0, windM_S: env.sample?.windSpeed ?? 3,
     heatC: heatAround(x, y, z), insulationC: play.warmth,
@@ -265,25 +309,27 @@ function update(dt: number): void {
   if (play.mode === 'survival') player.flying = false;
   else if (!active) input.consume('fly');
   const falling = -player.body.vy;
-  player.update(dt, active ? input : idleInput, boxAt, waterAt, climbAt);
+  player.update(dt, active ? input : idleInput, boxAt, waterAt, climbAt, currentAt);
   if (active) play.update(dt, input, player);
   play.tickFurnaces(dt);
   play.tickCampfires(dt);
   play.tickProjectiles(dt, boxAt, player);
+  play.particles.update(dt);
   creatures.update(dt, {
     player: player.body, survival: play.mode === 'survival', day: env.atmosphere.sun[1] > -0.05, hostiles: DIFFICULTY[play.difficulty].hostiles, boxAt, waterAt,
     playerHolds: play.held ? BLOCKS.type(play.held.state).key : null,
   });
   if (play.drops.update(dt, boxAt, play.survival.dead ? null : player.body, play.inventory)) play.version++;
+  exposureClock += dt;
+  if (exposureClock >= 0.5) {
+    updateExposure(exposureClock);
+    exposureClock = 0;
+  }
   if (play.mode === 'survival' && !play.survival.dead) {
     if (player.body.onGround && falling > 0 && player.submerged < 0.2) play.survival.land(falling * BLOCK_SIZE_M);
     const eye = world.get(Math.floor(player.body.x), Math.floor(player.eyeY), Math.floor(player.body.z));
     const feet = world.get(Math.floor(player.body.x), Math.floor(player.body.y + 0.2), Math.floor(player.body.z));
-    exposureClock += dt;
-    if (exposureClock >= 0.5) {
-      updateExposure(exposureClock);
-      exposureClock = 0;
-    }
+
     play.survival.update(dt, {
       feltC, sprinting: input.sprint && player.body.onGround, inWater: player.submerged > 0.3,
       inFire: feet === CAMPFIRE || world.get(Math.floor(player.body.x), Math.floor(player.body.y - 0.05), Math.floor(player.body.z)) === CAMPFIRE, headInWater: waterAt(Math.floor(player.body.x), Math.floor(player.eyeY), Math.floor(player.body.z)),
@@ -303,7 +349,8 @@ function update(dt: number): void {
     if (play.mode === 'survival') play.stats.walkedM += step * BLOCK_SIZE_M;
     if (walked > toCells(1.8)) {
       walked = 0;
-      sounds.play('step');
+      const under = BLOCKS.type(world.get(Math.floor(player.body.x), Math.floor(player.body.y - 0.05), Math.floor(player.body.z)));
+      sounds.step(under.key === 'snow' ? 'snow' : under.falls ? 'sand' : under.mineWith === 'pickaxe' ? 'stone' : under.mineWith === 'axe' ? 'wood' : 'soft');
     }
   }
   hintClock += dt;
@@ -539,7 +586,28 @@ function updateHorizon(x: number, z: number): void {
 }
 
 const hurtFlash = document.querySelector<HTMLDivElement>('#hurt')!, burnGlow = document.querySelector<HTMLDivElement>('#burn')!;
-let lastHealth = play.survival.health, kick = 0;
+let bobPhase = 0;
+/** The first-person hand: the held item's picture (or a fist), swinging with each break, place or hit. */
+const hand = document.querySelector<HTMLDivElement>('#hand')!, handImg = hand.querySelector('img')!;
+let handState = -2, handSwings = 0;
+function updateHand(): void {
+  const state = play.held?.state ?? -1;
+  hand.style.display = input.playing && !player.flying && play.screen === 'none' ? '' : 'none';
+  if (state !== handState) {
+    handState = state;
+    handImg.style.display = state < 0 ? 'none' : '';
+    if (state >= 0) handImg.src = iconUrl(state);
+    hand.classList.toggle('fist', state < 0);
+  }
+  if (play.swings !== handSwings || (play.breaking > 0 && !hand.classList.contains('swing'))) {
+    handSwings = play.swings;
+    hand.classList.remove('swing');
+    void hand.offsetWidth;
+    hand.classList.add('swing');
+  }
+}
+hand.addEventListener('animationend', () => hand.classList.remove('swing'));
+let lastHealth = play.survival.health, kick = 0, milestones = play.journal.done.size;
 const compass = document.querySelector<HTMLDivElement>('#compass')!, minimap = new Minimap();
 document.body.append(minimap.canvas);
 let mapClock = 0;
@@ -572,7 +640,16 @@ const loop = new FixedStepLoop(1 / 60, 0.25, timedUpdate, (_alpha, frameDt) => {
   player.pitch = Math.max(-1.55, Math.min(1.55, player.pitch + dpitch));
   handleActions();
   streamer.update(player.body.x, player.body.y, player.body.z, now);
-  renderer.camera.position.set(player.body.x, player.eyeY, player.body.z);
+  // The view bobs with each step and widens a little while sprinting (unless turned off).
+  const speed = Math.hypot(player.body.vx, player.body.vz), walking = player.body.onGround && !player.flying && speed > 0.5;
+  bobPhase = walking ? bobPhase + speed * frameDt * 1.1 : 0;
+  const bob = settings.viewBob ? Math.sin(bobPhase) * 0.06 : 0;
+  const wantFov = settings.fov * (settings.viewBob && input.sprint && walking ? 1.1 : 1);
+  if (Math.abs(renderer.camera.fov - wantFov) > 0.05) {
+    renderer.camera.fov += (wantFov - renderer.camera.fov) * Math.min(1, frameDt * 8);
+    renderer.camera.updateProjectionMatrix();
+  }
+  renderer.camera.position.set(player.body.x, player.eyeY + Math.abs(bob), player.body.z);
   // Taking damage: a red flash, a hurt sound and a kick of the view. Slow harm (burning, cold) flashes every half point.
   const health = play.survival.health, lost = lastHealth - health;
   if (lost >= 0.5 && play.mode === 'survival') {
@@ -588,6 +665,12 @@ const loop = new FixedStepLoop(1 / 60, 0.25, timedUpdate, (_alpha, frameDt) => {
   kick *= Math.max(0, 1 - frameDt * 8);
   burnGlow.style.opacity = play.survival.burning > 0 ? '1' : '0';
   updateHeldTools(now);
+  updateHand();
+  ambience.update(frameDt, surroundings);
+  if (play.journal.done.size > milestones) {
+    [523, 659, 784].forEach((f, k) => setTimeout(() => sounds.chime(f, 0.25), k * 120));
+  }
+  milestones = play.journal.done.size;
   renderer.camera.rotation.set(player.pitch + kick, player.yaw, 0, 'YXZ');
   highlight.set(play.target, play.breaking);
   const daylight = renderer.uniforms.daylight!.value as number;
@@ -600,10 +683,14 @@ const loop = new FixedStepLoop(1 / 60, 0.25, timedUpdate, (_alpha, frameDt) => {
     return 0.07 + 0.93 * Math.max(sky * sky * daylight, block * block);
   };
   creatureMeshes.update(creatures.list, (c) => lightAt(c.body.x, c.body.y + c.body.height * 0.6, c.body.z));
-  // Arrows in flight are drawn like dropped arrows.
-  const flying = play.projectiles.list.map((p) => ({ stack: { state: ARROW, count: 1 }, age: 0, wait: 0,
-    body: { x: p.x, y: p.y, z: p.z, vx: 0, vy: 0, vz: 0, halfWidth: 0.2, height: 0.4, onGround: false } }));
-  dropMeshes.update(flying.length ? [...play.drops.list, ...flying] : play.drops.list, now / 1000, (d) => lightAt(d.body.x, d.body.y + d.body.height / 2, d.body.z));
+  // Arrows in flight and bits of broken blocks are drawn like dropped items, smaller.
+  const flying = [
+    ...play.projectiles.list.map((p) => ({ state: ARROW, x: p.x, y: p.y, z: p.z, size: 0.4 })),
+    ...play.particles.list.map((p) => ({ state: p.state, x: p.x, y: p.y, z: p.z, size: 0.15 })),
+  ].map((f) => ({ stack: { state: f.state, count: 1 }, age: 0, wait: 0,
+    body: { x: f.x, y: f.y, z: f.z, vx: 0, vy: 0, vz: 0, halfWidth: f.size / 2, height: f.size, onGround: false } }));
+  const drawn = flying.length ? [...play.drops.list, ...flying].slice(-DROP_CAP) : play.drops.list;
+  dropMeshes.update(drawn, now / 1000, (d) => lightAt(d.body.x, d.body.y + d.body.height / 2, d.body.z));
   cull();
   const cam = renderer.camera.position;
   renderer.setAtmosphere(env.frame(frameDt, cam.x, cam.y, cam.z, world));

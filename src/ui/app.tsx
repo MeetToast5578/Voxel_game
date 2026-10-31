@@ -192,10 +192,14 @@ function SettingsSection({ m }: { m: WorldsModel }) {
       <label>Effects volume: {Math.round(s.effectsVolume * 100)}%
         <input type="range" min={0} max={1} step={0.05} value={s.effectsVolume} onInput={(e) => set({ effectsVolume: Number((e.target as HTMLInputElement).value) })} />
       </label>
+      <label>Music volume: {Math.round(s.musicVolume * 100)}%
+        <input type="range" min={0} max={1} step={0.05} value={s.musicVolume} onInput={(e) => set({ musicVolume: Number((e.target as HTMLInputElement).value) })} />
+      </label>
       <label>Menu and HUD size: {Math.round(s.guiScale * 100)}%
         <input type="range" min={0.75} max={1.5} step={0.05} value={s.guiScale} onChange={(e) => set({ guiScale: Number((e.target as HTMLInputElement).value) })} />
       </label>
       <label class="check"><input type="checkbox" checked={s.invertY} onChange={(e) => set({ invertY: (e.target as HTMLInputElement).checked })} /> Invert mouse Y</label>
+      <label class="check"><input type="checkbox" checked={s.viewBob} onChange={(e) => set({ viewBob: (e.target as HTMLInputElement).checked })} /> View bob and sprint widening</label>
       <label class="check"><input type="checkbox" checked={s.hints} onChange={(e) => set({ hints: (e.target as HTMLInputElement).checked })} /> Show hints</label>
       <KeyBindings m={m} />
     </>

@@ -1,7 +1,7 @@
 import {
   AIR_ACCEL, EYE_HEIGHT_M, FLY_FAST_FACTOR, FLY_SPEED_M_S, GRAVITY_M_S2, GROUND_ACCEL, JUMP_SPEED_M_S, PLAYER_DENSITY,
   PLAYER_HALF_WIDTH_M, PLAYER_HEIGHT_M, SPRINT_SPEED_M_S, STEP_HEIGHT_M, STEP_SMOOTH_S, SWIM_THRUST_M_S2, SWIM_UP_M_S2,
-  TERMINAL_SPEED_M_S, WALK_SPEED_M_S, WATER_DENSITY, WATER_DRAG_PER_M, toCells, BLOCK_SIZE_M, CROUCH_FACTOR, CLIMB_SPEED_M_S,
+  TERMINAL_SPEED_M_S, WALK_SPEED_M_S, WATER_DENSITY, WATER_DRAG_PER_M, toCells, BLOCK_SIZE_M, CROUCH_FACTOR, CLIMB_SPEED_M_S, CURRENT_ACCEL_M_S2,
 } from '../config';
 import type { BoxAt } from './collision';
 import type { Input } from './input';
@@ -77,7 +77,12 @@ export class Player {
     return false;
   }
 
-  update(dt: number, input: Input, boxAt: BoxAt, waterAt: WaterAt, climbAt: (x: number, y: number, z: number) => boolean = () => false): void {
+  /**
+   * `currentAt` gives the flow of the water in a cell as a unit-ish vector (x, y, z), or null: flowing water pushes a
+   * swimmer along it, and falling water pushes down.
+   */
+  update(dt: number, input: Input, boxAt: BoxAt, waterAt: WaterAt, climbAt: (x: number, y: number, z: number) => boolean = () => false,
+    currentAt: (x: number, y: number, z: number) => readonly [number, number, number] | null = () => null): void {
     const b = this.body;
     if (input.consume('fly')) {
       this.flying = !this.flying;
@@ -102,6 +107,13 @@ export class Player {
       b.vx += wx * thrust * dt;
       b.vz += wz * thrust * dt;
       b.vy += (BUOYANCY * this.submerged - GRAVITY) * dt + (input.jump ? toCells(SWIM_UP_M_S2) * dt : 0);
+      const flow = currentAt(Math.floor(b.x), Math.floor(b.y + b.height * 0.3), Math.floor(b.z));
+      if (flow) {
+        const push = toCells(CURRENT_ACCEL_M_S2) * dt;
+        b.vx += flow[0] * push;
+        b.vy += flow[1] * push;
+        b.vz += flow[2] * push;
+      }
       const speed = Math.hypot(b.vx, b.vy, b.vz);
       const drag = Math.max(0, 1 - WATER_DRAG * speed * dt);
       b.vx *= drag;

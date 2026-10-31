@@ -4,13 +4,13 @@ import { DEFAULT_VIEW_CHUNKS, MAX_VIEW_CHUNKS, MIN_VIEW_CHUNKS, MOUSE_SENSITIVIT
 export const BINDINGS = {
   forward: 'Forward', back: 'Back', left: 'Left', right: 'Right', jump: 'Jump / up', descend: 'Down (flying) / crouch',
   sprint: 'Sprint', inventory: 'Inventory', drop: 'Throw item', fly: 'Fly (creative)', hint: 'Hide hint', time: 'Skip an hour',
-  fill: 'Fill box (creative)', clear: 'Clear box (creative)', viewUp: 'View distance +', viewDown: 'View distance −', debug: 'Debug text',
+  fill: 'Fill box (creative)', clear: 'Clear box (creative)', copy: 'Copy box (creative)', paste: 'Paste (creative)', viewUp: 'View distance +', viewDown: 'View distance −', debug: 'Debug text',
 } as const;
 export type Binding = keyof typeof BINDINGS;
 
 export const DEFAULT_KEYS: Readonly<Record<Binding, string>> = {
   forward: 'KeyW', back: 'KeyS', left: 'KeyA', right: 'KeyD', jump: 'Space', descend: 'ShiftLeft', sprint: 'ControlLeft',
-  inventory: 'KeyE', drop: 'KeyQ', fly: 'KeyF', hint: 'KeyH', time: 'KeyT', fill: 'KeyB', clear: 'KeyG', viewUp: 'Equal',
+  inventory: 'KeyE', drop: 'KeyQ', fly: 'KeyF', hint: 'KeyH', time: 'KeyT', fill: 'KeyB', clear: 'KeyG', copy: 'KeyC', paste: 'KeyV', viewUp: 'Equal',
   viewDown: 'Minus', debug: 'F3',
 };
 
@@ -20,21 +20,24 @@ export interface Settings {
   mouseSensitivity: number;
   /** Vertical field of view in degrees. */
   fov: number;
-  /** Sound effects volume, 0..1. */
+  /** Sound effects (and ambience) volume, and music volume, 0..1. */
   effectsVolume: number;
+  musicVolume: number;
   invertY: boolean;
   /** Size of the menus and HUD, 0.75..1.5. */
   guiScale: number;
   /** First-steps hints in survival. */
   hints: boolean;
+  /** The view bobs while walking and widens while sprinting. */
+  viewBob: boolean;
   /** KeyboardEvent.code per binding. */
   keys: Record<Binding, string>;
 }
 
 const KEY = 'voxel-next-settings';
 export const DEFAULT_SETTINGS: Settings = {
-  viewChunks: DEFAULT_VIEW_CHUNKS, mouseSensitivity: MOUSE_SENSITIVITY, fov: 70, effectsVolume: 1, invertY: false, guiScale: 1,
-  hints: true, keys: { ...DEFAULT_KEYS },
+  viewChunks: DEFAULT_VIEW_CHUNKS, mouseSensitivity: MOUSE_SENSITIVITY, fov: 70, effectsVolume: 1, musicVolume: 0.5, invertY: false, guiScale: 1,
+  hints: true, viewBob: true, keys: { ...DEFAULT_KEYS },
 };
 
 const clampNum = (v: unknown, min: number, max: number, fallback: number) =>
@@ -50,9 +53,11 @@ export function parseSettings(value: unknown): Settings {
     mouseSensitivity: clampNum(s.mouseSensitivity, 0.0002, 0.02, DEFAULT_SETTINGS.mouseSensitivity),
     fov: clampNum(s.fov, 40, 110, DEFAULT_SETTINGS.fov),
     effectsVolume: clampNum(s.effectsVolume, 0, 1, DEFAULT_SETTINGS.effectsVolume),
+    musicVolume: clampNum(s.musicVolume, 0, 1, DEFAULT_SETTINGS.musicVolume),
     invertY: typeof s.invertY === 'boolean' ? s.invertY : DEFAULT_SETTINGS.invertY,
     guiScale: clampNum(s.guiScale, 0.75, 1.5, DEFAULT_SETTINGS.guiScale),
     hints: typeof s.hints === 'boolean' ? s.hints : DEFAULT_SETTINGS.hints,
+    viewBob: typeof s.viewBob === 'boolean' ? s.viewBob : DEFAULT_SETTINGS.viewBob,
     keys: Object.fromEntries((Object.keys(DEFAULT_KEYS) as Binding[]).map((b) => [b, code(keys[b], DEFAULT_KEYS[b])])) as Record<Binding, string>,
   };
 }
