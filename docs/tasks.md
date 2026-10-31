@@ -228,7 +228,7 @@ All of it stays procedural: no asset files.
   **Done when:** both settings work.
 - [x] **9.4 River currents** (flowing and falling water push; shortcut: generated rivers are still water and do not push) (lost in the switch-over). River and flowing water push the player and dropped items.
   **Done when:** a physics test shows the player carried downstream.
-- [ ] **9.5 Per-box collision for stairs and doors** (a handoff candidate).
+- [x] **9.5 Per-box collision for stairs and doors** (open doors stay passable: their panel would leave a gap narrower than the player).
   **Done when:** you walk up stairs without stepping, and an open door does not block its cell.
 - [x] **9.6 Stony shores and sandbars** (stony shores only, in stretches chosen by noise; no sandbars yet) (a handoff candidate).
   **Done when:** steep coasts and river bends show them on seed 1.

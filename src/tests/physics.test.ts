@@ -81,6 +81,30 @@ describe('physics', () => {
     expect(b.y).toBeCloseTo(1, 5);
   });
 
+  it('walks up stairs as half steps, and only from the low side', () => {
+    const STAIRS = COLLISION[BLOCKS.state('stone_stairs', 0)]!;
+    const b = body(0.5, 0, 0.5);
+    walk(b, world({ '2,0,0': STAIRS, '3,0,0': STONE }), 3, 0, 60, 0.55);
+    expect(b.y).toBeCloseTo(1, 5);
+    // From the high side the half step is still a full cell up.
+    const c = body(4.5, 0, 0.5);
+    walk(c, world({ '2,0,0': STAIRS }), -3, 0, 60, 0.55);
+    expect(c.y).toBeCloseTo(0, 5);
+    expect(c.x).toBeGreaterThan(3);
+  });
+
+  it('is blocked by a closed door but walks through an open one', () => {
+    const closed = COLLISION[BLOCKS.state('door', 0)]!, open = COLLISION[BLOCKS.state('door', 4)]!;
+    const door = (s: number) => world({ '2,0,0': s, '2,1,0': s, '2,2,0': s });
+    const b = body(0.5, 0, 0.5);
+    walk(b, door(closed), 3, 0, 60);
+    expect(b.x).toBeLessThan(3);
+    expect(open).toBe(0);
+    const c = body(0.5, 0, 0.5);
+    walk(c, door(open), 3, 0, 60);
+    expect(c.x).toBeGreaterThan(3);
+  });
+
   it('stops at ceilings', () => {
     const b = body(0.5, 0, 0.5);
     b.vy = 20;

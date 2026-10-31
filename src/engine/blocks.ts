@@ -301,7 +301,7 @@ function gameplay(): BlockSpec[] {
     stone('furnace', 'Furnace', { tiles: { top: 'furnace_top', side: 'furnace_side', bottom: 'furnace_top' }, front: 'furnace_front', variants: 4, hardness: 3.5 }),
     stone('lit_furnace', 'Lit furnace', { tiles: { top: 'furnace_top', side: 'furnace_side', bottom: 'furnace_top' }, front: 'furnace_front_lit',
       variants: 4, hardness: 3.5, lightEmission: 13, drops: 'furnace' }),
-    // A door is a column of door cells (variant: facing + 4 when open); closed it fills its cell for collision.
+    // A door is a column of door cells (variant: facing + 4 when open); it collides as its panel.
     { key: 'door', name: 'Door', tiles: all('door'), shape: 'boxes', variants: 8, hardness: 3, density: 600, mineWith: 'axe',
       boxes: (v) => [PANEL[v < 4 ? v : TURN[v - 4]!]!], fuel: 10 },
     // A bed covers two cells: variant facing + 4 for the head end.

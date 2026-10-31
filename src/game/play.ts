@@ -2,7 +2,7 @@ import { FISH_MAX_S, FISH_MIN_S, BLOCK_SIZE_M, ARROW_DAMAGE, ARROW_SPEED_M_S, BO
 import { lootOf, type Creatures } from '../creatures/creatures';
 import { AIR, BLOCKS, SOLID } from '../engine/blocks';
 import type { World } from '../engine/world';
-import { COLLISION } from './collision';
+import { COLLISION, FULL } from './collision';
 import { consumeIngredients, craftResult, takeIngredients, type Recipe } from './crafting';
 import { Drops } from './drops';
 import { Hints } from './hints';
@@ -794,7 +794,7 @@ export class Play {
 
   /** Whether a block placed at (x, y, z) would leave the player free. */
   private free(x: number, y: number, z: number, player: Player, solidCell = false, state = TORCH): boolean {
-    const box = solidCell ? 16 << 5 : COLLISION[state]!;
+    const box = solidCell ? FULL : COLLISION[state]!;
     return box === 0 || !overlapsSolid(player.body, (cx, cy, cz) => (cx === x && cy === y && cz === z ? box : 0));
   }
 
