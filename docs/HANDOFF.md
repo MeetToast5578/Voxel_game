@@ -23,8 +23,9 @@
   - per-box collision for stairs and doors;
   - path-finding for all creatures;
   - stony shores and sandbars.
-- **Docs:** ROADMAP, tasks, OPEN-TASKS, REFERENCE-GAPS and specs 1–53 describe the removed 0.3 m game. They are a
-  feature reference only, and a new task list for the rewrite has not been written.
+- **Docs:** ROADMAP, OPEN-TASKS, REFERENCE-GAPS and specs 1–53 describe the removed 0.3 m game; they are a feature
+  reference only. `docs/tasks.md` is the new task list for the rewrite (2026-10-31): a survival game with goals, in
+  milestones 0–10, with the owner decisions it needs listed at the end.
 
 ## 2026-10-31 — switch-over: the rewrite is the game (Claude)
 
