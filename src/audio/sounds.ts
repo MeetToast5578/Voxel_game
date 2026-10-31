@@ -1,4 +1,4 @@
-export type SoundName = 'break' | 'place' | 'step' | 'splash' | 'thunder';
+export type SoundName = 'break' | 'place' | 'step' | 'splash' | 'thunder' | 'hurt' | 'eat' | 'click';
 
 interface Preset {
   /** Low-pass cutoff in Hz: lower sounds duller. */
@@ -14,12 +14,36 @@ const PRESETS: Record<SoundName, Preset> = {
   step: { frequency: 500, volume: 0.15, duration: 0.06 },
   splash: { frequency: 700, volume: 0.3, duration: 0.35 },
   thunder: { frequency: 150, volume: 0.7, duration: 2.5 },
+  hurt: { frequency: 300, volume: 0.6, duration: 0.25 },
+  eat: { frequency: 1100, volume: 0.3, duration: 0.12 },
+  click: { frequency: 3000, volume: 0.12, duration: 0.03 },
 };
 
 /** Procedural sound effects: filtered noise bursts, so no audio files are needed. Ported from the old game. */
 export class Sounds {
   private ctx: AudioContext | null = null;
   private noise: AudioBuffer | null = null;
+  /** Effects volume from the settings, 0..1. */
+  volume = 1;
+
+  /** The audio context once unlocked and running, and the shared noise buffer (for ambience). */
+  get running(): { ctx: AudioContext; noise: AudioBuffer } | null {
+    return this.ctx && this.noise && this.ctx.state === 'running' ? { ctx: this.ctx, noise: this.noise } : null;
+  }
+
+  /** A short musical tone (sine), for chimes: `freq` Hz, `volume` 0..1 times the effects volume. */
+  chime(freq: number, volume = 0.3, duration = 0.6): void {
+    const r = this.running;
+    if (!r || this.volume <= 0) return;
+    const t = r.ctx.currentTime, osc = r.ctx.createOscillator(), gain = r.ctx.createGain();
+    osc.frequency.value = freq;
+    gain.gain.setValueAtTime(0.0001, t);
+    gain.gain.exponentialRampToValueAtTime(volume * this.volume, t + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t + duration);
+    osc.connect(gain).connect(r.ctx.destination);
+    osc.start(t);
+    osc.stop(t + duration);
+  }
 
   /** Browsers only allow audio after a user gesture: call from a click. */
   unlock(): void {
@@ -32,9 +56,36 @@ export class Sounds {
     this.ctx.resume().catch(() => undefined);
   }
 
-  play(name: SoundName, volume = 1): void {
+  /**
+   * A creature's voice: a short tone, low for big animals (`voice` near 0) and high for small ones; hurt is sharper and
+   * death falls away. `volume` is 0..1 (distance).
+   */
+  call(voice: number, kind: 'call' | 'hurt' | 'death', volume: number): void {
     const ctx = this.ctx;
-    if (!ctx || !this.noise || ctx.state !== 'running') return;
+    if (!ctx || ctx.state !== 'running' || this.volume <= 0) return;
+    const t = ctx.currentTime, f = (90 + voice * 700) * (kind === 'hurt' ? 1.4 : 1) * (0.9 + Math.random() * 0.2);
+    const duration = kind === 'death' ? 0.6 : kind === 'hurt' ? 0.15 : 0.3;
+    const osc = ctx.createOscillator(), gain = ctx.createGain();
+    osc.type = voice < 0.4 ? 'sawtooth' : 'triangle';
+    osc.frequency.setValueAtTime(f, t);
+    osc.frequency.exponentialRampToValueAtTime(kind === 'death' ? f * 0.4 : f * 0.8, t + duration);
+    gain.gain.setValueAtTime(0.0001, t);
+    gain.gain.exponentialRampToValueAtTime(Math.max(0.0002, 0.25 * volume * this.volume), t + 0.03);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t + duration);
+    osc.connect(gain).connect(ctx.destination);
+    osc.start(t);
+    osc.stop(t + duration);
+  }
+
+  /** A footstep on `material`: harder ground sounds brighter. */
+  step(material: 'stone' | 'wood' | 'soft' | 'sand' | 'snow'): void {
+    const f = { stone: 1.8, wood: 1.3, soft: 0.8, sand: 1.1, snow: 0.6 }[material];
+    this.play('step', material === 'stone' ? 1.2 : 1, f);
+  }
+
+  play(name: SoundName, volume = 1, pitch = 1): void {
+    const ctx = this.ctx;
+    if (!ctx || !this.noise || ctx.state !== 'running' || this.volume <= 0) return;
     const p = PRESETS[name];
     const t = ctx.currentTime;
     const source = ctx.createBufferSource();
@@ -42,9 +93,9 @@ export class Sounds {
     source.loop = p.duration > this.noise.duration;
     const filter = ctx.createBiquadFilter();
     filter.type = 'lowpass';
-    filter.frequency.value = p.frequency * (0.9 + Math.random() * 0.2);
+    filter.frequency.value = p.frequency * pitch * (0.9 + Math.random() * 0.2);
     const gain = ctx.createGain();
-    gain.gain.setValueAtTime(Math.max(0.002, p.volume * volume), t);
+    gain.gain.setValueAtTime(Math.max(0.002, p.volume * volume * this.volume), t);
     gain.gain.exponentialRampToValueAtTime(0.001, t + p.duration);
     source.connect(filter).connect(gain).connect(ctx.destination);
     source.start(t);

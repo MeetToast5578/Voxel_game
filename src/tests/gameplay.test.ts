@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { MAX_HEALTH, SMELT_S } from '../config';
+import { MAX_HEALTH, MAX_HUNGER, SMELT_S } from '../config';
 import { BLOCKS } from '../engine/blocks';
 import { consumeIngredients, craftResult } from '../game/crafting';
 import { newFurnace, tickFurnace } from '../game/furnace';
@@ -135,5 +135,25 @@ describe('survival', () => {
     s.hunger = 10;
     expect(s.eat(6)).toBe(true);
     expect(s.hunger).toBe(16);
+  });
+
+  it('keeps burning for a while after the fire, until water puts it out', () => {
+    const s = new Survival(), calm = { sprinting: false, headInWater: false, inLava: false };
+    s.update(0.1, { ...calm, inFire: true });
+    s.update(2, calm);
+    expect(s.burning).toBeGreaterThan(0);
+    expect(s.health).toBeLessThan(MAX_HEALTH - 1.5);
+    s.update(0.1, { ...calm, inWater: true });
+    expect(s.burning).toBe(0);
+    const h = s.health;
+    s.update(1, calm);
+    expect(s.health).toBeGreaterThanOrEqual(h);
+  });
+
+  it('drains hunger at the rate the difficulty sets', () => {
+    const normal = new Survival(), peaceful = new Survival();
+    peaceful.hungerRate = 0.5;
+    for (const s of [normal, peaceful]) s.update(100, { sprinting: false, headInWater: false, inLava: false });
+    expect(MAX_HUNGER - peaceful.hunger).toBeCloseTo((MAX_HUNGER - normal.hunger) / 2);
   });
 });

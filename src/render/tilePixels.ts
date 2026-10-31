@@ -1,5 +1,5 @@
 import { mulberry32 } from '../core/random';
-import { BLOCKS } from '../engine/blocks';
+import { ARMOUR_PIECES, BLOCKS } from '../engine/blocks';
 
 /** Pixels per tile side. Tiles are layers of a texture array, so merged faces can repeat them. */
 export const TILE_SIZE = 16;
@@ -39,12 +39,48 @@ function toolPainter(kind: string, head: RGB): PixelFn {
     const along = x + y, across = x - y;
     if (kind === 'pickaxe') return Math.abs(across - 7) <= 1 && Math.abs(along - 15) <= 6;
     if (kind === 'axe') return along >= 14 && along <= 19 && across >= 5 && across <= 10;
+    // A sword: a long blade up the diagonal and a crossguard across it.
+    if (kind === 'hoe') return (y <= 3 && x >= 9 && x <= 14) || (x >= 13 && y <= 5);
+    if (kind === 'sword') return (Math.abs(along - 15) <= 1 && x >= 6) || (across === -6 && Math.abs(along - 15) <= 3);
     return Math.hypot(x - 12.5, y - 2.5) <= 2.6;
   };
-  return (x, y, r) => inHead(x, y) ? shade(head, 0.85 + r() * 0.3) : onHandle(x, y) ? shade(HANDLE, 0.9 + r() * 0.2) : [0, 0, 0, 0];
+  const handle = kind === 'sword' ? (x: number, y: number) => onHandle(x, y) && x <= 4 : onHandle;
+  return (x, y, r) => inHead(x, y) ? shade(head, 0.85 + r() * 0.3) : handle(x, y) ? shade(HANDLE, 0.9 + r() * 0.2) : [0, 0, 0, 0];
 }
-const TOOL_HEADS: Record<string, RGB> = { wooden: [162, 130, 78], stone: [125, 125, 125], iron: [216, 216, 216] };
+const TOOL_HEADS: Record<string, RGB> = { wooden: [162, 130, 78], stone: [125, 125, 125], iron: [216, 216, 216], diamond: [110, 220, 230] };
+const ARMOUR_COLOURS: Record<string, RGB> = { leather: [140, 86, 46], iron: [210, 210, 214], diamond: [110, 215, 228] };
+/** An ingot bar in a colour. */
+function ingotPainter(c: RGB): PixelFn {
+  return (x, y, r) => (y >= 6 && y <= 10 && x >= 2 + (10 - y) && x <= 13 - (10 - y) / 2 ? shade(c, (y === 6 ? 1.15 : 0.9) + r() * 0.1) : [0, 0, 0, 0]);
+}
+/** A fish: an oval body and a tail. */
+function fishPainter(c: RGB): PixelFn {
+  return (x, y, r) => (Math.hypot((x - 7) * 0.6, y - 8) <= 3 || (x >= 11 && x <= 14 && Math.abs(y - 8) <= x - 11) ? shade(c, 0.85 + r() * 0.3) : [0, 0, 0, 0]);
+}
+/** A cut gem: a diamond shape, lighter at the top. */
+function gemPainter(c: RGB): PixelFn {
+  return (x, y, r) => (Math.abs(x - 7.5) + Math.abs(y - 8) * 0.8 <= 6 ? shade(c, (y < 7 ? 1.15 : 0.85) + r() * 0.1) : [0, 0, 0, 0]);
+}
+/** Armour pieces: a helmet, a chest piece, leggings and boots, in their material's colour. */
+function armourPainter(slot: number, c: RGB): PixelFn {
+  const inside = [
+    (x: number, y: number) => y >= 4 && y <= 10 && x >= 3 && x <= 12 && !(y >= 8 && x >= 5 && x <= 10),
+    (x: number, y: number) => y >= 2 && y <= 13 && x >= 2 && x <= 13 && !(y <= 4 && x >= 6 && x <= 9) && !(y >= 7 && (x <= 3 || x >= 12)),
+    (x: number, y: number) => y >= 2 && y <= 14 && x >= 3 && x <= 12 && !(y >= 6 && x >= 7 && x <= 8),
+    (x: number, y: number) => y >= 8 && y <= 13 && ((x >= 2 && x <= 6) || (x >= 9 && x <= 13)) && !(y <= 10 && (x === 2 || x === 13)),
+  ][slot]!;
+  return (x, y, r) => (inside(x, y) ? shade(c, 0.85 + r() * 0.25) : [0, 0, 0, 0]);
+}
 const COBBLE: RGB = [118, 118, 118];
+/** A bucket: a pail narrowing to the bottom, filled at the top with `fill` if given. */
+function bucketPainter(fill: RGB | null): PixelFn {
+  return (x, y, r) => {
+    const half = 6 - (y - 4) * 0.25;
+    if (y < 4 || y > 13 || Math.abs(x - 7.5) > half) return [0, 0, 0, 0];
+    if (fill && y <= 5 && Math.abs(x - 7.5) < half - 1) return shade(fill, 0.85 + r() * 0.3);
+    return shade([170, 170, 175], (Math.abs(x - 7.5) > half - 1 || y === 13 ? 0.7 : 1) + (r() - 0.5) * 0.1);
+  };
+}
 /** A furnace front: cobble with a dark mouth in the lower half, glowing when lit. */
 function furnaceFront(lit: boolean): PixelFn {
   return (x, y, r) => {
@@ -73,7 +109,7 @@ const PAINTERS: Record<string, PixelFn> = {
   furnace_top: (x, y, r) => shade(COBBLE, (x === 0 || y === 0 || x === 15 || y === 15 ? 0.7 : 1.1) + (r() - 0.5) * 0.2),
   furnace_front: furnaceFront(false),
   furnace_front_lit: furnaceFront(true),
-  iron_ingot: (x, y, r) => (y >= 6 && y <= 10 && x >= 2 + (10 - y) && x <= 13 - (10 - y) / 2 ? shade([216, 216, 216], (y === 6 ? 1.15 : 0.9) + r() * 0.1) : [0, 0, 0, 0]),
+  iron_ingot: ingotPainter([216, 216, 216]),
   coal: (x, y, r) => (Math.hypot(x - 7.5, (y - 8) * 1.2) <= 5.5 ? shade([40, 40, 44], 0.7 + r() * 0.6) : [0, 0, 0, 0]),
   baked_potato: (x, y, r) => (Math.hypot((x - 7.5) * 0.8, y - 8) <= 4.5 ? shade([196, 140, 60], 0.8 + r() * 0.35) : [0, 0, 0, 0]),
   door: (x, _y, r) => shade([150, 112, 66], (x % 5 === 0 ? 0.6 : 1) + (r() - 0.5) * 0.12),
@@ -106,7 +142,19 @@ const PAINTERS: Record<string, PixelFn> = {
   ...cropPainters('wheat', [205, 175, 70]),
   ...cropPainters('carrots', [235, 125, 35]),
   ...cropPainters('potatoes', [225, 215, 160]),
-  ...Object.fromEntries(Object.entries(TOOL_HEADS).flatMap(([tier, head]) => ['pickaxe', 'axe', 'shovel'].map((k) => [tier + '_' + k, toolPainter(k, head)]))),
+  ...Object.fromEntries(Object.entries(TOOL_HEADS).flatMap(([tier, head]) => ['pickaxe', 'axe', 'shovel', 'sword', 'hoe'].map((k) => [tier + '_' + k, toolPainter(k, head)]))),
+  // Buckets: a grey pail, empty or with water or lava showing at the top.
+  bucket: bucketPainter(null),
+  water_bucket: bucketPainter([50, 90, 210]),
+  lava_bucket: bucketPainter([235, 110, 25]),
+  // A campfire: two crossed logs over glowing embers.
+  campfire_top: (x, y, r) => {
+    const log = (y >= 3 && y <= 5) || (y >= 10 && y <= 12) || (x >= 3 && x <= 5) || (x >= 10 && x <= 12);
+    return log ? shade(BARK, 0.8 + r() * 0.3) : r() < 0.6 ? shade([255, 120 + r() * 80, 30], 1) : shade([60, 30, 20], 1);
+  },
+  campfire_side: (_x, y, r) => (y < 10 ? [0, 0, 0, 0] : y >= 13 ? shade([255, 140, 40], 0.7 + r() * 0.4) : shade(BARK, 0.8 + r() * 0.3)),
+  // A ladder: two rails and rungs, clear between.
+  ladder: (x, y, r) => ((x >= 2 && x <= 3) || (x >= 12 && x <= 13) || (y % 4 === 1 && x > 3 && x < 12) ? shade([150, 112, 66], 0.85 + r() * 0.25) : [0, 0, 0, 0]),
   // A chest: planks with a dark rim, and a latch on the front.
   chest_side: (x, y, r) => shade([150, 110, 60], (x === 0 || x === 15 || y === 0 || y === 15 || y === 5 ? 0.6 : 1) + (r() - 0.5) * 0.12),
   chest_top: (x, y, r) => shade([160, 120, 66], (x === 0 || x === 15 || y === 0 || y === 15 ? 0.6 : 1) + (r() - 0.5) * 0.12),
@@ -245,7 +293,53 @@ const PAINTERS: Record<string, PixelFn> = {
   redstone_ore: orePainter([210, 50, 50]),
   diamond_ore: orePainter([110, 180, 230]),
   emerald_ore: orePainter([70, 190, 130]),
-  lapis_ore: orePainter([50, 90, 180]),};
+  lapis_ore: orePainter([50, 90, 180]),
+  ember_ore: (_x, _y, r) => (r() < 0.16 ? shade([255, 110 + r() * 70, 30], 1) : shade([62, 60, 66], 1 + (r() - 0.5) * 0.25)),
+  gold_ingot: ingotPainter([235, 200, 60]),
+  farmland: (_x, y, r) => shade(DIRT, (y % 4 === 0 ? 0.6 : 0.85) + (r() - 0.5) * 0.2),
+  wool: (x, y, r) => (Math.hypot(x - 7.5, y - 8) <= 6 ? shade([238, 236, 228], 0.85 + r() * 0.2) : [0, 0, 0, 0]),
+  raw_fish: fishPainter([110, 150, 180]),
+  cooked_fish: fishPainter([190, 130, 70]),
+  // A rowing boat seen from the side: a curved hull with a darker rim.
+  boat: (x, y, r) => (y >= 7 && y <= 11 && x >= 1 + Math.max(0, y - 9) && x <= 14 - Math.max(0, y - 9)
+    ? shade([150, 105, 60], (y === 7 ? 0.65 : 0.9) + r() * 0.15) : [0, 0, 0, 0]),
+  fishing_rod: (x, y, r) => (x + y === 15 && x >= 1 && x <= 13 ? shade(HANDLE, 0.9 + r() * 0.2) : x === 14 && y >= 1 && y <= 12 ? shade([230, 230, 230], 1) : [0, 0, 0, 0]),
+  ancient_chest_side: (x, y, r) => shade([46, 40, 56], (x === 0 || x === 15 || y === 0 || y === 15 || y === 5 ? 0.6 : 1) + (r() - 0.5) * 0.15),
+  ancient_chest_top: (x, y, r) => shade([52, 44, 62], (x === 0 || x === 15 || y === 0 || y === 15 ? 0.6 : 1) + (r() - 0.5) * 0.15),
+  ancient_chest_front: (x, y, r) => (x >= 6 && x <= 9 && y >= 4 && y <= 8 ? shade([255, 130, 40], 0.9 + r() * 0.2)
+    : shade([46, 40, 56], (x === 0 || x === 15 || y === 0 || y === 15 || y === 5 ? 0.6 : 1) + (r() - 0.5) * 0.15)),
+  beacon_shard: gemPainter([150, 230, 255]),
+  beacon_top: (x, y, r) => (Math.abs(x - 7.5) < 3 && Math.abs(y - 7.5) < 3 ? shade([170, 240, 255], 0.9 + r() * 0.2) : shade([40, 30, 50], 0.9 + r() * 0.2)),
+  beacon_side: (x, y, r) => (x === 0 || x === 15 || y === 0 || y === 15 ? shade([40, 30, 50], 1) : y > 10 ? shade([60, 50, 70], 0.9 + r() * 0.2) : shade([190, 240, 255], 0.85 + r() * 0.2, 170)),
+  feather: (x, y, r) => (Math.abs(x + y - 15) <= 2 - Math.abs(x - 8) / 6 && x >= 3 && x <= 13 ? shade(x + y === 15 ? [170, 170, 170] : [238, 238, 232], 0.9 + r() * 0.1) : [0, 0, 0, 0]),
+  string: (x, y, r) => (Math.abs(x - 7.5 - Math.sin(y * 0.8) * 2.5) < 0.8 && y >= 1 && y <= 14 ? shade([225, 225, 225], 0.85 + r() * 0.2) : [0, 0, 0, 0]),
+  bone: (x, y, r) => ((x + y === 15 && x >= 3 && x <= 12) || Math.hypot(x - 2.5, y - 12.5) < 1.6 || Math.hypot(x - 12.5, y - 2.5) < 1.6 ? shade([232, 226, 206], 0.9 + r() * 0.15) : [0, 0, 0, 0]),
+  bone_meal: (x, y, r) => (Math.hypot(x - 7.5, (y - 9) * 1.3) <= 5 && r() < 0.8 ? shade([240, 238, 228], 0.85 + r() * 0.2) : [0, 0, 0, 0]),
+  arrow: (x, y, r) => (x + y === 15 && x >= 2 && x <= 11 ? shade(HANDLE, 0.9 + r() * 0.2)
+    : x >= 11 && y <= 4 && x + y >= 14 && x + y <= 16 ? shade([150, 150, 150], 1) : x <= 4 && y >= 11 && Math.abs(x - y + 9) <= 2 ? shade([240, 240, 236], 1) : [0, 0, 0, 0]),
+  bow: (x, y, r) => (Math.abs(Math.hypot(x - 2, y - 13) - 10.5) < 1 && x >= 2 && y <= 13 ? shade(HANDLE, 0.9 + r() * 0.2)
+    : x + y === 15 && x >= 2 && x <= 13 ? shade([230, 230, 230], 1) : [0, 0, 0, 0]),
+  diamond: gemPainter([120, 220, 235]),
+  ember_crystal: gemPainter([255, 120, 40]),
+  lapis: (x, y, r) => (Math.hypot(x - 7.5, y - 8) <= 4.5 ? shade([45, 80, 190], 0.8 + r() * 0.4) : [0, 0, 0, 0]),
+  leather: (x, y, r) => (x >= 3 && x <= 12 && y >= 4 && y <= 12 && !((x === 3 || x === 12) && (y === 4 || y === 12)) ? shade([140, 86, 46], 0.85 + r() * 0.25) : [0, 0, 0, 0]),
+  paper: (x, y, r) => (x >= 3 && x <= 12 && y >= 2 && y <= 13 ? shade([236, 232, 214], (y % 3 === 0 && x > 4 && x < 11 ? 0.8 : 1) + (r() - 0.5) * 0.05) : [0, 0, 0, 0]),
+  compass: (x, y, r) => {
+    const d = Math.hypot(x - 7.5, y - 7.5);
+    if (d > 6.5) return [0, 0, 0, 0];
+    if (d > 5.3) return shade([230, 200, 70], 0.9 + r() * 0.2);
+    // The needle: red to the north (the top), white to the south.
+    if (Math.abs(x - 7.5) < 1 && d < 4.5) return y < 8 ? shade([210, 40, 40], 1) : shade([235, 235, 235], 1);
+    return shade([200, 196, 180], 1);
+  },
+  map: (x, y, r) => (x >= 2 && x <= 13 && y >= 2 && y <= 13 ? shade((x * 3 + y * 5) % 11 < 4 ? [110, 160, 90] : [214, 200, 150], 0.9 + r() * 0.15) : [0, 0, 0, 0]),
+  lantern: (x, y, r) => {
+    if (x < 4 || x > 11 || y < 4 || y > 15) return [0, 0, 0, 0];
+    const frame = x === 4 || x === 11 || y === 4 || y === 15 || y === 9;
+    return frame ? shade([70, 70, 76], 0.9 + r() * 0.2) : shade([255, 205, 110], 0.9 + r() * 0.2);
+  },
+  ...Object.fromEntries(Object.entries(ARMOUR_COLOURS).flatMap(([m, c]) => ARMOUR_PIECES.map((piece, slot) => [`${m}_${piece}`, armourPainter(slot, c)]))),
+};
 
 /** Every tile name the block table uses, in a fixed order: the layer index of each tile. */
 export const TILE_NAMES: readonly string[] = [...new Set([

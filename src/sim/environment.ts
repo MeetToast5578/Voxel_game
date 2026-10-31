@@ -1,4 +1,4 @@
-import { BLOCK_SIZE_M, LIGHTNING_MEAN_INTERVAL_S, THUNDER_DELAY_MAX_S, THUNDER_DELAY_MIN_S, WEATHER_SAMPLE_S } from '../config';
+import { BLOCK_SIZE_M, LIGHTNING_FAR_M, LIGHTNING_MEAN_INTERVAL_S, LIGHTNING_NEAR_M, SOUND_SPEED_M_S, WEATHER_SAMPLE_S } from '../config';
 import { columnIndex, localIndex, toChunk, toLocal } from '../core/coords';
 import { BLOCKS } from '../engine/blocks';
 import type { World } from '../engine/world';
@@ -23,7 +23,11 @@ export class Environment {
     sun: [0, 1, 0], moonPhase: 0, cloudCover: 0, underground: 0, underwater: false, flash: 0, autumn: 0, summer: 0, starAngle: 0,
   };
 
-  constructor(seed: number, dayTime: number, yearTime: number, private readonly onThunder: () => void = () => undefined) {
+  /**
+   * `onThunder` plays the thunder of a strike; `onStrike` gets where it landed (cell x, z) the moment it flashes.
+   */
+  constructor(seed: number, dayTime: number, yearTime: number, private readonly onThunder: () => void = () => undefined,
+    private readonly onStrike: (x: number, z: number) => void = () => undefined, private readonly rand: () => number = Math.random) {
     this.clock = new Clock(dayTime, yearTime);
     this.weather = new WeatherModel(seed);
   }
@@ -52,11 +56,13 @@ export class Environment {
     this.atmosphere.underwater = chunk !== undefined && BLOCKS.types[BLOCKS.typeIndex[chunk.get(cell)]!]!.layer === 'water';
     const target = Math.min(1, Math.max(0, (10 - sky) / 8));
     this.underground += (target - this.underground) * Math.min(1, dt * 2);
-    // Lightning: random flashes in storms, thunder after a delay as if the strike were a few km off.
+    // Lightning: strikes around the player in storms, mostly far off; near ones flash brighter and thunder sooner.
     this.flash = Math.max(0, this.flash - dt * 4);
-    if (s?.storm && Math.random() < dt / LIGHTNING_MEAN_INTERVAL_S) {
-      this.flash = 1;
-      this.thunderIn = THUNDER_DELAY_MIN_S + Math.random() * (THUNDER_DELAY_MAX_S - THUNDER_DELAY_MIN_S);
+    if (s?.storm && this.rand() < dt / LIGHTNING_MEAN_INTERVAL_S) {
+      const d = LIGHTNING_NEAR_M + (LIGHTNING_FAR_M - LIGHTNING_NEAR_M) * this.rand() ** 2, angle = this.rand() * Math.PI * 2;
+      this.flash = Math.max(this.flash, 1 - 0.6 * (d / LIGHTNING_FAR_M));
+      this.thunderIn = d / SOUND_SPEED_M_S;
+      this.onStrike(x + (Math.cos(angle) * d) / BLOCK_SIZE_M, z + (Math.sin(angle) * d) / BLOCK_SIZE_M);
     }
     if (this.thunderIn > 0 && (this.thunderIn -= dt) <= 0) this.onThunder();
     const a = this.atmosphere;

@@ -71,6 +71,11 @@ export const NIGHT_DAYLIGHT = 0.22;
 export const PLAYER_HALF_WIDTH_M = 0.28;
 export const PLAYER_HEIGHT_M = 1.75;
 export const WALK_SPEED_M_S = 4.3;
+/** Crouching walks at this share of the walking speed; ladders are climbed at CLIMB_SPEED_M_S. */
+export const CROUCH_FACTOR = 0.3;
+export const CLIMB_SPEED_M_S = 2.4;
+/** How hard flowing water pushes a swimmer along (m/s²). */
+export const CURRENT_ACCEL_M_S2 = 6;
 export const SPRINT_SPEED_M_S = 6;
 export const GRAVITY_M_S2 = 28;
 /** Jump height is about 1.35 m. */
@@ -96,6 +101,8 @@ export const PLAYER_DENSITY = 800;
 export const WATER_DRAG_PER_M = 0.9;
 export const SWIM_THRUST_M_S2 = 6;
 export const SWIM_UP_M_S2 = 6;
+/** A boat's top speed on water; on land it drags at a tenth of that. */
+export const BOAT_SPEED_M_S = 8;
 
 // ---- Saving ----
 export const AUTOSAVE_S = 30;
@@ -110,6 +117,8 @@ export const LAVA_FLOW_M_S = 0.5;
 export const FALL_DELAY_S = 0.05;
 /** Random updates per loaded chunk per simulation tick (grass, leaves), within the simulation distance. */
 export const RANDOM_TICKS_PER_CHUNK = 3;
+/** Chance a random tick on open lit grass grows a plant on it (tall grass or a flower). */
+export const REGROW_CHANCE = 0.01;
 /** Chunks this far from the player (horizontally) are simulated. Independent of the view distance. */
 export const SIM_RADIUS_CHUNKS = 6;
 /** Most scheduled updates handled per simulation tick; the rest wait for the next. */
@@ -131,6 +140,8 @@ export const BIOME_JITTER_C = 1.6;
 export const BIOME_JITTER_MM = 80;
 /** Ground this rugged (detail amplitude) has no soil: bare rock. */
 export const BARE_ROCK_AMP_M = 12;
+/** Typical length (m) of a stretch of stony (gravel and stone) or sandy shore. */
+export const STONY_SHORE_M = 60;
 
 // ---- Geology ----
 export const GEOLOGY_LAYER_M = 12;
@@ -231,8 +242,13 @@ export const SNOW_SPEED_M_S = 1.5;
 /** Precipitation particles fill a box this wide and tall around the camera. */
 export const PRECIP_BOX_M = 24;
 export const LIGHTNING_MEAN_INTERVAL_S = 12;
-export const THUNDER_DELAY_MIN_S = 1;
-export const THUNDER_DELAY_MAX_S = 6;
+/** Strikes land this far from the player (m), most of them far off; thunder follows at the speed of sound. */
+export const LIGHTNING_NEAR_M = 6;
+export const LIGHTNING_FAR_M = 600;
+export const SOUND_SPEED_M_S = 343;
+/** A strike hurts whatever stands under open sky within this distance (m), by this much. */
+export const LIGHTNING_REACH_M = 3;
+export const LIGHTNING_DAMAGE = 8;
 /** Snow and ice: random updates per loaded column near the player per simulation tick. */
 export const WEATHER_TICKS_PER_COLUMN = 1;
 export const SNOW_SETTLE_CHANCE = 0.05;
@@ -258,6 +274,15 @@ export const REED_CHANCE = 0.15;
 export const LILY_PAD_CHANCE = 0.04;
 
 // ---- Survival ----
+/** How far from the origin a new world looks for dry, open, level ground to start the player on. */
+export const SPAWN_SEARCH_M = 2000;
+export type Difficulty = 'peaceful' | 'normal' | 'hard';
+/** Per difficulty: share of the hostile cap that may spawn, damage they deal, and how fast hunger drains. */
+export const DIFFICULTY: Readonly<Record<Difficulty, { hostiles: number; damage: number; hunger: number }>> = {
+  peaceful: { hostiles: 0, damage: 0, hunger: 0.5 },
+  normal: { hostiles: 1, damage: 1, hunger: 1 },
+  hard: { hostiles: 1.5, damage: 1.5, hunger: 1.25 },
+};
 export const MAX_HEALTH = 20;
 export const MAX_HUNGER = 20;
 /** Hunger lost per second, and extra while sprinting. */
@@ -273,6 +298,32 @@ export const SAFE_FALL_SPEED_M_S = 10;
 export const BREATH_S = 15;
 export const DROWN_PER_S = 2;
 export const LAVA_PER_S = 8;
+/** After touching lava or fire a body burns this long (water puts it out), losing BURN_PER_S health a second. */
+export const BURN_S = 4;
+export const BURN_PER_S = 1;
+/**
+ * Body temperature (°C). The body holds BODY_NORMAL_C while the felt temperature is in the comfortable band, and drifts
+ * by BODY_RATE_PER_S per second for every degree outside it. Below BODY_COLD_C or above BODY_HOT_C it hurts.
+ */
+export const BODY_NORMAL_C = 37;
+export const BODY_COLD_C = 35;
+export const BODY_HOT_C = 39.5;
+export const COMFORT_MIN_C = 8;
+export const COMFORT_MAX_C = 34;
+export const BODY_RATE_PER_S = 0.0015;
+export const TEMPERATURE_DAMAGE_PER_S = 0.5;
+/** Night air, a roof, wind (per m/s, out in the open) and being wet change the felt temperature by this much. */
+export const NIGHT_COOLING_C = 6;
+/** Night, for cooling and the night warning: before this time of day or after its mirror. */
+export const NIGHT_BEFORE = 0.24;
+export const SHELTER_C = 6;
+export const WIND_CHILL_PER_M_S = 0.6;
+export const WET_COOLING_C = 8;
+/** Underground (no sky light, a few meters under the surface) the air is this temperature whatever the weather. */
+export const CAVE_AIR_C = 12;
+/** Heat felt beside a source (°C), falling off to nothing at HEAT_REACH_M. */
+export const HEAT_SOURCES_C: Readonly<Record<string, number>> = { campfire: 22, lava: 25, flowing_lava: 25, lit_furnace: 12, torch: 4 };
+export const HEAT_REACH_M = 3;
 /** Seconds a furnace takes per item. */
 export const SMELT_S = 8;
 /** Chance a broken tall grass gives wheat seeds, and broken or decayed natural leaves a sapling. */
@@ -309,10 +360,39 @@ export const ATTACK_COOLDOWN_S = 1.2;
 /** Creatures do not walk off drops deeper than this. */
 export const CREATURE_FALL_M = 3;
 export const RUN_FACTOR = 1.8;
-/** Hits on a creature: by hand, and with an axe, which is the best weapon there is. */
+/** Animals follow a player holding their food from this far; fed ones look for a mate for FED_S seconds, can be fed
+ * again BREED_COOLDOWN_S after breeding, and their young grow up in GROW_UP_S. */
+export const FOLLOW_M = 10;
+/** Seconds a fish takes to bite, at least and at most. */
+export const FISH_MIN_S = 5;
+export const FISH_MAX_S = 15;
+export const FED_S = 30;
+export const BREED_COOLDOWN_S = 300;
+export const GROW_UP_S = 300;
+/** Hits on a creature: by hand, with an axe, with other tools, and with a sword (plus the tool's tier each). */
 export const HAND_DAMAGE = 1;
-export const AXE_DAMAGE = 4;
+export const AXE_DAMAGE = 3;
 export const TOOL_DAMAGE = 2;
+export const SWORD_DAMAGE = 4;
+/** Arrows: speed at full draw (m/s), seconds to full draw, damage at full draw; projectiles vanish after PROJECTILE_LIFE_S. */
+export const ARROW_SPEED_M_S = 30;
+export const BOW_DRAW_S = 0.8;
+export const ARROW_DAMAGE = 6;
+export const PROJECTILE_LIFE_S = 8;
+/** Skulkers keep between these distances from the player and shoot bolts this often, this fast. */
+export const ARCHER_NEAR_M = 7;
+export const ARCHER_FAR_M = 15;
+export const ARCHER_SHOT_S = 2.5;
+export const BOLT_SPEED_M_S = 30;
+/** Hostiles get tougher with depth: this much more health per 100 m below sea level. */
+export const DEPTH_TOUGHNESS_PER_100M = 0.5;
+/** Hostiles never spawn where block light is at least this (torch-lit rooms are safe). */
+export const SAFE_LIGHT = 8;
+/** A hit at full strength needs this long since the last one; quicker hits do a share of the damage. */
+export const PLAYER_ATTACK_COOLDOWN_S = 0.6;
+/** Campfires: seconds to cook one item, and how many fit on one. */
+export const CAMPFIRE_COOK_S = 20;
+export const CAMPFIRE_SLOTS = 4;
 export const KNOCKBACK_M_S = 5;
 
 // ---- Building (creative) ----

@@ -1,4 +1,4 @@
-import type { BoxAt } from './collision';
+import { BOX_SETS, type BoxAt } from './collision';
 
 /** An axis-aligned body; (x, y, z) is the centre of its feet. Units are cells. */
 export interface Body {
@@ -43,16 +43,16 @@ function clip(b: Body, axis: number, d: number, boxAt: BoxAt): number {
   for (let y = y0; y <= y1; y++) {
     for (let z = z0; z <= z1; z++) {
       for (let x = x0; x <= x1; x++) {
-        const box = boxAt(x, y, z);
-        if (box === 0) continue;
-        const bmin = [x, y + (box & 31) * SIXTEENTH, z], bmax = [x + 1, y + (box >> 5) * SIXTEENTH, z + 1];
-        let overlaps = true;
-        for (let a = 0; a < 3; a++) {
-          if (a !== axis && (bmax[a]! <= min[a]! + SKIN || bmin[a]! >= max[a]! - SKIN)) overlaps = false;
+        for (const c of BOX_SETS[boxAt(x, y, z)]!) {
+          const bmin = [x + c[0], y + c[1], z + c[2]], bmax = [x + c[3], y + c[4], z + c[5]];
+          let overlaps = true;
+          for (let a = 0; a < 3; a++) {
+            if (a !== axis && (bmax[a]! <= min[a]! + SKIN || bmin[a]! >= max[a]! - SKIN)) overlaps = false;
+          }
+          if (!overlaps) continue;
+          if (d > 0 && bmin[axis]! >= max[axis]! - SKIN) d = Math.min(d, bmin[axis]! - max[axis]!);
+          else if (d < 0 && bmax[axis]! <= min[axis]! + SKIN) d = Math.max(d, bmax[axis]! - min[axis]!);
         }
-        if (!overlaps) continue;
-        if (d > 0 && bmin[axis]! >= max[axis]! - SKIN) d = Math.min(d, bmin[axis]! - max[axis]!);
-        else if (d < 0 && bmax[axis]! <= min[axis]! + SKIN) d = Math.max(d, bmax[axis]! - min[axis]!);
       }
     }
   }
@@ -73,8 +73,10 @@ export function overlapsSolid(b: Body, boxAt: BoxAt): boolean {
   for (let y = y0; y <= y1; y++) {
     for (let z = z0; z <= z1; z++) {
       for (let x = x0; x <= x1; x++) {
-        const box = boxAt(x, y, z);
-        if (box !== 0 && y + (box >> 5) * SIXTEENTH > b.y + SKIN && y + (box & 31) * SIXTEENTH < b.y + b.height - SKIN) return true;
+        for (const c of BOX_SETS[boxAt(x, y, z)]!) {
+          if (y + c[4] > b.y + SKIN && y + c[1] < b.y + b.height - SKIN && x + c[3] > b.x - b.halfWidth + SKIN
+            && x + c[0] < b.x + b.halfWidth - SKIN && z + c[5] > b.z - b.halfWidth + SKIN && z + c[2] < b.z + b.halfWidth - SKIN) return true;
+        }
       }
     }
   }

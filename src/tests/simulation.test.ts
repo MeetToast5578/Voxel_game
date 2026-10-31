@@ -88,6 +88,26 @@ describe('falling blocks and support', () => {
     run(5);
     expect(world.get(5, 0, 5)).toBe(0);
   });
+
+  it('drops a ladder whose wall goes and a lantern with nothing above or below, as items', () => {
+    const { world, sim, setBlock, run } = setup();
+    const popped: number[] = [];
+    sim.popped = (_x, _y, _z, s) => popped.push(s);
+    // Variant 0 hangs on the wall at +x.
+    setBlock(4, 0, 2, S('stone'));
+    setBlock(3, 0, 2, S('ladder', 0));
+    setBlock(6, 2, 6, S('stone'));
+    setBlock(6, 1, 6, S('lantern'));
+    run(5);
+    expect(world.get(3, 0, 2)).toBe(S('ladder', 0));
+    expect(world.get(6, 1, 6)).toBe(S('lantern'));
+    setBlock(4, 0, 2, 0);
+    setBlock(6, 2, 6, 0);
+    run(5);
+    expect(world.get(3, 0, 2)).toBe(0);
+    expect(world.get(6, 1, 6)).toBe(0);
+    expect(popped).toEqual([S('ladder', 0), S('lantern')]);
+  });
 });
 
 describe('random ticks', () => {
@@ -183,5 +203,20 @@ describe('weather', () => {
       }
     }
     expect(frozen).toBe(49);
+  });
+});
+
+describe('bone meal', () => {
+  it('grows a crop one stage, stops at ripe, and turns a sapling into a tree', () => {
+    const { world, sim } = setup((_x, y) => (y < 0 ? S('grass') : 0));
+    world.set(1, 0, 1, S('wheat'));
+    expect(sim.fertilise(1, 0, 1)).toBe(true);
+    expect(world.get(1, 0, 1)).toBe(S('wheat', 1));
+    world.set(1, 0, 1, S('wheat', 3));
+    expect(sim.fertilise(1, 0, 1)).toBe(false);
+    world.set(5, 0, 5, S('sapling'));
+    expect(sim.fertilise(5, 0, 5)).toBe(true);
+    expect(BLOCKS.type(world.get(5, 0, 5)).key).toBe('log');
+    expect(sim.fertilise(2, 0, 2)).toBe(false);
   });
 });

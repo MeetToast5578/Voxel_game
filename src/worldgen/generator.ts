@@ -3,7 +3,7 @@ import {
   BARE_ROCK_AMP_M, BEACH_BAND_M, BIOME_JITTER_C, BIOME_JITTER_MM, BLOCK_SIZE_M, BOULDER_DENSITY_PER_M2, BOULDER_RADIUS_M, CHUNK_AREA, CHUNK_SIZE,
   COLUMN_CACHE, DEEP_SEA_FLOOR_M, DETAIL_H_M, DETAIL_V_M, FALLEN_LOG_DENSITY_PER_M2, FALLEN_LOG_MAX_M,
   FALLEN_LOG_MIN_M, FERN_CHANCE, FLOWER_CHANCE, LILY_PAD_CHANCE, MUSHROOM_CHANCE, REED_CHANCE, SEA_LEVEL_M, SECONDARY_TREE_CHANCE,
-  SHORE_CAVE_BAND_M, SHORE_ROOF_CELLS, SOIL_DEPTH_M, TALL_GRASS_CHANCE, TREE_DENSITY_PER_M2, TREE_REACH_CELLS, cells,
+  SHORE_CAVE_BAND_M, SHORE_ROOF_CELLS, STONY_SHORE_M, SOIL_DEPTH_M, SPAWN_SEARCH_M, TALL_GRASS_CHANCE, TREE_DENSITY_PER_M2, TREE_REACH_CELLS, cells,
 } from '../config';
 import { hash2, mulberry32 } from '../core/random';
 import { BLOCKS, BLOCKS_SKY, FLUID_LEVELS } from '../engine/blocks';
@@ -12,6 +12,7 @@ import { ClimateSampler, detailAmpMeters, heightMeters } from './climate';
 import { treeCells, unpackTreeCell, type TreeSpecies } from './trees';
 import { Rivers, type WaterSample } from './rivers';
 import { Underground } from './underground';
+import { isUnderground, sitesNear, structureCells, undergroundFloor, type StructureKind } from './structures';
 
 // Imported constants copied locally: hot loops then read a plain constant, not a module binding.
 const N = CHUNK_SIZE;
@@ -32,6 +33,7 @@ const COVER = { tall: S('tall_grass'), fern: S('fern'), poppy: S('poppy'), dande
 /** Cells with y below this are under the sea. */
 export const SEA_CELL = Math.round(SEA_LEVEL_M / B);
 const SOIL_CELLS = cells(SOIL_DEPTH_M);
+const STONY_SHORE_CELLS = cells(STONY_SHORE_M);
 const BEACH_TOP_M = SEA_LEVEL_M + BEACH_BAND_M;
 const DEEP_FLOOR_M = SEA_LEVEL_M - DEEP_SEA_FLOOR_M;
 const TREE_CHANCE = TREE_DENSITY_PER_M2 * B * B;
@@ -159,7 +161,9 @@ export class Generator {
           const r = hash2(this.seed + 61, x, z);
           d.surface[i] = d.soil[i] = r < 0.4 ? SAND : r < 0.75 ? GRAVEL : CLAY;
         } else if (y + 1 <= SEA_CELL) d.surface[i] = d.soil[i] = topM < DEEP_FLOOR_M ? GRAVEL : SAND;
-        else if (topM <= BEACH_TOP_M) d.surface[i] = d.soil[i] = SAND;
+        // Shores: sandy, or stony (gravel and stone) along stretches chosen by a slow noise.
+        // shortcut: stony stretches follow noise, not wave exposure (coast detail is flattened, so slope cannot tell).
+        else if (topM <= BEACH_TOP_M) d.surface[i] = d.soil[i] = this.noise(x / STONY_SHORE_CELLS, 0, z / STONY_SHORE_CELLS) > 0.3 ? (hash2(this.seed + 62, x, z) < 0.6 ? GRAVEL : STONE) : SAND;
         else if (amp >= BARE_ROCK_AMP_M) d.surface[i] = d.soil[i] = this.underground.rockAt(y, warp);
         else {
           d.surface[i] = S(biome.surface);
@@ -179,6 +183,52 @@ export class Generator {
     this.bases.set(key, d);
     if (this.bases.size > COLUMN_CACHE) this.bases.delete(this.bases.keys().next().value!);
     return d;
+  }
+
+  /**
+   * Where a new player starts: the cell above dry, open, level ground nearest (x, z), searched on widening rings. Never
+   * in water, a cave opening, on a bank, a tree or a slope steeper than one cell. [x, y, z] in cells; y is NaN if the
+   * search finds nothing.
+   */
+  spawnPoint(x: number, z: number): [number, number, number] {
+    const max = cells(SPAWN_SEARCH_M);
+    for (let r = 0; r <= max; r = r < N ? r + N : Math.ceil(r * 1.25)) {
+      const n = r === 0 ? 1 : Math.max(8, Math.min(32, Math.round((2 * Math.PI * r) / N)));
+      for (let k = 0; k < n; k++) {
+        const a = (k / n) * Math.PI * 2, px = Math.floor(x + Math.cos(a) * r), pz = Math.floor(z + Math.sin(a) * r);
+        const y = this.standable(px, pz);
+        if (y !== null) return [px + 0.5, y, pz + 0.5];
+      }
+    }
+    return [Math.floor(x) + 0.5, NaN, Math.floor(z) + 0.5];
+  }
+
+  /** The cell above (x, z)'s ground if a player can safely start there, else null. */
+  private standable(x: number, z: number): number | null {
+    const [c, i] = this.cellBase(x, z), top = c.top[i]!;
+    if (top + 1 < c.water[i]! || c.open[i] || c.shore[i] || this.featureAt(x, z)) return null;
+    // Not in or against a building on the surface.
+    if (sitesNear(this.seed, x, z, x, z).some((s) => !isUnderground(s.kind) && this.structureBase(s.kind, s.x, s.z) !== null)) return null;
+    for (const [dx, dz] of N4) {
+      const [d, j] = this.cellBase(x + dx, z + dz);
+      if (Math.abs(d.top[j]! - top) > 1 || d.top[j]! + 1 < d.water[j]! || d.open[j]) return null;
+    }
+    return top + 1;
+  }
+
+  /**
+   * The base cell of a structure anchored at (x, z): its floor deep down for underground kinds; for surface kinds the
+   * ground there if it is dry, open and level enough (within two cells across the footprint), else null.
+   */
+  structureBase(kind: StructureKind, x: number, z: number): number | null {
+    const [c, i] = this.cellBase(x, z), ground = c.top[i]!;
+    if (isUnderground(kind)) return undergroundFloor(this.seed, kind, x, z, ground);
+    if (ground + 1 < c.water[i]! || c.open[i] || c.shore[i]) return null;
+    for (const [dx, dz] of [[-3, -3], [3, -3], [-3, 3], [3, 3]] as const) {
+      const [d, j] = this.cellBase(x + dx, z + dz);
+      if (Math.abs(d.top[j]! - ground) > 2 || d.top[j]! + 1 < d.water[j]!) return null;
+    }
+    return kind === 'camp' ? ground + 1 : ground;
   }
 
   /** Base data of the column holding cell (x, z), and the cell's index in it. */
@@ -251,6 +301,19 @@ export class Generator {
           if ((BLOCKS.flags[state]! & BLOCKS_SKY) !== 0) skyTop[i] = Math.max(skyTop[i]!, y);
           maxTop = Math.max(maxTop, y);
         }
+      }
+    }
+    // Structures: on the surface where the ground suits them, or at their depth under ground. They cut into terrain.
+    for (const site of sitesNear(this.seed, x0, z0, x0 + N - 1, z0 + N - 1)) {
+      const base = this.structureBase(site.kind, site.x, site.z);
+      if (base === null) continue;
+      for (const [dx, y, dz, state] of structureCells(this.seed, site.kind, site.x, site.z, base)) {
+        const lx = site.x + dx - x0, lz = site.z + dz - z0;
+        if (lx < 0 || lx >= N || lz < 0 || lz >= N) continue;
+        const i = lz * N + lx;
+        features.push(i, y, state);
+        if ((BLOCKS.flags[state]! & BLOCKS_SKY) !== 0) skyTop[i] = Math.max(skyTop[i]!, y);
+        maxTop = Math.max(maxTop, y);
       }
     }
     // Waterfalls: where a neighbour's water stands higher, it spills over the step as a curtain of flowing water, the

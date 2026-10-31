@@ -24,10 +24,15 @@
         box-sizing: border-box; pointer-events: auto; }
       .slot.selected { border-color: #fff; }
       .slot.big { width: 52px; height: 52px; }
+      .slot.dim img { opacity: 0.3; }
+      .slot:focus-visible, .menu button:focus-visible, .menu input:focus-visible, .menu select:focus-visible, summary:focus-visible { outline: 3px solid #fd4; outline-offset: 1px; }
+      .recipes summary { cursor: pointer; color: #aaa; }
+      .recipes .palette { max-height: 22vh; margin-top: 4px; }
       .slot img { position: absolute; inset: 4px; width: calc(100% - 8px); height: calc(100% - 8px); image-rendering: pixelated; }
       .slot .count { position: absolute; right: 2px; bottom: 0; font-weight: 700; text-shadow: 1px 1px 0 #000; }
       .slot .wear { position: absolute; left: 3px; bottom: 3px; height: 3px; background: #4c4; }
-      .bars { display: flex; gap: 10px; }
+      .bars { display: flex; gap: 10px; align-items: center; }
+      .thermo { font-size: 12px; text-shadow: 0 1px 2px #000; }
       .bar { width: 150px; height: 8px; background: rgba(0, 0, 0, 0.5); border: 1px solid rgba(255, 255, 255, 0.3); }
       .bar > div { height: 100%; }
       .progress { width: 120px; height: 5px; background: rgba(0, 0, 0, 0.5); }
@@ -51,6 +56,43 @@
       .help { color: #bbb; font-size: 13px; margin: 0; }
       .hint { color: #bbb; font-size: 12px; }
       .death { text-align: center; }
+      body.title { background: linear-gradient(#3b6a8f, #9cc3d8 55%, #4f7a3a 55%, #2f4d24); }
+      body.title #game, body.title #overlay, body.title #crosshair { display: none; }
+      .menu.title { min-width: 480px; }
+      .menu.title h1 { font-size: 34px; text-align: center; letter-spacing: 1px; }
+      .menu.title .version { margin: -6px 0 0; text-align: center; color: #999; font-size: 12px; }
+      .menu.loading { min-width: 260px; text-align: center; }
+      .menu label.check { flex-direction: row; align-items: center; gap: 6px; }
+      .keys summary { cursor: pointer; color: #aaa; }
+      .keygrid { display: grid; grid-template-columns: 1fr auto; gap: 3px 10px; align-items: center; margin: 6px 0; }
+      .keygrid button { min-width: 90px; }
+      .keygrid button.clash { color: #f77; }
+      .hintbox { position: fixed; top: 14px; left: 50%; transform: translateX(-50%); max-width: 560px; padding: 8px 14px;
+        background: rgba(20, 22, 28, 0.82); border: 1px solid #6a7; border-radius: 6px; text-align: center; }
+      .hintbox small { color: #9a9; }
+      .toast { position: fixed; top: 64px; left: 50%; transform: translateX(-50%); padding: 6px 14px; background: rgba(40, 34, 18, 0.88);
+        border: 1px solid #c9a63a; border-radius: 6px; color: #fe8; }
+      .journal summary { cursor: pointer; color: #ddd; font-weight: 600; }
+      .milestones { list-style: none; padding: 0; margin: 6px 0; columns: 2; font-size: 13px; color: #888; }
+      .milestones li.done { color: #9e9; }
+      .menu.ending { text-align: center; max-width: 520px; }
+      .menu.ending h1 { color: #fd8; font-size: 30px; }
+      #hurt { position: fixed; inset: 0; pointer-events: none; opacity: 0; background: radial-gradient(transparent 40%, rgba(200, 0, 0, 0.9)); }
+      #compass { position: fixed; top: 70px; right: 24px; width: 44px; height: 44px; line-height: 44px; text-align: center;
+        font-size: 26px; color: #e33; background: rgba(230, 225, 200, 0.85); border: 3px solid #c9a63a; border-radius: 50%; }
+      .minimap { position: fixed; top: 130px; right: 16px; width: 192px; height: 192px; image-rendering: pixelated;
+        border: 3px solid #c9b78a; background: #141418; display: none; }
+      #hand { position: fixed; right: 9%; bottom: -10px; width: 150px; height: 150px; pointer-events: none; transform-origin: 80% 100%;
+        transform: rotate(-12deg); }
+      #hand img { width: 100%; height: 100%; image-rendering: pixelated; filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.5)); }
+      #hand.fist::after { content: ''; position: absolute; right: 20px; bottom: 0; width: 70px; height: 90px; background: #c8946a;
+        border: 3px solid #9a6c4c; border-radius: 6px; }
+      #hand.swing { animation: swing 0.25s ease-out; }
+      @keyframes swing { 0% { transform: rotate(-12deg); } 40% { transform: rotate(-38deg) translate(-30px, -20px); } 100% { transform: rotate(-12deg); } }
+      #saving { position: fixed; right: 12px; bottom: 10px; color: #ccc; font: 12px system-ui, sans-serif; opacity: 0;
+        transition: opacity 0.6s; pointer-events: none; text-shadow: 0 1px 2px #000; }
+      #burn { position: fixed; inset: 0; pointer-events: none; opacity: 0; transition: opacity 0.3s;
+        background: linear-gradient(transparent 60%, rgba(255, 110, 20, 0.55)); }
       .death h1 { color: #e55; }
       .touch-look { position: fixed; top: 0; right: 0; width: 55%; height: 75%; touch-action: none; }
       .touch-stick { position: fixed; left: 24px; bottom: 90px; width: 120px; height: 120px; border-radius: 50%;
@@ -66,6 +108,11 @@
     <canvas id="game"></canvas>
     <div id="overlay">loading…</div>
     <div id="crosshair"></div>
+    <div id="hurt"></div>
+    <div id="burn"></div>
+    <div id="compass" style="display: none">▲</div>
+    <div id="hand" style="display: none"><img alt="" /></div>
+    <div id="saving">Saving…</div>
     <div id="ui"></div>
     <script type="module" src="/src/main.ts"></script>
   </body>

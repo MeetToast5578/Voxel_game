@@ -1,5 +1,6 @@
-import { AUTOSAVE_S, BLOCK_SIZE_M, CHUNK_SIZE, DAY_LENGTH_S, HORIZON_RECENTER_M, MAX_VIEW_CHUNKS, MIN_VIEW_CHUNKS, SIM_HZ, toCells } from './config';
+import { DROP_CAP, NIGHT_BEFORE, AUTOSAVE_S, BLOCK_SIZE_M, CAVE_AIR_C, CHUNK_SIZE, DAY_LENGTH_S, DIFFICULTY, HEAT_REACH_M, HEAT_SOURCES_C, cells, type Difficulty, HORIZON_RECENTER_M, MAX_VIEW_CHUNKS, MIN_VIEW_CHUNKS, SIM_HZ, toCells } from './config';
 import { Sounds } from './audio/sounds';
+import { Ambience, type Surroundings } from './audio/ambience';
 import { chunkKey, forEachChunkReading, localIndex, unpackChunkKey } from './core/coords';
 import { FixedStepLoop } from './core/loop';
 import { BLOCKS } from './engine/blocks';
@@ -16,17 +17,22 @@ import { Renderer } from './render/renderer';
 import { Creatures } from './creatures/creatures';
 import { CreatureMeshes } from './render/creatureMeshes';
 import { DropMeshes } from './render/dropMeshes';
+import { BoatMesh } from './render/boatMesh';
 import { FrameGraph } from './ui/frameGraph';
 import { mulberry32 } from './core/random';
 import { Environment } from './sim/environment';
 import { climateTemperature } from './sim/weather';
 import { biomeByIndex } from './worldgen/biomes';
 import { Simulation } from './sim/simulation';
-import { drawUi, type UiModel } from './ui/app';
+import { feltTemperature } from './game/bodyTemperature';
+import { drawTitle, drawUi, type UiModel, type WorldsModel } from './ui/app';
+import { worldActions } from './ui/worldActions';
+import { PadMenu } from './ui/padMenu';
+import { bearing, Minimap } from './ui/minimap';
+import { iconUrl } from './ui/icons';
 import { installTouchControls, wantsTouch } from './ui/touch';
-import { exportWorld, importWorld } from './storage/archive';
 import { Saver } from './storage/saver';
-import { loadSettings, saveSettings } from './storage/settings';
+import { keyLabel, loadSettings, saveSettings } from './storage/settings';
 import { IdbStore, MemoryStore, SAVE_VERSION, type WorldStore } from './storage/store';
 import { WorkerPool } from './workers/pool';
 
@@ -49,6 +55,36 @@ try {
   console.warn('IndexedDB is unavailable; this world will not be kept after the page closes.', err);
   store = new MemoryStore();
 }
+const uiRoot = document.querySelector<HTMLDivElement>('#ui')!;
+
+// No URL parameters: the title screen. Choosing a world loads the page again with its name, so this never returns.
+if (location.search === '') {
+  document.body.classList.add('title');
+  uiRoot.style.setProperty('zoom', String(settings.guiScale));
+  const refresh = () => void store.listWorlds().then((list) => {
+    title.worlds = list.sort((a, b) => b.lastPlayed - a.lastPlayed);
+    drawTitle(uiRoot, title);
+  });
+  const title: WorldsModel = {
+    worlds: [], worldName: null, settings,
+    changeSettings(s) {
+      Object.assign(settings, s);
+      saveSettings(settings);
+      uiRoot.style.setProperty('zoom', String(settings.guiScale));
+      drawTitle(uiRoot, title);
+    },
+    ...worldActions(store, { beforeLeave: async () => undefined, changed: refresh }),
+  };
+  refresh();
+  const pad = new PadMenu(uiRoot, { back: () => undefined, start: () => undefined });
+  const frame = (t: number) => {
+    pad.poll(t);
+    requestAnimationFrame(frame);
+  };
+  requestAnimationFrame(frame);
+  await new Promise<never>(() => undefined);
+}
+
 if (params.get('new') === '1') await store.deleteWorld(worldName);
 const existed = (await store.getMeta(worldName)) !== undefined;
 const saver = await Saver.open(store, {
@@ -62,22 +98,63 @@ const canvas = document.querySelector<HTMLCanvasElement>('#game')!;
 const overlay = document.querySelector<HTMLDivElement>('#overlay')!;
 const frameGraph = new FrameGraph();
 document.body.append(frameGraph.canvas);
-const uiRoot = document.querySelector<HTMLDivElement>('#ui')!;
 const renderer = new Renderer(canvas, seed, viewChunks * CHUNK_SIZE);
 const sounds = new Sounds();
+const ambience = new Ambience(sounds);
+// Menu buttons click.
+uiRoot.addEventListener('click', (e) => {
+  if ((e.target as HTMLElement).closest('button')) sounds.play('click');
+});
 canvas.addEventListener('click', () => sounds.unlock());
 const world = new World();
 const pool = new WorkerPool(seed);
 const light = new LightEngine(world);
 const streamer = new Streamer(world, pool, renderer.chunks, light, viewChunks);
 streamer.saves = saver;
-const input = new Input(canvas, settings.mouseSensitivity);
-renderer.camera.fov = settings.fov;
-renderer.camera.updateProjectionMatrix();
+const input = new Input(canvas, settings.mouseSensitivity, settings.keys);
+/** Settings that take effect at once: field of view, mouse, keys, volume and GUI size. */
+function applySettings(): void {
+  renderer.camera.fov = settings.fov;
+  renderer.camera.updateProjectionMatrix();
+  input.sensitivity = settings.mouseSensitivity;
+  input.invertY = settings.invertY;
+  input.bindings = settings.keys;
+  sounds.volume = settings.effectsVolume;
+  ambience.musicVolume = settings.musicVolume;
+  uiRoot.style.setProperty('zoom', String(settings.guiScale));
+}
+applySettings();
 const highlight = new Highlight(renderer.scene);
 renderer.setViewDistance(viewChunks * CHUNK_SIZE);
 
 const WATER = BLOCKS.typeIndex[BLOCKS.state('water')]!, FLOWING = BLOCKS.typeIndex[BLOCKS.state('flowing_water')]!;
+const LADDER = BLOCKS.typeIndex[BLOCKS.state('ladder')]!, CAMPFIRE = BLOCKS.state('campfire'), ARROW = BLOCKS.state('arrow');
+const climbAt = (x: number, y: number, z: number) => BLOCKS.typeIndex[world.get(x, y, z)] === LADDER;
+const FLOWING_ID = BLOCKS.state('flowing_water'), LEVELS = 8;
+/** Level of water in a cell for working out flow (a source is full, air is empty, anything else blocks: -1). */
+const levelAt = (x: number, y: number, z: number) => {
+  const s = world.get(x, y, z);
+  if (BLOCKS.typeIndex[s] === WATER) return LEVELS;
+  if (BLOCKS.typeIndex[s] === FLOWING) return ((s - FLOWING_ID) % LEVELS) + 1;
+  return COLLISION[s] === 0 ? 0 : -1;
+};
+/** Flow of flowing water: down where it falls, otherwise toward lower neighbours. Still water does not push. */
+const currentAt = (x: number, y: number, z: number): [number, number, number] | null => {
+  const s = world.get(x, y, z);
+  if (BLOCKS.typeIndex[s] !== FLOWING) return null;
+  if (s - FLOWING_ID >= LEVELS) return [0, -1, 0];
+  const here = levelAt(x, y, z);
+  let fx = 0, fz = 0;
+  for (const [dx, dz] of [[1, 0], [-1, 0], [0, 1], [0, -1]] as const) {
+    const n = levelAt(x + dx, y, z + dz);
+    if (n >= 0 && n < here) {
+      fx += dx * (here - n);
+      fz += dz * (here - n);
+    }
+  }
+  const len = Math.hypot(fx, fz);
+  return len ? [fx / len, 0, fz / len] : null;
+};
 const boxAt = (x: number, y: number, z: number) => COLLISION[world.get(x, y, z)]!;
 const waterAt = (x: number, y: number, z: number) => {
   const t = BLOCKS.typeIndex[world.get(x, y, z)];
@@ -98,18 +175,26 @@ function setBlock(x: number, y: number, z: number, state: number, urgent = false
   simulation.onCellChanged(x, y, z, previous);
 }
 const simulation = new Simulation(world, setBlock, seed);
+simulation.popped = (x, y, z, s) => play.drops.spawn({ state: BLOCKS.state(BLOCKS.type(s).key), count: 1 }, x + 0.5, y + 0.5, z + 0.5);
 simulation.ticks.now = saver.worldMeta.simTick ?? 0;
 simulation.ticks.load(saver.worldMeta.ticks);
-streamer.onLoad = (c) => simulation.ticks.resume(c.cx, c.cy, c.cz);
-streamer.onUnload = (c) => simulation.ticks.park(c.cx, c.cy, c.cz);
+streamer.onLoad = (c) => {
+  simulation.ticks.resume(c.cx, c.cy, c.cz);
+  simulation.catchUp(c);
+};
+streamer.onUnload = (c) => {
+  simulation.ticks.park(c.cx, c.cy, c.cz);
+  simulation.parkGrowth(c);
+};
+simulation.loadGrowth(saver.worldMeta.growth);
 
 const saved = saver.worldMeta.player;
 const usePosition = params.has('x') || !existed;
-const player = new Player(
-  usePosition ? Number(params.get('x') ?? 0.5) : saved.x,
-  usePosition ? Number(params.get('y') ?? NaN) : saved.y,
-  usePosition ? Number(params.get('z') ?? 0.5) : saved.z,
-);
+// A new world without a start position in the URL starts on dry, open, level ground near the origin.
+const start = !params.has('x') && !existed
+  ? (await pool.run(pool.leastBusy(), { type: 'spawn', x: 0, z: 0 }).catch(() => ({ at: [0.5, NaN, 0.5] as const }))).at
+  : [Number(params.get('x') ?? 0.5), Number(params.get('y') ?? NaN), Number(params.get('z') ?? 0.5)];
+const player = new Player(...(usePosition ? start : [saved.x, saved.y, saved.z]) as [number, number, number]);
 player.yaw = usePosition ? Number(params.get('yaw') ?? 0) : saved.yaw;
 player.pitch = usePosition ? Number(params.get('pitch') ?? -0.2) : saved.pitch;
 player.flying = usePosition ? params.get('fly') === '1' : saved.flying;
@@ -123,33 +208,50 @@ const play = new Play(world, (x, y, z, s) => setBlock(x, y, z, s, true), {
     if (night) env.clock.advance(((1.25 - env.clock.dayTime) % 1) * DAY_LENGTH_S);
     return night;
   },
-}, (params.get('mode') as Mode | null) ?? (existed ? 'survival' : 'creative'));
+  fertilise: (x, y, z) => simulation.fertilise(x, y, z),
+}, (params.get('mode') as Mode | null) ?? 'survival');
+const urlDifficulty = params.get('difficulty');
+if (urlDifficulty && urlDifficulty in DIFFICULTY) play.difficulty = urlDifficulty as Difficulty;
 const creatures = new Creatures(world, mulberry32(seed ^ 0xc0ffee), {
   bite: (damage, by) => {
     if (play.mode === 'survival' && !play.survival.dead) {
-      play.survival.hurt(damage, `killed by a ${by.toLowerCase()}`);
+      play.survival.hurt(play.protect(damage * DIFFICULTY[play.difficulty].damage), `killed by a ${by.toLowerCase()}`);
       sounds.play('break', 0.6);
       play.version++;
     }
   },
   sound: (name, volume) => sounds.play(name, volume),
+  shoot: (c, x, y, z) => play.shootAtPlayer(x, y, z, player, c.species.attack),
+  // Calls carry 32 m; pitch follows the species' voice.
+  call: (c, kind) => {
+    const near = 1 - Math.hypot(c.body.x - player.body.x, c.body.y - player.body.y, c.body.z - player.body.z) * BLOCK_SIZE_M / 32;
+    if (near > 0) sounds.call(c.species.voice, kind, near);
+  },
 });
 creatures.load(saver.worldMeta.creatures);
 play.creatures = creatures;
 const creatureMeshes = new CreatureMeshes(renderer.scene);
+const boatMesh = new BoatMesh(renderer.scene);
+/** The boat turns to where it is going, not where the rider looks. */
+let boatYaw = 0;
 const dropMeshes = new DropMeshes(renderer.scene, renderer.uniforms.tiles!.value as ConstructorParameters<typeof DropMeshes>[1]);
+play.seed = seed;
 if (saver.worldMeta.play) play.load(saver.worldMeta.play);
 else if (play.mode === 'creative') play.creativeHotbar();
+player.boating = play.boating;
 /** Where the player starts: where they first stood, or their bed. */
 let worldSpawn: [number, number, number] | null = null;
 const env = new Environment(seed, Number(params.get('time') ?? saver.worldMeta.dayTime),
-  Number(params.get('year') ?? saver.worldMeta.yearTime ?? 0), () => sounds.play('thunder'));
+  Number(params.get('year') ?? saver.worldMeta.yearTime ?? 0), () => sounds.play('thunder'), (x, z) => play.strike(x, z, player));
 
+/** Saves the world; a small "Saving" note shows while it writes. */
+const savingNote = document.querySelector<HTMLDivElement>('#saving')!;
 function save(): Promise<void> {
   const b = player.body;
+  savingNote.style.opacity = '1';
   return saver.save(world, {
-    dayTime: env.clock.dayTime, yearTime: env.clock.yearTime, play: play.save(), creatures: creatures.save(), ticks: simulation.ticks.save(), simTick: simulation.ticks.now, player: { x: b.x, y: b.y, z: b.z, yaw: player.yaw, pitch: player.pitch, flying: player.flying },
-  }).catch((err) => console.error('Saving failed:', err));
+    dayTime: env.clock.dayTime, yearTime: env.clock.yearTime, play: play.save(), creatures: creatures.save(), ticks: simulation.ticks.save(), simTick: simulation.ticks.now, growth: simulation.saveGrowth(), atlas: minimap.atlas.save(), player: { x: b.x, y: b.y, z: b.z, yaw: player.yaw, pitch: player.pitch, flying: player.flying },
+  }).catch((err) => console.error('Saving failed:', err)).finally(() => (savingNote.style.opacity = '0'));
 }
 setInterval(() => void save(), AUTOSAVE_S * 1000);
 addEventListener('pagehide', () => void save());
@@ -157,7 +259,49 @@ document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'hidden') void save();
 });
 
-let walked = 0, wasWet = false;
+let walked = 0, wasWet = false, walkedTotal = 0, hintClock = 0, wasNight = false;
+
+/** Heat felt from fires, lava, furnaces and torches around (x, y, z): the strongest, falling off with distance. */
+const HEAT_BY_TYPE = BLOCKS.types.map((t) => HEAT_SOURCES_C[t.key] ?? 0);
+const HEAT_CELLS = cells(HEAT_REACH_M);
+function heatAround(x: number, y: number, z: number): number {
+  let heat = 0;
+  for (let dy = -HEAT_CELLS; dy <= HEAT_CELLS; dy++) for (let dz = -HEAT_CELLS; dz <= HEAT_CELLS; dz++) for (let dx = -HEAT_CELLS; dx <= HEAT_CELLS; dx++) {
+    const c = HEAT_BY_TYPE[BLOCKS.typeIndex[world.get(x + dx, y + dy, z + dz)]!]!;
+    if (c > 0) heat = Math.max(heat, c * (1 - Math.hypot(dx, dy, dz) / (HEAT_CELLS + 1)));
+  }
+  return heat;
+}
+
+/** The temperature the player feels, worked out twice a second; wet for a while after swimming or rain. */
+let feltC = 20, exposureClock = 0, wetS = 0;
+/** What the ambience plays, from the same look around. */
+let surroundings: Surroundings = { wind: 0, rain: 0, water: 0, underground: false, day: true, wildlife: false };
+function updateExposure(dt: number): void {
+  const x = Math.floor(player.body.x), y = Math.floor(player.eyeY), z = Math.floor(player.body.z);
+  const column = world.column(x >> 4, z >> 4), chunk = world.chunkAt(x, y, z);
+  if (!column || !chunk) return;
+  const i = ((z & 15) << 4) | (x & 15);
+  const sheltered = column.skyTop[i]! > y;
+  if (player.submerged > 0.05 || (!sheltered && env.falling === 'rain')) wetS = 30;
+  else wetS = Math.max(0, wetS - dt);
+  const underground = chunk.skyLight(localIndex(x & 15, y & 15, z & 15)) === 0 && y < column.surface[i]! - 8;
+  const airC = underground ? CAVE_AIR_C : climateTemperature(column.climate[i]!) + (env.sample?.seasonC ?? 0);
+  const night = env.clock.dayTime > 1 - NIGHT_BEFORE || env.clock.dayTime < NIGHT_BEFORE;
+  let water = 0;
+  for (let dz = -6; dz <= 6; dz += 2) for (let dx = -6; dx <= 6; dx += 2) if (waterAt(x + dx, y - 2, z + dz) || waterAt(x + dx, y - 1, z + dz)) water++;
+  const groundKey = BLOCKS.type(world.get(x, column.surface[i]!, z)).key;
+  surroundings = {
+    wind: sheltered || underground ? 0.1 : Math.min(1, (env.sample?.windSpeed ?? 3) / 12 + Math.max(0, y * BLOCK_SIZE_M) / 200),
+    rain: env.falling === 'rain' && !underground ? (sheltered ? 0.35 : 1) : 0,
+    water: Math.min(1, water / 6), underground, day: !night,
+    wildlife: !underground && (groundKey === 'grass' || column.skyTop[i]! > column.surface[i]! + 2),
+  };
+  feltC = feltTemperature({
+    airC, night: night && !underground, sheltered: sheltered || underground, wet: wetS > 0, windM_S: env.sample?.windSpeed ?? 3,
+    heatC: heatAround(x, y, z), insulationC: play.warmth,
+  });
+}
 function update(dt: number): void {
   env.tick(dt);
   if (!placed) {
@@ -174,31 +318,75 @@ function update(dt: number): void {
   if (play.mode === 'survival') player.flying = false;
   else if (!active) input.consume('fly');
   const falling = -player.body.vy;
-  player.update(dt, active ? input : idleInput, boxAt, waterAt);
+  player.update(dt, active ? input : idleInput, boxAt, waterAt, climbAt, currentAt);
   if (active) play.update(dt, input, player);
   play.tickFurnaces(dt);
-  creatures.update(dt, { player: player.body, survival: play.mode === 'survival', day: env.atmosphere.sun[1] > -0.05, boxAt, waterAt });
+  play.tickCampfires(dt);
+  play.tickProjectiles(dt, boxAt, player);
+  play.particles.update(dt);
+  creatures.update(dt, {
+    player: player.body, survival: play.mode === 'survival', day: env.atmosphere.sun[1] > -0.05, hostiles: DIFFICULTY[play.difficulty].hostiles, boxAt, waterAt,
+    playerHolds: play.held ? BLOCKS.type(play.held.state).key : null,
+  });
   if (play.drops.update(dt, boxAt, play.survival.dead ? null : player.body, play.inventory)) play.version++;
+  exposureClock += dt;
+  if (exposureClock >= 0.5) {
+    updateExposure(exposureClock);
+    play.wakeGuardians(player);
+    exposureClock = 0;
+  }
   if (play.mode === 'survival' && !play.survival.dead) {
     if (player.body.onGround && falling > 0 && player.submerged < 0.2) play.survival.land(falling * BLOCK_SIZE_M);
     const eye = world.get(Math.floor(player.body.x), Math.floor(player.eyeY), Math.floor(player.body.z));
     const feet = world.get(Math.floor(player.body.x), Math.floor(player.body.y + 0.2), Math.floor(player.body.z));
+
     play.survival.update(dt, {
-      sprinting: input.sprint && player.body.onGround, headInWater: waterAt(Math.floor(player.body.x), Math.floor(player.eyeY), Math.floor(player.body.z)),
+      feltC, sprinting: input.sprint && player.body.onGround, inWater: player.submerged > 0.3,
+      inFire: feet === CAMPFIRE || world.get(Math.floor(player.body.x), Math.floor(player.body.y - 0.05), Math.floor(player.body.z)) === CAMPFIRE, headInWater: waterAt(Math.floor(player.body.x), Math.floor(player.eyeY), Math.floor(player.body.z)),
       inLava: BLOCKS.type(eye).key.endsWith('lava') || BLOCKS.type(feet).key.endsWith('lava'),
     });
     if (play.survival.dead) {
+      play.stats.deaths++;
+      play.leaveBoat(player);
       play.dropAll();
       input.stop();
       play.version++;
     }
   }
   if (player.body.onGround && !player.flying) {
-    walked += Math.hypot(player.body.x - before.x, player.body.z - before.z);
+    const step = Math.hypot(player.body.x - before.x, player.body.z - before.z);
+    walked += step;
+    walkedTotal += step * BLOCK_SIZE_M;
+    if (play.mode === 'survival') play.stats.walkedM += step * BLOCK_SIZE_M;
     if (walked > toCells(1.8)) {
       walked = 0;
-      sounds.play('step');
+      const under = BLOCKS.type(world.get(Math.floor(player.body.x), Math.floor(player.body.y - 0.05), Math.floor(player.body.z)));
+      sounds.step(under.key === 'snow' ? 'snow' : under.falls ? 'sand' : under.mineWith === 'pickaxe' ? 'stone' : under.mineWith === 'axe' ? 'wood' : 'soft');
     }
+  }
+  hintClock += dt;
+  if (hintClock >= 0.25 && play.mode === 'survival' && !play.survival.dead) {
+    // The journal: a day survived at each dawn, the deepest point, biomes walked in, then milestones.
+    const night = env.clock.dayTime > 1 - NIGHT_BEFORE || env.clock.dayTime < NIGHT_BEFORE;
+    if (wasNight && !night) play.stats.days++;
+    wasNight = night;
+    play.deepestM = Math.min(play.deepestM, player.body.y * BLOCK_SIZE_M);
+    const column = world.column(Math.floor(player.body.x) >> 4, Math.floor(player.body.z) >> 4);
+    if (column) play.biomesSeen.add(column.biome[((Math.floor(player.body.z) & 15) << 4) | (Math.floor(player.body.x) & 15)]!);
+    play.checkJournal();
+  }
+  if (hintClock >= 0.25) {
+    if (play.mode === 'survival' && settings.hints && !play.survival.dead) {
+      const changed = play.hints.update(hintClock, {
+        walkedM: walkedTotal, has: (k) => play.hasItem(k), screen: play.screen, craftSize: play.craftSize,
+        night: env.clock.dayTime > 1 - NIGHT_BEFORE || env.clock.dayTime < NIGHT_BEFORE, hunger: play.survival.hunger,
+      }, (b) => keyLabel(settings.keys[b]));
+      if (changed) play.version++;
+    } else if (play.hints.text) {
+      play.hints.text = '';
+      play.version++;
+    }
+    hintClock = 0;
   }
   const wet = player.submerged > 0.3;
   if (wet && !wasWet) sounds.play('splash');
@@ -242,6 +430,16 @@ function handleActions(): void {
     overlay.style.display = frameGraph.canvas.style.display = debugText ? '' : 'none';
   }
   if (input.consume('time')) env.clock.advance(DAY_LENGTH_S / 24);
+  // The beacon was lit: free the pointer for the ending screen.
+  if (play.beaconLit && !play.endingSeen && input.playing) input.stop();
+  if (input.consume('pause') && input.playing) {
+    input.stop();
+    ui.refreshWorlds();
+  }
+  if (input.consume('hint')) {
+    play.hints.dismiss();
+    play.version++;
+  }
   const up = input.consume('viewUp'), down = input.consume('viewDown');
   if (up || down) {
     viewChunks = Math.max(MIN_VIEW_CHUNKS, Math.min(MAX_VIEW_CHUNKS, viewChunks + (up ? 2 : -2)));
@@ -252,11 +450,18 @@ function handleActions(): void {
   }
 }
 
-let worlds: Awaited<ReturnType<WorldStore['listWorlds']>> = [];
-const ui: UiModel = {
-  play, settings, worldName, worlds,
+const actions = worldActions(store, { beforeLeave: save, changed: () => ui.refreshWorlds() });
+const ui: UiModel & { refreshWorlds(): void } = {
+  play, settings, worldName, worlds: [],
   get paused() { return !input.playing && placed; },
   get dead() { return play.survival.dead; },
+  get loading() { return loadingText(); },
+  get ending() { return play.beaconLit && !play.endingSeen; },
+  closeEnding() {
+    play.endingSeen = true;
+    input.start();
+    redraw();
+  },
   resume: () => {
     input.start();
     redraw();
@@ -271,45 +476,23 @@ const ui: UiModel = {
       streamer.replan();
       renderer.setViewDistance(viewChunks * CHUNK_SIZE);
     }
-    renderer.camera.fov = s.fov;
-    renderer.camera.updateProjectionMatrix();
-    input.sensitivity = s.mouseSensitivity;
+    applySettings();
     redraw();
   },
-  async openWorld(name, create) {
-    await save();
-    const q = new URLSearchParams({ world: name, view: String(viewChunks) });
-    if (create) Object.entries({ new: '1', seed: String(create.seed), mode: create.mode }).forEach(([k, v]) => q.set(k, v));
-    location.search = q.toString();
+  setDifficulty(d) {
+    play.difficulty = d;
+    redraw();
   },
-  async deleteWorld(name) {
-    await store.deleteWorld(name);
-    ui.refreshWorlds();
-if (wantsTouch()) {
-  installTouchControls(document.body, input, () => {
-    input.stop();
-    ui.refreshWorlds();
-  });
-}
+  quitToTitle() {
+    void save().then(() => (location.search = ''));
   },
+  openWorld: (name, create) => void actions.openWorld(name, create),
+  deleteWorld: (name) => void actions.deleteWorld(name),
   async exportWorld(name) {
     if (name === worldName) await save();
-    const text = await exportWorld(store, name);
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(new Blob([text], { type: 'application/json' }));
-    a.download = `${name}.world.json`;
-    a.click();
-    URL.revokeObjectURL(a.href);
+    await actions.exportWorld(name);
   },
-  async importWorld(file) {
-    try {
-      const name = await importWorld(store, await file.text());
-      alert(`Imported world '${name}'.`);
-    } catch (err) {
-      alert(`Could not import: ${(err as Error).message}`);
-    }
-    ui.refreshWorlds();
-  },
+  importWorld: (file) => void actions.importWorld(file),
   refreshWorlds() {
     void store.listWorlds().then((list) => {
       ui.worlds = list.sort((a, b) => b.lastPlayed - a.lastPlayed);
@@ -317,10 +500,40 @@ if (wantsTouch()) {
     });
   },
 };
+if (wantsTouch()) {
+  installTouchControls(document.body, input, () => {
+    input.stop();
+    ui.refreshWorlds();
+  });
+}
+
+/** Until the chunks around the player are meshed: a line of progress for the loading screen; then null for good. */
+let ready = false;
+function loadingText(): string | null {
+  if (ready) return null;
+  const [near, nearWanted] = streamer.progress(2), [all, wanted] = streamer.progress();
+  if (placed && (streamer.idle || (nearWanted > 0 && near === nearWanted))) {
+    ready = true;
+    return null;
+  }
+  return `Building the world… ${wanted ? Math.floor((100 * all) / wanted) : 0}%`;
+}
 input.canLock = () => play.screen === 'none' && !play.survival.dead;
 document.addEventListener('pointerlockchange', () => {
   if (!input.locked) ui.refreshWorlds();
   redraw();
+});
+/** Gamepad in menus: B closes a screen or resumes, Start resumes. */
+const padMenu = new PadMenu(uiRoot, {
+  back() {
+    if (play.screen !== 'none') {
+      play.closeScreen();
+      input.start();
+    } else if (ui.paused && !ui.dead) ui.resume();
+  },
+  start() {
+    if (ui.paused && !ui.dead && play.screen === 'none') ui.resume();
+  },
 });
 function redraw(): void {
   drawUi(uiRoot, ui);
@@ -383,6 +596,49 @@ function updateHorizon(x: number, z: number): void {
   });
 }
 
+const hurtFlash = document.querySelector<HTMLDivElement>('#hurt')!, burnGlow = document.querySelector<HTMLDivElement>('#burn')!;
+let bobPhase = 0;
+/** The first-person hand: the held item's picture (or a fist), swinging with each break, place or hit. */
+const hand = document.querySelector<HTMLDivElement>('#hand')!, handImg = hand.querySelector('img')!;
+let handState = -2, handSwings = 0;
+function updateHand(): void {
+  const state = play.held?.state ?? -1;
+  hand.style.display = input.playing && !player.flying && play.screen === 'none' ? '' : 'none';
+  if (state !== handState) {
+    handState = state;
+    handImg.style.display = state < 0 ? 'none' : '';
+    if (state >= 0) handImg.src = iconUrl(state);
+    hand.classList.toggle('fist', state < 0);
+  }
+  if (play.swings !== handSwings || (play.breaking > 0 && !hand.classList.contains('swing'))) {
+    handSwings = play.swings;
+    hand.classList.remove('swing');
+    void hand.offsetWidth;
+    hand.classList.add('swing');
+  }
+}
+hand.addEventListener('animationend', () => hand.classList.remove('swing'));
+let lastHealth = play.survival.health, kick = 0, milestones = play.journal.done.size;
+const compass = document.querySelector<HTMLDivElement>('#compass')!, minimap = new Minimap();
+document.body.append(minimap.canvas);
+minimap.atlas.load(saver.worldMeta.atlas);
+let mapClock = 0;
+/** Held compass: a needle to the bed (or where the world began). Held map: the land around, redrawn a few times a second. */
+function updateHeldTools(now: number): void {
+  const key = play.held ? BLOCKS.type(play.held.state).key : '';
+  const target = play.spawn ?? worldSpawn;
+  compass.style.display = key === 'compass' && target ? '' : 'none';
+  if (key === 'compass' && target) compass.style.transform = `rotate(${bearing(player.body.x, player.body.z, player.yaw, target[0], target[2])}rad)`;
+  minimap.canvas.style.display = key === 'map' ? 'block' : 'none';
+  if (key === 'map' && now - mapClock > 300) {
+    mapClock = now;
+    minimap.draw(world, player.body.x, player.body.z, player.yaw);
+  } else if (now - mapClock > 3000) {
+    // The map keeps a record of the land walked through even while it is not held.
+    mapClock = now;
+    minimap.atlas.record(world, player.body.x, player.body.z, 64);
+  }
+}
 let frames = 0, fps = 0, fpsTime = performance.now(), lastVersion = -1, lastUiDraw = 0;
 /** Main-thread time of this frame's fixed steps, and when the previous frame started (for the F3 graph). */
 let updateMs = 0, lastFrame = performance.now();
@@ -394,13 +650,44 @@ const timedUpdate = (dt: number) => {
 const loop = new FixedStepLoop(1 / 60, 0.25, timedUpdate, (_alpha, frameDt) => {
   const now = performance.now();
   input.poll(frameDt);
+  if (!input.playing) padMenu.poll(now);
   const [dyaw, dpitch] = input.takeLook();
   player.yaw += dyaw;
   player.pitch = Math.max(-1.55, Math.min(1.55, player.pitch + dpitch));
   handleActions();
   streamer.update(player.body.x, player.body.y, player.body.z, now);
-  renderer.camera.position.set(player.body.x, player.eyeY, player.body.z);
-  renderer.camera.rotation.set(player.pitch, player.yaw, 0, 'YXZ');
+  // The view bobs with each step and widens a little while sprinting (unless turned off).
+  const speed = Math.hypot(player.body.vx, player.body.vz), walking = player.body.onGround && !player.flying && speed > 0.5;
+  bobPhase = walking ? bobPhase + speed * frameDt * 1.1 : 0;
+  const bob = settings.viewBob ? Math.sin(bobPhase) * 0.06 : 0;
+  const wantFov = settings.fov * (settings.viewBob && input.sprint && walking ? 1.1 : 1);
+  if (Math.abs(renderer.camera.fov - wantFov) > 0.05) {
+    renderer.camera.fov += (wantFov - renderer.camera.fov) * Math.min(1, frameDt * 8);
+    renderer.camera.updateProjectionMatrix();
+  }
+  renderer.camera.position.set(player.body.x, player.eyeY + Math.abs(bob), player.body.z);
+  // Taking damage: a red flash, a hurt sound and a kick of the view. Slow harm (burning, cold) flashes every half point.
+  const health = play.survival.health, lost = lastHealth - health;
+  if (lost >= 0.5 && play.mode === 'survival') {
+    hurtFlash.style.transition = 'none';
+    hurtFlash.style.opacity = String(Math.min(0.6, 0.15 + lost * 0.08));
+    void hurtFlash.offsetWidth;
+    hurtFlash.style.transition = 'opacity 0.5s';
+    hurtFlash.style.opacity = '0';
+    sounds.play('hurt', Math.min(1, lost / 2));
+    kick = Math.min(0.12, kick + 0.03 * lost);
+    lastHealth = health;
+  } else if (lost < 0) lastHealth = health;
+  kick *= Math.max(0, 1 - frameDt * 8);
+  burnGlow.style.opacity = play.survival.burning > 0 ? '1' : '0';
+  updateHeldTools(now);
+  updateHand();
+  ambience.update(frameDt, surroundings);
+  if (play.journal.done.size > milestones) {
+    [523, 659, 784].forEach((f, k) => setTimeout(() => sounds.chime(f, 0.25), k * 120));
+  }
+  milestones = play.journal.done.size;
+  renderer.camera.rotation.set(player.pitch + kick, player.yaw, 0, 'YXZ');
   highlight.set(play.target, play.breaking);
   const daylight = renderer.uniforms.daylight!.value as number;
   /** Brightness (0..1) of a cell for things drawn outside the terrain. */
@@ -412,7 +699,17 @@ const loop = new FixedStepLoop(1 / 60, 0.25, timedUpdate, (_alpha, frameDt) => {
     return 0.07 + 0.93 * Math.max(sky * sky * daylight, block * block);
   };
   creatureMeshes.update(creatures.list, (c) => lightAt(c.body.x, c.body.y + c.body.height * 0.6, c.body.z));
-  dropMeshes.update(play.drops.list, now / 1000, (d) => lightAt(d.body.x, d.body.y + d.body.height / 2, d.body.z));
+  // Arrows in flight and bits of broken blocks are drawn like dropped items, smaller.
+  const flying = [
+    ...play.projectiles.list.map((p) => ({ state: ARROW, x: p.x, y: p.y, z: p.z, size: 0.4 })),
+    ...play.particles.list.map((p) => ({ state: p.state, x: p.x, y: p.y, z: p.z, size: 0.15 })),
+  ].map((f) => ({ stack: { state: f.state, count: 1 }, age: 0, wait: 0,
+    body: { x: f.x, y: f.y, z: f.z, vx: 0, vy: 0, vz: 0, halfWidth: f.size / 2, height: f.size, onGround: false } }));
+  // Real drops first: when over the cap, arrows and bits are what is left out.
+  const drawn = flying.length ? [...play.drops.list, ...flying].slice(0, DROP_CAP) : play.drops.list;
+  if (Math.hypot(player.body.vx, player.body.vz) > 0.5) boatYaw = Math.atan2(-player.body.vx, -player.body.vz);
+  boatMesh.update(player.boating, player.body.x, player.body.y, player.body.z, boatYaw, lightAt(player.body.x, player.body.y + 0.5, player.body.z));
+  dropMeshes.update(drawn, now / 1000, (d) => lightAt(d.body.x, d.body.y + d.body.height / 2, d.body.z));
   cull();
   const cam = renderer.camera.position;
   renderer.setAtmosphere(env.frame(frameDt, cam.x, cam.y, cam.z, world));
@@ -425,7 +722,12 @@ const loop = new FixedStepLoop(1 / 60, 0.25, timedUpdate, (_alpha, frameDt) => {
   updateHorizon(cam.x, cam.z);
   renderer.render(now / 1000);
   // The UI redraws when the play state changes, and a few times a second for the survival bars.
-  if (play.version !== lastVersion || (play.mode === 'survival' && now - lastUiDraw > 250)) {
+  if (!ready && loadingText() === null) {
+    // A new world's meta record has no position until its first save, and is not listed until then.
+    void save();
+    play.version++;
+  }
+  if (play.version !== lastVersion || ((play.mode === 'survival' || !ready) && now - lastUiDraw > 250)) {
     lastVersion = play.version;
     lastUiDraw = now;
     redraw();

@@ -31,7 +31,9 @@ export function tickFurnace(f: FurnaceState, dt: number): boolean {
     const seconds = BLOCKS.type(f.fuel.state).fuel ?? 0;
     if (seconds > 0) {
       f.burn = seconds;
-      if (--f.fuel.count <= 0) f.fuel = null;
+      // A lava bucket leaves its bucket behind.
+      const empty = BLOCKS.type(f.fuel.state).emptiesTo;
+      if (--f.fuel.count <= 0) f.fuel = empty ? { state: BLOCKS.state(empty), count: 1 } : null;
     }
   }
   if (f.burn > 0) {

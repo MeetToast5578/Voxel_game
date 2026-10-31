@@ -23,8 +23,30 @@
   - per-box collision for stairs and doors;
   - path-finding for all creatures;
   - stony shores and sandbars.
-- **Docs:** ROADMAP, tasks, OPEN-TASKS, REFERENCE-GAPS and specs 1–53 describe the removed 0.3 m game. They are a
-  feature reference only, and a new task list for the rewrite has not been written.
+- **Docs:** ROADMAP, OPEN-TASKS, REFERENCE-GAPS, the plans and specs 1–53 describe the removed 0.3 m game; they are
+  a feature reference only and now live in `docs/history/`. Older entries below name them by their old paths. `docs/tasks.md` is the new task list for the rewrite (2026-10-31): a survival game with goals, in
+  milestones 0–10, with the owner decisions it needs listed at the end.
+
+## 2026-10-31 — milestone 11 and task 9.5, version 0.3.0 (Claude)
+
+The owner asked to keep building and add new things. Same PR (#61), version 0.3.0.
+- **Done:** 9.5 per-box collision (open doors stay passable); milestone 11 in `docs/tasks.md`: a saved map atlas,
+  falling fittings, boats, the Ember Warden at each shrine, thunderstorm strikes.
+- **Shortcuts:** a boat is never left in the world (stepping out puts it back in the inventory); lightning scorches
+  instead of setting fires (there is no fire block); the warden respawns at full health if the player leaves and
+  comes back before opening the chest.
+- **Checks:** 186 tests, benchmark budgets and smoke pass locally.
+
+## 2026-10-31 — survival game with a goal, milestones 1–10 (Claude)
+
+The owner asked to build the game from `docs/tasks.md` autonomously. Version 0.2.0 (`CHANGELOG.md`), PR #61.
+- **Done:** milestones 1–9 except 9.5 (per-box collision for stairs and doors); 10.4–10.6. Each task's state and
+  shortcut is in `docs/tasks.md`. Owner defaults used: the ore uses, ember ore as the deep material, the three new
+  monsters, the beacon end goal, wool or wheat in beds, GitHub Pages hosting.
+- **Open for the owner:** milestone 0 (playtest, frame rate on real hardware), 10.1 balance, 10.2 default view
+  distance, turning on GitHub Pages (Settings → Pages → Source: GitHub Actions).
+- **Known limits:** generated rivers do not push; catch-up covers crops only; old placed chests that were never opened roll loot once; save migration has no hook yet.
+- **Checks:** 175 tests, benchmark budgets and smoke pass locally and in CI. Audio is not tested headless.
 
 ## 2026-10-31 — switch-over: the rewrite is the game (Claude)
 

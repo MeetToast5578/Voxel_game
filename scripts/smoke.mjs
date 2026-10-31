@@ -24,14 +24,39 @@ async function open(query, viewChunks = view) {
 }
 
 try {
+  // The title screen: shown without URL parameters; creating a world from it opens a survival world on dry ground.
+  {
+    const page = await context.newPage();
+    page.on('pageerror', (e) => errors.push(String(e)));
+    await page.goto('http://localhost:4174/index.html');
+    await page.waitForSelector('.menu.title', { timeout: 30_000 });
+    await page.screenshot({ path: 'screenshots/title.png' });
+    await page.fill('input[aria-label="World name"]', 'smoke-title');
+    await page.fill('input[aria-label="Seed"]', '1');
+    await page.click('button.create');
+    await page.waitForURL(/world=smoke-title/, { timeout: 30_000 });
+    if (!/mode=survival/.test(page.url())) errors.push(`title screen opened ${page.url()}, not a survival world`);
+    await page.waitForSelector('.menu.loading', { timeout: 30_000 });
+    await page.waitForFunction(() => window.__game && !document.querySelector('.menu.loading'), null, { timeout: 180_000, polling: 250 });
+    const spawn = await page.evaluate(() => {
+      const n = window.__game, b = n.player.body, S = (x, y, z) => n.blocks.stateName(n.world.get(Math.floor(x), Math.floor(y), Math.floor(z)));
+      return { mode: n.play.mode, feet: S(b.x, b.y + 0.1, b.z), head: S(b.x, b.y + 2.5, b.z) };
+    });
+    console.log('title', JSON.stringify(spawn));
+    if (spawn.mode !== 'survival' || /water/.test(spawn.feet + spawn.head)) errors.push(`bad start from the title screen: ${JSON.stringify(spawn)}`);
+    await page.evaluate(() => window.__game.save());
+    await page.goto('http://localhost:4174/index.html');
+    await page.waitForSelector('button.continue', { timeout: 30_000 });
+    await page.close();
+  }
   for (const [name, query] of [
     ['spawn', 'seed=1&world=smoke-spawn&new=1'],
-    ['high', 'seed=1&x=0.5&y=200&z=0.5&pitch=-0.6&fly=1&world=smoke-high&new=1'],
-    ['evening', 'seed=1&time=0.77&world=smoke-evening&new=1'],
-    ['night', 'seed=1&time=0.02&world=smoke-night&new=1&pitch=0.3'],
-    ['river', 'seed=1&x=10&y=50&z=-130&yaw=0.3&pitch=-0.45&fly=1&world=smoke-river&new=1'],
-    ['forest', 'seed=1&x=-950&y=95&z=-950&yaw=0.6&pitch=-0.25&fly=1&world=smoke-forest&new=1'],
-    ['cave', 'seed=1&x=8&y=-60&z=8&fly=1&world=smoke-cave&new=1'],
+    ['high', 'seed=1&x=0.5&y=200&z=0.5&pitch=-0.6&fly=1&world=smoke-high&new=1&mode=creative'],
+    ['evening', 'seed=1&time=0.77&world=smoke-evening&new=1&mode=creative'],
+    ['night', 'seed=1&time=0.02&world=smoke-night&new=1&pitch=0.3&mode=creative'],
+    ['river', 'seed=1&x=10&y=50&z=-130&yaw=0.3&pitch=-0.45&fly=1&world=smoke-river&new=1&mode=creative'],
+    ['forest', 'seed=1&x=-950&y=95&z=-950&yaw=0.6&pitch=-0.25&fly=1&world=smoke-forest&new=1&mode=creative'],
+    ['cave', 'seed=1&x=8&y=-60&z=8&fly=1&world=smoke-cave&new=1&mode=creative'],
   ]) {
     const { page, loadMs } = await open(query);
     const stats = await page.evaluate(() => {
@@ -50,6 +75,7 @@ try {
   {
     const { page } = await open('seed=1&world=smoke-ui&new=1&mode=survival', 6);
     await page.waitForTimeout(500);
+    if (!(await page.$('.menu select[aria-label="Difficulty"]'))) errors.push('the pause menu has no difficulty setting');
     await page.screenshot({ path: 'screenshots/menu.png' });
     await page.evaluate(() => {
       const n = window.__game, S = (k) => n.blocks.state(k);
@@ -79,12 +105,26 @@ try {
     });
     await page.evaluate(() => { document.querySelector('#ui').style.display = 'none'; });
     await page.screenshot({ path: 'screenshots/drops.png' });
+    // The map and the compass show while held.
+    const tools = await page.evaluate(async () => {
+      const n = window.__game, S = (k) => n.blocks.state(k), shown = (el) => el && getComputedStyle(el).display !== 'none';
+      n.play.inventory.slots[0] = { state: S('map'), count: 1 };
+      n.play.inventory.slots[1] = { state: S('compass'), count: 1 };
+      n.play.inventory.selected = 0;
+      for (let f = 0; f < 30; f++) await new Promise(requestAnimationFrame);
+      const map = shown(document.querySelector('.minimap'));
+      n.play.inventory.selected = 1;
+      for (let f = 0; f < 5; f++) await new Promise(requestAnimationFrame);
+      return { map, compass: shown(document.querySelector('#compass')) };
+    });
+    await page.screenshot({ path: 'screenshots/compass.png' });
+    if (!tools.map || !tools.compass) errors.push(`held map or compass not shown: ${JSON.stringify(tools)}`);
     if (drops !== 5) errors.push(`expected 5 dropped items, found ${drops}`);
     await page.close();
   }
 
   // Edit latency: main-thread time of one edit, and frames until its chunks are remeshed.
-  const { page } = await open('seed=1&world=smoke-edit&new=1', 6);
+  const { page } = await open('seed=1&world=smoke-edit&new=1&mode=creative', 6);
   const edits = await page.evaluate(async () => {
     const n = window.__game;
     const results = [];

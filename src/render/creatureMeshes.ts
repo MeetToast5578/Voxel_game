@@ -41,7 +41,7 @@ export class CreatureMeshes {
       const { body, head, legs } = s.colours;
       if (s.medium === 'water') {
         box(c, 0, h * 0.5, 0, w * 0.8, h, w * 2.2, body, light);
-      } else if (s.hostile) {
+      } else if (s.hostile && !s.climbs) {
         box(c, 0, h * 0.62, 0, w, h * 0.38, w * 0.55, body, light);
         box(c, 0, h * 0.9, 0, w * 0.6, h * 0.2, w * 0.6, head, light);
         box(c, -w * 0.25, h * 0.22, swing * 0.3, w * 0.4, h * 0.44, w * 0.4, legs, light);

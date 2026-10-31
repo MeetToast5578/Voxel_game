@@ -23,8 +23,8 @@ function plain() {
 }
 
 const player = () => ({ x: 0.5, y: 0, z: 0.5, vx: 0, vy: 0, vz: 0, halfWidth: 0.47, height: 2.9, onGround: true });
-const ctx = (world: World, p = player(), survival = true, day = true): CreatureContext => ({
-  player: p, survival, day, boxAt: (x, y, z) => COLLISION[world.get(x, y, z)]!, waterAt: () => false,
+const ctx = (world: World, p = player(), survival = true, day = true, hostiles = 1): CreatureContext => ({
+  player: p, survival, day, hostiles, boxAt: (x, y, z) => COLLISION[world.get(x, y, z)]!, waterAt: () => false,
 });
 
 describe('creatures', () => {
@@ -51,6 +51,16 @@ describe('creatures', () => {
     bitten = 0;
     for (let i = 0; i < 600; i++) calm.update(1 / 60, ctx(world, player(), false, false));
     expect(bitten).toBe(0);
+  });
+
+  it('keeps no monsters on peaceful, but leaves animals alone', () => {
+    const world = plain();
+    const cs = new Creatures(world, mulberry32(4), { bite: () => undefined, sound: () => undefined });
+    cs.add(SPECIES_BY_KEY.get('zombie')!, 5, 0, 0.5, 20);
+    cs.add(SPECIES_BY_KEY.get('cow')!, -5, 0, 0.5, 10);
+    cs.update(1 / 60, ctx(world, player(), true, false, 0));
+    expect(cs.list.some((c) => c.species.hostile)).toBe(false);
+    expect(cs.list.some((c) => c.species.key === 'cow')).toBe(true);
   });
 
   it('can be hit by a ray, dies, and leaves meat', () => {

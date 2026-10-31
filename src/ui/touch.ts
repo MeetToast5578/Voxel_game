@@ -41,10 +41,10 @@ export function installTouchControls(parent: HTMLElement, input: Input, onPause:
     button('▶', 'Next slot', (d) => d && input.press('slotNext')),
     button('Inv', 'Inventory', (d) => d && input.press('inventory')),
     button('Fly', 'Fly', (d) => d && input.press('fly')),
-    button('▼', 'Down', (d) => input.setKey('ShiftLeft', d)),
+    button('▼', 'Down', (d) => input.setKey(input.bindings.descend, d)),
     button('Place', 'Place', (d) => input.setButton('place', d)),
     button('Break', 'Break', (d) => input.setButton('break', d)),
-    button('Jump', 'Jump', (d) => input.setKey('Space', d)),
+    button('Jump', 'Jump', (d) => input.setKey(input.bindings.jump, d)),
   );
   const pause = button('II', 'Pause', (d) => {
     if (d) onPause();

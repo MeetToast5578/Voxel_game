@@ -4,7 +4,9 @@ import { Chunk } from '../engine/chunk';
 import { World } from '../engine/world';
 import type { Input } from '../game/input';
 import { COLLISION } from '../game/collision';
-import { Play } from '../game/play';
+import { Play, weaponDamage } from '../game/play';
+import { tickFurnace } from '../game/furnace';
+import { RECIPES } from '../game/crafting';
 import { Player } from '../game/player';
 
 const S = (key: string, v = 0) => BLOCKS.state(key, v);
@@ -113,11 +115,137 @@ describe('play', () => {
     expect(play.inventory.count(S('log'))).toBe(1);
   });
 
+  it('lays out a recipe from the inventory, only when everything is there and it fits the grid', () => {
+    const { play } = setup('survival');
+    const recipe = (key: string) => RECIPES.find((r) => r.result[0] === key)!;
+    play.inventory.add({ state: S('planks'), count: 3 });
+    play.inventory.add({ state: S('stick'), count: 2 });
+    play.openScreen('inventory', 2);
+    expect(play.canMake(recipe('wooden_pickaxe'))).toBe(false); // 3×3 only
+    play.openScreen('inventory', 3);
+    expect(play.fillRecipe(recipe('wooden_pickaxe'))).toBe(true);
+    expect(play.craftOutput).toEqual({ state: S('wooden_pickaxe'), count: 1 });
+    expect(play.inventory.count(S('planks')) + play.inventory.count(S('stick'))).toBe(0);
+    // Not enough for a chest (eight planks): nothing moves.
+    expect(play.fillRecipe(recipe('chest'))).toBe(false);
+    expect(play.craftOutput).toEqual({ state: S('wooden_pickaxe'), count: 1 });
+    // Another recipe takes the grid back into the inventory first.
+    expect(play.fillRecipe(recipe('stick'))).toBe(true);
+    expect(play.craftOutput).toEqual({ state: S('stick'), count: 4 });
+    expect(play.inventory.count(S('planks'))).toBe(1);
+  });
+
+  it('leaves the grid alone when a recipe is picked with no room to put the grid back', () => {
+    const { play } = setup('survival');
+    play.openScreen('inventory', 2);
+    for (let i = 0; i < 36; i++) play.inventory.slots[i] = { state: S('dirt'), count: 64 };
+    play.inventory.slots[0] = { state: S('planks'), count: 2 };
+    play.craft[0] = { state: S('log'), count: 1 };
+    expect(play.fillRecipe(RECIPES.find((r) => r.result[0] === 'stick')!)).toBe(false);
+    expect(play.craft[0]).toEqual({ state: S('log'), count: 1 });
+    expect(play.drops.list).toHaveLength(0);
+  });
+
+  it('hits hardest with a sword, by tier, and weaker when swinging too fast', () => {
+    expect(weaponDamage({ state: S('iron_sword'), count: 1 })).toBeGreaterThan(weaponDamage({ state: S('stone_sword'), count: 1 }));
+    expect(weaponDamage({ state: S('stone_sword'), count: 1 })).toBeGreaterThan(weaponDamage({ state: S('stone_axe'), count: 1 }));
+    expect(weaponDamage(null)).toBe(1);
+    // A zombie (20 health) takes under a quarter of the full swings with an iron sword that it takes with a fist.
+    expect(Math.ceil(20 / weaponDamage({ state: S('iron_sword'), count: 1 }))).toBeLessThan(20 / weaponDamage(null) / 4);
+  });
+
+  it('cooks raw food on a campfire, and gives it back raw if the fire goes', () => {
+    const { world, play, player, input, press } = setup('survival');
+    world.set(2, 0, 0, S('campfire'));
+    player.pitch = -0.85; // looking down at the cell in front
+    play.inventory.slots[0] = { state: S('raw_meat'), count: 2 };
+    play.update(0, input, player);
+    press('place');
+    play.update(0, input, player);
+    expect(play.target).toMatchObject({ x: 2, y: 0, z: 0 });
+    expect(play.campfires.get('2,0,0')).toHaveLength(1);
+    expect(play.inventory.count(S('raw_meat'))).toBe(1);
+    for (let t = 0; t < 25; t++) play.tickCampfires(1);
+    expect(play.drops.list.map((d) => BLOCKS.type(d.stack.state).key)).toEqual(['cooked_meat']);
+    press('place');
+    play.update(0, input, player);
+    world.set(2, 0, 0, 0);
+    play.tickCampfires(1);
+    expect(play.drops.list.map((d) => BLOCKS.type(d.stack.state).key).sort()).toEqual(['cooked_meat', 'raw_meat']);
+  });
+
+  it('scoops up a water source with a bucket and pours it out again', () => {
+    const { world, play, player, input, press } = setup('survival');
+    world.set(2, 0, 0, S('water'));
+    world.set(3, 0, 0, S('stone'));
+    player.pitch = -0.85;
+    play.inventory.slots[0] = { state: S('bucket'), count: 1 };
+    press('place');
+    play.update(0, input, player);
+    expect(world.get(2, 0, 0)).toBe(0);
+    expect(play.inventory.slots[0]).toEqual({ state: S('water_bucket'), count: 1 });
+    press('place');
+    play.update(0, input, player);
+    expect(world.get(2, 0, 0)).toBe(S('water'));
+    expect(play.inventory.slots[0]).toEqual({ state: S('bucket'), count: 1 });
+  });
+
+  it('a lava bucket burns in a furnace and leaves the bucket', () => {
+    const f = { input: { state: S('iron_ore'), count: 1 }, fuel: { state: S('lava_bucket'), count: 1 }, output: null, burn: 0, progress: 0 };
+    tickFurnace(f, 0.1);
+    expect(f.fuel).toEqual({ state: S('bucket'), count: 1 });
+  });
+
+  it('hangs a ladder on the side of the wall that was clicked, not on floors', () => {
+    const { world, play, player, input, press } = setup('survival');
+    for (let y = 0; y < 4; y++) world.set(2, y, 0, S('stone'));
+    player.pitch = 0;
+    player.body.y = 0;
+    play.inventory.slots[0] = { state: S('ladder'), count: 3 };
+    press('place');
+    play.update(0, input, player);
+    expect(BLOCKS.stateName(world.get(1, 2, 0))).toBe('ladder'); // facing +x: variant 0
+    player.pitch = -1.4;
+    press('place');
+    play.update(0, input, player);
+    expect(play.inventory.count(S('ladder'))).toBe(2);
+  });
+
+  it('draws the bow while right click is held and shoots an arrow on release, using one up', () => {
+    const { play, player, input } = setup('survival');
+    play.inventory.slots[0] = { state: S('bow'), count: 1 };
+    play.inventory.slots[1] = { state: S('arrow'), count: 3 };
+    const held = input as unknown as { placing: boolean };
+    held.placing = true;
+    for (let i = 0; i < 60; i++) play.update(1 / 60, input, player);
+    expect(play.projectiles.list).toHaveLength(0);
+    held.placing = false;
+    play.update(1 / 60, input, player);
+    expect(play.projectiles.list).toHaveLength(1);
+    expect(play.inventory.count(S('arrow'))).toBe(2);
+  });
+
+  it('grows a crop a stage with bone meal', () => {
+    const { world, play, player, input, press } = setup('survival');
+    let grown = 0;
+    const p = new Play(world, (x, y, z, st) => world.set(x, y, z, st), {
+      sound: () => undefined, sleep: () => true, fertilise: () => (grown++, true) }, 'survival');
+    world.set(2, 0, 0, S('wheat'));
+    player.pitch = -0.85;
+    p.inventory.slots[0] = { state: S('bone_meal'), count: 2 };
+    press('place');
+    p.update(0, input, player);
+    expect(grown).toBe(1);
+    expect(p.inventory.count(S('bone_meal'))).toBe(1);
+    void play;
+  });
+
   it('saves and restores the player state', () => {
     const { play, world } = setup('survival');
     play.inventory.add({ state: S('torch'), count: 7 });
     play.survival.hunger = 11;
     play.spawn = [1, 2, 3];
+    play.difficulty = 'hard';
     play.furnaces.set('1,0,1', { input: null, fuel: { state: S('coal'), count: 2 }, output: null, burn: 3, progress: 1 });
     const back = new Play(world, () => undefined, { sound: () => undefined, sleep: () => true }, 'creative');
     back.load(JSON.parse(JSON.stringify(play.save())));
@@ -125,11 +253,35 @@ describe('play', () => {
     expect(back.inventory.count(S('torch'))).toBe(7);
     expect(back.survival.hunger).toBe(11);
     expect(back.spawn).toEqual([1, 2, 3]);
+    expect(back.difficulty).toBe('hard');
+    expect(back.survival.hungerRate).toBe(1.25);
     expect(back.furnaces.get('1,0,1')!.fuel).toEqual({ state: S('coal'), count: 2 });
   });
 });
 
 describe('creative building', () => {
+  it('copies the box between two corners and pastes it against the aimed face, undoably', () => {
+    const { world, play, player, input, press } = setup('creative');
+    world.set(4, 0, 0, S('brick'));
+    world.set(4, 1, 0, S('glass'));
+    play.update(0, input, player);
+    const aim = (x: number, y: number, z: number) => { play.target = { x, y, z, nx: 0, ny: 1, nz: 0, distance: 3 }; };
+    const act = (a: string) => {
+      press(a);
+      (play as unknown as { build(i: Input): void }).build(input);
+    };
+    aim(4, 0, 0); act('copy');
+    aim(4, 1, 0); act('copy');
+    expect(play.clipboard).toHaveLength(2);
+    aim(8, -1, 3); act('paste');
+    for (let i = 0; i < 3; i++) play.update(0.05, input, player);
+    expect(world.get(8, 0, 3)).toBe(S('brick'));
+    expect(world.get(8, 1, 3)).toBe(S('glass'));
+    press('undo');
+    play.update(0, input, player);
+    expect(world.get(8, 0, 3)).toBe(0);
+  });
+
   it('undoes and redoes edits, and fills and clears boxes between two corners', () => {
     const { world, play, player, input, press } = setup('creative');
     play.inventory.slots[0] = { state: S('brick'), count: 64 };
@@ -205,5 +357,24 @@ describe('chests', () => {
     expect(play.inventory.slots[1]!.count).toBe(63);
     expect(play.drops.list.length).toBe(2);
     expect(play.drops.list[1]!.body.vx).toBeGreaterThan(0); // thrown along +x, where the player looks
+  });
+});
+
+describe('boats', () => {
+  it('go on water in view, and come back to the inventory when the rider crouches', () => {
+    const { world, play, player, input, press } = setup('survival');
+    for (let x = 1; x <= 6; x++) world.set(x, -1, 0, S('water'));
+    player.pitch = -0.8;
+    play.inventory.slots[0] = { state: S('boat'), count: 1 };
+    press('place');
+    play.update(0.05, input, player);
+    expect(play.boating).toBe(true);
+    expect(player.boating).toBe(true);
+    expect(play.inventory.slots[0]).toBeNull();
+    expect(world.get(Math.floor(player.body.x), Math.floor(player.body.y) - 1, 0)).toBe(S('water'));
+    (input as { descend: boolean }).descend = true;
+    play.update(0.05, input, player);
+    expect(play.boating).toBe(false);
+    expect(play.inventory.slots[0]?.state).toBe(S('boat'));
   });
 });

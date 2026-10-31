@@ -26,10 +26,10 @@ const ORES = [
   { key: 'coal_ore', topM: -4, bottomM: -40, per1000M3: 1.0, cells: 6 },
   { key: 'iron_ore', topM: -32, bottomM: -96, per1000M3: 0.6, cells: 5 },
   { key: 'gold_ore', topM: -64, bottomM: -160, per1000M3: 0.3, cells: 4 },
-  { key: 'redstone_ore', topM: -96, bottomM: -224, per1000M3: 0.4, cells: 5 },
+  // Ember ore took redstone's place (and its seed), so the veins of the ores after it did not move.
+  { key: 'ember_ore', topM: -100, bottomM: -480, per1000M3: 0.12, cells: 3 },
   { key: 'lapis_ore', topM: -128, bottomM: -320, per1000M3: 0.3, cells: 4 },
   { key: 'diamond_ore', topM: -160, bottomM: -480, per1000M3: 0.15, cells: 3 },
-  { key: 'emerald_ore', topM: -160, bottomM: -480, per1000M3: 0.1, cells: 2 },
 ].map((o) => ({ ...o, state: BLOCKS.state(o.key) }));
 
 /** Rock layers, caves and ores: everything below the surface. Pure and deterministic per seed. */

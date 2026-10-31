@@ -1,9 +1,10 @@
 import {
   BLOCK_SIZE_M, CHUNK_SIZE, FALL_DELAY_S, GRASS_MIN_LIGHT, LAVA_FLOW_M_S, LEAF_REACH_M, MAX_TICKS_PER_STEP,
-  CROP_GROW_CHANCE, ICE_FREEZE_CHANCE, ICE_THAW_CHANCE, SAPLING_GROW_CHANCE, RANDOM_TICKS_PER_CHUNK, SIM_HZ, SIM_RADIUS_CHUNKS, SNOW_MELT_CHANCE,
+  REGROW_CHANCE, CROP_GROW_CHANCE, ICE_FREEZE_CHANCE, ICE_THAW_CHANCE, SAPLING_GROW_CHANCE, RANDOM_TICKS_PER_CHUNK, SIM_HZ, SIM_RADIUS_CHUNKS, SNOW_MELT_CHANCE,
   SNOW_SETTLE_CHANCE, WATER_FLOW_M_S, WEATHER_TICKS_PER_COLUMN, cells,
 } from '../config';
 import { localIndex, toChunk, toLocal } from '../core/coords';
+import type { Chunk } from '../engine/chunk';
 import { mulberry32 } from '../core/random';
 import { AIR, BLOCKS, FLUID_LEVELS, OPAQUE, SAPLING_SPECIES, SNOW_LAYERS, SOLID } from '../engine/blocks';
 import { treeCells, unpackTreeCell } from '../worldgen/trees';
@@ -55,6 +56,13 @@ for (const t of BLOCKS.types) {
     NEEDS_SUPPORT[s] = t.needsSupport ? 1 : 0;
   }
 }
+/** Fittings that hang on a neighbour: the offsets of the cells that can hold them (any one will do). */
+const HOLDERS = new Map<number, readonly (readonly [number, number, number])[]>();
+const LADDER_WALL = [[1, 0, 0], [-1, 0, 0], [0, 0, 1], [0, 0, -1]] as const;
+for (let v = 0; v < 4; v++) HOLDERS.set(S('ladder', v), [LADDER_WALL[v]!]);
+HOLDERS.set(S('lantern'), [[0, 1, 0], [0, -1, 0]]);
+HOLDERS.set(S('torch'), [[0, -1, 0]]);
+for (const s of HOLDERS.keys()) NEEDS_SUPPORT[s] = 1;
 const LEAF_REACH = cells(LEAF_REACH_M);
 const SAPLING_TYPE = BLOCKS.typeIndex[BLOCKS.state('sapling')]!;
 /** States random ticks act on: grass, crops still growing, saplings. */
@@ -63,6 +71,11 @@ for (const t of BLOCKS.types) {
   if (t.key === 'grass' || t.key === 'sapling') for (let v = 0; v < t.variants; v++) GROWS[t.id + v] = 1;
   else if (t.variantTiles && t.shape === 'cross') for (let v = 0; v < t.variants - 1; v++) GROWS[t.id + v] = 1;
 }
+/** Crops still growing (a random tick may grow them a stage), for catching up while their chunk was unloaded. */
+const CROP = new Uint8Array(BLOCKS.stateCount);
+for (const t of BLOCKS.types) if (t.variantTiles && t.shape === 'cross') for (let v = 0; v < t.variants - 1; v++) CROP[t.id + v] = 1;
+const FARMLAND = BLOCKS.state('farmland');
+const REGROW = [BLOCKS.state('tall_grass'), BLOCKS.state('tall_grass'), BLOCKS.state('tall_grass'), BLOCKS.state('poppy'), BLOCKS.state('dandelion')];
 const DX = [1, -1, 0, 0, 0, 0], DY = [0, 0, 1, -1, 0, 0], DZ = [0, 0, 0, 0, 1, -1];
 
 /**
@@ -74,6 +87,11 @@ export class Simulation {
   /** What is falling near the player and the season's temperature offset; snow settles and ice forms from it. */
   weather: { precipitation: Precipitation; seasonC: number } | null = null;
   private readonly rand: () => number;
+  /** Chunks with growing crops that were unloaded, and the tick they were unloaded at (saved with the world). */
+  private readonly parkedCrops = new Map<number, number>();
+
+  /** Called when a fitting (ladder, torch, lantern) falls off for want of a holder: drop it as an item. */
+  popped: (x: number, y: number, z: number, state: number) => void = () => {};
 
   constructor(private readonly world: World, private readonly setBlock: (x: number, y: number, z: number, s: number) => void, seed = 1) {
     this.rand = mulberry32(seed ^ 0x51ed);
@@ -100,6 +118,40 @@ export class Simulation {
     if (f) this.ticks.schedule(x, y, z, TickKind.Flow, f.delay);
     else if (SAND.has(s)) this.ticks.schedule(x, y, z, TickKind.Fall, FALL_DELAY_S * SIM_HZ);
     else if (NEEDS_SUPPORT[s]) this.ticks.schedule(x, y, z, TickKind.Support, 1);
+  }
+
+  /** A chunk unloads: if crops grow in it, remember when. */
+  parkGrowth(chunk: Chunk): void {
+    if (chunk.states.some((s) => CROP[s])) this.parkedCrops.set(chunk.key, this.ticks.now);
+  }
+
+  /**
+   * A chunk loads again: its crops grow the stages they would have grown meanwhile, on average (as random ticks would
+   * with light; shortcut: light and water are not checked, and saplings wait until loaded).
+   */
+  catchUp(chunk: Chunk): void {
+    const parked = this.parkedCrops.get(chunk.key);
+    if (parked === undefined) return;
+    this.parkedCrops.delete(chunk.key);
+    const expected = ((this.ticks.now - parked) * RANDOM_TICKS_PER_CHUNK * CROP_GROW_CHANCE) / 4096;
+    if (expected <= 0) return;
+    for (let i = 0; i < 4096; i++) {
+      const s = chunk.get(i);
+      if (!CROP[s]) continue;
+      const t = BLOCKS.type(s), stages = Math.floor(expected + this.rand());
+      if (stages <= 0) continue;
+      const x = chunk.cx * CHUNK_SIZE + (i & 15), y = chunk.cy * CHUNK_SIZE + (i >> 8), z = chunk.cz * CHUNK_SIZE + ((i >> 4) & 15);
+      this.setBlock(x, y, z, Math.min(t.id + t.variants - 1, s + stages));
+    }
+  }
+
+  saveGrowth(): [number, number][] {
+    return [...this.parkedCrops];
+  }
+
+  loadGrowth(saved: unknown): void {
+    if (!Array.isArray(saved)) return;
+    for (const e of saved) if (Array.isArray(e) && Number.isFinite(e[0]) && Number.isFinite(e[1])) this.parkedCrops.set(e[0], e[1]);
   }
 
   /** One simulation step: due scheduled ticks, then random ticks around (px, pz) (cells). */
@@ -238,6 +290,14 @@ export class Simulation {
   private support(x: number, y: number, z: number): void {
     const s = this.world.get(x, y, z);
     if (!NEEDS_SUPPORT[s]) return;
+    const holders = HOLDERS.get(s);
+    if (holders) {
+      if (holders.some(([dx, dy, dz]) => (FLAGS[this.world.get(x + dx, y + dy, z + dz)]! & SOLID) !== 0)) return;
+      if (!holders.every(([dx, dy, dz]) => this.world.isLoaded(x + dx, y + dy, z + dz))) return;
+      this.setBlock(x, y, z, AIR);
+      this.popped(x, y, z, s);
+      return;
+    }
     const below = this.world.get(x, y - 1, z);
     const ok = s === LILY ? below === WATER.source : (FLAGS[below]! & SOLID) !== 0;
     if (!ok && this.world.isLoaded(x, y - 1, z)) this.setBlock(x, y, z, AIR);
@@ -274,6 +334,11 @@ export class Simulation {
       return;
     }
     if (this.lightAbove(x, y, z) < GRASS_MIN_LIGHT) return;
+    // Bare grass slowly grows back its plants.
+    if (this.world.get(x, y + 1, z) === AIR && this.rand() < REGROW_CHANCE) {
+      this.setBlock(x, y + 1, z, REGROW[Math.floor(this.rand() * REGROW.length)]!);
+      return;
+    }
     const tx = x + Math.floor(this.rand() * 3) - 1, ty = y + Math.floor(this.rand() * 4) - 2, tz = z + Math.floor(this.rand() * 3) - 1;
     if (this.world.get(tx, ty, tz) !== DIRT) return;
     if ((FLAGS[this.world.get(tx, ty + 1, tz)]! & OPAQUE) !== 0 || this.lightAbove(tx, ty, tz) < GRASS_MIN_LIGHT) return;
@@ -283,12 +348,36 @@ export class Simulation {
   /** Crops grow a stage now and then where it is light enough. */
   private crop(x: number, y: number, z: number, s: number): void {
     const t = BLOCKS.type(s);
-    if (s - t.id < t.variants - 1 && this.lightAbove(x, y - 1, z) >= GRASS_MIN_LIGHT && this.rand() < CROP_GROW_CHANCE) this.setBlock(x, y, z, s + 1);
+    // Farmland grows crops faster, and faster still with water within four cells.
+    const farmed = this.world.get(x, y - 1, z) === FARMLAND, boost = farmed ? (this.waterNear(x, y - 1, z) ? 3 : 1.5) : 1;
+    if (s - t.id < t.variants - 1 && this.lightAbove(x, y - 1, z) >= GRASS_MIN_LIGHT && this.rand() < CROP_GROW_CHANCE * boost) this.setBlock(x, y, z, s + 1);
+  }
+
+  private waterNear(x: number, y: number, z: number): boolean {
+    for (let dz = -4; dz <= 4; dz++) for (let dx = -4; dx <= 4; dx++) if (fluidOf(this.world.get(x + dx, y, z + dz)) === WATER) return true;
+    return false;
   }
 
   /** A sapling with light grows into its species' tree, where the tree has room. */
   private sapling(x: number, y: number, z: number, s: number): void {
     if (this.lightAbove(x, y - 1, z) < GRASS_MIN_LIGHT || this.rand() >= SAPLING_GROW_CHANCE) return;
+    this.growTree(x, y, z, s);
+  }
+
+  /** Bone meal: a crop grows a stage and a sapling becomes its tree at once. Returns whether anything grew. */
+  fertilise(x: number, y: number, z: number): boolean {
+    const s = this.world.get(x, y, z), t = BLOCKS.type(s);
+    if (BLOCKS.typeIndex[s] === SAPLING_TYPE) {
+      this.growTree(x, y, z, s);
+      return true;
+    }
+    if (!t.variantTiles || s - t.id >= t.variants - 1) return false;
+    this.setBlock(x, y, z, s + 1);
+    return true;
+  }
+
+  /** The sapling at (x, y, z) becomes its species' tree, wherever the tree has room. */
+  private growTree(x: number, y: number, z: number, s: number): void {
     const species = SAPLING_SPECIES[s - BLOCKS.types[SAPLING_TYPE]!.id]!;
     for (const [key, state] of treeCells(Math.floor(this.rand() * 1e9), x, z, species)) {
       const [dx, dy, dz] = unpackTreeCell(key);

@@ -2,12 +2,13 @@ import { describe, expect, it } from 'vitest';
 import { DROP_LIFETIME_S, DROP_PICKUP_M, toCells } from '../config';
 import { BLOCKS } from '../engine/blocks';
 import { Drops } from '../game/drops';
+import { FULL } from '../game/collision';
 import { Inventory } from '../game/inventory';
 import type { Body } from '../game/physics';
 
 const S = (key: string) => BLOCKS.state(key, 0);
 /** Solid ground below y = 0 (a full cell is bottom 0, top 16 sixteenths). */
-const ground = (_x: number, y: number) => (y < 0 ? 16 << 5 : 0);
+const ground = (_x: number, y: number) => (y < 0 ? FULL : 0);
 const player = (x: number): Body => ({ x, y: 0, z: 0.5, vx: 0, vy: 0, vz: 0, halfWidth: 0.47, height: 3, onGround: true });
 
 function run(drops: Drops, seconds: number, p: Body | null, inv = new Inventory()): Inventory {

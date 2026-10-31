@@ -5,7 +5,7 @@
 
 export type RenderLayer = 'none' | 'opaque' | 'cutout' | 'water' | 'ice';
 export type BlockShape = 'cube' | 'cross' | 'layer' | 'slab' | 'boxes';
-export type ToolKind = 'pickaxe' | 'axe' | 'shovel';
+export type ToolKind = 'pickaxe' | 'axe' | 'shovel' | 'sword' | 'hoe';
 /** A box inside a cell, in sixteenths: [x0, y0, z0, x1, y1, z1]. */
 export type Box = readonly [number, number, number, number, number, number];
 
@@ -62,8 +62,13 @@ export interface BlockType {
   readonly needsTier?: number;
   /** What breaking it gives: another key, or '' for nothing (default: itself, variant 0). */
   readonly drops?: string;
+  /** Armour: the body slot it is worn on (0 head, 1 chest, 2 legs, 3 feet), damage points it stops, °C of cold it
+   * keeps off, and how many hits it takes. */
+  readonly armour?: { readonly slot: number; readonly protection: number; readonly warmth: number; readonly durability: number };
   /** Seconds it burns in a furnace. */
   readonly fuel?: number;
+  /** What is left when it is used up as fuel or emptied (a bucket). */
+  readonly emptiesTo?: string;
   /** What a furnace makes of it. */
   readonly smeltsTo?: string;
   /** It falls off without a solid cell below (plants, torches). */
@@ -203,6 +208,8 @@ const BASE: BlockSpec[] = [
   { key: 'air', name: 'Air', tiles: all('air'), solid: false, layer: 'none', hardness: 0, density: 1 },
   stone('stone', 'Stone', { drops: 'cobblestone' }),
   { key: 'dirt', name: 'Dirt', tiles: all('dirt'), hardness: 0.5, density: 1300, ...soil },
+  // Tilled soil: crops grow on it, faster with water near.
+  { key: 'farmland', name: 'Farmland', tiles: { top: 'farmland', side: 'dirt', bottom: 'dirt' }, hardness: 0.6, density: 1300, drops: 'dirt', mineWith: 'shovel' },
   { key: 'grass', name: 'Grass', tiles: { top: 'grass_top', side: 'grass_side', bottom: 'dirt' }, hardness: 0.6, density: 1300, drops: 'dirt', ...soil },
   { key: 'sand', name: 'Sand', tiles: all('sand'), hardness: 0.5, falls: true, density: 1600, smeltsTo: 'glass', ...soil },
   { key: 'gravel', name: 'Gravel', tiles: all('gravel'), hardness: 0.6, falls: true, density: 1900, ...soil },
@@ -233,11 +240,14 @@ const BASE: BlockSpec[] = [
   stone('obsidian', 'Obsidian', { hardness: 25, needsTier: 2 }),
   stone('coal_ore', 'Coal ore', { hardness: 2, drops: 'coal' }),
   stone('iron_ore', 'Iron ore', { hardness: 3, needsTier: 1, smeltsTo: 'iron_ingot' }),
-  stone('gold_ore', 'Gold ore', { hardness: 3, needsTier: 2 }),
+  stone('gold_ore', 'Gold ore', { hardness: 3, needsTier: 2, smeltsTo: 'gold_ingot' }),
   stone('redstone_ore', 'Redstone ore', { hardness: 3, needsTier: 2 }),
-  stone('diamond_ore', 'Diamond ore', { hardness: 4, needsTier: 2 }),
+  stone('diamond_ore', 'Diamond ore', { hardness: 4, needsTier: 2, drops: 'diamond' }),
   stone('emerald_ore', 'Emerald ore', { hardness: 4, needsTier: 2 }),
-  stone('lapis_ore', 'Lapis ore', { hardness: 3, needsTier: 1 }),
+  stone('lapis_ore', 'Lapis ore', { hardness: 3, needsTier: 1, drops: 'lapis' }),
+  // Redstone and emerald ore are no longer generated (they had no use); they stay so old worlds keep them.
+  // Ember ore: deep down in deepslate near the lava, glowing faintly; only a diamond pickaxe gets its crystals.
+  stone('ember_ore', 'Ember ore', { hardness: 6, needsTier: 3, drops: 'ember_crystal', lightEmission: 5 }),
   { key: 'cactus', name: 'Cactus', tiles: { top: 'cactus_top', side: 'cactus_side', bottom: 'cactus_top' }, hardness: 0.5, density: 700 },
   // Tall grass sometimes gives wheat seeds (handled where blocks are broken).
   plant('tall_grass', 'Tall grass', { drops: '' }),
@@ -259,9 +269,16 @@ const PANEL: Record<number, Box> = { 0: [13, 0, 0, 16, 16, 16], 1: [0, 0, 0, 3, 
 const TURN = [2, 3, 1, 0];
 const HIGH_HALF: Record<number, Box> = { 0: [8, 8, 0, 16, 16, 16], 1: [0, 8, 0, 8, 16, 16], 2: [0, 8, 8, 16, 16, 16], 3: [0, 8, 0, 16, 16, 8] };
 const STAIR_MATERIALS = ['planks', 'cobblestone', 'stone', 'brick', 'sandstone'];
-export const TOOL_TIERS = ['wooden', 'stone', 'iron'] as const;
-export const TOOL_KINDS: readonly ToolKind[] = ['pickaxe', 'axe', 'shovel'];
-const DURABILITY = [60, 132, 251];
+export const TOOL_TIERS = ['wooden', 'stone', 'iron', 'diamond'] as const;
+export const TOOL_KINDS: readonly ToolKind[] = ['pickaxe', 'axe', 'shovel', 'sword', 'hoe'];
+const DURABILITY = [60, 132, 251, 1561];
+/** Armour materials and pieces: protection per piece (head, chest, legs, feet), warmth per piece, and hits it takes. */
+export const ARMOUR_PIECES = ['helmet', 'chestplate', 'leggings', 'boots'] as const;
+export const ARMOUR_MATERIALS = {
+  leather: { protection: [1, 3, 2, 1], warmth: [3, 6, 4, 2], durability: 80 },
+  iron: { protection: [2, 6, 5, 2], warmth: [0, 1, 1, 0], durability: 240 },
+  diamond: { protection: [3, 8, 6, 3], warmth: [0, 1, 1, 0], durability: 500 },
+} as const;
 export const CROP_STAGES = 4;
 /** Sapling variants: the tree species each grows into. */
 export const SAPLING_SPECIES = ['oak', 'birch', 'spruce', 'maple', 'pine', 'acacia', 'jungle_giant', 'palm'] as const;
@@ -276,12 +293,15 @@ function gameplay(): BlockSpec[] {
       layer: 'cutout', lightEmission: 14, hardness: 0, needsSupport: true, supports: false },
     { key: 'chest', name: 'Chest', tiles: { top: 'chest_top', side: 'chest_side', bottom: 'chest_top' }, front: 'chest_front',
       variants: 4, hardness: 2.5, density: 600, ...wood },
+    // The chest of an ember shrine: it holds a beacon shard.
+    { key: 'ancient_chest', name: 'Ancient chest', tiles: { top: 'ancient_chest_top', side: 'ancient_chest_side', bottom: 'ancient_chest_top' },
+      front: 'ancient_chest_front', variants: 4, hardness: 5, density: 2600, mineWith: 'pickaxe', drops: 'obsidian' },
     { key: 'crafting_table', name: 'Crafting table', tiles: { top: 'crafting_table_top', side: 'crafting_table_side', bottom: 'planks' },
       hardness: 2.5, density: 600, ...wood },
     stone('furnace', 'Furnace', { tiles: { top: 'furnace_top', side: 'furnace_side', bottom: 'furnace_top' }, front: 'furnace_front', variants: 4, hardness: 3.5 }),
     stone('lit_furnace', 'Lit furnace', { tiles: { top: 'furnace_top', side: 'furnace_side', bottom: 'furnace_top' }, front: 'furnace_front_lit',
       variants: 4, hardness: 3.5, lightEmission: 13, drops: 'furnace' }),
-    // A door is a column of door cells (variant: facing + 4 when open); closed it fills its cell for collision.
+    // A door is a column of door cells (variant: facing + 4 when open); it collides as its panel.
     { key: 'door', name: 'Door', tiles: all('door'), shape: 'boxes', variants: 8, hardness: 3, density: 600, mineWith: 'axe',
       boxes: (v) => [PANEL[v < 4 ? v : TURN[v - 4]!]!], fuel: 10 },
     // A bed covers two cells: variant facing + 4 for the head end.
@@ -292,6 +312,13 @@ function gameplay(): BlockSpec[] {
       boxes: (v) => [[0, 0, 0, 16, 8, 16], HIGH_HALF[v]!], hardness: 2, mineWith: m === 'planks' ? 'axe' : 'pickaxe',
       needsTier: m === 'planks' ? undefined : 0, blocksSky: false,
     })),
+    // A campfire: crossed logs on embers. It lights, warms and slowly cooks food without fuel; standing in it burns.
+    { key: 'campfire', name: 'Campfire', tiles: { top: 'campfire_top', side: 'campfire_side', bottom: 'campfire_side' }, shape: 'boxes',
+      boxes: () => [[1, 0, 3, 15, 3, 6], [1, 0, 10, 15, 3, 13], [3, 3, 1, 6, 6, 15], [10, 3, 1, 13, 6, 15]], layer: 'cutout',
+      lightEmission: 14, hardness: 1, density: 600, mineWith: 'axe', blocksSky: false, supports: false },
+    // A ladder hangs on the side of the cell it was placed against (variant: facing); climbed by walking into it.
+    { key: 'ladder', name: 'Ladder', tiles: all('ladder'), shape: 'boxes', variants: 4, boxes: (v) => [PANEL[v]!], solid: false,
+      layer: 'cutout', hardness: 0.5, density: 600, mineWith: 'axe', fuel: 5, supports: false, blocksSky: false },
     crop('wheat', 'Wheat', 0),
     crop('carrots', 'Carrots', 3),
     { ...crop('potatoes', 'Potatoes', 1), smeltsTo: 'baked_potato' },
@@ -299,6 +326,41 @@ function gameplay(): BlockSpec[] {
     item('stick', 'Stick', { fuel: 5 }),
     item('coal', 'Coal', { fuel: 80 }),
     item('iron_ingot', 'Iron ingot'),
+    item('gold_ingot', 'Gold ingot'),
+    item('diamond', 'Diamond'),
+    item('lapis', 'Lapis'),
+    item('ember_crystal', 'Ember crystal'),
+    item('beacon_shard', 'Beacon shard'),
+    // The beacon: lit on a mountaintop under open sky it is the end of the journey.
+    { key: 'beacon', name: 'Beacon', tiles: { top: 'beacon_top', side: 'beacon_side', bottom: 'obsidian' }, hardness: 5,
+      density: 2600, mineWith: 'pickaxe', layer: 'cutout', blocksSky: false, opaque: false },
+    { key: 'lit_beacon', name: 'Lit beacon', tiles: { top: 'beacon_top', side: 'beacon_side', bottom: 'obsidian' }, hardness: 5,
+      density: 2600, mineWith: 'pickaxe', drops: 'beacon', layer: 'cutout', blocksSky: false, opaque: false, lightEmission: 15 },
+    item('leather', 'Leather'),
+    item('feather', 'Feather'),
+    item('wool', 'Wool'),
+    item('raw_fish', 'Raw fish', { food: 2, smeltsTo: 'cooked_fish' }),
+    item('cooked_fish', 'Cooked fish', { food: 5 }),
+    item('fishing_rod', 'Fishing rod', { maxStack: 1, fuel: 10 }),
+    item('boat', 'Boat', { maxStack: 1, fuel: 20 }),
+    item('string', 'String'),
+    item('bone', 'Bone'),
+    item('bone_meal', 'Bone meal'),
+    item('arrow', 'Arrow'),
+    item('bow', 'Bow', { maxStack: 1, fuel: 10 }),
+    item('paper', 'Paper'),
+    item('compass', 'Compass', { maxStack: 1 }),
+    item('map', 'Map', { maxStack: 1 }),
+    // A lantern hangs from the cell above or stands on the one below, and gives the brightest light there is.
+    { key: 'lantern', name: 'Lantern', tiles: all('lantern'), shape: 'boxes', boxes: () => [[5, 0, 5, 11, 8, 11]], solid: false,
+      layer: 'cutout', lightEmission: 15, hardness: 0.5, supports: false, blocksSky: false, mineWith: 'pickaxe' },
+    ...Object.entries(ARMOUR_MATERIALS).flatMap(([m, a]) => ARMOUR_PIECES.map((piece, slot) => item(`${m}_${piece}`,
+      `${m[0]!.toUpperCase()}${m.slice(1)} ${piece}`, {
+        maxStack: 1, armour: { slot, protection: a.protection[slot]!, warmth: a.warmth[slot]!, durability: a.durability },
+      }))),
+    item('bucket', 'Bucket', { maxStack: 16 }),
+    item('water_bucket', 'Water bucket', { maxStack: 1, emptiesTo: 'bucket' }),
+    item('lava_bucket', 'Lava bucket', { maxStack: 1, emptiesTo: 'bucket', fuel: 200 }),
     item('baked_potato', 'Baked potato', { food: 5 }),
     item('raw_meat', 'Raw meat', { food: 2, smeltsTo: 'cooked_meat' }),
     item('cooked_meat', 'Cooked meat', { food: 6 }),

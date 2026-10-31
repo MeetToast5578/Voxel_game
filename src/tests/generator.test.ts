@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { CHUNK_SIZE, CHUNK_VOLUME } from '../config';
-import { BLOCKS } from '../engine/blocks';
+import { BLOCKS, SOLID } from '../engine/blocks';
 import { Generator, SEA_CELL } from '../worldgen/generator';
 
 const AIR = BLOCKS.state('air'), WATER = BLOCKS.state('water');
@@ -67,6 +67,26 @@ describe('generator', () => {
       return;
     }
     throw new Error('no ocean column found');
+  });
+});
+
+describe('spawn point', () => {
+  it('starts the player on dry, open ground with room to stand, for any seed', () => {
+    const SOLID_GROUND = (s: number) => BLOCKS.isOpaque(s) && s !== WATER;
+    for (let seed = 1; seed <= 10; seed++) {
+      const gen = new Generator(seed);
+      const [x, y, z] = gen.spawnPoint(0, 0);
+      expect(Number.isFinite(y), `seed ${seed}`).toBe(true);
+      const cx = Math.floor(x / CHUNK_SIZE), cz = Math.floor(z / CHUNK_SIZE), cy = Math.floor(y / CHUNK_SIZE);
+      const get = column(gen, cx, cz, cy - 1, cy + 1);
+      const lx = Math.floor(x) - cx * CHUNK_SIZE, lz = Math.floor(z) - cz * CHUNK_SIZE;
+      expect(SOLID_GROUND(get(lx, y - 1, lz)), `seed ${seed} ground`).toBe(true);
+      // The player is 1.8 m tall: three cells with nothing solid and no water (plants are fine).
+      for (let k = 0; k < 3; k++) {
+        const s = get(lx, y + k, lz), name = BLOCKS.stateName(s);
+        expect((BLOCKS.flags[s]! & SOLID) === 0 && !name.includes('water'), `seed ${seed} +${k}: ${name}`).toBe(true);
+      }
+    }
   });
 });
 
@@ -151,5 +171,24 @@ describe('trees', () => {
     expect(open.open.some((v) => v === 1)).toBe(true);
     expect(open.caveFloor).toBeLessThan(open.minTop);
     expect(gen.column(0, 0).caveFloor).toBe(Infinity);
+  });
+});
+
+describe('shores', () => {
+  it('has both sandy and stony shores along the coasts of seed 1', () => {
+    const gen = new Generator(1);
+    const kinds = new Map<string, number>();
+    const base = (gen as unknown as { base(cx: number, cz: number): { top: Int32Array; surface: Uint16Array; water: Int32Array } }).base.bind(gen);
+    for (let cx = -60; cx <= 60; cx += 3) for (let cz = -60; cz <= 60; cz += 3) {
+      const c = base(cx, cz);
+      for (let i = 0; i < 256; i += 7) {
+        const top = c.top[i]!;
+        if (top < SEA_CELL - 1 || top > SEA_CELL + 1 || c.water[i]! > SEA_CELL) continue;
+        const k = BLOCKS.stateName(c.surface[i]!);
+        kinds.set(k, (kinds.get(k) ?? 0) + 1);
+      }
+    }
+    expect(kinds.get('sand') ?? 0).toBeGreaterThan(0);
+    expect((kinds.get('gravel') ?? 0) + (kinds.get('stone') ?? 0)).toBeGreaterThan(0);
   });
 });

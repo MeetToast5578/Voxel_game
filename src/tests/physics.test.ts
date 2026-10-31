@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { BLOCKS } from '../engine/blocks';
 import { COLLISION, type BoxAt } from '../game/collision';
 import { moveBody, overlapsSolid, unstick, type Body } from '../game/physics';
+import { Player } from '../game/player';
+import type { Input } from '../game/input';
 
 const STONE = COLLISION[BLOCKS.state('stone')]!;
 const SLAB = COLLISION[BLOCKS.state('stone_slab')]!;
@@ -79,6 +81,30 @@ describe('physics', () => {
     expect(b.y).toBeCloseTo(1, 5);
   });
 
+  it('walks up stairs as half steps, and only from the low side', () => {
+    const STAIRS = COLLISION[BLOCKS.state('stone_stairs', 0)]!;
+    const b = body(0.5, 0, 0.5);
+    walk(b, world({ '2,0,0': STAIRS, '3,0,0': STONE }), 3, 0, 60, 0.55);
+    expect(b.y).toBeCloseTo(1, 5);
+    // From the high side the half step is still a full cell up.
+    const c = body(4.5, 0, 0.5);
+    walk(c, world({ '2,0,0': STAIRS }), -3, 0, 60, 0.55);
+    expect(c.y).toBeCloseTo(0, 5);
+    expect(c.x).toBeGreaterThan(3);
+  });
+
+  it('is blocked by a closed door but walks through an open one', () => {
+    const closed = COLLISION[BLOCKS.state('door', 0)]!, open = COLLISION[BLOCKS.state('door', 4)]!;
+    const door = (s: number) => world({ '2,0,0': s, '2,1,0': s, '2,2,0': s });
+    const b = body(0.5, 0, 0.5);
+    walk(b, door(closed), 3, 0, 60);
+    expect(b.x).toBeLessThan(3);
+    expect(open).toBe(0);
+    const c = body(0.5, 0, 0.5);
+    walk(c, door(open), 3, 0, 60);
+    expect(c.x).toBeGreaterThan(3);
+  });
+
   it('stops at ceilings', () => {
     const b = body(0.5, 0, 0.5);
     b.vy = 20;
@@ -109,5 +135,71 @@ describe('physics', () => {
     // Searched in sixteenths of a cell: the first free height above the block.
     expect(b.y).toBeGreaterThanOrEqual(1);
     expect(b.y).toBeLessThan(1 + 1 / 16);
+  });
+});
+
+describe('crouching and ladders', () => {
+  /** A player on a platform x < 3 (cells), with keys held as given. */
+  const keys = (over: Partial<Input>) => ({ moveX: 0, moveZ: 0, jump: false, sprint: false, descend: false, consume: () => false, ...over }) as unknown as Input;
+  const platform = (x: number, y: number) => (y < 0 && x < 3 ? STONE : 0);
+
+  it('crouching stops at the edge; walking goes over it', () => {
+    for (const crouch of [true, false]) {
+      const p = new Player(1.5, 0, 0.5);
+      p.body.onGround = true;
+      p.yaw = -Math.PI / 2; // facing +x
+      for (let i = 0; i < 120; i++) p.update(1 / 60, keys({ moveZ: 1, descend: crouch }), platform, () => false);
+      if (crouch) {
+        expect(p.body.y).toBeCloseTo(0, 5);
+        expect(p.body.x).toBeLessThan(3 + p.body.halfWidth);
+      } else expect(p.body.y).toBeLessThan(-1);
+    }
+  });
+
+  it('climbs a ladder by walking into it, holds on, and climbs down crouching', () => {
+    const wall = (x: number, y: number) => (y < 0 || (x === 1 && y < 20) ? STONE : 0);
+    const ladder = (x: number, y: number, z: number) => x === 0 && z === 0 && y >= 0 && y < 20;
+    const p = new Player(0.5, 0, 0.5);
+    p.body.onGround = true;
+    p.yaw = -Math.PI / 2;
+    for (let i = 0; i < 60; i++) p.update(1 / 60, keys({ moveZ: 1 }), wall, () => false, ladder);
+    const up = p.body.y;
+    expect(up).toBeGreaterThan(3.5); // 2.4 m/s is 4 cells a second
+    for (let i = 0; i < 60; i++) p.update(1 / 60, keys({}), wall, () => false, ladder);
+    expect(p.body.y).toBeCloseTo(up, 3);
+    for (let i = 0; i < 30; i++) p.update(1 / 60, keys({ descend: true }), wall, () => false, ladder);
+    expect(p.body.y).toBeLessThan(up - 1.5);
+  });
+});
+
+describe('currents', () => {
+  it('carry a swimmer along the flow', () => {
+    const p = new Player(0.5, 0, 0.5);
+    const keys = { moveX: 0, moveZ: 0, jump: false, sprint: false, descend: false, consume: () => false } as unknown as Input;
+    const water = () => true;
+    for (let i = 0; i < 120; i++) p.update(1 / 60, keys, () => 0, water, () => false, () => [1, 0, 0]);
+    expect(p.body.x).toBeGreaterThan(3);
+  });
+});
+
+describe('boats', () => {
+  it('float on the surface, cross water faster than swimming, and stop at a raised bank', () => {
+    const keys = { moveX: 0, moveZ: 1, jump: false, sprint: false, descend: false, consume: () => false } as unknown as Input;
+    // Water fills y = 0 for x < 30, over a stone bed; at x >= 30 a bank rises to y = 2.
+    const solid: BoxAt = (x, y) => (y < 0 || (x >= 30 && y < 2) ? STONE : 0);
+    const water = (x: number, y: number) => y === 0 && x < 30;
+    const boat = new Player(0.5, 1, 0.5), swimmer = new Player(0.5, 0.2, 0.5);
+    boat.boating = true;
+    for (const p of [boat, swimmer]) p.yaw = -Math.PI / 2;
+    for (let i = 0; i < 120; i++) {
+      boat.update(1 / 60, keys, solid, water);
+      swimmer.update(1 / 60, keys, solid, water);
+      expect(boat.body.y).toBeCloseTo(1, 5);
+    }
+    expect(boat.body.x).toBeGreaterThan(swimmer.body.x + 3);
+    for (let i = 0; i < 600; i++) boat.update(1 / 60, keys, solid, water);
+    expect(boat.body.x).toBeLessThan(30);
+    expect(boat.body.x).toBeGreaterThan(29);
+    expect(boat.body.y).toBeCloseTo(1, 5);
   });
 });

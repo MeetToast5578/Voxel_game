@@ -1,5 +1,5 @@
 import { CHUNK_AREA, CHUNK_SIZE, CHUNK_VOLUME, NEAR_HEIGHT_CHUNKS, NEAR_RADIUS_CHUNKS } from '../config';
-import { chunkKey, columnKey, forEachChunkReading, localIndex } from '../core/coords';
+import { chunkKey, columnKey, forEachChunkReading, localIndex, unpackChunkKey } from '../core/coords';
 import { SEA_CELL } from '../worldgen/generator';
 import type { WorkerPool } from '../workers/pool';
 import { AIR, BLOCKS } from './blocks';
@@ -126,6 +126,25 @@ export class Streamer {
     if (!this.columns.every((c) => this.infos.has(columnKey(c.cx, c.cz)))) return false;
     for (const key of this.meshSet) if (!this.meshed.has(key) || (this.meshJobs.has(key) && !this.meshes.has(key))) return false;
     return true;
+  }
+
+  /**
+   * Loading progress: chunks to show that have been meshed once, and how many there are; `near` counts only those
+   * within that many chunks of the current centre.
+   */
+  progress(near = Infinity): [meshed: number, wanted: number] {
+    let meshed = 0, wanted = 0;
+    const c = this.center, k = [0, 0, 0];
+    for (const key of this.meshSet) {
+      if (near !== Infinity) {
+        if (!c) break;
+        unpackChunkKey(key, k);
+        if (Math.max(Math.abs(k[0]! - c[0]), Math.abs(k[1]! - c[1]), Math.abs(k[2]! - c[2])) > near) continue;
+      }
+      wanted++;
+      if (this.meshed.has(key)) meshed++;
+    }
+    return [meshed, wanted];
   }
 
   /** Whether a chunk's mesh is out of date or being rebuilt. */

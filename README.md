@@ -8,9 +8,13 @@ world is made of 16×16×16 chunks (9.6 m) with no height limit.
   terrain out to 2 km.
 - **Living world:** water and lava flow; sand and gravel fall; grass spreads; leaves decay; crops and saplings grow;
   snow settles and ice forms in the cold.
-- **Sky:** seasons, day and night, moon phases, clouds, rain, snow and storms with lightning and thunder.
+- **Sky:** seasons, day and night, moon phases, clouds, rain, snow and thunderstorms whose lightning strikes the ground.
+- **Survival with a goal:** find three beacon shards in ember shrines deep underground, craft a beacon with ember
+  crystals, and light it on a mountaintop above 150 m. On the way: ruins, watchtowers, camps, old mines and dark
+  vaults with loot; skulkers, cave crawlers and frost brutes; an Ember Warden guarding each shrine; body temperature,
+  armour, bows, boats, farming and fishing; a map that remembers where you have been; a journal of 21 milestones.
 - **Play:** creative and survival; inventory, crafting, furnaces, tools that wear out, health, hunger and breath;
-  torches, doors, beds, stairs, slabs and chests; dropped items; 12 creature species, some of them hostile at night.
+  torches, doors, beds, stairs, slabs and chests; dropped items; 16 creature species, some of them hostile.
 - **Saves:** automatic, in the browser (IndexedDB). Worlds can be exported and imported as files from the pause menu.
 
 All textures and sounds are generated in code; there are no asset files.
@@ -20,7 +24,11 @@ All textures and sounds are generated in code; there are no asset files.
 Requires Node.js 22.
 
     npm install
-    npm run dev        # then open http://localhost:5173 and click the page
+    npm run dev        # then open http://localhost:5173
+
+The title screen continues the last world or starts a new one: survival or creative, with a difficulty (peaceful,
+normal or hard). New players get short hints in survival; the recipe list in the crafting screens fills the grid for
+you.
 
 A production build (`npm run build`, then `npm run preview`) can be installed from the browser and played offline.
 
@@ -30,32 +38,41 @@ A production build (`npm run build`, then `npm run preview`) can be installed fr
 |-------|--------|
 | Mouse, W A S D | Look, move |
 | Space | Jump; swim up; fly up |
-| Shift | Fly down |
+| Shift | Fly down; crouch (stops you walking off edges); climb down a ladder; step out of a boat |
 | Ctrl | Sprint; fly faster |
 | Left click | Break (takes time in survival) or hit a creature |
-| Right click | Place, use (doors, beds, chests, furnaces, crafting tables), eat |
+| Right click | Place, use (doors, beds, chests, furnaces, crafting tables, campfires), eat, wear armour, fill or empty a bucket, bone meal on crops, till with a hoe, feed animals (they follow their food and breed), cast a fishing rod; hold with a bow to draw, let go to shoot |
 | Middle click | Creative: pick the block you look at |
 | 1–9, mouse wheel | Choose a hotbar slot |
 | E | Inventory and crafting |
 | Q | Throw one of the held item |
+| H | Hide the current hint |
 | F | Toggle flying |
 | T | Skip an hour |
 | + / − | View distance |
 | B / G | Creative: mark corners and fill / clear a box with the held block |
+| C / V | Creative: mark two corners to copy a box / paste it against the face you aim at |
 | Ctrl+Z / Ctrl+Y | Creative: undo / redo |
 | F3 | Debug text and frame-time graph |
-| Esc | Pause menu: settings, worlds, export and import |
+| Esc | Pause menu: difficulty, settings (keys, volume, invert Y, menu size), worlds, export and import |
 
-A gamepad works too, and touch screens get on-screen controls (`?touch=1` forces them).
+Every key above except the hotbar numbers, Ctrl+Z/Y and Esc can be changed in the settings.
+
+A gamepad works too: in menus and inventory screens the d-pad or left stick moves between buttons and slots, A clicks,
+X right-clicks a slot, B goes back and Start pauses or resumes. Touch screens get on-screen controls (`?touch=1`
+forces them).
 
 ## URL parameters
+
+Without any, the title screen opens. With any, the game skips it and opens a world directly.
 
 | Parameter | Effect |
 |-----------|--------|
 | `seed=N` | World seed for a new world |
 | `world=name` | Open (or create) the named world |
 | `new=1` | Start the named world afresh |
-| `mode=survival` | Survival instead of creative |
+| `mode=creative` | Creative instead of survival |
+| `difficulty=peaceful\|normal\|hard` | Difficulty of a new world (default normal) |
 | `view=N` | View distance in chunks (default 12, 115 m) |
 | `x=…&y=…&z=…`, `yaw=…`, `pitch=…`, `fly=1` | Start position (in cells) and view |
 | `time=0..1`, `year=0..1` | Time of day and of year |
