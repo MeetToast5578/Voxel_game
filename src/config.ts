@@ -113,6 +113,8 @@ export const LAVA_FLOW_M_S = 0.5;
 export const FALL_DELAY_S = 0.05;
 /** Random updates per loaded chunk per simulation tick (grass, leaves), within the simulation distance. */
 export const RANDOM_TICKS_PER_CHUNK = 3;
+/** Chance a random tick on open lit grass grows a plant on it (tall grass or a flower). */
+export const REGROW_CHANCE = 0.01;
 /** Chunks this far from the player (horizontally) are simulated. Independent of the view distance. */
 export const SIM_RADIUS_CHUNKS = 6;
 /** Most scheduled updates handled per simulation tick; the rest wait for the next. */
@@ -347,6 +349,15 @@ export const ATTACK_COOLDOWN_S = 1.2;
 /** Creatures do not walk off drops deeper than this. */
 export const CREATURE_FALL_M = 3;
 export const RUN_FACTOR = 1.8;
+/** Animals follow a player holding their food from this far; fed ones look for a mate for FED_S seconds, can be fed
+ * again BREED_COOLDOWN_S after breeding, and their young grow up in GROW_UP_S. */
+export const FOLLOW_M = 10;
+/** Seconds a fish takes to bite, at least and at most. */
+export const FISH_MIN_S = 5;
+export const FISH_MAX_S = 15;
+export const FED_S = 30;
+export const BREED_COOLDOWN_S = 300;
+export const GROW_UP_S = 300;
 /** Hits on a creature: by hand, with an axe, with other tools, and with a sword (plus the tool's tier each). */
 export const HAND_DAMAGE = 1;
 export const AXE_DAMAGE = 3;

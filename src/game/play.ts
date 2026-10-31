@@ -1,4 +1,4 @@
-import { BLOCK_SIZE_M, ARROW_DAMAGE, ARROW_SPEED_M_S, BOLT_SPEED_M_S, BOW_DRAW_S, AXE_DAMAGE, BUILD_CELLS_PER_TICK, CAMPFIRE_COOK_S, CAMPFIRE_SLOTS, DIFFICULTY, PLAYER_ATTACK_COOLDOWN_S, SWORD_DAMAGE, type Difficulty, BUILD_MAX_M, DROP_PICKUP_DELAY_S, DROP_THROW_M_S, HAND_DAMAGE, REACH_M, REPEAT_S, TOOL_DAMAGE, UNDO_STEPS, cells, toCells } from '../config';
+import { FISH_MAX_S, FISH_MIN_S, BLOCK_SIZE_M, ARROW_DAMAGE, ARROW_SPEED_M_S, BOLT_SPEED_M_S, BOW_DRAW_S, AXE_DAMAGE, BUILD_CELLS_PER_TICK, CAMPFIRE_COOK_S, CAMPFIRE_SLOTS, DIFFICULTY, PLAYER_ATTACK_COOLDOWN_S, SWORD_DAMAGE, type Difficulty, BUILD_MAX_M, DROP_PICKUP_DELAY_S, DROP_THROW_M_S, HAND_DAMAGE, REACH_M, REPEAT_S, TOOL_DAMAGE, UNDO_STEPS, cells, toCells } from '../config';
 import { lootOf, type Creatures } from '../creatures/creatures';
 import { AIR, BLOCKS, SOLID } from '../engine/blocks';
 import type { World } from '../engine/world';
@@ -28,7 +28,9 @@ const BEACON = S('beacon'), LIT_BEACON = S('lit_beacon');
 /** The beacon must be lit at least this high (m), under open sky. */
 export const BEACON_MIN_M = 150;
 export const CHEST_SLOTS = 27;
-const TABLE = S('crafting_table'), TORCH = S('torch'), GRASS = S('grass'), DIRT = S('dirt'), CAMPFIRE = S('campfire');
+const TABLE = S('crafting_table'), TORCH = S('torch'), GRASS = S('grass'), DIRT = S('dirt'), CAMPFIRE = S('campfire'), FARMLAND = S('farmland');
+const ROD = S('fishing_rod'), FISH = S('raw_fish');
+const WATERS = new Set([S('water'), ...Array.from({ length: BLOCKS.byName('flowing_water').variants }, (_, v) => S('flowing_water', v))]);
 const LADDER = BLOCKS.byName('ladder');
 /** Fluid sources a bucket picks up, and the full bucket each gives. */
 const BUCKET_FILLS = new Map([[S('water'), S('water_bucket')], [S('lava'), S('lava_bucket')]]);
@@ -96,6 +98,8 @@ export class Play {
   private messageS = 0;
   /** Arrows and bolts in flight. */
   readonly projectiles = new Projectiles();
+  /** While fishing: seconds until a fish bites, or 0 when the line is not out. */
+  fishingS = 0;
   /** Seconds the bow has been drawn, while right click is held with it. */
   drawS = 0;
   /** Worn armour: head, chest, legs, feet. */
@@ -251,6 +255,7 @@ export class Play {
     this.target = raycast(b.x, player.eyeY, b.z, dx, dy, dz, toCells(REACH_M), (x, y, z) => TARGET[this.world.get(x, y, z)]!);
     this.repeat -= dt;
     this.sinceAttack += dt;
+    if (this.fishingS > 0) this.fish(dt);
     if (this.messageS > 0 && (this.messageS -= dt) <= 0) {
       this.message = '';
       this.version++;
@@ -303,6 +308,39 @@ export class Play {
       armour: this.armour.some((a) => a !== null), beacon: this.beaconLit,
     });
     if (fresh.length) this.toast(`Milestone: ${fresh.join(', ')}`);
+  }
+
+  /** The line is out: a fish bites after a while, unless the rod was put away. */
+  private fish(dt: number): void {
+    if (this.held?.state !== ROD) {
+      this.fishingS = 0;
+      return;
+    }
+    if ((this.fishingS -= dt) > 0) return;
+    this.fishingS = 0;
+    this.give({ state: FISH, count: 1 }, ...this.feet);
+    this.toast('A fish! Right-click the water again to cast.', 3);
+    this.events.sound('place');
+  }
+
+  /** Right click with a rod: casts into water in view (or reels the line back in). */
+  private castRod(player: Player): void {
+    if (this.fishingS > 0) {
+      this.fishingS = 0;
+      this.toast('Line reeled in.', 2);
+      return;
+    }
+    const [dx, dy, dz] = player.direction(), b = player.body;
+    const hit = raycast(b.x, player.eyeY, b.z, dx, dy, dz, toCells(REACH_M) * 2, (x, y, z) => {
+      const s = this.world.get(x, y, z);
+      return WATERS.has(s) ? 16 << 5 : TARGET[s]!;
+    });
+    if (!hit || !WATERS.has(this.world.get(hit.x, hit.y, hit.z))) {
+      this.toast('Cast the line into water.', 2);
+      return;
+    }
+    this.fishingS = FISH_MIN_S + Math.random() * (FISH_MAX_S - FISH_MIN_S);
+    this.toast('Waiting for a bite…', this.fishingS);
   }
 
   /** Shows `text` on screen for a few seconds. */
@@ -536,6 +574,11 @@ export class Play {
   /** Right click: use the targeted block (door, table, furnace, bed), eat, or place the held block. */
   private use(player: Player): void {
     if (this.useBucket(player)) return;
+    if (this.held?.state === ROD) {
+      this.castRod(player);
+      return;
+    }
+    if (this.feedCreature(player)) return;
     const t = this.target;
     if (t) {
       const state = this.world.get(t.x, t.y, t.z), type = BLOCKS.type(state);
@@ -585,6 +628,16 @@ export class Play {
       this.wear(held);
       return;
     }
+    if (heldType.tool?.kind === 'hoe' && t && t.ny === 1) {
+      const ground = this.world.get(t.x, t.y, t.z);
+      if ((ground === GRASS || ground === DIRT) && TARGET[this.world.get(t.x, t.y + 1, t.z)] === 0) {
+        this.setBlock(t.x, t.y, t.z, FARMLAND);
+        if (this.mode === 'survival' && !wearTool(held)) this.inventory.slots[this.inventory.selected] = null;
+        this.events.sound('place');
+        this.version++;
+      }
+      return;
+    }
     if (held.state === BONE_MEAL && t && this.events.fertilise?.(t.x, t.y, t.z)) {
       this.consumeHeld();
       return;
@@ -592,7 +645,7 @@ export class Play {
     // Food is eaten when hungry, unless it is a crop being planted on grass or dirt.
     if (heldType.food && this.mode === 'survival') {
       const ground = t ? this.world.get(t.x, t.y, t.z) : AIR;
-      const planting = heldType.variantTiles !== undefined && t !== null && t.ny === 1 && (ground === GRASS || ground === DIRT);
+      const planting = heldType.variantTiles !== undefined && t !== null && t.ny === 1 && (ground === GRASS || ground === DIRT || ground === FARMLAND);
       if (!planting && this.survival.eat(heldType.food)) {
         this.consumeHeld();
         return;
@@ -600,6 +653,18 @@ export class Play {
     }
     if (!t || heldType.item) return;
     this.place(t, held, player);
+  }
+
+  /** Right click with an animal's food on the animal in view: it eats it and is ready to breed. */
+  private feedCreature(player: Player): boolean {
+    const held = this.held;
+    if (!held || !this.creatures) return false;
+    const key = BLOCKS.type(held.state).key, [dx, dy, dz] = player.direction(), b = player.body;
+    const hit = this.creatures.raycast(b.x, player.eyeY, b.z, dx, dy, dz, toCells(REACH_M));
+    if (!hit || (this.target && this.target.distance < hit.distance) || !hit.creature.species.food?.includes(key)) return false;
+    if (!this.creatures.feed(hit.creature)) return false;
+    this.consumeHeld();
+    return true;
   }
 
   /** A bucket scoops up the water or lava source in view; a full one pours its source out against the targeted face. */
@@ -647,7 +712,7 @@ export class Play {
     const below = this.world.get(x, y - 1, z);
     // Plants, crops, saplings and torches need solid ground; crops and saplings grow on grass or dirt.
     if (type.needsSupport && (BLOCKS.flags[below]! & SOLID) === 0) return;
-    if ((type.variantTiles || type.key === 'sapling') && below !== GRASS && below !== DIRT) return;
+    if ((type.variantTiles || type.key === 'sapling') && below !== GRASS && below !== DIRT && below !== FARMLAND) return;
     // The way the player looks decides which way a door, bed, stairs or furnace faces.
     const [fx, , fz] = player.direction();
     const facing = Math.abs(fx) > Math.abs(fz) ? (fx > 0 ? 0 : 1) : fz > 0 ? 2 : 3;

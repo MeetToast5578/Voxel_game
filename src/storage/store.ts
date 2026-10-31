@@ -31,6 +31,8 @@ export interface WorldMeta {
   play?: unknown;
   /** Creatures alive when saved; checked when loaded. */
   creatures?: unknown;
+  /** Unloaded chunks with growing crops and when they unloaded; checked when loaded. */
+  growth?: unknown;
 }
 
 export interface WorldStore {
@@ -70,6 +72,7 @@ export function parseMeta(value: unknown): WorldMeta | null {
     ...(num(m.yearTime) ? { yearTime: m.yearTime as number } : {}),
     ...(typeof m.play === 'object' && m.play !== null ? { play: m.play } : {}),
     ...(Array.isArray(m.creatures) ? { creatures: m.creatures } : {}),
+    ...(Array.isArray(m.growth) ? { growth: m.growth } : {}),
   };
 }
 

@@ -5,7 +5,7 @@
 
 export type RenderLayer = 'none' | 'opaque' | 'cutout' | 'water' | 'ice';
 export type BlockShape = 'cube' | 'cross' | 'layer' | 'slab' | 'boxes';
-export type ToolKind = 'pickaxe' | 'axe' | 'shovel' | 'sword';
+export type ToolKind = 'pickaxe' | 'axe' | 'shovel' | 'sword' | 'hoe';
 /** A box inside a cell, in sixteenths: [x0, y0, z0, x1, y1, z1]. */
 export type Box = readonly [number, number, number, number, number, number];
 
@@ -208,6 +208,8 @@ const BASE: BlockSpec[] = [
   { key: 'air', name: 'Air', tiles: all('air'), solid: false, layer: 'none', hardness: 0, density: 1 },
   stone('stone', 'Stone', { drops: 'cobblestone' }),
   { key: 'dirt', name: 'Dirt', tiles: all('dirt'), hardness: 0.5, density: 1300, ...soil },
+  // Tilled soil: crops grow on it, faster with water near.
+  { key: 'farmland', name: 'Farmland', tiles: { top: 'farmland', side: 'dirt', bottom: 'dirt' }, hardness: 0.6, density: 1300, drops: 'dirt', mineWith: 'shovel' },
   { key: 'grass', name: 'Grass', tiles: { top: 'grass_top', side: 'grass_side', bottom: 'dirt' }, hardness: 0.6, density: 1300, drops: 'dirt', ...soil },
   { key: 'sand', name: 'Sand', tiles: all('sand'), hardness: 0.5, falls: true, density: 1600, smeltsTo: 'glass', ...soil },
   { key: 'gravel', name: 'Gravel', tiles: all('gravel'), hardness: 0.6, falls: true, density: 1900, ...soil },
@@ -268,7 +270,7 @@ const TURN = [2, 3, 1, 0];
 const HIGH_HALF: Record<number, Box> = { 0: [8, 8, 0, 16, 16, 16], 1: [0, 8, 0, 8, 16, 16], 2: [0, 8, 8, 16, 16, 16], 3: [0, 8, 0, 16, 16, 8] };
 const STAIR_MATERIALS = ['planks', 'cobblestone', 'stone', 'brick', 'sandstone'];
 export const TOOL_TIERS = ['wooden', 'stone', 'iron', 'diamond'] as const;
-export const TOOL_KINDS: readonly ToolKind[] = ['pickaxe', 'axe', 'shovel', 'sword'];
+export const TOOL_KINDS: readonly ToolKind[] = ['pickaxe', 'axe', 'shovel', 'sword', 'hoe'];
 const DURABILITY = [60, 132, 251, 1561];
 /** Armour materials and pieces: protection per piece (head, chest, legs, feet), warmth per piece, and hits it takes. */
 export const ARMOUR_PIECES = ['helmet', 'chestplate', 'leggings', 'boots'] as const;
@@ -336,6 +338,10 @@ function gameplay(): BlockSpec[] {
       density: 2600, mineWith: 'pickaxe', drops: 'beacon', layer: 'cutout', blocksSky: false, opaque: false, lightEmission: 15 },
     item('leather', 'Leather'),
     item('feather', 'Feather'),
+    item('wool', 'Wool'),
+    item('raw_fish', 'Raw fish', { food: 2, smeltsTo: 'cooked_fish' }),
+    item('cooked_fish', 'Cooked fish', { food: 5 }),
+    item('fishing_rod', 'Fishing rod', { maxStack: 1, fuel: 10 }),
     item('string', 'String'),
     item('bone', 'Bone'),
     item('bone_meal', 'Bone meal'),

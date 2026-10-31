@@ -40,6 +40,7 @@ function toolPainter(kind: string, head: RGB): PixelFn {
     if (kind === 'pickaxe') return Math.abs(across - 7) <= 1 && Math.abs(along - 15) <= 6;
     if (kind === 'axe') return along >= 14 && along <= 19 && across >= 5 && across <= 10;
     // A sword: a long blade up the diagonal and a crossguard across it.
+    if (kind === 'hoe') return (y <= 3 && x >= 9 && x <= 14) || (x >= 13 && y <= 5);
     if (kind === 'sword') return (Math.abs(along - 15) <= 1 && x >= 6) || (across === -6 && Math.abs(along - 15) <= 3);
     return Math.hypot(x - 12.5, y - 2.5) <= 2.6;
   };
@@ -51,6 +52,10 @@ const ARMOUR_COLOURS: Record<string, RGB> = { leather: [140, 86, 46], iron: [210
 /** An ingot bar in a colour. */
 function ingotPainter(c: RGB): PixelFn {
   return (x, y, r) => (y >= 6 && y <= 10 && x >= 2 + (10 - y) && x <= 13 - (10 - y) / 2 ? shade(c, (y === 6 ? 1.15 : 0.9) + r() * 0.1) : [0, 0, 0, 0]);
+}
+/** A fish: an oval body and a tail. */
+function fishPainter(c: RGB): PixelFn {
+  return (x, y, r) => (Math.hypot((x - 7) * 0.6, y - 8) <= 3 || (x >= 11 && x <= 14 && Math.abs(y - 8) <= x - 11) ? shade(c, 0.85 + r() * 0.3) : [0, 0, 0, 0]);
 }
 /** A cut gem: a diamond shape, lighter at the top. */
 function gemPainter(c: RGB): PixelFn {
@@ -137,7 +142,7 @@ const PAINTERS: Record<string, PixelFn> = {
   ...cropPainters('wheat', [205, 175, 70]),
   ...cropPainters('carrots', [235, 125, 35]),
   ...cropPainters('potatoes', [225, 215, 160]),
-  ...Object.fromEntries(Object.entries(TOOL_HEADS).flatMap(([tier, head]) => ['pickaxe', 'axe', 'shovel', 'sword'].map((k) => [tier + '_' + k, toolPainter(k, head)]))),
+  ...Object.fromEntries(Object.entries(TOOL_HEADS).flatMap(([tier, head]) => ['pickaxe', 'axe', 'shovel', 'sword', 'hoe'].map((k) => [tier + '_' + k, toolPainter(k, head)]))),
   // Buckets: a grey pail, empty or with water or lava showing at the top.
   bucket: bucketPainter(null),
   water_bucket: bucketPainter([50, 90, 210]),
@@ -291,6 +296,11 @@ const PAINTERS: Record<string, PixelFn> = {
   lapis_ore: orePainter([50, 90, 180]),
   ember_ore: (_x, _y, r) => (r() < 0.16 ? shade([255, 110 + r() * 70, 30], 1) : shade([62, 60, 66], 1 + (r() - 0.5) * 0.25)),
   gold_ingot: ingotPainter([235, 200, 60]),
+  farmland: (_x, y, r) => shade(DIRT, (y % 4 === 0 ? 0.6 : 0.85) + (r() - 0.5) * 0.2),
+  wool: (x, y, r) => (Math.hypot(x - 7.5, y - 8) <= 6 ? shade([238, 236, 228], 0.85 + r() * 0.2) : [0, 0, 0, 0]),
+  raw_fish: fishPainter([110, 150, 180]),
+  cooked_fish: fishPainter([190, 130, 70]),
+  fishing_rod: (x, y, r) => (x + y === 15 && x >= 1 && x <= 13 ? shade(HANDLE, 0.9 + r() * 0.2) : x === 14 && y >= 1 && y <= 12 ? shade([230, 230, 230], 1) : [0, 0, 0, 0]),
   ancient_chest_side: (x, y, r) => shade([46, 40, 56], (x === 0 || x === 15 || y === 0 || y === 15 || y === 5 ? 0.6 : 1) + (r() - 0.5) * 0.15),
   ancient_chest_top: (x, y, r) => shade([52, 44, 62], (x === 0 || x === 15 || y === 0 || y === 15 ? 0.6 : 1) + (r() - 0.5) * 0.15),
   ancient_chest_front: (x, y, r) => (x >= 6 && x <= 9 && y >= 4 && y <= 8 ? shade([255, 130, 40], 0.9 + r() * 0.2)

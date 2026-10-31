@@ -14,7 +14,7 @@ export interface Recipe {
 const TOOL_HEADS = { wooden: ['planks'], stone: ['cobblestone'], iron: ['iron_ingot'], diamond: ['diamond'] } as const;
 const ARMOUR_PATTERNS = [['MMM', 'M M'], ['M M', 'MMM', 'MMM'], ['MMM', 'M M', 'M M'], ['M M', 'M M']] as const;
 const ARMOUR_FROM = { leather: 'leather', iron: 'iron_ingot', diamond: 'diamond' } as const;
-const TOOL_PATTERNS = { pickaxe: ['MMM', ' S ', ' S '], axe: ['MM', 'MS', ' S'], shovel: ['M', 'S', 'S'], sword: ['M', 'M', 'S'] } as const;
+const TOOL_PATTERNS = { pickaxe: ['MMM', ' S ', ' S '], axe: ['MM', 'MS', ' S'], shovel: ['M', 'S', 'S'], sword: ['M', 'M', 'S'], hoe: ['MM', ' S', ' S'] } as const;
 
 export const RECIPES: readonly Recipe[] = [
   { pattern: ['L'], key: { L: ['log'] }, result: ['planks', 4] },
@@ -23,7 +23,7 @@ export const RECIPES: readonly Recipe[] = [
   { pattern: ['PP', 'PP'], key: { P: ['planks'] }, result: ['crafting_table', 1] },
   { pattern: ['PPP', 'P P', 'PPP'], key: { P: ['planks'] }, result: ['chest', 1] },
   { pattern: ['CCC', 'C C', 'CCC'], key: { C: ['cobblestone'] }, result: ['furnace', 1] },
-  { pattern: ['WWW', 'PPP'], key: { W: ['wheat'], P: ['planks'] }, result: ['bed', 1] },
+  { pattern: ['WWW', 'PPP'], key: { W: ['wool', 'wheat'], P: ['planks'] }, result: ['bed', 1] },
   { pattern: ['PP', 'PP', 'PP'], key: { P: ['planks'] }, result: ['door', 1] },
   { pattern: ['SS', 'SS'], key: { S: ['sand'] }, result: ['sandstone', 1] },
   { pattern: ['SS', 'LL'], key: { S: ['stick'], L: ['log'] }, result: ['campfire', 1] },
@@ -33,6 +33,7 @@ export const RECIPES: readonly Recipe[] = [
   { pattern: ['S', 'F'], key: { S: ['stick'], F: ['feather'] }, result: ['arrow', 4] },
   { pattern: [' SX', 'S X', ' SX'], key: { S: ['stick'], X: ['string'] }, result: ['bow', 1] },
   { pattern: ['B'], key: { B: ['bone'] }, result: ['bone_meal', 3] },
+  { pattern: ['  S', ' SX', 'S X'], key: { S: ['stick'], X: ['string'] }, result: ['fishing_rod', 1] },
   { pattern: ['ESE', 'SGS', 'EEE'], key: { E: ['ember_crystal'], S: ['beacon_shard'], G: ['glass'] }, result: ['beacon', 1] },
   { pattern: [' G ', 'GIG', ' G '], key: { G: ['gold_ingot'], I: ['iron_ingot'] }, result: ['compass', 1] },
   { pattern: ['PPP', 'PCP', 'PLP'], key: { P: ['paper'], C: ['compass'], L: ['lapis'] }, result: ['map', 1] },

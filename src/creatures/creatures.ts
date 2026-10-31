@@ -1,5 +1,5 @@
 import {
-  ARCHER_FAR_M, ARCHER_NEAR_M, ARCHER_SHOT_S, ATTACK_COOLDOWN_S, ATTACK_REACH_M, BLOCK_SIZE_M, BURN_PER_S, BURN_S, DEPTH_TOUGHNESS_PER_100M, SAFE_LIGHT, CREATURE_CAP, CREATURE_FALL_M, DESPAWN_M, FLEE_M, GRAVITY_M_S2, HOSTILE_CAP, HUNT_M,
+  BREED_COOLDOWN_S, FED_S, FOLLOW_M, GROW_UP_S, ARCHER_FAR_M, ARCHER_NEAR_M, ARCHER_SHOT_S, ATTACK_COOLDOWN_S, ATTACK_REACH_M, BLOCK_SIZE_M, BURN_PER_S, BURN_S, DEPTH_TOUGHNESS_PER_100M, SAFE_LIGHT, CREATURE_CAP, CREATURE_FALL_M, DESPAWN_M, FLEE_M, GRAVITY_M_S2, HOSTILE_CAP, HUNT_M,
   KNOCKBACK_M_S, RUN_FACTOR, SPAWN_INTERVAL_S, SPAWN_MAX_M, SPAWN_MIN_M, STEP_HEIGHT_M, cells, toCells,
 } from '../config';
 import { columnIndex, localIndex, toChunk, toLocal } from '../core/coords';
@@ -11,7 +11,7 @@ import { biomeByIndex } from '../worldgen/biomes';
 import { findPath } from './pathfinding';
 import { SPECIES, SPECIES_BY_KEY, type Species } from './species';
 
-export type Mode = 'wander' | 'idle' | 'flee' | 'hunt' | 'sleep';
+export type Mode = 'wander' | 'idle' | 'flee' | 'hunt' | 'sleep' | 'follow';
 
 export interface Creature {
   id: number;
@@ -30,6 +30,10 @@ export interface Creature {
   hurt: number;
   /** Seconds it keeps burning after touching lava or fire. */
   burning: number;
+  /** Seconds it is ready to breed after being fed (negative: seconds before it can be fed again). */
+  fed: number;
+  /** Seconds until a young one is grown (0: grown). */
+  young: number;
   /** While hunting on land: cells to walk through (flat x, y, z), and seconds until it is planned again. */
   path: number[];
   replan: number;
@@ -43,6 +47,8 @@ export interface CreatureContext {
   day: boolean;
   /** Share of the hostile cap that may be alive, from the difficulty: 0 keeps hostiles away entirely. */
   hostiles: number;
+  /** The item type the player holds, if any: animals that eat it follow. */
+  playerHolds?: string | null;
   boxAt: BoxAt;
   waterAt: (x: number, y: number, z: number) => boolean;
 }
@@ -98,6 +104,7 @@ export class Creatures {
         this.decide(c, ctx);
       }
       this.move(c, dt, ctx);
+      this.grow(c, dt);
       if (c.mode !== 'sleep' && this.rand() < dt / 20) this.events.call?.(c, 'call');
       if (this.burn(c, dt, ctx)) {
         this.events.call?.(c, 'death');
@@ -128,6 +135,21 @@ export class Creatures {
       return;
     }
     const near = (x: number, z: number, m: number) => Math.hypot(x - b.x, z - b.z) < toCells(m);
+    // Animals come to a player holding their food (instead of running away), and wait close by.
+    if (s.food && ctx.playerHolds && s.food.includes(ctx.playerHolds) && near(p.x, p.z, FOLLOW_M)) {
+      c.mode = near(p.x, p.z, 1.5) ? 'idle' : 'follow';
+      c.goal = [p.x, p.z];
+      return;
+    }
+    // Fed animals look for a mate.
+    if (c.fed > 0) {
+      const mate = this.list.find((o) => o !== c && o.species === s && o.fed > 0 && near(o.body.x, o.body.z, 10));
+      if (mate) {
+        c.mode = 'follow';
+        c.goal = [mate.body.x, mate.body.z];
+        return;
+      }
+    }
     // Grazers flee the player and predators.
     if (s.grazer) {
       const threat = near(p.x, p.z, FLEE_M) ? p : this.list.find((o) => o.species.prey.includes(s.key) && near(o.body.x, o.body.z, FLEE_M))?.body;
@@ -213,7 +235,7 @@ export class Creatures {
         else this.damage(c.target, s.attack, b.x, b.z);
       }
     }
-    else if (goal && s.medium === 'land' && (c.mode === 'flee' || c.mode === 'wander')) {
+    else if (goal && s.medium === 'land' && (c.mode === 'flee' || c.mode === 'wander' || c.mode === 'follow')) {
       // Walking somewhere: along a path round walls and up ledges, when one is found.
       goal = this.waypoint(c, { x: goal[0], y: b.y, z: goal[1] }, dt, ctx) ?? goal;
     }
@@ -261,6 +283,37 @@ export class Creatures {
     moveBody(b, dt, ctx.boxAt, s.medium === 'land' ? STEP : 0);
     if (s.medium === 'land' && (vx !== 0 || vz !== 0) && Math.abs(b.x + b.z - before) < 1e-4 && b.onGround) b.vy = toCells(5.5);
     c.walk += Math.hypot(b.vx, b.vz) * dt * 3;
+  }
+
+  /** Feeds an animal its food: it is ready to breed for a while. Returns whether it took the food. */
+  feed(c: Creature): boolean {
+    if (c.young > 0 || c.fed !== 0 || !c.species.food) return false;
+    c.fed = FED_S;
+    return true;
+  }
+
+  /** Fed animals that meet make a young one (within the cap); young ones grow up. */
+  private grow(c: Creature, dt: number): void {
+    if (c.young > 0 && (c.young -= dt) <= 0) {
+      c.young = 0;
+      c.body.halfWidth = toCells(c.species.halfWidthM);
+      c.body.height = toCells(c.species.heightM);
+    }
+    if (c.fed < 0) c.fed = Math.min(0, c.fed + dt);
+    if (c.fed <= 0) return;
+    if ((c.fed -= dt) <= 0) {
+      c.fed = 0;
+      return;
+    }
+    const mate = this.list.find((o) => o !== c && o.species === c.species && o.fed > 0 && Math.hypot(o.body.x - c.body.x, o.body.z - c.body.z) < 2.5);
+    if (!mate) return;
+    c.fed = mate.fed = -BREED_COOLDOWN_S;
+    if (this.list.length >= CREATURE_CAP) return;
+    const baby = this.add(c.species, (c.body.x + mate.body.x) / 2, c.body.y + 0.5, (c.body.z + mate.body.z) / 2, c.species.health);
+    baby.young = GROW_UP_S;
+    baby.body.halfWidth /= 2;
+    baby.body.height /= 2;
+    this.events.call?.(baby, 'call');
   }
 
   /** Lava and campfires set a creature alight and water puts it out; returns whether it burned to death. */
@@ -396,7 +449,7 @@ export class Creatures {
   add(s: Species, x: number, y: number, z: number, health: number): Creature {
     const c: Creature = {
       id: this.nextId++, species: s, yaw: this.rand() * Math.PI * 2, health, mode: 'idle', goal: null, target: null,
-      think: this.rand() * THINK_S, cooldown: 0, walk: 0, hurt: 0, path: [], replan: 0, burning: 0,
+      think: this.rand() * THINK_S, cooldown: 0, walk: 0, hurt: 0, path: [], replan: 0, burning: 0, fed: 0, young: 0,
       body: { x, y, z, vx: 0, vy: 0, vz: 0, onGround: false, halfWidth: toCells(s.halfWidthM), height: toCells(s.heightM) },
     };
     this.list.push(c);

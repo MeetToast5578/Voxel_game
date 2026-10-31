@@ -143,8 +143,15 @@ function setBlock(x: number, y: number, z: number, state: number, urgent = false
 const simulation = new Simulation(world, setBlock, seed);
 simulation.ticks.now = saver.worldMeta.simTick ?? 0;
 simulation.ticks.load(saver.worldMeta.ticks);
-streamer.onLoad = (c) => simulation.ticks.resume(c.cx, c.cy, c.cz);
-streamer.onUnload = (c) => simulation.ticks.park(c.cx, c.cy, c.cz);
+streamer.onLoad = (c) => {
+  simulation.ticks.resume(c.cx, c.cy, c.cz);
+  simulation.catchUp(c);
+};
+streamer.onUnload = (c) => {
+  simulation.ticks.park(c.cx, c.cy, c.cz);
+  simulation.parkGrowth(c);
+};
+simulation.loadGrowth(saver.worldMeta.growth);
 
 const saved = saver.worldMeta.player;
 const usePosition = params.has('x') || !existed;
@@ -201,7 +208,7 @@ const env = new Environment(seed, Number(params.get('time') ?? saver.worldMeta.d
 function save(): Promise<void> {
   const b = player.body;
   return saver.save(world, {
-    dayTime: env.clock.dayTime, yearTime: env.clock.yearTime, play: play.save(), creatures: creatures.save(), ticks: simulation.ticks.save(), simTick: simulation.ticks.now, player: { x: b.x, y: b.y, z: b.z, yaw: player.yaw, pitch: player.pitch, flying: player.flying },
+    dayTime: env.clock.dayTime, yearTime: env.clock.yearTime, play: play.save(), creatures: creatures.save(), ticks: simulation.ticks.save(), simTick: simulation.ticks.now, growth: simulation.saveGrowth(), player: { x: b.x, y: b.y, z: b.z, yaw: player.yaw, pitch: player.pitch, flying: player.flying },
   }).catch((err) => console.error('Saving failed:', err));
 }
 setInterval(() => void save(), AUTOSAVE_S * 1000);
@@ -265,6 +272,7 @@ function update(dt: number): void {
   play.tickProjectiles(dt, boxAt, player);
   creatures.update(dt, {
     player: player.body, survival: play.mode === 'survival', day: env.atmosphere.sun[1] > -0.05, hostiles: DIFFICULTY[play.difficulty].hostiles, boxAt, waterAt,
+    playerHolds: play.held ? BLOCKS.type(play.held.state).key : null,
   });
   if (play.drops.update(dt, boxAt, play.survival.dead ? null : player.body, play.inventory)) play.version++;
   if (play.mode === 'survival' && !play.survival.dead) {

@@ -192,17 +192,17 @@ iron, real danger, places worth finding and an end point. Onboarding, sound and 
 
 ## 7. Animals and farming
 
-- [ ] **7.1 Follow and breed** (following was lost in the switch-over). Animals follow their food when it is held, and
+- [x] **7.1 Follow and breed** (following was lost in the switch-over). Animals follow their food when it is held, and
   two fed animals make a young one, within the population caps.
   **Done when:** behaviour tests pass, and the caps still hold.
-- [ ] **7.2 Animal products.** Leather from cows and deer, and wool from sheep.
+- [x] **7.2 Animal products.** Beds take wool or wheat. Leather from cows and deer, and wool from sheep.
   **Decide** whether beds then need wool instead of wheat.
   **Done when:** leather armour (3.3) can be crafted from hunted animals.
-- [ ] **7.3 Fishing.** A rod made from sticks and string catches fish in water after a wait.
+- [x] **7.3 Fishing.** A rod made from sticks and string catches fish in water after a wait.
   **Done when:** unit tests cover catch timing, and fish can be cooked.
-- [ ] **7.4 Farmland.** A hoe tills grass or dirt into farmland, and crops near water grow faster.
+- [x] **7.4 Farmland.** A hoe tills grass or dirt into farmland, and crops near water grow faster.
   **Done when:** growth-rate tests pass.
-- [ ] **7.5 Plant succession and catch-up on reload** (lost in the switch-over). Bare ground regrows plants. A reloaded
+- [x] **7.5 Plant succession and catch-up on reload** (crops only; shortcut: light and water are not checked while away, and saplings, snow and ice wait until loaded) (lost in the switch-over). Bare ground regrows plants. A reloaded
   chunk advances its crops, snow and ice by the time it was away.
   **Done when:** unit tests compare a reloaded chunk with the expected outcome.
 
