@@ -190,6 +190,7 @@ creatures.load(saver.worldMeta.creatures);
 play.creatures = creatures;
 const creatureMeshes = new CreatureMeshes(renderer.scene);
 const dropMeshes = new DropMeshes(renderer.scene, renderer.uniforms.tiles!.value as ConstructorParameters<typeof DropMeshes>[1]);
+play.seed = seed;
 if (saver.worldMeta.play) play.load(saver.worldMeta.play);
 else if (play.mode === 'creative') play.creativeHotbar();
 /** Where the player starts: where they first stood, or their bed. */
@@ -209,7 +210,7 @@ document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'hidden') void save();
 });
 
-let walked = 0, wasWet = false, walkedTotal = 0, hintClock = 0;
+let walked = 0, wasWet = false, walkedTotal = 0, hintClock = 0, wasNight = false;
 
 /** Heat felt from fires, lava, furnaces and torches around (x, y, z): the strongest, falling off with distance. */
 const HEAT_BY_TYPE = BLOCKS.types.map((t) => HEAT_SOURCES_C[t.key] ?? 0);
@@ -281,6 +282,7 @@ function update(dt: number): void {
       inLava: BLOCKS.type(eye).key.endsWith('lava') || BLOCKS.type(feet).key.endsWith('lava'),
     });
     if (play.survival.dead) {
+      play.stats.deaths++;
       play.dropAll();
       input.stop();
       play.version++;
@@ -290,12 +292,23 @@ function update(dt: number): void {
     const step = Math.hypot(player.body.x - before.x, player.body.z - before.z);
     walked += step;
     walkedTotal += step * BLOCK_SIZE_M;
+    if (play.mode === 'survival') play.stats.walkedM += step * BLOCK_SIZE_M;
     if (walked > toCells(1.8)) {
       walked = 0;
       sounds.play('step');
     }
   }
   hintClock += dt;
+  if (hintClock >= 0.25 && play.mode === 'survival' && !play.survival.dead) {
+    // The journal: a day survived at each dawn, the deepest point, biomes walked in, then milestones.
+    const night = env.clock.dayTime > 1 - NIGHT_BEFORE || env.clock.dayTime < NIGHT_BEFORE;
+    if (wasNight && !night) play.stats.days++;
+    wasNight = night;
+    play.deepestM = Math.min(play.deepestM, player.body.y * BLOCK_SIZE_M);
+    const column = world.column(Math.floor(player.body.x) >> 4, Math.floor(player.body.z) >> 4);
+    if (column) play.biomesSeen.add(column.biome[((Math.floor(player.body.z) & 15) << 4) | (Math.floor(player.body.x) & 15)]!);
+    play.checkJournal();
+  }
   if (hintClock >= 0.25) {
     if (play.mode === 'survival' && settings.hints && !play.survival.dead) {
       const changed = play.hints.update(hintClock, {
@@ -351,6 +364,8 @@ function handleActions(): void {
     overlay.style.display = frameGraph.canvas.style.display = debugText ? '' : 'none';
   }
   if (input.consume('time')) env.clock.advance(DAY_LENGTH_S / 24);
+  // The beacon was lit: free the pointer for the ending screen.
+  if (play.beaconLit && !play.endingSeen && input.playing) input.stop();
   if (input.consume('pause') && input.playing) {
     input.stop();
     ui.refreshWorlds();
@@ -375,6 +390,12 @@ const ui: UiModel & { refreshWorlds(): void } = {
   get paused() { return !input.playing && placed; },
   get dead() { return play.survival.dead; },
   get loading() { return loadingText(); },
+  get ending() { return play.beaconLit && !play.endingSeen; },
+  closeEnding() {
+    play.endingSeen = true;
+    input.start();
+    redraw();
+  },
   resume: () => {
     input.start();
     redraw();
@@ -520,7 +541,7 @@ function updateHeldTools(now: number): void {
   const target = play.spawn ?? worldSpawn;
   compass.style.display = key === 'compass' && target ? '' : 'none';
   if (key === 'compass' && target) compass.style.transform = `rotate(${bearing(player.body.x, player.body.z, player.yaw, target[0], target[2])}rad)`;
-  minimap.canvas.style.display = key === 'map' ? '' : 'none';
+  minimap.canvas.style.display = key === 'map' ? 'block' : 'none';
   if (key === 'map' && now - mapClock > 300) {
     mapClock = now;
     minimap.draw(world, player.body.x, player.body.z, player.yaw);

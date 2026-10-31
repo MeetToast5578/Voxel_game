@@ -1,4 +1,4 @@
-import { ARROW_DAMAGE, ARROW_SPEED_M_S, BOLT_SPEED_M_S, BOW_DRAW_S, AXE_DAMAGE, BUILD_CELLS_PER_TICK, CAMPFIRE_COOK_S, CAMPFIRE_SLOTS, DIFFICULTY, PLAYER_ATTACK_COOLDOWN_S, SWORD_DAMAGE, type Difficulty, BUILD_MAX_M, DROP_PICKUP_DELAY_S, DROP_THROW_M_S, HAND_DAMAGE, REACH_M, REPEAT_S, TOOL_DAMAGE, UNDO_STEPS, cells, toCells } from '../config';
+import { BLOCK_SIZE_M, ARROW_DAMAGE, ARROW_SPEED_M_S, BOLT_SPEED_M_S, BOW_DRAW_S, AXE_DAMAGE, BUILD_CELLS_PER_TICK, CAMPFIRE_COOK_S, CAMPFIRE_SLOTS, DIFFICULTY, PLAYER_ATTACK_COOLDOWN_S, SWORD_DAMAGE, type Difficulty, BUILD_MAX_M, DROP_PICKUP_DELAY_S, DROP_THROW_M_S, HAND_DAMAGE, REACH_M, REPEAT_S, TOOL_DAMAGE, UNDO_STEPS, cells, toCells } from '../config';
 import { lootOf, type Creatures } from '../creatures/creatures';
 import { AIR, BLOCKS, SOLID } from '../engine/blocks';
 import type { World } from '../engine/world';
@@ -14,6 +14,8 @@ import { overlapsSolid } from './physics';
 import type { Player } from './player';
 import { raycast, TARGET, type RayHit } from './raycast';
 import { Survival } from './survival';
+import { lootTableFor, rollLoot, type LootTable } from './loot';
+import { Journal, type Stats } from './journal';
 import { aimAt, Projectiles } from './projectiles';
 import type { BoxAt } from './collision';
 
@@ -21,7 +23,10 @@ export type Mode = 'creative' | 'survival';
 
 const S = (key: string, v = 0) => BLOCKS.state(key, v);
 const DOOR = BLOCKS.byName('door'), BED = BLOCKS.byName('bed'), FURNACE = BLOCKS.byName('furnace'), LIT = BLOCKS.byName('lit_furnace');
-const CHEST = BLOCKS.byName('chest');
+const CHEST = BLOCKS.byName('chest'), ANCIENT = BLOCKS.byName('ancient_chest');
+const BEACON = S('beacon'), LIT_BEACON = S('lit_beacon');
+/** The beacon must be lit at least this high (m), under open sky. */
+export const BEACON_MIN_M = 150;
 export const CHEST_SLOTS = 27;
 const TABLE = S('crafting_table'), TORCH = S('torch'), GRASS = S('grass'), DIRT = S('dirt'), CAMPFIRE = S('campfire');
 const LADDER = BLOCKS.byName('ladder');
@@ -74,6 +79,21 @@ export class Play {
   private readonly redoStack: [number, number, number, number, number][][] = [];
   private group: [number, number, number, number, number][] | null = null;
   private readonly setBlock: (x: number, y: number, z: number, s: number) => void;
+  /** The world seed, for the loot of generated chests. */
+  seed = 0;
+  /** Milestones reached, running totals, and which structures' loot the player has opened. */
+  readonly journal = new Journal();
+  readonly stats: Stats = { days: 0, walkedM: 0, deaths: 0, killed: 0, mined: 0 };
+  readonly found = new Set<LootTable>();
+  /** Biomes walked in (indices), and the deepest point reached (m). */
+  readonly biomesSeen = new Set<number>();
+  deepestM = 0;
+  /** The beacon has been lit (the end), and whether its ending screen was seen. */
+  beaconLit = false;
+  endingSeen = false;
+  /** A short message on screen (a milestone, a hint about the beacon), and seconds it stays. */
+  message = '';
+  private messageS = 0;
   /** Arrows and bolts in flight. */
   readonly projectiles = new Projectiles();
   /** Seconds the bow has been drawn, while right click is held with it. */
@@ -231,6 +251,10 @@ export class Play {
     this.target = raycast(b.x, player.eyeY, b.z, dx, dy, dz, toCells(REACH_M), (x, y, z) => TARGET[this.world.get(x, y, z)]!);
     this.repeat -= dt;
     this.sinceAttack += dt;
+    if (this.messageS > 0 && (this.messageS -= dt) <= 0) {
+      this.message = '';
+      this.version++;
+    }
     if (input.consume('pick') && this.target && this.mode === 'creative') this.pick(this.target);
     if (this.held && this.held.state === BOW) {
       // A bow: hold right click to draw, let go to shoot.
@@ -263,12 +287,55 @@ export class Play {
     const damage = strength * weaponDamage(held);
     const c = hit.creature;
     if (this.creatures!.damage(c, damage, ox, oz) && this.mode === 'survival') {
+      this.stats.killed++;
       for (const loot of lootOf(c)) this.drop(loot, c.body.x, c.body.y, c.body.z);
     }
     if (held && tool && this.mode === 'survival' && !wearTool(held)) this.inventory.slots[this.inventory.selected] = null;
     this.events.sound('break');
     this.version++;
     return true;
+  }
+
+  /** Marks milestones reached since last time, with a message for each. */
+  checkJournal(): void {
+    const fresh = this.journal.update({
+      has: (k) => this.hasItem(k), stats: this.stats, deepestM: this.deepestM, biomes: this.biomesSeen.size, found: this.found,
+      armour: this.armour.some((a) => a !== null), beacon: this.beaconLit,
+    });
+    if (fresh.length) this.toast(`Milestone: ${fresh.join(', ')}`);
+  }
+
+  /** Shows `text` on screen for a few seconds. */
+  toast(text: string, seconds = 5): void {
+    this.message = text;
+    this.messageS = seconds;
+    this.version++;
+  }
+
+  /** A chest's slots, rolling its loot first if it is a generated one opened for the first time. */
+  private chestSlots(key: string, state: number): (ItemStack | null)[] {
+    let slots = this.chests.get(key);
+    if (!slots) {
+      const [x, y, z] = key.split(',').map(Number) as [number, number, number];
+      const table = lootTableFor(BLOCKS.type(state).key, y);
+      slots = rollLoot(this.seed, x, y, z, table, CHEST_SLOTS);
+      this.found.add(table);
+      this.chests.set(key, slots);
+    }
+    return slots;
+  }
+
+  /** Right click on a beacon: it lights only high up under open sky, and that is the end of the journey. */
+  private lightBeacon(x: number, y: number, z: number): void {
+    const column = this.world.column(x >> 4, z >> 4);
+    const open = column !== undefined && column.skyTop[((z & 15) << 4) | (x & 15)]! <= y;
+    if (y * BLOCK_SIZE_M < BEACON_MIN_M || !open) {
+      this.toast(`The beacon stays dark. It needs open sky, at least ${BEACON_MIN_M} m high (here ${Math.round(y * BLOCK_SIZE_M)} m).`);
+      return;
+    }
+    this.setBlock(x, y, z, LIT_BEACON);
+    this.beaconLit = true;
+    this.version++;
   }
 
   /** Lets an arrow fly where the player looks, stronger the longer the bow was drawn; uses up an arrow in survival. */
@@ -311,6 +378,7 @@ export class Play {
       }
       const c = creatures?.list.find((k) => k.body === h.body);
       if (c && creatures!.damage(c, p.damage, p.x - p.vx, p.z - p.vz) && this.mode === 'survival') {
+        this.stats.killed++;
         for (const loot of lootOf(c)) this.drop(loot, c.body.x, c.body.y, c.body.z);
       }
     }
@@ -426,6 +494,7 @@ export class Play {
   private breakCell(x: number, y: number, z: number, state: number, survival: boolean, roll: number): void {
     const type = BLOCKS.type(state);
     if (survival) {
+      this.stats.mined++;
       for (const d of dropsOf(state, this.held, roll)) this.drop(d, x + 0.5, y, z + 0.5);
       const tool = this.held;
       if (tool && BLOCKS.type(tool.state).tool && !wearTool(tool)) this.inventory.slots[this.inventory.selected] = null;
@@ -439,9 +508,9 @@ export class Play {
       }
     }
     if (type === FURNACE || type === LIT) this.dropFurnace(x, y, z, survival);
-    if (type === CHEST) {
+    if (type === CHEST || type === ANCIENT) {
       const key = `${x},${y},${z}`;
-      if (survival) for (const s of this.chests.get(key) ?? []) if (s) this.drop(s, x + 0.5, y, z + 0.5);
+      if (survival) for (const s of this.chestSlots(key, state)) if (s) this.drop(s, x + 0.5, y, z + 0.5);
       this.chests.delete(key);
     }
     this.setBlock(x, y, z, AIR);
@@ -475,11 +544,15 @@ export class Play {
         for (const [x, y, z] of this.doorCells(t.x, t.y, t.z)) this.setBlock(x, y, z, next);
         return;
       }
-      if (type === CHEST) {
+      if (type === CHEST || type === ANCIENT) {
         const key = `${t.x},${t.y},${t.z}`;
-        if (!this.chests.has(key)) this.chests.set(key, new Array(CHEST_SLOTS).fill(null));
+        this.chestSlots(key, state);
         this.openChest = key;
         this.openScreen('chest', 2);
+        return;
+      }
+      if (state === BEACON) {
+        this.lightBeacon(t.x, t.y, t.z);
         return;
       }
       if (state === TABLE) {
@@ -606,6 +679,8 @@ export class Play {
     if (!this.free(x, y, z, player, false, state)) return;
     this.setBlock(x, y, z, state);
     if (type === FURNACE) this.furnaces.set(`${x},${y},${z}`, newFurnace());
+    // A chest the player places starts empty (generated ones roll their loot when first opened).
+    if (type === CHEST) this.chests.set(`${x},${y},${z}`, new Array(CHEST_SLOTS).fill(null));
     this.consumeHeld();
     this.events.sound('place');
   }
@@ -703,6 +778,7 @@ export class Play {
       mode: this.mode, difficulty: this.difficulty, hints: this.hints.save(), inventory: this.inventory.save(), selected: this.inventory.selected, drops: this.drops.save(),
       health: this.survival.health, hunger: this.survival.hunger, air: this.survival.air, bodyC: this.survival.temperature.coreC, spawn: this.spawn,
       furnaces: [...this.furnaces].map(([k, f]) => [k, s(f.input), s(f.fuel), s(f.output), f.burn, f.progress]),
+      journal: this.journal.save(), stats: this.stats, biomesSeen: [...this.biomesSeen], deepestM: this.deepestM, found: [...this.found], beaconLit: this.beaconLit, endingSeen: this.endingSeen,
       armour: this.armour.map((a) => (a ? [BLOCKS.stateName(a.state), 1, a.wear ?? 0] : null)),
       campfires: [...this.campfires].map(([k, c]) => [k, c.map(([st, left]) => [BLOCKS.stateName(st), left])]),
       chests: [...this.chests].map(([k, slots]) => [k, slots.map((st) => (st ? [BLOCKS.stateName(st.state), st.count, st.wear ?? 0] : null))]),
@@ -736,6 +812,16 @@ export class Play {
         this.furnaces.set(f[0], { input: stack(f[1]), fuel: stack(f[2]), output: stack(f[3]), burn: num(f[4], 0), progress: num(f[5], 0) });
       }
     }
+    this.journal.load(p.journal);
+    if (typeof p.stats === 'object' && p.stats !== null) {
+      const st = p.stats as Record<string, unknown>;
+      for (const k of Object.keys(this.stats) as (keyof Stats)[]) this.stats[k] = Math.max(0, num(st[k], 0));
+    }
+    if (Array.isArray(p.found)) for (const f of p.found) if (['surface', 'mine', 'vault', 'shrine'].includes(f)) this.found.add(f as LootTable);
+    this.beaconLit = p.beaconLit === true;
+    if (Array.isArray(p.biomesSeen)) for (const b of p.biomesSeen) if (Number.isInteger(b) && b >= 0 && b < 256) this.biomesSeen.add(b);
+    this.deepestM = Math.min(0, num(p.deepestM, 0));
+    this.endingSeen = p.endingSeen === true;
     if (Array.isArray(p.armour)) {
       const worn = new Inventory();
       worn.load(p.armour);

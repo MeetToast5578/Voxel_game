@@ -12,6 +12,7 @@ import { ClimateSampler, detailAmpMeters, heightMeters } from './climate';
 import { treeCells, unpackTreeCell, type TreeSpecies } from './trees';
 import { Rivers, type WaterSample } from './rivers';
 import { Underground } from './underground';
+import { isUnderground, sitesNear, structureCells, undergroundFloor, type StructureKind } from './structures';
 
 // Imported constants copied locally: hot loops then read a plain constant, not a module binding.
 const N = CHUNK_SIZE;
@@ -210,6 +211,21 @@ export class Generator {
     return top + 1;
   }
 
+  /**
+   * The base cell of a structure anchored at (x, z): its floor deep down for underground kinds; for surface kinds the
+   * ground there if it is dry, open and level enough (within two cells across the footprint), else null.
+   */
+  structureBase(kind: StructureKind, x: number, z: number): number | null {
+    const [c, i] = this.cellBase(x, z), ground = c.top[i]!;
+    if (isUnderground(kind)) return undergroundFloor(this.seed, kind, x, z, ground);
+    if (ground + 1 < c.water[i]! || c.open[i] || c.shore[i]) return null;
+    for (const [dx, dz] of [[-3, -3], [3, -3], [-3, 3], [3, 3]] as const) {
+      const [d, j] = this.cellBase(x + dx, z + dz);
+      if (Math.abs(d.top[j]! - ground) > 2 || d.top[j]! + 1 < d.water[j]!) return null;
+    }
+    return kind === 'camp' ? ground + 1 : ground;
+  }
+
   /** Base data of the column holding cell (x, z), and the cell's index in it. */
   private cellBase(x: number, z: number): [Base, number] {
     const cx = Math.floor(x / N), cz = Math.floor(z / N);
@@ -280,6 +296,19 @@ export class Generator {
           if ((BLOCKS.flags[state]! & BLOCKS_SKY) !== 0) skyTop[i] = Math.max(skyTop[i]!, y);
           maxTop = Math.max(maxTop, y);
         }
+      }
+    }
+    // Structures: on the surface where the ground suits them, or at their depth under ground. They cut into terrain.
+    for (const site of sitesNear(this.seed, x0, z0, x0 + N - 1, z0 + N - 1)) {
+      const base = this.structureBase(site.kind, site.x, site.z);
+      if (base === null) continue;
+      for (const [dx, y, dz, state] of structureCells(this.seed, site.kind, site.x, site.z, base)) {
+        const lx = site.x + dx - x0, lz = site.z + dz - z0;
+        if (lx < 0 || lx >= N || lz < 0 || lz >= N) continue;
+        const i = lz * N + lx;
+        features.push(i, y, state);
+        if ((BLOCKS.flags[state]! & BLOCKS_SKY) !== 0) skyTop[i] = Math.max(skyTop[i]!, y);
+        maxTop = Math.max(maxTop, y);
       }
     }
     // Waterfalls: where a neighbour's water stands higher, it spills over the step as a curtain of flowing water, the

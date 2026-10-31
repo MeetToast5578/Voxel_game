@@ -291,6 +291,9 @@ function gameplay(): BlockSpec[] {
       layer: 'cutout', lightEmission: 14, hardness: 0, needsSupport: true, supports: false },
     { key: 'chest', name: 'Chest', tiles: { top: 'chest_top', side: 'chest_side', bottom: 'chest_top' }, front: 'chest_front',
       variants: 4, hardness: 2.5, density: 600, ...wood },
+    // The chest of an ember shrine: it holds a beacon shard.
+    { key: 'ancient_chest', name: 'Ancient chest', tiles: { top: 'ancient_chest_top', side: 'ancient_chest_side', bottom: 'ancient_chest_top' },
+      front: 'ancient_chest_front', variants: 4, hardness: 5, density: 2600, mineWith: 'pickaxe', drops: 'obsidian' },
     { key: 'crafting_table', name: 'Crafting table', tiles: { top: 'crafting_table_top', side: 'crafting_table_side', bottom: 'planks' },
       hardness: 2.5, density: 600, ...wood },
     stone('furnace', 'Furnace', { tiles: { top: 'furnace_top', side: 'furnace_side', bottom: 'furnace_top' }, front: 'furnace_front', variants: 4, hardness: 3.5 }),
@@ -325,6 +328,12 @@ function gameplay(): BlockSpec[] {
     item('diamond', 'Diamond'),
     item('lapis', 'Lapis'),
     item('ember_crystal', 'Ember crystal'),
+    item('beacon_shard', 'Beacon shard'),
+    // The beacon: lit on a mountaintop under open sky it is the end of the journey.
+    { key: 'beacon', name: 'Beacon', tiles: { top: 'beacon_top', side: 'beacon_side', bottom: 'obsidian' }, hardness: 5,
+      density: 2600, mineWith: 'pickaxe', layer: 'cutout', blocksSky: false, opaque: false },
+    { key: 'lit_beacon', name: 'Lit beacon', tiles: { top: 'beacon_top', side: 'beacon_side', bottom: 'obsidian' }, hardness: 5,
+      density: 2600, mineWith: 'pickaxe', drops: 'beacon', layer: 'cutout', blocksSky: false, opaque: false, lightEmission: 15 },
     item('leather', 'Leather'),
     item('feather', 'Feather'),
     item('string', 'String'),

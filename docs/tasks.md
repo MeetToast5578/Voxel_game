@@ -156,37 +156,37 @@ iron, real danger, places worth finding and an end point. Onboarding, sound and 
 
 ## 5. Places to find
 
-- [ ] **5.1 Structure system.**
+- [x] **5.1 Structure system.**
   - Placement is deterministic, on a jittered grid per structure type.
   - Each structure is built whole and clipped per column, as trees are.
   - Structures stay out of rivers and the sea, and run in the workers.
   **Done when:** seam tests like the tree tests pass, and generation stays under its 2 ms gate.
-- [ ] **5.2 Surface structures.** Ruined cabins, a watchtower and a camp, chosen by biome, each with a chest.
+- [x] **5.2 Surface structures.** Ruined cabins, a watchtower and a camp, chosen by biome, each with a chest.
   **Done when:** a 1 km square of seed 1 holds a few of each.
-- [ ] **5.3 Underground structures.** Abandoned mine tunnels with timber supports, and a deep vault guarded by
+- [x] **5.3 Underground structures.** Abandoned mine tunnels with timber supports, and a deep vault guarded by
   hostiles.
   **Done when:** they are reachable from caves, and the vault appears only below −60 m.
-- [ ] **5.4 Loot tables.** Loot is per structure, depth-scaled and seeded from the world, so the same world gives the
+- [x] **5.4 Loot tables.** Loot is per structure, depth-scaled and seeded from the world, so the same world gives the
   same loot. Chests save once opened.
   **Done when:** unit tests pin the table rolls, and an opened chest survives a reload.
-- [ ] **5.5 The goal structure.** A rare deep structure that holds what 6.1 needs.
+- [x] **5.5 The goal structure.** A rare deep structure that holds what 6.1 needs.
   **Done when:** at least one appears within 1.5 km of spawn on any seed (test over 20 seeds).
 
 ## 6. Goals
 
-- [ ] **6.1 The end goal.**
+- [x] **6.1 The end goal.** Built as proposed: three beacon shards (one per ember shrine), five ember crystals and glass make the beacon.
   **Decide.** Proposed, and our own design: *Relight the beacon.*
   - Collect shards from the goal structures (5.5) and craft them with the deep material (3.4) into a beacon.
   - Light it on a mountaintop above 150 m.
   - An ending screen follows, then the world stays playable.
   **Done when:** the beacon can be built and lit in survival, and the ending shows once per world.
-- [ ] **6.2 Journal.**
+- [x] **6.2 Journal.**
   - About 20 milestones, such as: first night survived, iron, diamond, reaching −200 m, visiting five biomes, finding
     each structure.
   - A toast when one is reached.
   - Saved per world, with a journal screen in the pause menu.
   **Done when:** each milestone has a test that triggers it.
-- [ ] **6.3 Statistics.** Days survived, distance walked, deaths, creatures defeated and blocks mined, shown in the
+- [x] **6.3 Statistics.** Days survived, distance walked, deaths, creatures defeated and blocks mined, shown in the
   journal and on the death screen.
   **Done when:** they are saved and survive a reload.
 

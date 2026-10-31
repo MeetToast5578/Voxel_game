@@ -4,6 +4,7 @@ import { BLOCK_SIZE_M, BODY_COLD_C, BODY_HOT_C, MAX_HEALTH, MAX_HUNGER, BREATH_S
 import { BLOCKS } from '../engine/blocks';
 import { clickSlot, type ItemStack } from '../game/inventory';
 import { fits, RECIPES, type Recipe } from '../game/crafting';
+import { MILESTONES } from '../game/journal';
 import type { Mode, Play } from '../game/play';
 import { BINDINGS, DEFAULT_KEYS, keyLabel, type Binding, type Settings } from '../storage/settings';
 import type { Difficulty } from '../config';
@@ -44,6 +45,9 @@ export interface UiModel extends WorldsModel {
   setDifficulty(d: Difficulty): void;
   /** Saves and goes back to the title screen. */
   quitToTitle(): void;
+  /** The beacon was just lit: the ending shows until closed. */
+  ending: boolean;
+  closeEnding(): void;
 }
 
 /** Placeable blocks and items in the creative palette. */
@@ -97,6 +101,7 @@ function Hud({ play, hideKey }: { play: Play; hideKey: string }) {
   const s = play.survival;
   return (
     <div class="hud">
+      {play.message && <div class="toast">{play.message}</div>}
       {play.hints.text && <div class="hintbox">{play.hints.text} <small>({keyLabel(hideKey)} hides this)</small></div>}
       {play.mode === 'survival' && (
         <div class="bars">
@@ -331,6 +336,7 @@ function Menu({ m }: { m: UiModel }) {
       {m.play.mode === 'survival' && (
         <label>Difficulty <DifficultySelect value={m.play.difficulty} onChange={m.setDifficulty} /></label>
       )}
+      {m.play.mode === 'survival' && <Journal play={m.play} />}
       <h2>Settings</h2>
       <SettingsSection m={m} />
       <h2>Worlds</h2>
@@ -375,12 +381,46 @@ function hashSeed(text: string): number {
   return h >>> 0;
 }
 
+function StatsList({ play }: { play: Play }) {
+  const s = play.stats;
+  return (
+    <p class="help">Days survived {s.days} · walked {(s.walkedM / 1000).toFixed(1)} km · creatures defeated {s.killed} ·
+      blocks mined {s.mined} · deaths {s.deaths}</p>
+  );
+}
+
+function Journal({ play }: { play: Play }) {
+  return (
+    <details class="journal">
+      <summary>Journal: {play.journal.done.size} of {MILESTONES.length} milestones</summary>
+      <ul class="milestones">
+        {MILESTONES.map((ms) => <li class={play.journal.done.has(ms.id) ? 'done' : ''}>{play.journal.done.has(ms.id) ? '✔' : '·'} {ms.name}</li>)}
+      </ul>
+      <StatsList play={play} />
+    </details>
+  );
+}
+
 function Death({ m }: { m: UiModel }) {
   return (
     <div class="menu death">
       <h1>You died</h1>
       <p>{m.play.survival.cause}</p>
+      <StatsList play={m.play} />
       <button class="primary" onClick={m.respawn}>Respawn</button>
+    </div>
+  );
+}
+
+function Ending({ m }: { m: UiModel }) {
+  return (
+    <div class="menu ending">
+      <h1>The beacon burns</h1>
+      <p>High above the land the old light is lit again. Its glow carries over every valley you crossed and every cave you
+        came back up from.</p>
+      <StatsList play={m.play} />
+      <p class="help">{m.play.journal.done.size} of {MILESTONES.length} milestones reached. The world is still yours.</p>
+      <button class="primary" onClick={m.closeEnding}>Keep playing</button>
     </div>
   );
 }
@@ -391,7 +431,7 @@ function App({ m }: { m: UiModel }) {
     <>
       <Hud play={m.play} hideKey={m.settings.keys.hint} />
       {m.play.screen !== 'none' && <InventoryScreen play={m.play} />}
-      {m.dead ? <Death m={m} /> : m.paused && m.play.screen === 'none' && <Menu m={m} />}
+      {m.dead ? <Death m={m} /> : m.ending ? <Ending m={m} /> : m.paused && m.play.screen === 'none' && <Menu m={m} />}
     </>
   );
 }

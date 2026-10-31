@@ -291,6 +291,13 @@ const PAINTERS: Record<string, PixelFn> = {
   lapis_ore: orePainter([50, 90, 180]),
   ember_ore: (_x, _y, r) => (r() < 0.16 ? shade([255, 110 + r() * 70, 30], 1) : shade([62, 60, 66], 1 + (r() - 0.5) * 0.25)),
   gold_ingot: ingotPainter([235, 200, 60]),
+  ancient_chest_side: (x, y, r) => shade([46, 40, 56], (x === 0 || x === 15 || y === 0 || y === 15 || y === 5 ? 0.6 : 1) + (r() - 0.5) * 0.15),
+  ancient_chest_top: (x, y, r) => shade([52, 44, 62], (x === 0 || x === 15 || y === 0 || y === 15 ? 0.6 : 1) + (r() - 0.5) * 0.15),
+  ancient_chest_front: (x, y, r) => (x >= 6 && x <= 9 && y >= 4 && y <= 8 ? shade([255, 130, 40], 0.9 + r() * 0.2)
+    : shade([46, 40, 56], (x === 0 || x === 15 || y === 0 || y === 15 || y === 5 ? 0.6 : 1) + (r() - 0.5) * 0.15)),
+  beacon_shard: gemPainter([150, 230, 255]),
+  beacon_top: (x, y, r) => (Math.abs(x - 7.5) < 3 && Math.abs(y - 7.5) < 3 ? shade([170, 240, 255], 0.9 + r() * 0.2) : shade([40, 30, 50], 0.9 + r() * 0.2)),
+  beacon_side: (x, y, r) => (x === 0 || x === 15 || y === 0 || y === 15 ? shade([40, 30, 50], 1) : y > 10 ? shade([60, 50, 70], 0.9 + r() * 0.2) : shade([190, 240, 255], 0.85 + r() * 0.2, 170)),
   feather: (x, y, r) => (Math.abs(x + y - 15) <= 2 - Math.abs(x - 8) / 6 && x >= 3 && x <= 13 ? shade(x + y === 15 ? [170, 170, 170] : [238, 238, 232], 0.9 + r() * 0.1) : [0, 0, 0, 0]),
   string: (x, y, r) => (Math.abs(x - 7.5 - Math.sin(y * 0.8) * 2.5) < 0.8 && y >= 1 && y <= 14 ? shade([225, 225, 225], 0.85 + r() * 0.2) : [0, 0, 0, 0]),
   bone: (x, y, r) => ((x + y === 15 && x >= 3 && x <= 12) || Math.hypot(x - 2.5, y - 12.5) < 1.6 || Math.hypot(x - 12.5, y - 2.5) < 1.6 ? shade([232, 226, 206], 0.9 + r() * 0.15) : [0, 0, 0, 0]),
