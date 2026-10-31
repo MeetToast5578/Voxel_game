@@ -242,7 +242,7 @@ player.boating = play.boating;
 /** Where the player starts: where they first stood, or their bed. */
 let worldSpawn: [number, number, number] | null = null;
 const env = new Environment(seed, Number(params.get('time') ?? saver.worldMeta.dayTime),
-  Number(params.get('year') ?? saver.worldMeta.yearTime ?? 0), () => sounds.play('thunder'));
+  Number(params.get('year') ?? saver.worldMeta.yearTime ?? 0), () => sounds.play('thunder'), (x, z) => play.strike(x, z, player));
 
 /** Saves the world; a small "Saving" note shows while it writes. */
 const savingNote = document.querySelector<HTMLDivElement>('#saving')!;

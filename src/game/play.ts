@@ -1,4 +1,4 @@
-import { FISH_MAX_S, FISH_MIN_S, BLOCK_SIZE_M, ARROW_DAMAGE, ARROW_SPEED_M_S, BOLT_SPEED_M_S, BOW_DRAW_S, AXE_DAMAGE, BUILD_CELLS_PER_TICK, CAMPFIRE_COOK_S, CAMPFIRE_SLOTS, DIFFICULTY, PLAYER_ATTACK_COOLDOWN_S, SWORD_DAMAGE, type Difficulty, BUILD_MAX_M, DROP_PICKUP_DELAY_S, DROP_THROW_M_S, HAND_DAMAGE, REACH_M, REPEAT_S, TOOL_DAMAGE, UNDO_STEPS, cells, toCells } from '../config';
+import { LIGHTNING_DAMAGE, LIGHTNING_REACH_M, FISH_MAX_S, FISH_MIN_S, BLOCK_SIZE_M, ARROW_DAMAGE, ARROW_SPEED_M_S, BOLT_SPEED_M_S, BOW_DRAW_S, AXE_DAMAGE, BUILD_CELLS_PER_TICK, CAMPFIRE_COOK_S, CAMPFIRE_SLOTS, DIFFICULTY, PLAYER_ATTACK_COOLDOWN_S, SWORD_DAMAGE, type Difficulty, BUILD_MAX_M, DROP_PICKUP_DELAY_S, DROP_THROW_M_S, HAND_DAMAGE, REACH_M, REPEAT_S, TOOL_DAMAGE, UNDO_STEPS, cells, toCells } from '../config';
 import { lootOf, type Creature, type Creatures } from '../creatures/creatures';
 import { AIR, BLOCKS, SOLID } from '../engine/blocks';
 import type { World } from '../engine/world';
@@ -34,6 +34,8 @@ export const CHEST_SLOTS = 27;
 const TABLE = S('crafting_table'), TORCH = S('torch'), GRASS = S('grass'), DIRT = S('dirt'), CAMPFIRE = S('campfire'), FARMLAND = S('farmland');
 const ROD = S('fishing_rod'), FISH = S('raw_fish'), BOAT = S('boat');
 const WARDEN = SPECIES_BY_KEY.get('warden')!;
+/** What a lightning strike turns the ground it hits into. */
+const SCORCH = new Map([[S('grass'), S('dirt')], [S('sand'), S('glass')], [S('snow'), AIR]]);
 /** How near (m) the Ember Warden keeps the player from its chest. */
 const GUARD_M = 12;
 const WATERS = new Set([S('water'), ...Array.from({ length: BLOCKS.byName('flowing_water').variants }, (_, v) => S('flowing_water', v))]);
@@ -414,6 +416,30 @@ export class Play {
       creatures.add(WARDEN, site.x + 0.5, floor, site.z - 1.5, WARDEN.health);
       this.toast('Something stirs in the shrine…', 3);
     }
+  }
+
+  /** Highest sky-blocking cell of column (x, z), if loaded. */
+  private skyTop(x: number, z: number): number | undefined {
+    return this.world.column(x >> 4, z >> 4)?.skyTop[((z & 15) << 4) | (x & 15)];
+  }
+
+  /**
+   * Lightning lands on column (x, z) (cells): it scorches the ground it hits (grass to dirt, sand to glass) and hurts
+   * the player and creatures standing under open sky within reach.
+   */
+  strike(x: number, z: number, player: Player): void {
+    const cx = Math.floor(x), cz = Math.floor(z), top = this.skyTop(cx, cz);
+    if (top === undefined || !this.world.isLoaded(cx, top, cz)) return;
+    const scorched = SCORCH.get(this.world.get(cx, top, cz));
+    if (scorched !== undefined) this.setBlock(cx, top, cz, scorched);
+    const reach = toCells(LIGHTNING_REACH_M), y = top + 1;
+    const open = (b: { x: number; y: number; z: number }) => (this.skyTop(Math.floor(b.x), Math.floor(b.z)) ?? Infinity) < b.y + 0.01;
+    const near = (b: { x: number; y: number; z: number }) => Math.hypot(b.x - x, b.y - y, b.z - z) < reach && open(b);
+    if (this.mode === 'survival' && !this.survival.dead && near(player.body)) {
+      this.survival.hurt(this.protect(LIGHTNING_DAMAGE), 'struck by lightning');
+      this.version++;
+    }
+    for (const c of [...(this.creatures?.list ?? [])]) if (near(c.body)) this.creatures!.damage(c, LIGHTNING_DAMAGE * 2, x, z);
   }
 
   /** Riding a boat (saved; the player's body follows it). */

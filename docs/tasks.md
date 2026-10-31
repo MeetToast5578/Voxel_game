@@ -269,7 +269,7 @@ All of it stays procedural: no asset files.
 - [x] **11.4 The Ember Warden** (wakes while its shrine's ancient chest is unopened; keeps the chest shut within 12 m; drops ember crystals and diamonds; a journal milestone). Each ember shrine has a guardian that wakes when the player comes near: strong, slow,
   fire-proof; it drops something worth the fight.
   **Done when:** a test spawns it at a shrine and it fights back.
-- [ ] **11.5 Thunderstorms.** Heavy rain sometimes brings lightning: a flash, thunder after the light by distance, and
+- [x] **11.5 Thunderstorms** (no fire block yet: strikes scorch grass to dirt and sand to glass instead of setting fires). Heavy rain sometimes brings lightning: a flash, thunder after the light by distance, and
   strikes that can set fire to the ground or hurt a player in the open.
   **Done when:** a test shows strikes only during storms and only on open ground.
 

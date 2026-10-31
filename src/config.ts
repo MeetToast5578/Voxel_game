@@ -242,8 +242,13 @@ export const SNOW_SPEED_M_S = 1.5;
 /** Precipitation particles fill a box this wide and tall around the camera. */
 export const PRECIP_BOX_M = 24;
 export const LIGHTNING_MEAN_INTERVAL_S = 12;
-export const THUNDER_DELAY_MIN_S = 1;
-export const THUNDER_DELAY_MAX_S = 6;
+/** Strikes land this far from the player (m), most of them far off; thunder follows at the speed of sound. */
+export const LIGHTNING_NEAR_M = 6;
+export const LIGHTNING_FAR_M = 600;
+export const SOUND_SPEED_M_S = 343;
+/** A strike hurts whatever stands under open sky within this distance (m), by this much. */
+export const LIGHTNING_REACH_M = 3;
+export const LIGHTNING_DAMAGE = 8;
 /** Snow and ice: random updates per loaded column near the player per simulation tick. */
 export const WEATHER_TICKS_PER_COLUMN = 1;
 export const SNOW_SETTLE_CHANCE = 0.05;
