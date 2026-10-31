@@ -1,21 +1,17 @@
-import { BLOCKS } from '../engine/blocks';
 import type { World } from '../engine/world';
-import { TILE_NAMES, TILE_SIZE, tilePixels } from '../render/tilePixels';
+import { Atlas, MAP_SCALE } from './atlas';
 
 const SIZE = 128;
-/** Cells per pixel: 2 cells (1.2 m), so the map shows about 150 m across. */
-const SCALE = 2;
 
 /**
- * The map item: a north-up picture of the loaded land around the player, each pixel coloured by the top tile of the
- * highest block there and shaded by slope, with the player in the middle.
- * shortcut: only loaded columns show, nothing is remembered; keep explored columns (saved) if players want a real atlas.
+ * The map item: a north-up picture of the land the player has seen around them (about 150 m across), from the
+ * atlas, with the player in the middle. Unseen land is dark.
  */
 export class Minimap {
   readonly canvas = document.createElement('canvas');
+  readonly atlas = new Atlas();
   private readonly ctx: CanvasRenderingContext2D;
   private readonly image: ImageData;
-  private readonly colours = new Map<number, readonly [number, number, number]>();
 
   constructor() {
     this.canvas.width = this.canvas.height = SIZE;
@@ -24,40 +20,13 @@ export class Minimap {
     this.image = this.ctx.createImageData(SIZE, SIZE);
   }
 
-  /** Average colour of a block's top tile (or side, for cross plants), cached per type. */
-  private colour(state: number): readonly [number, number, number] {
-    const t = BLOCKS.type(state);
-    const hit = this.colours.get(t.id);
-    if (hit) return hit;
-    const pixels = tilePixels(), layer = TILE_NAMES.indexOf(t.tiles.top), n = TILE_SIZE * TILE_SIZE;
-    let r = 0, g = 0, b = 0, count = 0;
-    for (let i = 0; i < n; i++) {
-      const o = (layer * n + i) * 4;
-      if (pixels[o + 3]! < 128) continue;
-      r += pixels[o]!;
-      g += pixels[o + 1]!;
-      b += pixels[o + 2]!;
-      count++;
-    }
-    const c = count ? [r / count, g / count, b / count] as const : [0, 0, 0] as const;
-    this.colours.set(t.id, c);
-    return c;
-  }
-
   draw(world: World, px: number, pz: number, yaw: number): void {
-    const data = this.image.data, x0 = Math.floor(px) - (SIZE * SCALE) / 2, z0 = Math.floor(pz) - (SIZE * SCALE) / 2;
-    const height = (x: number, z: number) => world.column(x >> 4, z >> 4)?.skyTop[((z & 15) << 4) | (x & 15)];
+    this.atlas.record(world, px, pz, SIZE / 2);
+    const data = this.image.data, mx0 = Math.floor(px / MAP_SCALE) - SIZE / 2, mz0 = Math.floor(pz / MAP_SCALE) - SIZE / 2;
     for (let j = 0; j < SIZE; j++) {
       for (let i = 0; i < SIZE; i++) {
-        const x = x0 + i * SCALE, z = z0 + j * SCALE, h = height(x, z), o = (j * SIZE + i) * 4;
-        if (h === undefined || !world.isLoaded(x, h, z)) {
-          data.set([20, 20, 24, 255], o);
-          continue;
-        }
-        const c = this.colour(world.get(x, h, z));
-        // Lit from the north-west: rising ground brighter, falling ground darker.
-        const shade = Math.max(0.6, Math.min(1.35, 1 + (h - (height(x - SCALE, z - SCALE) ?? h)) * 0.08));
-        data.set([c[0] * shade, c[1] * shade, c[2] * shade, 255], o);
+        const c = this.atlas.at(mx0 + i, mz0 + j);
+        data.set(c ? [c[0], c[1], c[2], 255] : [20, 20, 24, 255], (j * SIZE + i) * 4);
       }
     }
     this.ctx.putImageData(this.image, 0, 0);

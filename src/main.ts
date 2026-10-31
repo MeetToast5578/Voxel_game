@@ -174,6 +174,7 @@ function setBlock(x: number, y: number, z: number, state: number, urgent = false
   simulation.onCellChanged(x, y, z, previous);
 }
 const simulation = new Simulation(world, setBlock, seed);
+simulation.popped = (x, y, z, s) => play.drops.spawn({ state: BLOCKS.state(BLOCKS.type(s).key), count: 1 }, x + 0.5, y + 0.5, z + 0.5);
 simulation.ticks.now = saver.worldMeta.simTick ?? 0;
 simulation.ticks.load(saver.worldMeta.ticks);
 streamer.onLoad = (c) => {
@@ -244,7 +245,7 @@ function save(): Promise<void> {
   const b = player.body;
   savingNote.style.opacity = '1';
   return saver.save(world, {
-    dayTime: env.clock.dayTime, yearTime: env.clock.yearTime, play: play.save(), creatures: creatures.save(), ticks: simulation.ticks.save(), simTick: simulation.ticks.now, growth: simulation.saveGrowth(), player: { x: b.x, y: b.y, z: b.z, yaw: player.yaw, pitch: player.pitch, flying: player.flying },
+    dayTime: env.clock.dayTime, yearTime: env.clock.yearTime, play: play.save(), creatures: creatures.save(), ticks: simulation.ticks.save(), simTick: simulation.ticks.now, growth: simulation.saveGrowth(), atlas: minimap.atlas.save(), player: { x: b.x, y: b.y, z: b.z, yaw: player.yaw, pitch: player.pitch, flying: player.flying },
   }).catch((err) => console.error('Saving failed:', err)).finally(() => (savingNote.style.opacity = '0'));
 }
 setInterval(() => void save(), AUTOSAVE_S * 1000);
@@ -613,6 +614,7 @@ hand.addEventListener('animationend', () => hand.classList.remove('swing'));
 let lastHealth = play.survival.health, kick = 0, milestones = play.journal.done.size;
 const compass = document.querySelector<HTMLDivElement>('#compass')!, minimap = new Minimap();
 document.body.append(minimap.canvas);
+minimap.atlas.load(saver.worldMeta.atlas);
 let mapClock = 0;
 /** Held compass: a needle to the bed (or where the world began). Held map: the land around, redrawn a few times a second. */
 function updateHeldTools(now: number): void {
@@ -624,6 +626,10 @@ function updateHeldTools(now: number): void {
   if (key === 'map' && now - mapClock > 300) {
     mapClock = now;
     minimap.draw(world, player.body.x, player.body.z, player.yaw);
+  } else if (now - mapClock > 3000) {
+    // The map keeps a record of the land walked through even while it is not held.
+    mapClock = now;
+    minimap.atlas.record(world, player.body.x, player.body.z, 64);
   }
 }
 let frames = 0, fps = 0, fpsTime = performance.now(), lastVersion = -1, lastUiDraw = 0;

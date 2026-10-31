@@ -256,6 +256,23 @@ All of it stays procedural: no asset files.
   1–53 into `docs/history/`.
   **Done when:** no current doc points at deleted code.
 
+## 11. More to find and do (after 0.2.0)
+
+- [x] **11.1 The map remembers.** The map keeps a saved atlas of the land walked through (also while not held), so
+  places stay on it after they unload.
+  **Done when:** a test saves and reloads the atlas.
+- [x] **11.2 Fittings fall.** Ladders whose wall goes, lanterns with nothing above or below and torches with nothing
+  below drop as items.
+  **Done when:** a simulation test drops them.
+- [ ] **11.3 Boats.** Craft one from planks, put it on water, ride it faster than swimming; break it to take it back.
+  **Done when:** a test rides a boat across water and it stops at the shore.
+- [ ] **11.4 The Ember Warden.** Each ember shrine has a guardian that wakes when the player comes near: strong, slow,
+  fire-proof; it drops something worth the fight.
+  **Done when:** a test spawns it at a shrine and it fights back.
+- [ ] **11.5 Thunderstorms.** Heavy rain sometimes brings lightning: a flash, thunder after the light by distance, and
+  strikes that can set fire to the ground or hurt a player in the open.
+  **Done when:** a test shows strikes only during storms and only on open ground.
+
 ---
 
 ## Decisions the owner needs to make

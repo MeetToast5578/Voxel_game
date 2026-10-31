@@ -33,6 +33,8 @@ export interface WorldMeta {
   creatures?: unknown;
   /** Unloaded chunks with growing crops and when they unloaded; checked when loaded. */
   growth?: unknown;
+  /** The map's record of the land seen, as [rx, rz, base64]; checked when loaded. */
+  atlas?: unknown;
 }
 
 export interface WorldStore {
@@ -73,6 +75,7 @@ export function parseMeta(value: unknown): WorldMeta | null {
     ...(typeof m.play === 'object' && m.play !== null ? { play: m.play } : {}),
     ...(Array.isArray(m.creatures) ? { creatures: m.creatures } : {}),
     ...(Array.isArray(m.growth) ? { growth: m.growth } : {}),
+    ...(Array.isArray(m.atlas) ? { atlas: m.atlas } : {}),
   };
 }
 

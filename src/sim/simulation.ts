@@ -56,6 +56,13 @@ for (const t of BLOCKS.types) {
     NEEDS_SUPPORT[s] = t.needsSupport ? 1 : 0;
   }
 }
+/** Fittings that hang on a neighbour: the offsets of the cells that can hold them (any one will do). */
+const HOLDERS = new Map<number, readonly (readonly [number, number, number])[]>();
+const LADDER_WALL = [[1, 0, 0], [-1, 0, 0], [0, 0, 1], [0, 0, -1]] as const;
+for (let v = 0; v < 4; v++) HOLDERS.set(S('ladder', v), [LADDER_WALL[v]!]);
+HOLDERS.set(S('lantern'), [[0, 1, 0], [0, -1, 0]]);
+HOLDERS.set(S('torch'), [[0, -1, 0]]);
+for (const s of HOLDERS.keys()) NEEDS_SUPPORT[s] = 1;
 const LEAF_REACH = cells(LEAF_REACH_M);
 const SAPLING_TYPE = BLOCKS.typeIndex[BLOCKS.state('sapling')]!;
 /** States random ticks act on: grass, crops still growing, saplings. */
@@ -82,6 +89,9 @@ export class Simulation {
   private readonly rand: () => number;
   /** Chunks with growing crops that were unloaded, and the tick they were unloaded at (saved with the world). */
   private readonly parkedCrops = new Map<number, number>();
+
+  /** Called when a fitting (ladder, torch, lantern) falls off for want of a holder: drop it as an item. */
+  popped: (x: number, y: number, z: number, state: number) => void = () => {};
 
   constructor(private readonly world: World, private readonly setBlock: (x: number, y: number, z: number, s: number) => void, seed = 1) {
     this.rand = mulberry32(seed ^ 0x51ed);
@@ -280,6 +290,14 @@ export class Simulation {
   private support(x: number, y: number, z: number): void {
     const s = this.world.get(x, y, z);
     if (!NEEDS_SUPPORT[s]) return;
+    const holders = HOLDERS.get(s);
+    if (holders) {
+      if (holders.some(([dx, dy, dz]) => (FLAGS[this.world.get(x + dx, y + dy, z + dz)]! & SOLID) !== 0)) return;
+      if (!holders.every(([dx, dy, dz]) => this.world.isLoaded(x + dx, y + dy, z + dz))) return;
+      this.setBlock(x, y, z, AIR);
+      this.popped(x, y, z, s);
+      return;
+    }
     const below = this.world.get(x, y - 1, z);
     const ok = s === LILY ? below === WATER.source : (FLAGS[below]! & SOLID) !== 0;
     if (!ok && this.world.isLoaded(x, y - 1, z)) this.setBlock(x, y, z, AIR);
