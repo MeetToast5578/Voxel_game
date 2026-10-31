@@ -125,7 +125,7 @@ describe('the end goal and the journal', () => {
 
   it('reaches milestones once and remembers them', () => {
     const j = new Journal();
-    const facts: JournalFacts = { has: (k) => k === 'log', stats: { days: 1, walkedM: 0, deaths: 0, killed: 0, mined: 0 }, deepestM: 0,
+    const facts: JournalFacts = { has: (k) => k === 'log', stats: { days: 1, walkedM: 0, deaths: 0, killed: 0, mined: 0, wardens: 0 }, deepestM: 0,
       biomes: 1, found: new Set(), armour: false, beacon: false };
     expect(j.update(facts)).toEqual(['Got wood', 'Survived a night']);
     expect(j.update(facts)).toEqual([]);

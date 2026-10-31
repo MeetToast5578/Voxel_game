@@ -35,6 +35,8 @@ export interface Species {
   ranged?: boolean;
   /** Climbs straight up walls. */
   climbs?: boolean;
+  /** Guards an ember shrine: never spawns on its own, is always awake, stays by day and does not burn. */
+  guardian?: boolean;
   /** Sound pitch, 0..1: low for big animals. */
   voice: number;
 }
@@ -80,6 +82,9 @@ export const SPECIES: readonly Species[] = [
   { ...BASE, key: 'brute', name: 'Frost brute', halfWidthM: 0.5, heightM: 2.2, speedM_S: 1.1, health: 40, hostile: true, nocturnal: true,
     attack: 7, biomes: ['deep', 'tundra', 'snowy_taiga', 'glacier', 'snowcapped_peaks'], group: [1, 1],
     colours: { body: [170, 196, 214], head: [210, 226, 236], legs: [120, 140, 160] }, meat: 0, loot: [['bone', 3]], voice: 0.1 },
+  { ...BASE, key: 'warden', name: 'Ember Warden', halfWidthM: 0.55, heightM: 2.5, speedM_S: 1.3, health: 160, hostile: true, guardian: true,
+    attack: 8, biomes: [], group: [1, 1], colours: { body: [58, 40, 44], head: [255, 120, 40], legs: [40, 30, 34] }, meat: 0,
+    loot: [['ember_crystal', 3], ['diamond', 2]], voice: 0.05 },
 ];
 
 export const SPECIES_BY_KEY = new Map(SPECIES.map((s) => [s.key, s]));

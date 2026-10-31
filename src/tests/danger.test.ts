@@ -133,3 +133,50 @@ describe('monster behaviour', () => {
     expect(deer.body.x).toBeGreaterThan(7);
   });
 });
+
+describe('the Ember Warden', () => {
+  it('wakes at a shrine whose ancient chest is unopened, guards the chest, and only once', async () => {
+    const { Play } = await import('../game/play');
+    const { Player } = await import('../game/player');
+    const { siteIn, undergroundFloor } = await import('../worldgen/structures');
+    const seed = 3, [sx, sz] = siteIn(seed, 'shrine', 0, 0)!, floor = undergroundFloor(seed, 'shrine', sx, sz, 0);
+    const world = new World();
+    for (let cx = -1; cx <= 1; cx++) for (let cz = -1; cz <= 1; cz++) for (let cy = -1; cy <= 1; cy++) {
+      const col = world.add(new Chunk(Math.floor(sx / 16) + cx, Math.floor(floor / 16) + cy, Math.floor(sz / 16) + cz, 0, 0));
+      col.surface.fill(0);
+    }
+    for (let x = sx - 20; x < sx + 20; x++) for (let z = sz - 20; z < sz + 20; z++) world.set(x, floor - 1, z, S('obsidian'));
+    world.set(sx, floor + 1, sz, BLOCKS.state('ancient_chest', 3));
+    const play = new Play(world, (x, y, z, s) => world.set(x, y, z, s), { sound: () => undefined, sleep: () => true }, 'survival');
+    const cs = new Creatures(world, mulberry32(1), { bite: () => undefined, sound: () => undefined });
+    play.seed = seed;
+    play.creatures = cs;
+    const player = new Player(sx + 0.5, floor, sz + 8.5);
+    play.wakeGuardians(player);
+    play.wakeGuardians(player);
+    const wardens = cs.list.filter((c) => c.species.key === 'warden');
+    expect(wardens.length).toBe(1);
+    expect(cs.guardianNear(sx + 0.5, floor, sz + 0.5, 4)).toBe(true);
+    // Far away it does not wake; with the warden gone and the chest opened, it never comes back.
+    cs.list.length = 0;
+    play.wakeGuardians(new Player(sx + 300, floor, sz));
+    expect(cs.list.length).toBe(0);
+    (play as unknown as { chests: Map<string, unknown> }).chests.set(`${sx},${floor + 1},${sz}`, []);
+    play.wakeGuardians(player);
+    expect(cs.list.length).toBe(0);
+  });
+
+  it('is awake by day, stays in daylight and does not burn in lava', () => {
+    const world = cave(-200, 15);
+    for (let x = -3; x <= 3; x++) for (let z = -3; z <= 3; z++) world.set(x, -200, z, S('lava'));
+    const cs = new Creatures(world, mulberry32(2), { bite: () => undefined, sound: () => undefined });
+    const warden = SPECIES_BY_KEY.get('warden')!;
+    const c = cs.add(warden, 0.5, -200, 0.5, warden.health);
+    const ctx: CreatureContext = { player: body(30.5, -200, 0.5), survival: true, day: true, hostiles: 1,
+      boxAt: (x, y, z) => COLLISION[world.get(x, y, z)]!, waterAt: () => false };
+    for (let i = 0; i < 600; i++) cs.update(1 / 20, ctx);
+    expect(cs.list).toContain(c);
+    expect(c.health).toBe(warden.health);
+    expect(c.mode).not.toBe('sleep');
+  });
+});

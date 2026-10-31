@@ -266,7 +266,7 @@ All of it stays procedural: no asset files.
   **Done when:** a simulation test drops them.
 - [x] **11.3 Boats** (crouching steps out and the boat goes back in the inventory; it is never left in the world). Craft one from planks, put it on water, ride it faster than swimming; break it to take it back.
   **Done when:** a test rides a boat across water and it stops at the shore.
-- [ ] **11.4 The Ember Warden.** Each ember shrine has a guardian that wakes when the player comes near: strong, slow,
+- [x] **11.4 The Ember Warden** (wakes while its shrine's ancient chest is unopened; keeps the chest shut within 12 m; drops ember crystals and diamonds; a journal milestone). Each ember shrine has a guardian that wakes when the player comes near: strong, slow,
   fire-proof; it drops something worth the fight.
   **Done when:** a test spawns it at a shrine and it fights back.
 - [ ] **11.5 Thunderstorms.** Heavy rain sometimes brings lightning: a flash, thunder after the light by distance, and

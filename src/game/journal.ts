@@ -7,6 +7,8 @@ export interface Stats {
   deaths: number;
   killed: number;
   mined: number;
+  /** Ember Wardens defeated. */
+  wardens: number;
 }
 
 /** What milestones look at. */
@@ -42,6 +44,7 @@ export const MILESTONES: readonly { id: string; name: string; done(f: JournalFac
   { id: 'diamond', name: 'Found a diamond', done: (f) => f.has('diamond') },
   { id: 'shrine', name: 'Found an ember shrine', done: (f) => f.found.has('shrine') },
   { id: 'ember', name: 'Mined an ember crystal', done: (f) => f.has('ember_crystal') },
+  { id: 'warden', name: 'Defeated an Ember Warden', done: (f) => f.stats.wardens >= 1 },
   { id: 'hunter', name: 'Defeated 25 creatures', done: (f) => f.stats.killed >= 25 },
   { id: 'week', name: 'Survived seven nights', done: (f) => f.stats.days >= 7 },
   { id: 'beacon', name: 'Lit the beacon', done: (f) => f.beacon },

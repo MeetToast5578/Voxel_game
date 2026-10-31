@@ -1,5 +1,5 @@
 import { FISH_MAX_S, FISH_MIN_S, BLOCK_SIZE_M, ARROW_DAMAGE, ARROW_SPEED_M_S, BOLT_SPEED_M_S, BOW_DRAW_S, AXE_DAMAGE, BUILD_CELLS_PER_TICK, CAMPFIRE_COOK_S, CAMPFIRE_SLOTS, DIFFICULTY, PLAYER_ATTACK_COOLDOWN_S, SWORD_DAMAGE, type Difficulty, BUILD_MAX_M, DROP_PICKUP_DELAY_S, DROP_THROW_M_S, HAND_DAMAGE, REACH_M, REPEAT_S, TOOL_DAMAGE, UNDO_STEPS, cells, toCells } from '../config';
-import { lootOf, type Creatures } from '../creatures/creatures';
+import { lootOf, type Creature, type Creatures } from '../creatures/creatures';
 import { AIR, BLOCKS, SOLID } from '../engine/blocks';
 import type { World } from '../engine/world';
 import { COLLISION, FULL } from './collision';
@@ -19,6 +19,8 @@ import { lootTableFor, rollLoot, type LootTable } from './loot';
 import { Journal, type Stats } from './journal';
 import { aimAt, Projectiles } from './projectiles';
 import type { BoxAt } from './collision';
+import { sitesNear, undergroundFloor } from '../worldgen/structures';
+import { SPECIES_BY_KEY } from '../creatures/species';
 
 export type Mode = 'creative' | 'survival';
 
@@ -31,6 +33,9 @@ export const BEACON_MIN_M = 150;
 export const CHEST_SLOTS = 27;
 const TABLE = S('crafting_table'), TORCH = S('torch'), GRASS = S('grass'), DIRT = S('dirt'), CAMPFIRE = S('campfire'), FARMLAND = S('farmland');
 const ROD = S('fishing_rod'), FISH = S('raw_fish'), BOAT = S('boat');
+const WARDEN = SPECIES_BY_KEY.get('warden')!;
+/** How near (m) the Ember Warden keeps the player from its chest. */
+const GUARD_M = 12;
 const WATERS = new Set([S('water'), ...Array.from({ length: BLOCKS.byName('flowing_water').variants }, (_, v) => S('flowing_water', v))]);
 const LADDER = BLOCKS.byName('ladder');
 /** Fluid sources a bucket picks up, and the full bucket each gives. */
@@ -89,7 +94,7 @@ export class Play {
   seed = 0;
   /** Milestones reached, running totals, and which structures' loot the player has opened. */
   readonly journal = new Journal();
-  readonly stats: Stats = { days: 0, walkedM: 0, deaths: 0, killed: 0, mined: 0 };
+  readonly stats: Stats = { days: 0, walkedM: 0, deaths: 0, killed: 0, mined: 0, wardens: 0 };
   readonly found = new Set<LootTable>();
   /** Biomes walked in (indices), and the deepest point reached (m). */
   readonly biomesSeen = new Set<number>();
@@ -330,7 +335,7 @@ export class Play {
     const damage = strength * weaponDamage(held);
     const c = hit.creature;
     if (this.creatures!.damage(c, damage, ox, oz) && this.mode === 'survival') {
-      this.stats.killed++;
+      this.defeated(c);
       for (const loot of lootOf(c)) this.drop(loot, c.body.x, c.body.y, c.body.z);
     }
     if (held && tool && this.mode === 'survival' && !wearTool(held)) this.inventory.slots[this.inventory.selected] = null;
@@ -380,6 +385,35 @@ export class Play {
     }
     this.fishingS = FISH_MIN_S + Math.random() * (FISH_MAX_S - FISH_MIN_S);
     this.toast('Waiting for a bite…', this.fishingS);
+  }
+
+  /** Counts a creature the player defeated. */
+  private defeated(c: Creature): void {
+    this.stats.killed++;
+    if (c.species.guardian) {
+      this.stats.wardens++;
+      this.toast('The Ember Warden falls. The shrine is yours.', 4);
+    }
+  }
+
+  /**
+   * Wakes the Ember Warden of each shrine near the player whose ancient chest was never opened (call about once a
+   * second). It stands by the pedestal; the chest stays shut while it lives.
+   */
+  wakeGuardians(player: Player): void {
+    const creatures = this.creatures, b = player.body;
+    if (!creatures || this.mode !== 'survival' || DIFFICULTY[this.difficulty].hostiles <= 0) return;
+    const r = toCells(GUARD_M) * 2, px = Math.floor(b.x), pz = Math.floor(b.z);
+    for (const site of sitesNear(this.seed, px - r, pz - r, px + r, pz + r)) {
+      if (site.kind !== 'shrine') continue;
+      const ground = this.world.surfaceAt(site.x, site.z);
+      if (ground === undefined) continue;
+      const floor = undergroundFloor(this.seed, 'shrine', site.x, site.z, ground);
+      if (Math.abs(b.y - floor) > r || BLOCKS.type(this.world.get(site.x, floor + 1, site.z)) !== ANCIENT) continue;
+      if (this.chests.has(`${site.x},${floor + 1},${site.z}`) || creatures.guardianNear(site.x + 0.5, floor, site.z + 0.5, r)) continue;
+      creatures.add(WARDEN, site.x + 0.5, floor, site.z - 1.5, WARDEN.health);
+      this.toast('Something stirs in the shrine…', 3);
+    }
   }
 
   /** Riding a boat (saved; the player's body follows it). */
@@ -484,7 +518,7 @@ export class Play {
       }
       const c = creatures?.list.find((k) => k.body === h.body);
       if (c && creatures!.damage(c, p.damage, p.x - p.vx, p.z - p.vz) && this.mode === 'survival') {
-        this.stats.killed++;
+        this.defeated(c);
         for (const loot of lootOf(c)) this.drop(loot, c.body.x, c.body.y, c.body.z);
       }
     }
@@ -662,6 +696,10 @@ export class Play {
         return;
       }
       if (type === CHEST || type === ANCIENT) {
+        if (type === ANCIENT && this.creatures?.guardianNear(t.x + 0.5, t.y, t.z + 0.5, toCells(GUARD_M))) {
+          this.toast('The Ember Warden guards the chest.', 2);
+          return;
+        }
         const key = `${t.x},${t.y},${t.z}`;
         this.chestSlots(key, state);
         this.openChest = key;

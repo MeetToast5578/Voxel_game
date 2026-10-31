@@ -91,7 +91,7 @@ export class Creatures {
       const c = this.list[i]!;
       const d = Math.hypot(c.body.x - p.x, c.body.z - p.z);
       // Out of range, a monster caught far away by daylight, or any monster when the difficulty allows none: gone.
-      if (d > toCells(DESPAWN_M) || (c.species.hostile && ((ctx.day && d > toCells(SPAWN_MIN_M) && this.rand() < dt * 0.2) || ctx.hostiles <= 0))) {
+      if (d > toCells(DESPAWN_M) || (c.species.hostile && ((ctx.day && !c.species.guardian && d > toCells(SPAWN_MIN_M) && this.rand() < dt * 0.2) || ctx.hostiles <= 0))) {
         this.list.splice(i, 1);
         continue;
       }
@@ -114,6 +114,7 @@ export class Creatures {
   }
 
   private active(c: Creature, ctx: CreatureContext): boolean {
+    if (c.species.guardian) return true;
     if (c.species.hostile) return !ctx.day || this.light(c) < 7;
     return c.species.nocturnal ? !ctx.day : ctx.day;
   }
@@ -318,6 +319,7 @@ export class Creatures {
 
   /** Lava and campfires set a creature alight and water puts it out; returns whether it burned to death. */
   private burn(c: Creature, dt: number, ctx: CreatureContext): boolean {
+    if (c.species.guardian) return false;
     const b = c.body, key = BLOCKS.type(this.world.get(Math.floor(b.x), Math.floor(b.y + 0.1), Math.floor(b.z))).key;
     if (key === 'lava' || key === 'flowing_lava' || key === 'campfire') c.burning = BURN_S;
     if (ctx.waterAt(Math.floor(b.x), Math.floor(b.y + b.height * 0.5), Math.floor(b.z))) c.burning = 0;
@@ -444,6 +446,11 @@ export class Creatures {
     for (let k = 0; k < n && this.list.length < CREATURE_CAP; k++) {
       this.add(s, x + 0.5 + (this.rand() - 0.5) * 3, y, z + 0.5 + (this.rand() - 0.5) * 3, Math.round(s.health * tough));
     }
+  }
+
+  /** Whether a guardian is within `reach` cells of (x, y, z). */
+  guardianNear(x: number, y: number, z: number, reach: number): boolean {
+    return this.list.some((c) => c.species.guardian && Math.hypot(c.body.x - x, c.body.y - y, c.body.z - z) < reach);
   }
 
   add(s: Species, x: number, y: number, z: number, health: number): Creature {

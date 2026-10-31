@@ -12,7 +12,7 @@ world is made of 16×16×16 chunks (9.6 m) with no height limit.
 - **Survival with a goal:** find three beacon shards in ember shrines deep underground, craft a beacon with ember
   crystals, and light it on a mountaintop above 150 m. On the way: ruins, watchtowers, camps, old mines and dark
   vaults with loot; skulkers, cave crawlers and frost brutes; body temperature, armour, bows, farming and fishing;
-  a journal of 20 milestones.
+  a journal of 21 milestones.
 - **Play:** creative and survival; inventory, crafting, furnaces, tools that wear out, health, hunger and breath;
   torches, doors, beds, stairs, slabs and chests; dropped items; 12 creature species, some of them hostile at night.
 - **Saves:** automatic, in the browser (IndexedDB). Worlds can be exported and imported as files from the pause menu.
