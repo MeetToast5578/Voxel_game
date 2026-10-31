@@ -128,7 +128,8 @@ try {
   const edits = await page.evaluate(async () => {
     const n = window.__game;
     const results = [];
-    for (let i = 0; i < 5; i++) {
+    // The first edits run cold code (JIT, first light pass); three warm-up edits are not counted.
+    for (let i = 0; i < 8; i++) {
       const x = Math.floor(n.player.body.x) + 2 + i, z = Math.floor(n.player.body.z) + 2;
       const y = n.world.surfaceAt(x, z) + 1;
       const t0 = performance.now();
@@ -145,7 +146,7 @@ try {
         };
         requestAnimationFrame(tick);
       });
-      results.push({ syncMs: Math.round(syncMs * 100) / 100, frames });
+      if (i >= 3) results.push({ syncMs: Math.round(syncMs * 100) / 100, frames });
     }
     return results;
   });
