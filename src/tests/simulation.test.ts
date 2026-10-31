@@ -162,3 +162,27 @@ describe('ticks at the edge of the loaded area', () => {
     expect(t.takeDue().map((k) => k.x)).toEqual([100]);
   });
 });
+
+describe('weather', () => {
+  it('freezes still water from the banks inward until the pond is ice', () => {
+    // A 7 x 7 pond at y = 0 with stone banks around it.
+    const pond = (x: number, z: number) => x >= 0 && x < 7 && z >= 0 && z < 7;
+    const { world, sim } = setup((x, y, z) => (y < 0 || (y === 0 && !pond(x, z)) ? S('stone') : y === 0 ? S('water') : 0));
+    sim.weather = { precipitation: 'none', seasonC: -40 };
+    const ICE = S('ice'), solid = (x: number, z: number) => world.get(x, 0, z) === ICE || !pond(x, z);
+    let frozen = 0;
+    for (let step = 0; step < 40000 && frozen < 49; step++) {
+      sim.step(3, 3);
+      if (step % 100 !== 0) continue;
+      frozen = 0;
+      for (let x = 0; x < 7; x++) for (let z = 0; z < 7; z++) {
+        if (world.get(x, 0, z) !== ICE) continue;
+        frozen++;
+        // Every ice cell touches the bank or other ice.
+        expect(solid(x + 1, z) || solid(x - 1, z) || solid(x, z + 1) || solid(x, z - 1)).toBe(true);
+      }
+    }
+    expect(frozen).toBe(49);
+  });
+});
+

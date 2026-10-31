@@ -124,6 +124,12 @@ export class Simulation {
    * Snow and ice at the top of each column near the player: snow settles in layers while it snows and below
    * freezing, still water freezes over when cold, and both melt again when it is warm.
    */
+  /** Whether a cell has solid ground or ice beside it: ice grows out from the banks, not in scattered cells. */
+  private byShore(x: number, y: number, z: number): boolean {
+    for (const [dx, dz] of [[1, 0], [-1, 0], [0, 1], [0, -1]] as const) if ((FLAGS[this.world.get(x + dx, y, z + dz)]! & SOLID) !== 0) return true;
+    return false;
+  }
+
   private weatherTicks(pcx: number, pcz: number): void {
     const w = this.weather;
     if (!w) return;
@@ -137,7 +143,7 @@ export class Simulation {
         const s = this.world.get(x, y, z), above = this.world.get(x, y + 1, z);
         const r = this.rand();
         if (temp <= 0) {
-          if (s === WATER.source && above === AIR && r < ICE_FREEZE_CHANCE) this.setBlock(x, y, z, ICE);
+          if (s === WATER.source && above === AIR && r < ICE_FREEZE_CHANCE && this.byShore(x, y, z)) this.setBlock(x, y, z, ICE);
           else if (w.precipitation === 'snow' && r < SNOW_SETTLE_CHANCE) {
             if (above >= SNOW && above < SNOW + SNOW_LAYERS - 1) this.setBlock(x, y + 1, z, above + 1);
             else if (above === AIR && (FLAGS[s]! & OPAQUE) !== 0) this.setBlock(x, y + 1, z, SNOW);
