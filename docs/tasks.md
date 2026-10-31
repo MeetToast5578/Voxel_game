@@ -273,6 +273,67 @@ All of it stays procedural: no asset files.
   strikes that can set fire to the ground or hurt a player in the open.
   **Done when:** a test shows strikes only during storms and only on open ground.
 
+## 12. Close the gaps (after 0.3.0)
+
+- [ ] **12.1 Save migration** (rest of 10.3). A save version with an upgrade step, and a backup made before upgrading.
+  **Done when:** a test upgrades a world saved by the version before.
+- [ ] **12.2 Fire.** A fire block that spreads to wood, leaves and grass, burns out, and is put out by rain and water.
+  Lightning and lava can start it.
+  **Done when:** a test burns a wooden hut down and the fire goes out by itself.
+- [ ] **12.3 Rivers push.** Generated rivers carry the player, boats and drops downstream, like flowing water does.
+  **Done when:** a physics test drifts a boat down a generated river.
+- [ ] **12.4 Boats stay.** A boat you step out of stays on the water; hitting it takes it back.
+  **Done when:** a test leaves a boat, walks away, comes back and takes it.
+- [ ] **12.5 Catch-up for all growth.** Saplings, grass and regrowth also catch up while their chunk was unloaded.
+  **Done when:** a test unloads a sapling for a day and finds a tree.
+- [ ] **12.6 Old chests stay empty.** Chests placed in an old world never roll loot.
+  **Done when:** a test loads an old save with a placed chest and it opens empty.
+- [ ] **12.7 The Ember Warden remembers its wounds.** It keeps its health while the player is away.
+  **Done when:** a test leaves and returns and the warden is as hurt as before.
+- [ ] **12.8 Shores by waves.** Stony shores where the coast faces open sea, sandbars in shallow bays and river bends.
+  **Done when:** seed 1 shows both where expected.
+
+## 13. New content
+
+- [ ] **13.1 Villages and traders.** Small villages on flat land with a few houses, fields and traders who swap
+  goods for ore, food and wool.
+  **Decide:** what traders sell (proposed: seeds, maps to shrines, armour, rare dyes).
+  **Done when:** a village appears within 1 km of spawn on most seeds, and a trade works both ways.
+- [ ] **13.2 Ember upgrades.** At an ember forge, spend ember crystals to upgrade a tool or armour piece: faster digging,
+  more durability, more protection or warmth.
+  **Done when:** an upgraded pickaxe digs faster in a test, and the upgrade shows in the tooltip.
+- [ ] **13.3 Signs and item frames.** Write on a sign; show an item in a frame on a wall.
+  **Done when:** both survive a save and reload.
+- [ ] **13.4 Monsters by biome and a harder night.** One new monster each for deserts, swamps and snow; nights get a
+  little harder the longer the world runs, capped by difficulty.
+  **Done when:** each biome spawns its monster in a test, and day 20 spawns more than day 1.
+- [ ] **13.5 Rewards for the journal.** Each milestone gives something useful (a map, a stack of torches, a recipe).
+  **Done when:** reaching a milestone puts its reward in the inventory.
+
+## 14. More ideas (not decided)
+
+Ideas for later. Pick, change or drop them; they become tasks once decided.
+
+- **Tame wolves:** feed a wolf bones; it follows and fights for you.
+- **Riding:** tame and ride horses on grassland and camels in deserts.
+- **Brewing:** potions from flowers, mushrooms and ember dust: night vision, warmth, healing, water breathing.
+- **Dyes:** colours from flowers for wool, glass and beds.
+- **Cooking:** a cooking pot for stews and pies that fill more hunger than single foods.
+- **Beekeeping:** hives in flower meadows give honey (food) and wax (candles).
+- **Simple mechanisms:** levers, buttons and pressure plates that open doors and light lamps.
+- **Rails and carts:** fast travel and hauling ore out of mines.
+- **Lore:** notes and books in ruins and vaults that tell the story of the beacons and the shrines.
+- **The Ember Depths:** a cavern layer of lava lakes below −200 m with its own monsters and ore.
+- **After the beacon:** a second goal once the first beacon is lit, such as lighting a beacon on each continent.
+- **Map markers:** pin places on the map; the compass can point to a pin.
+- **Tents:** a light bed for travelling that sets a temporary spawn.
+- **Seasons that matter:** crops only grow in their season, animals move south in winter, rivers freeze.
+- **Hardcore mode:** one life; the world is deleted on death.
+- **Challenge seeds:** a weekly seed with a set goal and a time to beat.
+- **Accessibility:** subtitles for sounds, colour-blind safe icons, a hold-to-toggle option for every held key.
+- **Photo mode:** hide the interface, move the camera freely and save a picture.
+- **Multiplayer** (large): play a world with a friend over the network.
+
 ---
 
 ## Decisions the owner needs to make
@@ -292,3 +353,4 @@ All of it stays procedural: no asset files.
 4. 5 and 6: reasons to explore.
 5. 7, 8 and 9 alongside the above, as smaller tasks.
 6. Milestone 10 last.
+7. After 0.3.0: 12.1 and 12.2 first (save safety, then fire), then 13 in any order, 12.3–12.8 as smaller tasks.
