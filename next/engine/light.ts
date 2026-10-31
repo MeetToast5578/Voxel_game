@@ -20,6 +20,8 @@ const MAX_LIGHT_ = MAX_LIGHT;
 const FLAGS = BLOCKS.flags;
 const EMISSION = BLOCKS.emission;
 const DX = [1, -1, 0, 0, 0, 0], DY = [0, 0, 1, -1, 0, 0], DZ = [0, 0, 0, 0, 1, -1];
+/** Whether each cell of the chunk being lit lets light through; reused, since workers light one chunk at a time. */
+const OPEN_SCRATCH = new Uint8Array(CHUNK_VOLUME);
 
 /**
  * The light bytes (sky << 4 | block) of one chunk on its own, as if its neighbours were dark: direct sky above the sky
@@ -27,46 +29,53 @@ const DX = [1, -1, 0, 0, 0, 0], DY = [0, 0, 1, -1, 0, 0], DZ = [0, 0, 0, 0, 1, -
  */
 export function chunkLight(states: Uint16Array, cy: number, skyTop: Int32Array): Uint8Array {
   const light = new Uint8Array(CHUNK_VOLUME_);
+  const open = OPEN_SCRATCH;
   const queue = new IntQueue(512);
   const y0 = cy * CHUNK_SIZE_;
+  let direct = 0, openCells = 0;
   for (let i = 0; i < CHUNK_VOLUME_; i++) {
     const s = states[i]!;
-    const ly = i >> 8, col = i & 255;
-    const sky = y0 + ly > skyTop[col]! && (FLAGS[s]! & OPAQUE) === 0 ? MAX_LIGHT_ : 0;
+    const o = (FLAGS[s]! & OPAQUE) === 0 ? 1 : 0;
+    open[i] = o;
+    openCells += o;
+    const sky = o === 1 && y0 + (i >> 8) > skyTop[i & 255]! ? MAX_LIGHT_ : 0;
+    if (sky) direct++;
     const block = EMISSION[s]!;
     light[i] = (sky << 4) | block;
     if (block > 0) queue.push(i);
   }
-  // Direct-sky cells only need spreading where they border a non-opaque cell without direct sky.
+  // Nothing can spread when the chunk is all solid, or every open cell already has direct sky and nothing glows.
+  if (openCells === 0 || (direct === openCells && queue.length === 0)) return light;
+  // Direct-sky cells only need spreading where they border an open cell without direct sky.
+  const dim = (n: number) => open[n] === 1 && light[n]! >> 4 !== MAX_LIGHT_;
   for (let i = 0; i < CHUNK_VOLUME_; i++) {
     if (light[i]! >> 4 !== MAX_LIGHT_) continue;
     const lx = i & 15, lz = (i >> 4) & 15, ly = i >> 8;
-    for (let d = 0; d < 6; d++) {
-      const x = lx + DX[d]!, y = ly + DY[d]!, z = lz + DZ[d]!;
-      if (x < 0 || x > 15 || y < 0 || y > 15 || z < 0 || z > 15) continue;
-      const n = localIndex(x, y, z);
-      if ((FLAGS[states[n]!]! & OPAQUE) === 0 && light[n]! >> 4 !== MAX_LIGHT_) {
-        queue.push(i);
-        break;
-      }
-    }
+    if ((lx > 0 && dim(i - 1)) || (lx < 15 && dim(i + 1)) || (lz > 0 && dim(i - 16)) || (lz < 15 && dim(i + 16)) ||
+      (ly > 0 && dim(i - 256)) || (ly < 15 && dim(i + 256))) queue.push(i);
   }
+  let sky = 0, block = 0;
+  const visit = (n: number) => {
+    if (open[n] === 0) return;
+    const nv = light[n]!, ns = nv >> 4, nb = nv & 15;
+    if (sky - 1 > ns || block - 1 > nb) {
+      light[n] = (Math.max(ns, sky - 1) << 4) | Math.max(nb, block - 1);
+      queue.push(n);
+    }
+  };
   while (queue.length > 0) {
     const i = queue.shift();
-    const v = light[i]!, sky = v >> 4, block = v & 15;
+    const v = light[i]!;
+    sky = v >> 4;
+    block = v & 15;
     if (sky <= 1 && block <= 1) continue;
     const lx = i & 15, lz = (i >> 4) & 15, ly = i >> 8;
-    for (let d = 0; d < 6; d++) {
-      const x = lx + DX[d]!, y = ly + DY[d]!, z = lz + DZ[d]!;
-      if (x < 0 || x > 15 || y < 0 || y > 15 || z < 0 || z > 15) continue;
-      const n = localIndex(x, y, z);
-      if ((FLAGS[states[n]!]! & OPAQUE) !== 0) continue;
-      const nv = light[n]!, ns = Math.max(nv >> 4, sky - 1), nb = Math.max(nv & 15, block - 1);
-      if (ns !== nv >> 4 || nb !== (nv & 15)) {
-        light[n] = (ns << 4) | nb;
-        queue.push(n);
-      }
-    }
+    if (lx > 0) visit(i - 1);
+    if (lx < 15) visit(i + 1);
+    if (lz > 0) visit(i - 16);
+    if (lz < 15) visit(i + 16);
+    if (ly > 0) visit(i - 256);
+    if (ly < 15) visit(i + 256);
   }
   return light;
 }
