@@ -1,194 +1,120 @@
 import * as THREE from 'three';
-import {
-  CAMERA_FAR_M, CHUNK_SIZE, DEFAULT_FOV, DEFAULT_RENDER_DISTANCE, metersToBlocks, SKY_COLOR, UNDERWATER_COLOR,
-  UNDERWATER_FAR_M, WATER_OPACITY, terrainTransition, WIND_FULL_M_S,
-} from '../config';
-import { createAtlasCanvas, createAtlasTexture } from './atlas';
-import { patchLightMaterial, type LightUniforms } from './lightMaterial';
-import { foliageSeason } from '../world/calendar';
+import { CAVE_FOG_M, FOG_START_SHARE, HORIZON_RADIUS_M, NIGHT_DAYLIGHT, UNDERWATER_FOG_M, toCells } from '../config';
+import { LAYERS } from '../engine/mesher';
+import { ChunkMeshes } from './chunkMeshes';
+import { Clouds } from './clouds';
+import { Horizon } from './horizon';
+import { Precipitation } from './precipitation';
+import { Sky } from './sky';
+import { terrainMaterial } from './terrainMaterial';
+import { TILE_NAMES, TILE_SIZE, tilePixels } from './tilePixels';
 
+// Colors are written and shown as given (gamma space); the terrain shader does no color conversion either.
+THREE.ColorManagement.enabled = false;
+
+const CAVE_FOG = new THREE.Color(0.02, 0.02, 0.025);
+const WATER_FOG = new THREE.Color(0.06, 0.16, 0.32);
+const HORIZON_CELLS = toCells(HORIZON_RADIUS_M);
+
+/** What the atmosphere looks like this frame. */
+export interface Atmosphere {
+  /** Unit vector towards the sun. */
+  sun: [number, number, number];
+  moonPhase: number;
+  cloudCover: number;
+  /** 0..1: how far the camera is under ground (dark fog, short range). */
+  underground: number;
+  /** Whether the camera is in water. */
+  underwater: boolean;
+  /** Lightning flash, 0..1. */
+  flash: number;
+  autumn: number;
+  summer: number;
+  /** Rotation of the night sky, radians. */
+  starAngle: number;
+}
+
+/** Scene, camera, terrain passes and the sky around them. World units are cells. */
 export class Renderer {
-  readonly webgl: THREE.WebGLRenderer;
+  readonly renderer: THREE.WebGLRenderer;
   readonly scene = new THREE.Scene();
-  /** The block in hand, drawn after the world with the depth buffer cleared (spec 24). */
-  readonly handScene = new THREE.Scene();
   readonly camera: THREE.PerspectiveCamera;
-  readonly atlasCanvas: HTMLCanvasElement;
-  readonly solidMaterial: THREE.MeshBasicMaterial;
-  readonly waterMaterial: THREE.MeshBasicMaterial;
-  /** Dropped items and the block in hand: double-sided, lit like the world. */
-  readonly itemMaterial: THREE.MeshBasicMaterial;
-  /** The crack overlay on a block being broken. */
-  readonly crackMaterial: THREE.MeshBasicMaterial;
-  readonly fog: THREE.Fog;
-  /** Shared by both block materials; uDaylight is 1 at noon and MIN_DAYLIGHT at midnight. */
-  readonly lightUniforms: LightUniforms = { uDaylight: { value: 1 }, uWetness: { value: 0 }, uWind: { value: 0 }, uWindTime: { value: 0 }, uSeason: { value: new THREE.Vector3() } };
-  private readonly background = new THREE.Color(SKY_COLOR);
-  private skyColor = SKY_COLOR;
-  private underwater = false;
-  private atmosphericFog = 0;
-  private viewBlocks = DEFAULT_RENDER_DISTANCE * CHUNK_SIZE;
-  /** Vertical distance to the farthest visible surface (from the loaded column tops), in blocks. */
-  private surfaceDistance = 0;
-  private horizonDistance = 0;
-  private readonly terrainFade = { value: new THREE.Vector2() };
-  /** Draw calls of the world pass in the last frame (the hand pass is not counted). */
-  drawCalls = 0;
+  readonly chunks: ChunkMeshes;
+  readonly uniforms: Record<string, THREE.IUniform>;
+  readonly sky: Sky;
+  readonly clouds: Clouds;
+  readonly precipitation: Precipitation;
+  readonly horizon: Horizon;
+  private viewCells = 192;
 
-  constructor(private readonly container: HTMLElement) {
-    this.webgl = new THREE.WebGLRenderer({ antialias: false, powerPreference: 'high-performance' });
-    this.webgl.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    container.appendChild(this.webgl.domElement);
-
-    this.camera = new THREE.PerspectiveCamera(DEFAULT_FOV, 1, 0.1, metersToBlocks(CAMERA_FAR_M));
-    this.camera.rotation.order = 'YXZ'; // yaw around Y first, then pitch around X
-    this.handScene.add(this.camera); // the held block hangs off the camera
-
-    this.scene.background = this.background;
-    this.fog = new THREE.Fog(SKY_COLOR, 50, 100);
-    this.scene.fog = this.fog;
-
-    this.atlasCanvas = createAtlasCanvas();
-    const atlas = createAtlasTexture(this.atlasCanvas);
-    this.solidMaterial = new THREE.MeshBasicMaterial({ map: atlas, vertexColors: true, alphaTest: 0.5, alphaHash: true });
-    this.waterMaterial = new THREE.MeshBasicMaterial({
-      map: atlas,
-      vertexColors: true,
-      transparent: true,
-      opacity: WATER_OPACITY,
-      depthWrite: false,
-      side: THREE.DoubleSide,
-    });
-    this.itemMaterial = new THREE.MeshBasicMaterial({ map: atlas, vertexColors: true, alphaTest: 0.5, side: THREE.DoubleSide });
-    this.crackMaterial = new THREE.MeshBasicMaterial({
-      map: atlas, vertexColors: true, alphaTest: 0.5, side: THREE.DoubleSide,
-      polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4,
-    });
-    patchLightMaterial(this.solidMaterial, this.lightUniforms, true, this.terrainFade, true);
-    patchLightMaterial(this.waterMaterial, this.lightUniforms, false, this.terrainFade, false, true);
-    patchLightMaterial(this.itemMaterial, this.lightUniforms);
-
-    window.addEventListener('resize', this.resize);
+  constructor(canvas: HTMLCanvasElement, seed: number, viewCells: number) {
+    this.renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance' });
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    this.renderer.outputColorSpace = THREE.LinearSRGBColorSpace;
+    this.camera = new THREE.PerspectiveCamera(70, 1, 0.1, HORIZON_CELLS * 1.2);
+    const tiles = new THREE.DataArrayTexture(tilePixels(), TILE_SIZE, TILE_SIZE, TILE_NAMES.length);
+    tiles.magFilter = THREE.NearestFilter;
+    tiles.minFilter = THREE.NearestMipmapLinearFilter;
+    tiles.generateMipmaps = true;
+    tiles.needsUpdate = true;
+    this.uniforms = {
+      tiles: { value: tiles },
+      daylight: { value: 1 },
+      time: { value: 0 },
+      fogColor: { value: new THREE.Color() },
+      fogNear: { value: 100 },
+      fogFar: { value: 200 },
+      autumn: { value: 0 },
+      summer: { value: 0 },
+    };
+    this.sky = new Sky(this.scene, seed);
+    this.clouds = new Clouds(this.scene, seed);
+    this.precipitation = new Precipitation(this.scene);
+    this.chunks = new ChunkMeshes(this.scene, LAYERS.map((layer) => terrainMaterial(layer, this.uniforms, this.renderer.extensions.has('WEBGL_multi_draw'))));
+    this.horizon = new Horizon(this.scene, this.uniforms, viewCells * 0.85);
+    this.setViewDistance(viewCells);
     this.resize();
+    window.addEventListener('resize', () => this.resize());
   }
 
-  get canvas(): HTMLCanvasElement {
-    return this.webgl.domElement;
+  setViewDistance(cells: number): void {
+    this.viewCells = cells;
+    // The far terrain starts a little inside the loaded chunks, which cover it where they exist.
+    this.horizon.setHole(cells * 0.9);
+    this.horizon.setInner(cells * 0.85);
   }
 
-  /** Fog hides the edge of the loaded world. renderDistance is in chunks. */
-  setViewDistance(renderDistance: number): void {
-    this.viewBlocks = renderDistance * CHUNK_SIZE;
-    this.updateFar();
-    this.applyFog();
+  /** Daylight, sky, fog and the seasons for this frame. */
+  setAtmosphere(a: Atmosphere): void {
+    const day = Math.min(1, Math.max(0, (a.sun[1] + 0.15) / 0.4));
+    this.uniforms.daylight!.value = Math.min(1, (NIGHT_DAYLIGHT + (1 - NIGHT_DAYLIGHT) * day) * (1 - 0.35 * a.cloudCover) + a.flash * 0.5);
+    this.sky.update(this.camera, HORIZON_CELLS * 1.1, a.sun, a.moonPhase, a.cloudCover, a.flash, a.starAngle, a.underground);
+    this.clouds.visible = a.underground < 0.5;
+    // Above ground the fog fades into the sky's horizon colour out to the far terrain; under ground it closes in
+    // and turns dark.
+    const fog = this.uniforms.fogColor!.value as THREE.Color;
+    fog.copy(this.sky.horizon).lerp(CAVE_FOG, a.underground);
+    this.uniforms.fogNear!.value = THREE.MathUtils.lerp(this.viewCells * FOG_START_SHARE, toCells(CAVE_FOG_M) * 0.2, a.underground);
+    this.uniforms.fogFar!.value = THREE.MathUtils.lerp(HORIZON_CELLS, toCells(CAVE_FOG_M), a.underground);
+    if (a.underwater) {
+      fog.copy(WATER_FOG).multiplyScalar(0.3 + 0.7 * (this.uniforms.daylight!.value as number));
+      this.uniforms.fogNear!.value = 0;
+      this.uniforms.fogFar!.value = toCells(UNDERWATER_FOG_M);
+    }
+    this.renderer.setClearColor(fog);
+    this.uniforms.autumn!.value = a.autumn;
+    this.uniforms.summer!.value = a.summer;
   }
 
-  /**
-   * The far plane covers the horizontal view distance plus the vertical distance to the farthest loaded surface,
-   * so hills seen from a valley (or the valley seen from a mountain) are not clipped. Fog is horizontal only.
-   */
-  setSurfaceDistance(blocks: number): void {
-    const rounded = Math.ceil(blocks / CHUNK_SIZE) * CHUNK_SIZE; // avoid a projection update every frame
-    if (rounded === this.surfaceDistance) return;
-    this.surfaceDistance = rounded;
-    this.updateFar();
-  }
-
-  setHorizonDistance(blocks: number): void {
-    if (blocks === this.horizonDistance) return;
-    this.horizonDistance = blocks; this.updateFar(); this.applyFog();
-  }
-
-  get horizonEnvironment(): { daylight: number; sky: number; haze: number } {
-    return { daylight: this.lightUniforms.uDaylight.value, sky: this.skyColor, haze: this.atmosphericFog };
-  }
-
-  private updateFar(): void {
-    this.camera.far = Math.max(this.horizonDistance * 1.5, metersToBlocks(CAMERA_FAR_M), Math.hypot(this.viewBlocks, this.surfaceDistance) + 64);
-    this.camera.updateProjectionMatrix();
-  }
-
-  /** Sky and fog color (changes with the time of day). */
-  setSkyColor(color: number): void {
-    if (color === this.skyColor) return;
-    this.skyColor = color;
-    this.applyFog();
-  }
-
-  /** Short-range blue fog while the camera is inside water. */
-  setUnderwater(underwater: boolean): void {
-    if (underwater === this.underwater) return;
-    this.underwater = underwater;
-    this.applyFog();
-  }
-
-  /** Foliage sway (T-F5): strength from the wind speed in m/s, and its clock advanced by the frame time. */
-  setWind(windSpeed: number, frameDt: number): void {
-    this.lightUniforms.uWind.value = Math.max(0, Math.min(1, windSpeed / WIND_FULL_M_S));
-    this.lightUniforms.uWindTime.value += frameDt;
-  }
-
-  /** Seasonal foliage (T-F7) for a time of year, 0 = spring equinox. */
-  setSeason(timeOfYear: number): void {
-    const s = foliageSeason(timeOfYear);
-    this.lightUniforms.uSeason.value.set(s.autumn, s.bare, s.summer);
-  }
-
-  setDaylight(daylight: number): void {
-    this.lightUniforms.uDaylight.value = daylight;
-  }
-
-  setAtmosphericFog(strength: number): void {
-    const next = Math.max(0, Math.min(1, strength));
-    if (Math.abs(next - this.atmosphericFog) < 0.005) return;
-    this.atmosphericFog = next;
-    this.applyFog();
-  }
-
-  setWetness(wetness: number): void {
-    this.lightUniforms.uWetness.value = Math.max(0, Math.min(1, wetness));
-  }
-
-  /** Renders at this share of the screen's pixel density (at most 2), for the resolution setting (T-J7). */
-  setResolution(scale: number): void {
-    this.webgl.setPixelRatio(Math.min(window.devicePixelRatio, 2) * scale);
-  }
-
-  setFov(fov: number): void {
-    this.camera.fov = fov;
-    this.camera.updateProjectionMatrix();
-  }
-
-  setCamera(x: number, y: number, z: number, yaw: number, pitch: number): void {
-    this.camera.position.set(x, y, z);
-    this.camera.rotation.set(pitch, yaw, 0); // order is YXZ (set in the constructor)
-  }
-
-  render(): void {
-    this.camera.updateMatrixWorld(); // the camera is in handScene, so it is not updated by the world pass
-    this.webgl.autoClear = true;
-    this.webgl.render(this.scene, this.camera);
-    this.drawCalls = this.webgl.info.render.calls;
-    this.webgl.autoClear = false; // keep the world; clear only the depth so the hand is never inside a wall
-    this.webgl.clearDepth();
-    this.webgl.render(this.handScene, this.camera);
-  }
-
-  private applyFog(): void {
-    const fade = terrainTransition(this.viewBlocks);
-    this.terrainFade.value.set(fade.start, this.horizonDistance > 0 && !this.underwater ? fade.end : 0);
-    const color = this.underwater ? UNDERWATER_COLOR : this.skyColor;
-    this.fog.color.setHex(color);
-    this.background.setHex(color);
-    this.fog.near = this.underwater ? 0.1 : this.viewBlocks * 0.6 * (1 - this.atmosphericFog * 0.85);
-    this.fog.far = this.underwater ? metersToBlocks(UNDERWATER_FAR_M) : (this.horizonDistance || this.viewBlocks * 0.95) * (1 - this.atmosphericFog * 0.65);
-  }
-
-  private readonly resize = (): void => {
-    const w = this.container.clientWidth || window.innerWidth;
-    const h = this.container.clientHeight || window.innerHeight;
-    this.webgl.setSize(w, h);
+  resize(): void {
+    const w = window.innerWidth, h = window.innerHeight;
+    this.renderer.setSize(w, h);
     this.camera.aspect = w / h;
     this.camera.updateProjectionMatrix();
-  };
+  }
+
+  render(time: number): void {
+    this.uniforms.time!.value = time;
+    this.renderer.render(this.scene, this.camera);
+  }
 }

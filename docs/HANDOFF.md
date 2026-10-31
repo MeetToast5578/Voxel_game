@@ -1,5 +1,22 @@
 # Handoff: Voxel Game (MeetToast5578/Voxel_game)
 
+## 2026-10-31 — switch-over: the rewrite is the game (Claude)
+
+The owner merged the rewrite (PR #58) and asked for the old game to go (spec 54, phase 12).
+- **Removed:** the old 0.3 m game: `src/`, `tests/` and its scripts (`smoke`, `render-smoke`, `platform-smoke`,
+  `world-transfer-smoke`, `terrain-review`, the old `benchmark`).
+- **Moved:** `next/` is now `src/` (tests in `src/tests`), and `next.html` is now `index.html`.
+- **Renamed:** `scripts/next-smoke.mjs` is `scripts/smoke.mjs` (`npm run smoke`), and `scripts/next-benchmark.mjs` is
+  `scripts/benchmark.mjs` (`npm run benchmark`). The browser test hook is `window.__game`.
+- **CI:** two jobs. `check` runs `npm run check` and `benchmark --assert`; `smoke` runs `npm run smoke`.
+- **Kept:** the offline service worker (`scripts/offline-shell.mjs`) is now registered by the new game.
+- **Saves:** old saves are not migrated; worlds made in the new game keep working (database `voxel-next`).
+- **Docs:** README rewritten for the new game. ROADMAP, tasks, OPEN-TASKS, REFERENCE-GAPS and specs 1–53 carry a note
+  that they describe the old code. Entries below this one use the old names (`next/`, `next.html`).
+- **Ice** grows from the banks inward: water freezes only beside solid ground or ice, instead of in random cells.
+- **Drops:** in survival, broken blocks (and broken chests, furnaces and hunted creatures) pop their items out into
+  the world, as the old game did; walk within 1.5 m to pick them up.
+
 ## 2026-10-30 — engine rewrite, phase 1 (Claude)
 
 The owner chose a full rewrite at 0.6 m blocks (16³ chunks, 9.6 m). It is built in `next/` beside the old game, which

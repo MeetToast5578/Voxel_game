@@ -1,95 +1,103 @@
-// Optional BENCHMARK_SEED and BENCHMARK_CHUNK_X/Z select the surface fixture; BENCHMARK_PROFILE=1 runs 30 passes for CPU profiling.
-// Run sequentially with browser tests idle: node scripts/benchmark.mjs [--assert-generation-budget] [--assert-mesh-budget]
-// The worker executes the game's actual pure modules. Region/cold-column/spawn preparation is timed separately.
-import { Worker, isMainThread, parentPort, workerData } from 'node:worker_threads';
+// Times the new engine's chunk generation and meshing on a fixed surface fixture.
+// Usage: node scripts/benchmark.mjs [--assert]   (gates per chunk: generation < 2 ms, meshing < 1 ms,
+// worker light < 1 ms, main-thread light stitching < 1 ms)
 import { fileURLToPath } from 'node:url';
 import { createHash } from 'node:crypto';
 import { createServer } from 'vite';
 
-if (isMainThread) {
-  const result = await new Promise((resolve, reject) => {
-    const worker = new Worker(new URL(import.meta.url), {workerData:{seed:Number(process.env.BENCHMARK_SEED || 1),chunkX:Number(process.env.BENCHMARK_CHUNK_X || 0),chunkZ:Number(process.env.BENCHMARK_CHUNK_Z || 0),profile:process.env.BENCHMARK_PROFILE === '1'}});
-    let report;
-    worker.once('message', value => { report = value; });
-    worker.once('error', reject);
-    worker.once('exit', code => {
-      if (code !== 0) reject(new Error(`benchmark worker exited ${code}`));
-      else if (!report) reject(new Error('benchmark worker exited without measurements'));
-      else resolve(report);
-    });
-  });
-  console.log(JSON.stringify(result,null,2));
-  // On GitHub Actions the job log is not always retrievable; annotations are readable from the run page and the API,
-  // so a red budget names its measured numbers instead of only "exit code 1".
-  const onActions = process.env.GITHUB_ACTIONS === 'true';
-  const annotate = (level, title, message) => {
-    if (onActions) console.log(`::${level} title=${title}::${String(message).replace(/%/g, '%25').replace(/\r/g, '%0D').replace(/\n/g, '%0A')}`);
-  };
-  const ms = value => (Number.isFinite(value) ? value.toFixed(3) : String(value));
-  const passes = summary => `pass means [${summary.passMeansMs.map(ms).join(', ')}] ms, median ${ms(summary.medianMs)} ms, max ${ms(summary.maxMs)} ms`;
-  const summary = `${result.runtime}, ${result.surfaceChunks} chunks: meshing mean ${ms(result.meshing.meanMs)} ms (${passes(result.meshing)}); `
-    + `generation mean ${ms(result.generation.meanMs)} ms (${passes(result.generation)}); mesh sha256 ${result.meshSha256}`;
-  annotate('notice', 'benchmark', summary);
-  const overBudget = (summary, budget) => !Number.isFinite(summary.meanMs) || summary.meanMs > budget;
-  if (process.argv.includes('--assert-generation-budget') && overBudget(result.generation, 3)) {
-    annotate('error', 'generation budget', `${summary}; budget 3 ms`);
-    throw new Error(`warm surface chunk generation exceeds 3 ms: mean ${ms(result.generation.meanMs)} ms; ${passes(result.generation)}`);
-  }
-  if (process.argv.includes('--assert-mesh-budget') && overBudget(result.meshing, 3)) {
-    annotate('error', 'mesh budget', `${summary}; budget 3 ms`);
-    throw new Error(`surface chunk meshing exceeds 3 ms: mean ${ms(result.meshing.meanMs)} ms; ${passes(result.meshing)}`);
-  }
-} else {
-  const root=fileURLToPath(new URL('../',import.meta.url));
-  const vite=await createServer({root,configFile:false,server:{middlewareMode:true},optimizeDeps:{noDiscovery:true}});
-  try {
-    const {TerrainGenerator}=await vite.ssrLoadModule('/src/world/generator.ts');
-    const {Chunk}=await vite.ssrLoadModule('/src/world/chunk.ts');
-    const {ClimateSampler}=await vite.ssrLoadModule('/src/world/shape.ts');
-    const {simulateRegion,climateHeightSource}=await vite.ssrLoadModule('/src/world/region.ts');
-    const {findSpawnColumn}=await vite.ssrLoadModule('/src/world/spawn.ts');
-    const {buildChunkMesh}=await vite.ssrLoadModule('/src/render/mesher.ts');
-    const {neighborIndex}=await vite.ssrLoadModule('/src/world/light.ts');
-    const summary=values=>({samples:values.length,meanMs:values.reduce((a,b)=>a+b,0)/values.length,
-      medianMs:[...values].sort((a,b)=>a-b)[Math.floor(values.length/2)],maxMs:Math.max(...values)});
-    const timed=fn=>{const t=performance.now();fn();return performance.now()-t;};
-    const regions=[];
-    for(let x=0;x<3;x++){
-      const climate=new ClimateSampler(1337);
-      regions.push(timed(()=>simulateRegion(climateHeightSource((x,z)=>climate.fields(x,z)),x,0)));
-    }
-    const spawns=[];
-    for(let seed=1;seed<=30;seed++)spawns.push(timed(()=>findSpawnColumn(new TerrainGenerator(seed))));
-    const coldTops=[];
-    for(let x=0;x<12;x++){
-      const g=new TerrainGenerator(1);
-      for(const dx of [-32,32])for(const dz of [-32,32])g.regionAt(x*16+dx,dz); // Warm all regions within feature reach.
-      coldTops.push(timed(()=>g.columnTops(x,0)));
-    }
-    const g=new TerrainGenerator(workerData.seed), chunks=new Map(),tops=new Map();
-    const topAt=(x,z)=>{const key=`${x},${z}`;if(!tops.has(key))tops.set(key,g.columnTops(x,z));return tops.get(key);};
-    const blockAt=(x,y,z)=>{const key=`${x},${y},${z}`;if(!chunks.has(key)){const c=new Chunk(x,y,z);g.generateChunk(c);chunks.set(key,c.blocks);}return chunks.get(key);};
-    const jobs=[];
-    for(let z=workerData.chunkZ;z<workerData.chunkZ+5;z++)for(let x=workerData.chunkX;x<workerData.chunkX+10;x++){
-      const y=Math.floor(topAt(x,z)[8*16+8]/16),n=new Array(27),t=[];
-      for(let dy=-1;dy<=1;dy++)for(let dz=-1;dz<=1;dz++)for(let dx=-1;dx<=1;dx++)n[neighborIndex(dx,dy,dz)]=blockAt(x+dx,y+dy,z+dz);
-      for(let dz=-1;dz<=1;dz++)for(let dx=-1;dx<=1;dx++)t.push(topAt(x+dx,z+dz));
-      jobs.push({x,y,z,n,t});
-    }
-    for(const job of jobs.slice(0,10)){g.generateChunk(new Chunk(job.x,job.y,job.z));buildChunkMesh(job.n,job.t,job.y,{seed:workerData.seed,cx:job.x,cz:job.z});}
-    const generation=[],meshing=[];const hash=createHash('sha256');
-    for(let pass=0;pass<(workerData.profile ? 30 : 3);pass++){
-      generation.push(timed(()=>{for(const job of jobs)g.generateChunk(new Chunk(job.x,job.y,job.z));})/jobs.length);
-      meshing.push(timed(()=>{for(const job of jobs)buildChunkMesh(job.n,job.t,job.y,{seed:workerData.seed,cx:job.x,cz:job.z});})/jobs.length);
-    }
-    for(const job of jobs){const mesh=buildChunkMesh(job.n,job.t,job.y,{seed:workerData.seed,cx:job.x,cz:job.z});
-      for(const layer of [mesh.solid,mesh.translucent])for(const field of ['positions','uvs','colors','light','indices']){
-        const values=layer[field];hash.update(Buffer.from(values.buffer,values.byteOffset,values.byteLength));
+const root = fileURLToPath(new URL('../', import.meta.url));
+const vite = await createServer({ root, configFile: false, server: { middlewareMode: true }, optimizeDeps: { noDiscovery: true } });
+try {
+  const { Generator } = await vite.ssrLoadModule('/src/worldgen/generator.ts');
+  const { Chunk } = await vite.ssrLoadModule('/src/engine/chunk.ts');
+  const { World } = await vite.ssrLoadModule('/src/engine/world.ts');
+  const { buildMesh, PAD_VOLUME, padIndex } = await vite.ssrLoadModule('/src/engine/mesher.ts');
+  const { chunkLight, LightEngine } = await vite.ssrLoadModule('/src/engine/light.ts');
+  const { CHUNK_SIZE, CHUNK_VOLUME } = await vite.ssrLoadModule('/src/config.ts');
+  const seed = Number(process.env.BENCHMARK_SEED || 1);
+  const span = 5; // a 5 x 5 block of columns; the inner 3 x 3 surface band is meshed
+  const gen = new Generator(seed);
+  const world = new World();
+  const genTimes = [];
+  const lightTimes = [];
+  const stitchTimes = [];
+  const light = new LightEngine(world);
+  const surface = [];
+  for (let cx = -2; cx <= 2; cx++) {
+    for (let cz = -2; cz <= 2; cz++) {
+      const col = gen.column(cx, cz);
+      const lo = Math.floor((col.minTop - 1) / CHUNK_SIZE) - 1, hi = Math.floor((col.maxTop + 1) / CHUNK_SIZE) + 1;
+      for (let cy = lo; cy <= hi; cy++) {
+        const out = new Uint16Array(CHUNK_VOLUME);
+        const t = performance.now();
+        const u = gen.generate(cx, cy, cz, out);
+        genTimes.push(performance.now() - t);
+        if (u >= 0) out.fill(u);
+        let t2 = performance.now();
+        const bytes = chunkLight(out, cy, col.skyTop);
+        lightTimes.push(performance.now() - t2);
+        const chunk = new Chunk(cx, cy, cz, u >= 0 ? u : 0);
+        if (u < 0) chunk.load(out);
+        chunk.loadLight(bytes);
+        const column = world.add(chunk);
+        if (column.chunkCount === 1) { column.skyTop.set(col.skyTop); column.generatedSkyTop.set(col.skyTop); }
+        t2 = performance.now();
+        light.stitch(chunk);
+        stitchTimes.push(performance.now() - t2);
+        if (Math.abs(cx) <= 1 && Math.abs(cz) <= 1 && cy > lo && cy < hi) surface.push([cx, cy, cz, col.climate]);
       }
     }
-    parentPort.postMessage({runtime:process.version,worker:true,seed:workerData.seed,coldColumnSeed:1,regionSeed:1337,surfaceChunks:jobs.length,surfaceOriginChunks:[workerData.chunkX,workerData.chunkZ],
-      regionSimulation:summary(regions),spawnSearch:summary(spawns),coldColumnTopsWithWarmRegion:summary(coldTops),
-      generation:{...summary(generation),meanMs:generation.reduce((a,b)=>a+b,0)/generation.length,passMeansMs:generation},
-      meshing:{...summary(meshing),meanMs:meshing.reduce((a,b)=>a+b,0)/meshing.length,passMeansMs:meshing},meshSha256:hash.digest('hex')});
-  } finally {await vite.close();}
+  }
+  const inputFor = ([cx, cy, cz, climate]) => {
+    const states = new Uint16Array(PAD_VOLUME);
+    for (let y = -1; y <= CHUNK_SIZE; y++) for (let z = -1; z <= CHUNK_SIZE; z++) for (let x = -1; x <= CHUNK_SIZE; x++)
+      states[padIndex(x, y, z)] = world.get(cx * CHUNK_SIZE + x, cy * CHUNK_SIZE + y, cz * CHUNK_SIZE + z);
+    const lightBytes = new Uint8Array(PAD_VOLUME);
+    for (let y = -1; y <= CHUNK_SIZE; y++) for (let z = -1; z <= CHUNK_SIZE; z++) for (let x = -1; x <= CHUNK_SIZE; x++) {
+      const c = world.chunkAt(cx * CHUNK_SIZE + x, cy * CHUNK_SIZE + y, cz * CHUNK_SIZE + z);
+      if (c) lightBytes[padIndex(x, y, z)] = c.lightByte((((y + 16) % 16) * 16 + ((z + 16) % 16)) * 16 + ((x + 16) % 16));
+    }
+    return { states, light: lightBytes, climate };
+  };
+  const inputs = surface.map(inputFor);
+  const hash = createHash('sha256');
+  let meshTimes = [];
+  for (let pass = 0; pass < 3; pass++) {
+    meshTimes = [];
+    for (const input of inputs) {
+      const t = performance.now();
+      const out = buildMesh(input);
+      meshTimes.push(performance.now() - t);
+      if (pass === 0) for (const l of out) hash.update(new Uint8Array(l.buffer));
+    }
+  }
+  // Generation is measured on a fresh generator too, so column preparation is included once per column.
+  const fresh = new Generator(seed + 1);
+  const coldTimes = [];
+  for (let cx = 10; cx < 10 + span; cx++) {
+    const out = new Uint16Array(CHUNK_VOLUME);
+    const col = fresh.column(cx, 0);
+    const t = performance.now();
+    fresh.generate(cx, Math.floor(col.maxTop / CHUNK_SIZE), 0, out);
+    coldTimes.push(performance.now() - t);
+  }
+  const mean = (a) => a.reduce((x, y) => x + y, 0) / a.length;
+  const surfaceGen = genTimes.filter((t) => t > 0.05);
+  const report = {
+    runtime: `node ${process.version}`,
+    chunks: genTimes.length, surfaceChunksMeshed: inputs.length,
+    generationMeanMs: mean(surfaceGen), generationAllMeanMs: mean(genTimes), coldSurfaceMs: mean(coldTimes),
+    meshMeanMs: mean(meshTimes), meshMaxMs: Math.max(...meshTimes),
+    chunkLightMeanMs: mean(lightTimes), stitchMeanMs: mean(stitchTimes), stitchMaxMs: Math.max(...stitchTimes),
+    meshSha256: hash.digest('hex'),
+  };
+  console.log(JSON.stringify(report, null, 2));
+  if (process.argv.includes('--assert')) {
+    if (report.generationMeanMs > 2) throw new Error(`generation ${report.generationMeanMs.toFixed(3)} ms > 2 ms`);
+    if (report.meshMeanMs > 1) throw new Error(`meshing ${report.meshMeanMs.toFixed(3)} ms > 1 ms`);
+    if (report.chunkLightMeanMs > 1) throw new Error(`chunk light ${report.chunkLightMeanMs.toFixed(3)} ms > 1 ms`);
+    if (report.stitchMeanMs > 1) throw new Error(`light stitching ${report.stitchMeanMs.toFixed(3)} ms > 1 ms`);
+  }
+} finally {
+  await vite.close();
 }

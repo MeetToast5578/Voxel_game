@@ -1,5 +1,8 @@
 # Specs
 
+> Specs 1–53 were written for the old 0.3 m game, deleted on 2026-10-31. Their requirements remain a reference for
+> features, but their file paths and numbers in blocks describe that code. The current engine is spec 54.
+
 Each spec gives the goal, requirements, acceptance criteria and test cases. None of them contain implementation code. The roadmap is in [../ROADMAP.md](../ROADMAP.md); the current state is in [../HANDOFF.md](../HANDOFF.md).
 
 ## Phase 1: Foundation

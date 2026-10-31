@@ -1,39 +1,25 @@
-import { ATLAS_TILES, TILE_SIZE } from '../render/tiles';
-import { getBlockDef, slabBounds } from '../world/blocks';
+import { TILE_NAMES, TILE_SIZE, itemTile, tilePixels } from '../render/tilePixels';
 
-/** Pixels per side of a block icon. The views scale it up without smoothing. */
-export const ICON_PIXELS = 32;
+let pixels: Uint8ClampedArray | null = null;
+const cache = new Map<number, string>();
 
-/** Draws a block's side texture into a square canvas, scaled up without smoothing. State 0 clears the canvas. */
-export function drawBlockIcon(canvas: HTMLCanvasElement, atlas: HTMLCanvasElement, state: number): void {
-  // Keep this canvas CPU-backed: late icon PNG readback must not flush the busy world-rendering GPU queue.
-  const ctx = canvas.getContext('2d', { willReadFrequently: true });
-  if (!ctx) return;
-  ctx.imageSmoothingEnabled = false;
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-  if (state === 0) return;
-  const tile = getBlockDef(state).tiles.side;
-  const sx = (tile % ATLAS_TILES) * TILE_SIZE;
-  const sy = Math.floor(tile / ATLAS_TILES) * TILE_SIZE;
-  const bounds = slabBounds(state);
-  const top = bounds ? (1 - bounds[1]) * canvas.height : 0;
-  const height = bounds ? (bounds[1] - bounds[0]) * canvas.height : canvas.height;
-  ctx.drawImage(atlas, sx, sy, TILE_SIZE, TILE_SIZE, 0, top, canvas.width, height);
-}
-
-const urls = new Map<number, string>();
-
-/** A block's icon as an image URL, made once per block state. Empty for state 0 (air). */
-export function iconUrl(atlas: HTMLCanvasElement, state: number): string {
-  if (state === 0) return '';
-  let url = urls.get(state);
-  if (url === undefined) {
-    const canvas = document.createElement('canvas');
-    canvas.width = ICON_PIXELS;
-    canvas.height = ICON_PIXELS;
-    drawBlockIcon(canvas, atlas, state);
-    url = canvas.toDataURL();
-    urls.set(state, url);
+/** A data URL of the 16×16 picture shown for a state in slots: its front, side or own tile. */
+export function iconUrl(state: number): string {
+  const hit = cache.get(state);
+  if (hit) return hit;
+  pixels ??= tilePixels();
+  const layer = TILE_NAMES.indexOf(itemTile(state));
+  const canvas = document.createElement('canvas');
+  canvas.width = canvas.height = TILE_SIZE;
+  const ctx = canvas.getContext('2d')!;
+  const image = ctx.createImageData(TILE_SIZE, TILE_SIZE);
+  const size = TILE_SIZE * TILE_SIZE * 4;
+  // Tile layers are stored bottom row first; images are top row first.
+  for (let y = 0; y < TILE_SIZE; y++) {
+    image.data.set(pixels.subarray(layer * size + (TILE_SIZE - 1 - y) * TILE_SIZE * 4, layer * size + (TILE_SIZE - y) * TILE_SIZE * 4), y * TILE_SIZE * 4);
   }
+  ctx.putImageData(image, 0, 0);
+  const url = canvas.toDataURL();
+  cache.set(state, url);
   return url;
 }

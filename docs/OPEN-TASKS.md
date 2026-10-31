@@ -1,5 +1,9 @@
 # Open tasks: Voxel Game
 
+> **Historical (2026-10-31):** this file describes the old 0.3 m game, which was deleted when the 0.6 m rewrite
+> replaced it (spec 54, phase 12). Paths such as `src/world/…` and `tests/` refer to code that no longer exists.
+> Current state: `docs/HANDOFF.md` and `docs/specs/54-engine-rewrite.md`.
+
 Status on 2026-10-24, against `origin/main` at `178e8df`. `npm run check` passes: typecheck, 777 tests in 95 files, and the production build.
 
 This is a short, grouped list to work from. The detailed tracker is `docs/tasks.md`, and the IDs here match it. When an item closes, tick it here and there.

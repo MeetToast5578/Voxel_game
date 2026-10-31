@@ -1,19 +1,20 @@
-import type { ChunkMeshData, MeshData } from '../render/mesher';
-
-/** Messages from the main thread to a chunk worker. */
+/** Messages between the main thread and chunk workers. Every request carries an id; the reply echoes it. */
 export type WorkerRequest =
-  | { type: 'tops'; id: number; seed: number; cx: number; cz: number }
-  | { type: 'generate'; id: number; seed: number; cx: number; cy: number; cz: number }
-  | { type: 'mesh'; id: number; seed: number; cx: number; cz: number; cy: number; neighbors: Uint16Array[]; tops: Int32Array[] };
+  | { type: 'init'; seed: number }
+  | { type: 'column'; id: number; cx: number; cz: number }
+  | { type: 'generate'; id: number; cx: number; cy: number; cz: number }
+  | { type: 'mesh'; id: number; states: Uint16Array; light: Uint8Array; climate: Uint8Array }
+  /** Far terrain on rings around (x, z) (cells): `radii` ring distances, `segments` samples per ring. */
+  | { type: 'horizon'; id: number; x: number; z: number; radii: Float32Array; segments: number };
 
-/** Messages from a chunk worker back to the main thread. */
 export type WorkerResponse =
-  | { type: 'tops'; id: number; tops: Int32Array; groundMin: number }
-  | { type: 'generated'; id: number; blocks: Uint16Array }
-  | { type: 'meshed'; id: number; mesh: ChunkMeshData };
-
-/** The ArrayBuffers inside a mesh, so postMessage can move them instead of copying. */
-export function meshBuffers(mesh: ChunkMeshData): ArrayBuffer[] {
-  const parts = (m: MeshData) => [m.positions, m.uvs, m.colors, m.light, m.sway, m.season, m.indices].map((a) => a.buffer as ArrayBuffer);
-  return [...parts(mesh.solid), ...parts(mesh.translucent)];
-}
+  | { type: 'column'; id: number; top: Int32Array; skyTop: Int32Array; climate: Uint8Array; biome: Uint8Array; water: Int32Array; minTop: number; caveFloor: number; maxTop: number }
+  /**
+   * `uniform` is the single state of a uniform chunk (then `states` is absent), or -1. Likewise `uniformLight` is the
+   * light byte of every cell, or -1 when `light` holds one per cell.
+   */
+  | { type: 'generate'; id: number; uniform: number; states?: Uint16Array; uniformLight: number; light?: Uint8Array }
+  /** `visibility`: which pairs of the chunk's faces are joined through open cells (see engine/visibility.ts). */
+  | { type: 'mesh'; id: number; layers: Uint32Array[]; visibility: number }
+  | { type: 'horizon'; id: number; heights: Float32Array; colors: Uint8Array }
+  | { type: 'error'; id: number; message: string };

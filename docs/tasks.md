@@ -1,5 +1,9 @@
 # Tasks: Voxel Game
 
+> **Historical (2026-10-31):** this file describes the old 0.3 m game, which was deleted when the 0.6 m rewrite
+> replaced it (spec 54, phase 12). Paths such as `src/world/…` and `tests/` refer to code that no longer exists.
+> Current state: `docs/HANDOFF.md` and `docs/specs/54-engine-rewrite.md`.
+
 Originally compiled 2026-10-17 against `main` at **`adf5aba`**. Current execution status updated 2026-10-22; older dated evidence below is historical, not a claim about the current checkout.
 
 Sources: `README.md`, `docs/HANDOFF.md`, `docs/ROADMAP.md`, `docs/specs/README.md`, `docs/specs/*.md`, `docs/plans/*.md`, plus direct inspection of `src/` and `tests/`.

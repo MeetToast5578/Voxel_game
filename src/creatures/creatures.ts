@@ -1,303 +1,325 @@
 import {
-  CREATURE_ATTACK_S, CREATURE_FALL, CREATURE_FLEE_RADIUS, CREATURE_FOLLOW_RADIUS, CREATURE_HERD_RADIUS, CREATURE_HUNGER_S,
-  CREATURE_HUNT_RADIUS, CREATURE_JUMP_SPEED, CREATURE_KNOCKBACK, CREATURE_PATH_NODES, CREATURE_REACH, CREATURE_RUN_FACTOR,
-  CREATURE_SOUND_CHANCE, CREATURE_SOUND_RADIUS, CREATURE_STEP, CREATURE_THINK_S, CREATURE_WANDER_RADIUS, BIRD_ALTITUDE,
+  ATTACK_COOLDOWN_S, ATTACK_REACH_M, CREATURE_CAP, CREATURE_FALL_M, DESPAWN_M, FLEE_M, GRAVITY_M_S2, HOSTILE_CAP, HUNT_M,
+  KNOCKBACK_M_S, RUN_FACTOR, SPAWN_INTERVAL_S, SPAWN_MAX_M, SPAWN_MIN_M, STEP_HEIGHT_M, cells, toCells,
 } from '../config';
-import type { CollisionFn } from '../player/physics';
-import { EntitySystem, type Entity } from '../world/entity';
-import { findPath, type PathCell } from './pathfinding';
-import { SPECIES_BY_KEY, type Species } from './species';
+import { columnIndex, localIndex, toChunk, toLocal } from '../core/coords';
+import { BLOCKS } from '../engine/blocks';
+import type { World } from '../engine/world';
+import type { BoxAt } from '../game/collision';
+import { moveBody, type Body } from '../game/physics';
+import { biomeByIndex } from '../worldgen/biomes';
+import { findPath } from './pathfinding';
+import { SPECIES, SPECIES_BY_KEY, type Species } from './species';
 
-export type Behaviour = 'wander' | 'graze' | 'flee' | 'hunt' | 'follow' | 'herd' | 'sleep' | 'idle';
+export type Mode = 'wander' | 'idle' | 'flee' | 'hunt' | 'sleep';
 
-/** The target id that stands for the player. */
-export const PLAYER_TARGET = -1;
-
-/** A creature (T-H1): an entity with a species, health and a current behaviour. */
-export interface Creature extends Entity {
+export interface Creature {
+  id: number;
   species: Species;
-  health: number;
+  body: Body;
   yaw: number;
-  behaviour: Behaviour;
-  /** What it flees from, hunts or follows: a creature id, PLAYER_TARGET, or null. */
-  target: number | null;
-  goal: { x: number; y: number; z: number } | null;
-  path: PathCell[];
-  thinkS: number;
-  /** Walk animation phase, advanced by distance walked (T-H4). */
+  health: number;
+  mode: Mode;
+  goal: [number, number] | null;
+  target: Creature | 'player' | null;
+  /** Seconds until the next decision, and until the next bite. */
+  think: number;
+  cooldown: number;
+  /** Walk cycle phase, and a short red flash after being hit. */
   walk: number;
-  hurtS: number;
-  attackS: number;
-  /** Seconds since a predator last ate; it hunts once this passes CREATURE_HUNGER_S. */
-  fedS: number;
-  /** Hit by the player recently: grazers panic, fighters strike back. */
-  provoked: boolean;
+  hurt: number;
+  /** While hunting on land: cells to walk through (flat x, y, z), and seconds until it is planned again. */
+  path: number[];
+  replan: number;
 }
 
-/** What the creatures see of the world each step. Cells are integer coordinates. */
-export interface CreatureView {
-  isSolid(x: number, y: number, z: number): boolean;
-  isWater(x: number, y: number, z: number): boolean;
-  isLoaded(x: number, y: number, z: number): boolean;
-  /** The first air cell above the column's ground, if the column is loaded. */
-  groundY(x: number, z: number): number | undefined;
-  player: { x: number; y: number; z: number; holdingWheat: boolean; /** survival: can be hunted and scares wildlife */ prey: boolean };
-  night: boolean;
-  /** Bears sleep the winter through, and grazers keep closer to home (T-H5: activity follows the season). */
-  winter: boolean;
-  rand(): number;
+/** What creatures need to know about the world and the player each tick. */
+export interface CreatureContext {
+  player: Body;
+  /** Survival: hostiles hunt the player and bites hurt. */
+  survival: boolean;
+  day: boolean;
+  boxAt: BoxAt;
+  waterAt: (x: number, y: number, z: number) => boolean;
 }
 
-export type CreatureEvent =
-  | { kind: 'bite'; damage: number; x: number; z: number; species: Species }
-  | { kind: 'sound'; species: Species; x: number; y: number; z: number }
-  | { kind: 'death'; creature: Creature; byPlayer: boolean };
+const GRAVITY = toCells(GRAVITY_M_S2);
+const STEP = cells(STEP_HEIGHT_M);
+const FALL = cells(CREATURE_FALL_M);
+const THINK_S = 0.25;
+/** Seconds between path plans while hunting, and the search budget of one plan. */
+const REPLAN_S = 1;
+const PATH_NODES = 300;
 
-/** A creature as saved (T-H2). */
-export interface SavedCreature { species: string; x: number; y: number; z: number; health: number; yaw: number; }
+/**
+ * Wildlife and monsters: spawning around the player by biome and time of day, simple minds (wander, graze, herd,
+ * flee, hunt, sleep), physics shared with the player, bites and being hit. Ported from the old game, in meters.
+ */
+export class Creatures {
+  readonly list: Creature[] = [];
+  private nextId = 1;
+  private spawnIn = 0;
 
-const dist2 = (a: { x: number; z: number }, b: { x: number; z: number }) => (a.x - b.x) ** 2 + (a.z - b.z) ** 2;
+  constructor(private readonly world: World, private readonly rand: () => number,
+    private readonly events: { bite(damage: number, by: string): void; sound(name: 'break' | 'place' | 'step', volume: number): void }) {}
 
-/** Every creature, its behaviour (T-H5), movement and fights. Pure: the world comes in through a CreatureView. */
-export class CreatureSystem {
-  readonly entities = new EntitySystem<Creature>();
-  private events: CreatureEvent[] = [];
-
-  get count(): number { return this.entities.count; }
-
-  all(): Creature[] { return this.entities.all(); }
-
-  spawn(species: Species, x: number, y: number, z: number, rand: () => number, health = species.health, yaw = rand() * Math.PI * 2): Creature {
-    return this.entities.add({
-      type: species.key, x, y, z, vx: 0, vy: 0, vz: 0, halfWidth: species.halfWidth, height: species.height, onGround: false,
-      species, health, yaw, behaviour: 'idle', target: null, goal: null, path: [], thinkS: rand() * CREATURE_THINK_S,
-      walk: 0, hurtS: 0, attackS: 0, fedS: CREATURE_HUNGER_S * rand(), provoked: false,
-    });
+  update(dt: number, ctx: CreatureContext): void {
+    this.spawnIn -= dt;
+    if (this.spawnIn <= 0) {
+      this.spawnIn = SPAWN_INTERVAL_S;
+      this.spawn(ctx);
+    }
+    const p = ctx.player;
+    for (let i = this.list.length - 1; i >= 0; i--) {
+      const c = this.list[i]!;
+      const d = Math.hypot(c.body.x - p.x, c.body.z - p.z);
+      // Out of range, or a monster caught far away by daylight: gone.
+      if (d > toCells(DESPAWN_M) || (c.species.hostile && ctx.day && d > toCells(SPAWN_MIN_M) && this.rand() < dt * 0.2)) {
+        this.list.splice(i, 1);
+        continue;
+      }
+      if (!this.world.isLoaded(Math.floor(c.body.x), Math.floor(c.body.y), Math.floor(c.body.z))) continue;
+      c.think -= dt;
+      c.cooldown -= dt;
+      c.hurt = Math.max(0, c.hurt - dt);
+      if (c.think <= 0) {
+        c.think = THINK_S * (0.8 + this.rand() * 0.4);
+        this.decide(c, ctx);
+      }
+      this.move(c, dt, ctx);
+    }
   }
 
-  restore(saved: SavedCreature, rand: () => number): Creature | null {
-    const species = SPECIES_BY_KEY.get(saved.species);
-    return species ? this.spawn(species, saved.x, saved.y, saved.z, rand, saved.health, saved.yaw) : null;
+  private active(c: Creature, ctx: CreatureContext): boolean {
+    if (c.species.hostile) return !ctx.day || this.light(c) < 7;
+    return c.species.nocturnal ? !ctx.day : ctx.day;
   }
 
-  static save(c: Creature): SavedCreature {
-    return { species: c.species.key, x: c.x, y: c.y, z: c.z, health: c.health, yaw: c.yaw };
+  private light(c: Creature): number {
+    const x = Math.floor(c.body.x), y = Math.floor(c.body.y + 0.5), z = Math.floor(c.body.z);
+    const chunk = this.world.chunkAt(x, y, z);
+    return chunk ? chunk.skyLight(localIndex(toLocal(x), toLocal(y), toLocal(z))) : 15;
   }
 
-  remove(id: number): void { this.entities.despawn(id); }
+  /** Picks what to do: flee a threat, hunt prey, keep with the herd, wander or rest. */
+  private decide(c: Creature, ctx: CreatureContext): void {
+    const s = c.species, b = c.body, p = ctx.player;
+    if (!this.active(c, ctx) && c.mode !== 'flee') {
+      c.mode = 'sleep';
+      c.goal = null;
+      return;
+    }
+    const near = (x: number, z: number, m: number) => Math.hypot(x - b.x, z - b.z) < toCells(m);
+    // Grazers flee the player and predators.
+    if (s.grazer) {
+      const threat = near(p.x, p.z, FLEE_M) ? p : this.list.find((o) => o.species.prey.includes(s.key) && near(o.body.x, o.body.z, FLEE_M))?.body;
+      if (threat) {
+        const dx = b.x - threat.x, dz = b.z - threat.z, len = Math.hypot(dx, dz) || 1;
+        c.mode = 'flee';
+        c.goal = [b.x + (dx / len) * toCells(10), b.z + (dz / len) * toCells(10)];
+        return;
+      }
+    }
+    // Hunters chase the nearest prey (monsters: the player in survival).
+    if (s.hostile && ctx.survival && near(p.x, p.z, HUNT_M)) {
+      c.mode = 'hunt';
+      c.target = 'player';
+      return;
+    }
+    if (s.prey.length) {
+      const prey = this.list.find((o) => s.prey.includes(o.species.key) && near(o.body.x, o.body.z, HUNT_M));
+      if (prey) {
+        c.mode = 'hunt';
+        c.target = prey;
+        return;
+      }
+    }
+    c.target = null;
+    if (c.mode === 'flee' || c.mode === 'hunt' || !c.goal || near(c.goal[0], c.goal[1], 0.8) || this.rand() < 0.05) {
+      if (this.rand() < 0.35) {
+        c.mode = 'idle';
+        c.goal = null;
+        return;
+      }
+      let gx = b.x + (this.rand() - 0.5) * toCells(16), gz = b.z + (this.rand() - 0.5) * toCells(16);
+      if (s.herds) {
+        // Keep near the others of the herd.
+        const herd = this.list.filter((o) => o !== c && o.species === s && near(o.body.x, o.body.z, 12));
+        if (herd.length) {
+          gx = (gx + herd.reduce((a, o) => a + o.body.x, 0) / herd.length) / 2;
+          gz = (gz + herd.reduce((a, o) => a + o.body.z, 0) / herd.length) / 2;
+        }
+      }
+      c.mode = 'wander';
+      c.goal = [gx, gz];
+    }
+  }
 
-  /**
-   * A hit (T-H9 combat): knocks the creature away from (fromX, fromZ). Returns true when it dies; the death event is
-   * returned by the next step, with `byPlayer` saying who gets the drops.
-   */
-  hurt(c: Creature, damage: number, fromX: number, fromZ: number, byPlayer: boolean): boolean {
-    c.health -= damage;
-    c.hurtS = 0.4;
-    if (byPlayer) c.provoked = true;
-    const dx = c.x - fromX, dz = c.z - fromZ, d = Math.hypot(dx, dz) || 1;
-    c.vx += (dx / d) * CREATURE_KNOCKBACK;
-    c.vz += (dz / d) * CREATURE_KNOCKBACK;
-    c.vy = Math.max(c.vy, CREATURE_KNOCKBACK * 0.5);
-    c.thinkS = 0; // react at once
+  /** The next cell centre on a path to `t`, planned again every second (around walls, up ledges); null if none. */
+  private waypoint(c: Creature, t: Body, dt: number, ctx: CreatureContext): [number, number] | null {
+    const b = c.body;
+    c.replan -= dt;
+    if (c.replan <= 0) {
+      c.replan = REPLAN_S;
+      const solid = (x: number, y: number, z: number) => ctx.boxAt(x, y, z) !== 0;
+      c.path = findPath(solid, Math.floor(b.x), Math.floor(b.y + 0.01), Math.floor(b.z), Math.floor(t.x), Math.floor(t.y + 0.01),
+        Math.floor(t.z), { height: Math.ceil(b.height), step: STEP, fall: FALL - 1, maxNodes: PATH_NODES });
+    }
+    // Drop the cells already reached.
+    while (c.path.length >= 3 && Math.abs(c.path[0]! + 0.5 - b.x) < 0.45 && Math.abs(c.path[2]! + 0.5 - b.z) < 0.45) c.path.splice(0, 3);
+    return c.path.length >= 3 ? [c.path[0]! + 0.5, c.path[2]! + 0.5] : null;
+  }
+
+  private move(c: Creature, dt: number, ctx: CreatureContext): void {
+    const s = c.species, b = c.body;
+    let speed = toCells(s.speedM_S);
+    let goal = c.goal;
+    if (c.mode === 'hunt' && c.target) {
+      const t = c.target === 'player' ? ctx.player : c.target.body;
+      goal = [t.x, t.z];
+      if (s.medium === 'land') goal = this.waypoint(c, t, dt, ctx) ?? goal;
+      const reach = toCells(ATTACK_REACH_M) + b.halfWidth + t.halfWidth;
+      if (Math.hypot(t.x - b.x, t.z - b.z) < reach && Math.abs(t.y - b.y) < b.height && c.cooldown <= 0) {
+        c.cooldown = ATTACK_COOLDOWN_S;
+        if (c.target === 'player') this.events.bite(s.attack, s.name);
+        else this.damage(c.target, s.attack, b.x, b.z);
+      }
+    }
+    if (c.mode === 'flee' || c.mode === 'hunt') speed *= RUN_FACTOR;
+    let vx = 0, vz = 0;
+    if (goal && c.mode !== 'sleep' && c.mode !== 'idle') {
+      const dx = goal[0] - b.x, dz = goal[1] - b.z, len = Math.hypot(dx, dz);
+      if (len > 0.3) {
+        vx = (dx / len) * speed;
+        vz = (dz / len) * speed;
+        c.yaw = Math.atan2(-vx, -vz);
+        // Look one cell ahead: no walking into water (land animals), off a cliff, or at a wall too high to step.
+        const ax = Math.floor(b.x + (dx / len) * (b.halfWidth + 0.6)), az = Math.floor(b.z + (dz / len) * (b.halfWidth + 0.6));
+        const fy = Math.floor(b.y);
+        let ground = fy;
+        while (ground > fy - FALL - 1 && ctx.boxAt(ax, ground - 1, az) === 0 && !ctx.waterAt(ax, ground - 1, az)) ground--;
+        const blocked = s.medium === 'land' && ((ctx.waterAt(ax, fy, az) && c.mode !== 'flee') || ground <= fy - FALL ||
+          (ctx.boxAt(ax, fy + STEP, az) !== 0 && ctx.boxAt(ax, fy, az) !== 0));
+        if (blocked) {
+          vx = vz = 0;
+          c.goal = null;
+          c.think = Math.min(c.think, 0.1);
+        }
+      }
+    }
+    b.vx += (vx - b.vx) * Math.min(1, dt * 8);
+    b.vz += (vz - b.vz) * Math.min(1, dt * 8);
+    const inWater = ctx.waterAt(Math.floor(b.x), Math.floor(b.y + b.height * 0.5), Math.floor(b.z));
+    if (s.medium === 'water') {
+      if (inWater) {
+        // Fish swim level, drifting up and down a little.
+        b.vy += ((Math.sin(c.walk * 0.7) * 0.5) - b.vy) * Math.min(1, dt * 4);
+        if (!c.goal || this.rand() < dt * 0.3) c.goal = [b.x + (this.rand() - 0.5) * 8, b.z + (this.rand() - 0.5) * 8];
+      } else {
+        b.vy -= GRAVITY * dt;
+        if (b.onGround && this.rand() < dt) this.damage(c, 1, b.x, b.z);
+      }
+    } else if (inWater) b.vy += (toCells(1.5) - b.vy) * Math.min(1, dt * 3); // float up and swim
+    else b.vy -= GRAVITY * dt;
+    // Up a step when walking into one.
+    const before = b.x + b.z;
+    moveBody(b, dt, ctx.boxAt, s.medium === 'land' ? STEP : 0);
+    if (s.medium === 'land' && (vx !== 0 || vz !== 0) && Math.abs(b.x + b.z - before) < 1e-4 && b.onGround) b.vy = toCells(5.5);
+    c.walk += Math.hypot(b.vx, b.vz) * dt * 3;
+  }
+
+  /** Hurts a creature, knocking it away from (fromX, fromZ); returns whether it died (and was removed). */
+  damage(c: Creature, amount: number, fromX: number, fromZ: number): boolean {
+    c.health -= amount;
+    c.hurt = 0.3;
+    const dx = c.body.x - fromX, dz = c.body.z - fromZ, len = Math.hypot(dx, dz) || 1;
+    c.body.vx = (dx / len) * toCells(KNOCKBACK_M_S);
+    c.body.vz = (dz / len) * toCells(KNOCKBACK_M_S);
+    c.body.vy = toCells(3);
+    if (c.species.grazer) {
+      c.mode = 'flee';
+      c.goal = [c.body.x + (dx / len) * toCells(12), c.body.z + (dz / len) * toCells(12)];
+    }
     if (c.health > 0) return false;
-    this.entities.despawn(c.id);
-    this.events.push({ kind: 'death', creature: c, byPlayer });
+    this.list.splice(this.list.indexOf(c), 1);
     return true;
   }
 
-  /** Thinks, moves and fights every creature by `dt` seconds. Creatures in unloaded chunks wait. Returns what happened. */
-  step(dt: number, view: CreatureView, isSolidAt: CollisionFn): CreatureEvent[] {
-    const all = this.entities.all();
-    for (const c of all) {
-      if (!this.entities.get(c.id)) continue; // killed earlier this step
-      if (!view.isLoaded(Math.floor(c.x), Math.floor(c.y), Math.floor(c.z))) { c.vx = c.vy = c.vz = 0; continue; }
-      c.hurtS = Math.max(0, c.hurtS - dt);
-      c.attackS = Math.max(0, c.attackS - dt);
-      c.fedS += dt;
-      if ((c.thinkS -= dt) <= 0) {
-        c.thinkS = CREATURE_THINK_S * (0.8 + view.rand() * 0.4);
-        this.think(c, all, view);
+  /** The creature a ray hits first within `reach` cells, and how far along. */
+  raycast(ox: number, oy: number, oz: number, dx: number, dy: number, dz: number, reach: number): { creature: Creature; distance: number } | null {
+    let best: { creature: Creature; distance: number } | null = null;
+    for (const c of this.list) {
+      const b = c.body;
+      const lo = [b.x - b.halfWidth, b.y, b.z - b.halfWidth], hi = [b.x + b.halfWidth, b.y + b.height, b.z + b.halfWidth];
+      const o = [ox, oy, oz], d = [dx, dy, dz];
+      let near = 0, far = reach;
+      for (let a = 0; a < 3 && near <= far; a++) {
+        if (d[a] === 0) {
+          if (o[a]! < lo[a]! || o[a]! > hi[a]!) far = -1;
+          continue;
+        }
+        let t0 = (lo[a]! - o[a]!) / d[a]!, t1 = (hi[a]! - o[a]!) / d[a]!;
+        if (t0 > t1) [t0, t1] = [t1, t0];
+        near = Math.max(near, t0);
+        far = Math.min(far, t1);
       }
-      this.act(c, all, view, dt);
+      if (near <= far && (!best || near < best.distance)) best = { creature: c, distance: near };
     }
-    const before = new Map(all.map((c) => [c.id, [c.x, c.z] as const]));
-    this.entities.step(dt, isSolidAt, {
-      stepHeight: (c) => (c.species.medium === 'land' ? CREATURE_STEP : 0),
-      gravity: (c) => gravityOf(c, view),
-    });
-    for (const c of this.entities.values()) {
-      const [x0, z0] = before.get(c.id) ?? [c.x, c.z];
-      c.walk += Math.hypot(c.x - x0, c.z - z0);
-      // Wanting to go on but blocked by more than a step: jump.
-      if (c.hitWall && c.onGround && c.species.medium === 'land' && Math.hypot(c.vx, c.vz) > 0.1) c.vy = CREATURE_JUMP_SPEED;
-    }
-    const events = this.events;
-    this.events = [];
-    return events;
+    return best;
   }
 
-  /** Rescores the behaviours (utility AI, T-H5) and picks the best, with its target and path. */
-  private think(c: Creature, all: readonly Creature[], view: CreatureView): void {
-    const s = c.species, p = view.player;
-    let best = 'wander' as Behaviour, score = 0.25 + view.rand() * 0.1, target = null as number | null; // widened: `consider` assigns them
-    const consider = (b: Behaviour, value: number, t: number | null = null) => {
-      if (value > score) { best = b; score = value; target = t; }
+  /** Adds a group of a species fitting the place a random spot near the player offers. */
+  private spawn(ctx: CreatureContext): void {
+    if (this.list.length >= CREATURE_CAP) return;
+    const p = ctx.player;
+    const angle = this.rand() * Math.PI * 2, dist = toCells(SPAWN_MIN_M + this.rand() * (SPAWN_MAX_M - SPAWN_MIN_M));
+    const x = Math.floor(p.x + Math.cos(angle) * dist), z = Math.floor(p.z + Math.sin(angle) * dist);
+    const column = this.world.column(toChunk(x), toChunk(z));
+    if (!column) return;
+    const i = columnIndex(toLocal(x), toLocal(z));
+    const top = column.surface[i]!;
+    const water = column.water[i]! > top + 1;
+    const y = water ? column.water[i]! - 2 : top + 1;
+    if (!this.world.isLoaded(x, y, z) || (!water && ctx.boxAt(x, y, z) !== 0)) return;
+    const biome = biomeByIndex(column.biome[i]!).key;
+    const hostiles = this.list.filter((c) => c.species.hostile).length;
+    const chunk = this.world.chunkAt(x, y, z)!;
+    const dark = chunk.skyLight(localIndex(toLocal(x), toLocal(y), toLocal(z))) < 7 || !ctx.day;
+    const options = SPECIES.filter((s) => (water ? s.medium === 'water' : s.medium === 'land' && (s.biomes.includes(biome) ||
+      (s.biomes.includes('dark') && dark && hostiles < HOSTILE_CAP))));
+    if (options.length === 0) return;
+    const s = options[Math.floor(this.rand() * options.length)]!;
+    const n = s.group[0] + Math.floor(this.rand() * (s.group[1] - s.group[0] + 1));
+    for (let k = 0; k < n && this.list.length < CREATURE_CAP; k++) {
+      this.add(s, x + 0.5 + (this.rand() - 0.5) * 3, y, z + 0.5 + (this.rand() - 0.5) * 3, s.health);
+    }
+  }
+
+  add(s: Species, x: number, y: number, z: number, health: number): Creature {
+    const c: Creature = {
+      id: this.nextId++, species: s, yaw: this.rand() * Math.PI * 2, health, mode: 'idle', goal: null, target: null,
+      think: this.rand() * THINK_S, cooldown: 0, walk: 0, hurt: 0, path: [], replan: 0,
+      body: { x, y, z, vx: 0, vy: 0, vz: 0, onGround: false, halfWidth: toCells(s.halfWidthM), height: toCells(s.heightM) },
     };
-    const dPlayer = Math.sqrt(dist2(c, p) + (c.y - p.y) ** 2);
-    const active = s.nocturnal ? view.night : !view.night;
-    if (s.grazer || s.medium === 'water') {
-      if (p.prey && dPlayer < CREATURE_FLEE_RADIUS && !p.holdingWheat) consider('flee', 1.5 - dPlayer / CREATURE_FLEE_RADIUS, PLAYER_TARGET);
-      if (c.provoked && c.hurtS > 0 && s.attack === 0) consider('flee', 3, PLAYER_TARGET);
-      for (const o of all) {
-        if (o === c || !(o.species.prey.includes(s.key) || o.species.hostile)) continue;
-        const d = Math.sqrt(dist2(c, o));
-        if (d < CREATURE_FLEE_RADIUS * 1.3) consider('flee', 1.8 - d / CREATURE_FLEE_RADIUS, o.id);
-      }
-    }
-    if (s.attack > 0 && c.provoked && p.prey && dPlayer < CREATURE_HUNT_RADIUS) consider('hunt', 2.5, PLAYER_TARGET);
-    if (s.hostile && p.prey && dPlayer < CREATURE_HUNT_RADIUS) consider('hunt', 2, PLAYER_TARGET);
-    if (s.prey.length && c.fedS > CREATURE_HUNGER_S && active) {
-      let nearest: Creature | null = null, nd = CREATURE_HUNT_RADIUS ** 2;
-      for (const o of all) if (o !== c && s.prey.includes(o.species.key) && dist2(c, o) < nd) { nearest = o; nd = dist2(c, o); }
-      if (nearest) consider('hunt', 1.6 - Math.sqrt(nd) / CREATURE_HUNT_RADIUS, nearest.id);
-    }
-    if (s.grazer && p.holdingWheat && dPlayer < CREATURE_FOLLOW_RADIUS) consider('follow', 1.2, PLAYER_TARGET);
-    if (!active && s.medium === 'land' && !s.hostile) consider('sleep', 0.7);
-    if (view.winter && s.key === 'bear' && !c.provoked) consider('sleep', 2.5); // hibernation
-    if (s.herds) {
-      const herd = all.filter((o) => o !== c && o.species === s && dist2(c, o) < (CREATURE_HERD_RADIUS * 3) ** 2);
-      if (herd.length) {
-        const cx = herd.reduce((a, o) => a + o.x, 0) / herd.length, cz = herd.reduce((a, o) => a + o.z, 0) / herd.length;
-        const d = Math.hypot(cx - c.x, cz - c.z);
-        if (d > CREATURE_HERD_RADIUS * 0.5) consider('herd', 0.35 + 0.35 * Math.min(1, d / CREATURE_HERD_RADIUS));
-      }
-    }
-    if (s.grazer && c.onGround) consider('graze', 0.2 + view.rand() * 0.25);
-    consider('idle', view.rand() * 0.22);
-    if (s.medium === 'air') { best = 'herd'; target = null; } // birds only flock (cosmetic)
-
-    if (best !== c.behaviour || target !== c.target) c.path = [];
-    c.behaviour = best;
-    c.target = target;
-    if (best === 'wander' && !c.goal) {
-      const a = view.rand() * Math.PI * 2, r = CREATURE_WANDER_RADIUS * (0.3 + view.rand() * 0.7) * (view.winter ? 0.5 : 1);
-      c.goal = { x: c.x + Math.cos(a) * r, y: c.y + (view.rand() - 0.5) * 4, z: c.z + Math.sin(a) * r };
-    }
-    if (best !== 'wander') c.goal = null;
-    // A* towards a hunted or followed target on land (T-H6); in the open, steering straight at it is enough.
-    const t = this.targetPos(target, all, view);
-    if (t && s.medium === 'land' && (best === 'hunt' || best === 'follow') && (c.hitWall || Math.abs(t.y - c.y) > CREATURE_STEP)) {
-      c.path = findPath((x, y, z) => view.isSolid(x, y, z), { x: Math.floor(c.x), y: Math.floor(c.y), z: Math.floor(c.z) },
-        { x: Math.floor(t.x), y: Math.floor(t.y), z: Math.floor(t.z) },
-        { height: Math.ceil(s.height), step: CREATURE_STEP, fall: CREATURE_FALL, maxNodes: CREATURE_PATH_NODES });
-    }
-    if (dPlayer < CREATURE_SOUND_RADIUS && view.rand() < CREATURE_SOUND_CHANCE * (best === 'hunt' ? 4 : 1)) {
-      this.events.push({ kind: 'sound', species: s, x: c.x, y: c.y, z: c.z });
-    }
+    this.list.push(c);
+    return c;
   }
 
-  private targetPos(target: number | null, all: readonly Creature[], view: CreatureView): { x: number; y: number; z: number } | null {
-    if (target === PLAYER_TARGET) return view.player;
-    if (target === null) return null;
-    return all.find((o) => o.id === target && this.entities.get(o.id)) ?? null;
+  save(): [string, number, number, number, number][] {
+    return this.list.map((c) => [c.species.key, c.body.x, c.body.y, c.body.z, c.health]);
   }
 
-  /** Sets the creature's velocity for its behaviour, and lands its bites. */
-  private act(c: Creature, all: readonly Creature[], view: CreatureView, dt: number): void {
-    const s = c.species, walk = s.speed, run = s.speed * CREATURE_RUN_FACTOR;
-    let tx = 0, tz = 0, speed = 0, ty: number | null = null;
-    const t = this.targetPos(c.target, all, view);
-    switch (c.behaviour) {
-      case 'flee':
-        if (t) { tx = c.x - t.x; tz = c.z - t.z; speed = run; }
-        break;
-      case 'hunt':
-      case 'follow': {
-        if (!t) break;
-        const next = c.path[0];
-        if (next && Math.hypot(next.x + 0.5 - c.x, next.z + 0.5 - c.z) < 0.6) c.path.shift();
-        const aim = c.path[0] ? { x: c.path[0].x + 0.5, y: c.path[0].y, z: c.path[0].z + 0.5 } : t;
-        tx = aim.x - c.x; tz = aim.z - c.z; ty = aim.y;
-        const d = Math.hypot(t.x - c.x, t.z - c.z);
-        speed = c.behaviour === 'hunt' ? run : d > CREATURE_FOLLOW_RADIUS * 0.25 ? walk : 0;
-        const reach = c.halfWidth + CREATURE_REACH + (t === view.player ? 0.4 : (t as Creature).halfWidth);
-        if (c.behaviour === 'hunt' && d < reach && Math.abs(t.y - c.y) < c.height && c.attackS <= 0) {
-          c.attackS = CREATURE_ATTACK_S;
-          if (t === view.player) this.events.push({ kind: 'bite', damage: s.attack, x: c.x, z: c.z, species: s });
-          else if (this.hurt(t as Creature, Math.max(1, s.attack), c.x, c.z, false)) c.fedS = 0;
-        }
-        break;
-      }
-      case 'wander':
-        if (c.goal) {
-          tx = c.goal.x - c.x; tz = c.goal.z - c.z; ty = c.goal.y; speed = walk * 0.6;
-          if (Math.hypot(tx, tz) < 0.8) { c.goal = null; c.behaviour = 'idle'; speed = 0; }
-        }
-        break;
-      case 'herd': {
-        // Boids: towards the herd's centre, along its heading, and away from anyone too close.
-        let cx = 0, cz = 0, ax = 0, az = 0, sx = 0, sz = 0, n = 0;
-        for (const o of all) {
-          if (o === c || o.species !== s) continue;
-          const d2 = dist2(c, o);
-          if (d2 > (CREATURE_HERD_RADIUS * 3) ** 2) continue;
-          n++; cx += o.x; cz += o.z; ax += o.vx; az += o.vz;
-          if (d2 < (c.halfWidth * 4) ** 2) { sx += c.x - o.x; sz += c.z - o.z; }
-        }
-        if (n) { tx = (cx / n - c.x) * 0.5 + ax / n * 0.3 + sx * 2; tz = (cz / n - c.z) * 0.5 + az / n * 0.3 + sz * 2; speed = walk * 0.7; }
-        if (s.medium === 'air') {
-          // Birds circle loosely around the player at BIRD_ALTITUDE over the ground.
-          tx += (view.player.x - c.x) * 0.02 + Math.cos(c.walk * 0.01 + c.id) * 2;
-          tz += (view.player.z - c.z) * 0.02 + Math.sin(c.walk * 0.01 + c.id) * 2;
-          ty = (view.groundY(Math.floor(c.x), Math.floor(c.z)) ?? c.y) + BIRD_ALTITUDE;
-          speed = walk;
-        }
-        break;
-      }
-      default:
-        speed = 0;
-    }
-    const len = Math.hypot(tx, tz);
-    const k = Math.min(1, dt * 8);
-    const wantX = len > 0.01 ? (tx / len) * speed : 0, wantZ = len > 0.01 ? (tz / len) * speed : 0;
-    // Knockback dies away rather than being overwritten at once.
-    c.vx += (wantX - c.vx) * k;
-    c.vz += (wantZ - c.vz) * k;
-    if (speed > 0 && len > 0.01) c.yaw = Math.atan2(-tx, -tz);
-    if (s.medium !== 'land') {
-      const goalY = ty ?? c.y;
-      c.vy += ((Math.max(-1, Math.min(1, goalY - c.y)) * walk * 0.5) - c.vy) * k;
-      if (s.medium === 'water' && !view.isWater(Math.floor(c.x + c.vx * 0.3), Math.floor(c.y + 0.1), Math.floor(c.z + c.vz * 0.3))) {
-        c.vx = -c.vx; c.vz = -c.vz; c.goal = null; // turn back at the water's edge
-      }
+  load(saved: unknown): void {
+    if (!Array.isArray(saved)) return;
+    for (const e of saved) {
+      if (!Array.isArray(e) || e.length !== 5) continue;
+      const s = SPECIES_BY_KEY.get(String(e[0]));
+      if (s && [1, 2, 3, 4].every((k) => Number.isFinite(e[k]))) this.add(s, e[1], e[2], e[3], Math.max(1, e[4]));
     }
   }
 }
 
-/** Gravity, as a share of full: none in a creature's own medium, and land animals float in deep water. */
-function gravityOf(c: Creature, view: CreatureView): number {
-  const x = Math.floor(c.x), z = Math.floor(c.z);
-  if (c.species.medium === 'air') return 0;
-  const feet = view.isWater(x, Math.floor(c.y), z);
-  if (c.species.medium === 'water') return feet ? 0 : 1;
-  if (!feet) return 1;
-  return view.isWater(x, Math.floor(c.y + c.height * 0.5), z) ? -0.4 : 0.2;
-}
-
-/** The nearest creature whose box a ray from `o` along unit `d` enters within `max`, and the distance (slab method). */
-export function rayHitCreature(all: readonly Creature[], o: { x: number; y: number; z: number }, d: { x: number; y: number; z: number }, max: number): { creature: Creature; distance: number } | null {
-  let best: { creature: Creature; distance: number } | null = null;
-  for (const c of all) {
-    let t0 = 0, t1 = max;
-    const lo = [c.x - c.halfWidth, c.y, c.z - c.halfWidth], hi = [c.x + c.halfWidth, c.y + c.height, c.z + c.halfWidth];
-    const os = [o.x, o.y, o.z], ds = [d.x, d.y, d.z];
-    for (let a = 0; a < 3 && t0 <= t1; a++) {
-      if (Math.abs(ds[a]!) < 1e-9) { if (os[a]! < lo[a]! || os[a]! > hi[a]!) t0 = Infinity; continue; }
-      let ta = (lo[a]! - os[a]!) / ds[a]!, tb = (hi[a]! - os[a]!) / ds[a]!;
-      if (ta > tb) [ta, tb] = [tb, ta];
-      t0 = Math.max(t0, ta); t1 = Math.min(t1, tb);
-    }
-    if (t0 <= t1 && (!best || t0 < best.distance)) best = { creature: c, distance: t0 };
-  }
-  return best;
+/** Raw meat a dead creature leaves. */
+export function meatOf(c: Creature): { state: number; count: number } | null {
+  return c.species.meat > 0 ? { state: BLOCKS.state('raw_meat'), count: c.species.meat } : null;
 }

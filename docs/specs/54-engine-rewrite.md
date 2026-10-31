@@ -1,7 +1,8 @@
 # Spec 54: Engine rewrite at 0.6 m blocks
 
 **Built by:** Claude, after an engine review the owner asked for.
-**Status:** phases 1–11 built in `next/` (open with `next.html`); phase 12, the switch-over, waits for the owner.
+**Status:** built. Phases 1–11 were built in `src/` beside the old game; phase 12 (2026-10-31) replaced the old game,
+so the code described here is now `src/`, and `index.html` loads it.
 
 ## Why
 
@@ -22,18 +23,18 @@ The owner chose a full rewrite with 0.6 m blocks and 16³ chunks (9.6 m).
 
 | Folder | Holds |
 | --- | --- |
-| `next/config.ts` | Every tunable number, in meters, seconds and m/s. Cell counts derive through `cells()`; a test checks every `_CELLS` value. |
-| `next/core` | Packed integer chunk keys, a growable `IntQueue`, RNG, math, the fixed-step loop. |
-| `next/engine` | Block registry, palette chunks, the world store, light, mesher, streaming, cave culling. |
-| `next/worldgen` | Climate fields, biomes, density terrain, rivers and lakes, caves, ores, groundwater, trees. Pure; runs in workers. |
-| `next/sim` | Block updates (fluids, falling blocks, support, growth, snow and ice), calendar, weather, environment. |
-| `next/game` | Player physics, input, raycast, inventory, crafting, furnaces, mining, survival, the `Play` system. |
-| `next/creatures` | Species and behaviour. |
-| `next/render` | Renderer, terrain material, chunk meshes, sky, clouds, precipitation, horizon, highlight, creatures, tiles. |
-| `next/storage` | Chunk codec, saver, IndexedDB and memory stores, archives, settings. |
-| `next/ui` | Preact HUD, inventory screens, menu; touch controls. |
-| `next/workers` | Worker pool and the chunk worker. |
-| `next/main.ts` | The composition root. Systems get what they need explicitly; nothing patches another system. |
+| `src/config.ts` | Every tunable number, in meters, seconds and m/s. Cell counts derive through `cells()`; a test checks every `_CELLS` value. |
+| `src/core` | Packed integer chunk keys, a growable `IntQueue`, RNG, math, the fixed-step loop. |
+| `src/engine` | Block registry, palette chunks, the world store, light, mesher, streaming, cave culling. |
+| `src/worldgen` | Climate fields, biomes, density terrain, rivers and lakes, caves, ores, groundwater, trees. Pure; runs in workers. |
+| `src/sim` | Block updates (fluids, falling blocks, support, growth, snow and ice), calendar, weather, environment. |
+| `src/game` | Player physics, input, raycast, inventory, crafting, furnaces, mining, survival, the `Play` system. |
+| `src/creatures` | Species and behaviour. |
+| `src/render` | Renderer, terrain material, chunk meshes, sky, clouds, precipitation, horizon, highlight, creatures, tiles. |
+| `src/storage` | Chunk codec, saver, IndexedDB and memory stores, archives, settings. |
+| `src/ui` | Preact HUD, inventory screens, menu; touch controls. |
+| `src/workers` | Worker pool and the chunk worker. |
+| `src/main.ts` | The composition root. Systems get what they need explicitly; nothing patches another system. |
 
 ## Key decisions
 
@@ -78,8 +79,8 @@ The owner chose a full rewrite with 0.6 m blocks and 16³ chunks (9.6 m).
 ## Measured (benchmark and headless Chromium with SwiftShader)
 
 - **Per chunk:** generation about 1.1 ms, meshing about 0.5 ms, worker light about 0.19 ms, stitching about 0.3 ms.
-  `scripts/next-benchmark.mjs --assert` gates them at 2, 1, 1 and 1 ms.
-- **Edits:** 0.3–3.9 ms on the main thread; on screen within 2 frames (`scripts/next-smoke.mjs`).
+  `scripts/benchmark.mjs --assert` gates them at 2, 1, 1 and 1 ms.
+- **Edits:** 0.3–1.9 ms on the main thread; on screen within 2 frames (`scripts/smoke.mjs`).
 - **View distance 12 chunks (115 m):** about 2,700 chunks loaded and about 330,000 quads in 13 draw calls. Before
   pooling it was 500–650 draw calls. The old engine needed 3,000–4,000 chunks and 340 draw calls to show 38 m.
 
@@ -89,17 +90,19 @@ The owner chose a full rewrite with 0.6 m blocks and 16³ chunks (9.6 m).
   climb, and a closed door blocks its doorway either way.
 - **Creatures:** only hunters path-find (A* on the cell grid, 300 nodes, replanned every second); other creatures
   steer and turn back at water, cliffs and walls.
-- **Drops:** items lie in the world only when they do not fit, are thrown (Q) or are scattered on death; broken
-  blocks still go straight into the inventory.
+- **Drops:** in survival, broken blocks, opened containers and hunted creatures pop their items out into the world,
+  picked up within 1.5 m. Items that don't fit stay on the ground; Q throws one; death scatters the inventory.
 - **Rivers:** there are no stony shores or sandbars. Waterfalls are generated only where a river steps down more
   than one cell. Where a lake spills over a wide edge, the waterfall is as wide as the edge.
 - **Pools:** `ChunkMeshes` reaches into `BatchedMesh`'s private geometry table (three is pinned at 0.186.0); a test
   fails if an upgrade changes it. Freed space is reused, never compacted.
 - **Light:** below the loaded chunks, the generated sky top is assumed.
 
-## Phase 12 (not done; the owner decides)
+## Phase 12: switch-over (done 2026-10-31)
 
-1. `next/` replaces `src/` and `index.html` loads it.
-2. The old `src/` and `tests/` are deleted.
-3. CI keeps `npm run check`, `next-benchmark` and `next-smoke` (renamed).
-4. Old saves are not migrated: a 0.3 m world cannot be mapped onto 0.6 m cells without loss.
+1. The old 0.3 m game (`src/`, `tests/` and its scripts) was deleted; `next/` became `src/` and `next.html` became
+   `index.html`.
+2. `scripts/smoke.mjs` and `scripts/benchmark.mjs` are the former `next-smoke` and `next-benchmark`; CI runs
+   `npm run check`, the benchmark budgets and the smoke test.
+3. Old saves are not migrated: a 0.3 m world cannot be mapped onto 0.6 m cells without loss. Worlds made in the new
+   game keep working (its IndexedDB database is still `voxel-next`).

@@ -1,87 +1,99 @@
 import * as THREE from 'three';
-import { CHUNK_SIZE, HORIZON_RECENTER_BLOCKS, HORIZON_DETAIL_CONTRAST, HORIZON_SLOPE_SHADE, HORIZON_LIGHT_DIRECTION, terrainTransition } from '../config';
-import type { HorizonData } from '../world/horizon';
+import { HORIZON_RADIUS_M, toCells } from '../config';
 
-/** Dedicated terrain worker; coalesces camera movement and replaces/disposes completed meshes. */
+const VERTEX = /* glsl */ `
+in vec3 color;
+uniform vec3 sunDir;
+out vec3 vColor;
+out float vDist;
+out vec2 vXZ;
+void main() {
+  vec4 world = modelMatrix * vec4(position, 1.0);
+  vXZ = world.xz;
+  float shade = 0.55 + 0.45 * max(dot(normalize(normal), normalize(vec3(-0.4, 1.0, 0.3))), 0.0);
+  vColor = color * shade;
+  gl_Position = projectionMatrix * viewMatrix * world;
+}`;
+
+const FRAGMENT = /* glsl */ `
+uniform float daylight;
+uniform vec3 fogColor;
+uniform float fogNear;
+uniform float fogFar;
+uniform float hole;
+in vec3 vColor;
+in vec2 vXZ;
+out vec4 outColor;
+void main() {
+  float d = length(vXZ - cameraPosition.xz);
+  // Inside the loaded terrain the real chunks are drawn instead.
+  if (d < hole) discard;
+  vec3 c = vColor * (0.04 + 0.96 * daylight);
+  outColor = vec4(mix(c, fogColor, (1.0 - exp(-3.0 * clamp((d - fogNear) / (fogFar - fogNear), 0.0, 1.0))) / (1.0 - exp(-3.0))), 1.0);
+}`;
+
+/** Rings of far terrain heights around a centre, built in a worker and drawn under the real chunks. */
 export class Horizon {
-  private worker: Worker | null = null;
-  private readonly mesh: THREE.Mesh;
-  private readonly material: THREE.MeshBasicMaterial;
-  private readonly uniforms = {
-    uCenter: { value: new THREE.Vector2() }, uInner: { value: 0 }, uOverlap: { value: CHUNK_SIZE }, uFar: { value: 1 },
-    uDaylight: { value: 1 }, uSky: { value: new THREE.Color() }, uHaze: { value: 0 },
-  };
-  private busy = false;
-  private desired: { seed: number; centerX: number; centerZ: number; viewBlocks: number } | null = null;
-  private key = '';
-  radius = 0;
-  centerX = 0;
-  centerZ = 0;
-  vertices = 0;
-  builds = 0;
-  constructor(scene: THREE.Scene, private readonly seed: number, enabled: boolean) {
-    this.material = new THREE.MeshBasicMaterial({ vertexColors: true, alphaHash: true, depthWrite: false, fog: false });
-    this.material.onBeforeCompile = shader => {
-      Object.assign(shader.uniforms, this.uniforms);
-      shader.vertexShader = shader.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vHorizonPosition;')
-        .replace('#include <begin_vertex>', '#include <begin_vertex>\nvHorizonPosition = (modelMatrix * vec4(position, 1.0)).xyz;');
-      shader.fragmentShader = shader.fragmentShader.replace('#include <common>', '#include <common>\nvarying vec3 vHorizonPosition;\nuniform vec2 uCenter;\nuniform float uInner;\nuniform float uOverlap;\nuniform float uFar;\nuniform float uDaylight;\nuniform vec3 uSky;\nuniform float uHaze;')
-        .replace('#include <color_fragment>', `#include <color_fragment>\nvec3 terrainNormal = normalize(cross(dFdx(vHorizonPosition), dFdy(vHorizonPosition)));\nterrainNormal *= sign(terrainNormal.y);\nfloat slopeLight = (1.0 - ${HORIZON_SLOPE_SHADE}) + ${HORIZON_SLOPE_SHADE} * max(0.0, dot(terrainNormal, normalize(vec3(${HORIZON_LIGHT_DIRECTION.map(v => v.toFixed(3)).join(", ")}))));\nvec2 cell = floor(vHorizonPosition.xz);\nfloat detail = fract(sin(dot(cell, vec2(12.9898, 78.233))) * 43758.5453);\ndiffuseColor.rgb *= slopeLight * mix(1.0 - ${HORIZON_DETAIL_CONTRAST}, 1.0 + ${HORIZON_DETAIL_CONTRAST}, detail);\nfloat hd = length(vHorizonPosition.xz-uCenter);\nfloat farRange = uFar * (1.0 - uHaze * 0.65);\ndiffuseColor.rgb = mix(diffuseColor.rgb * uDaylight, uSky, smoothstep(farRange * 0.15, farRange, hd));\ndiffuseColor.a *= smoothstep(uInner, uInner + uOverlap, hd) * (1.0 - smoothstep(farRange * 0.85, farRange, hd));\nif (diffuseColor.a < 0.01) discard;`);
-    };
-    this.mesh = new THREE.Mesh(new THREE.BufferGeometry(), this.material);
-    this.mesh.renderOrder = -1; this.mesh.visible = false;
-    scene.add(this.mesh);
-    if (enabled) {
-      try { this.worker = new Worker(new URL('../workers/horizonWorker.ts', import.meta.url), { type: 'module' }); }
-      catch { console.warn('Horizon worker unavailable; using voxel terrain only.'); }
-    }
-    if (this.worker) {
-      this.worker.onerror = e => {
-        e.preventDefault(); this.worker?.terminate(); this.worker = null;
-        this.busy = false; this.desired = null; this.radius = 0; this.mesh.visible = false;
-        console.warn('Horizon worker failed; using voxel terrain only.');
-      };
-      this.worker.onmessage = (e: MessageEvent<HorizonData>) => {
-        this.setData(e.data);
-        this.busy = false; this.pump();
-      };
-    }
-  }
-  update(x: number, z: number, renderDistance: number, visible: boolean): void {
-    this.mesh.visible = visible && this.radius > 0;
-    if (!visible) return;
-    this.uniforms.uCenter.value.set(x, z);
-    // Match the circular voxel load radius; coarse terrain must not cover the near scene.
-    const fade = terrainTransition(renderDistance * CHUNK_SIZE);
-    this.uniforms.uInner.value = fade.proxyStart;
-    this.uniforms.uOverlap.value = fade.start - fade.proxyStart;
-    if (!this.worker) return;
-    const step = Math.min(HORIZON_RECENTER_BLOCKS, Math.max(CHUNK_SIZE, renderDistance * CHUNK_SIZE / 2));
-    const cx = Math.floor(x / step) * step;
-    const cz = Math.floor(z / step) * step;
-    const key = `${cx},${cz},${renderDistance}`;
-    if (key !== this.key) { this.key = key; this.desired = { seed: this.seed, centerX: cx, centerZ: cz, viewBlocks: renderDistance * CHUNK_SIZE }; }
-    this.pump();
-  }
-  /** Install one complete proxy mesh. It renders before voxels without occluding their true surfaces. */
-  setData(d: HorizonData): void {
-    const geometry = new THREE.BufferGeometry();
-    geometry.setAttribute('position', new THREE.BufferAttribute(d.positions, 3));
-    geometry.setAttribute('color', new THREE.BufferAttribute(d.colors, 3));
-    geometry.setIndex(new THREE.BufferAttribute(d.indices, 1)); geometry.computeBoundingSphere();
-    this.mesh.geometry.dispose(); this.mesh.geometry = geometry; this.mesh.position.set(d.centerX, 0, d.centerZ);
-    this.centerX = d.centerX; this.centerZ = d.centerZ; this.radius = d.radius; this.vertices = d.positions.length / 3; this.builds++;
-    this.uniforms.uFar.value = d.radius;
-  }
-  private pump(): void {
-    if (!this.worker || this.busy || !this.desired) return;
-    const request = this.desired; this.desired = null; this.busy = true; this.worker.postMessage(request);
-  }
-  setEnvironment(daylight: number, sky: number, haze: number): void {
-    this.uniforms.uDaylight.value = daylight; this.uniforms.uSky.value.setHex(sky); this.uniforms.uHaze.value = haze;
-  }
-  /** Debug comparison preserves the camera/fog range while hiding only the proxy. */
-  setDebugHidden(hidden: boolean): void { this.material.visible = !hidden; }
+  readonly mesh: THREE.Mesh;
+  readonly radii: Float32Array;
+  readonly segments = 128;
+  /** Where the current rings are centred (cells), or null before the first build. */
+  center: [number, number] | null = null;
 
-  get visible(): boolean { return this.mesh.visible; }
+  constructor(scene: THREE.Scene, uniforms: Record<string, THREE.IUniform>, innerCells: number) {
+    this.radii = new Float32Array(48);
+    this.setInner(innerCells);
+    const material = new THREE.ShaderMaterial({
+      glslVersion: THREE.GLSL3, vertexShader: VERTEX, fragmentShader: FRAGMENT,
+      uniforms: { ...uniforms, hole: { value: 0 }, sunDir: { value: new THREE.Vector3(0, 1, 0) } },
+      polygonOffset: true, polygonOffsetFactor: 2, polygonOffsetUnits: 4,
+    });
+    this.mesh = new THREE.Mesh(new THREE.BufferGeometry(), material);
+    this.mesh.frustumCulled = false;
+    this.mesh.renderOrder = -10;
+    this.mesh.visible = false;
+    scene.add(this.mesh);
+  }
+
+  /** Sets the innermost ring's radius (cells); the rings must then be built again. */
+  setInner(innerCells: number): void {
+    const outer = toCells(HORIZON_RADIUS_M), rings = this.radii.length;
+    // Rings grow geometrically: fine near the view's edge, coarse far out.
+    for (let i = 0; i < rings; i++) this.radii[i] = innerCells * Math.pow(outer / innerCells, i / (rings - 1));
+    this.center = null;
+  }
+
+  /** The hole radius (cells) where real terrain is drawn instead. */
+  setHole(cells: number): void {
+    (this.mesh.material as THREE.ShaderMaterial).uniforms.hole!.value = cells;
+  }
+
+  /** Builds the mesh from sampled heights (cells) and colours, centred on (x, z). */
+  set(x: number, z: number, heights: Float32Array, colors: Uint8Array): void {
+    const rings = this.radii.length, seg = this.segments;
+    const positions = new Float32Array(rings * seg * 3), rgb = new Float32Array(rings * seg * 3);
+    for (let r = 0; r < rings; r++) {
+      for (let k = 0; k < seg; k++) {
+        const i = r * seg + k, a = (k / seg) * Math.PI * 2;
+        positions.set([Math.cos(a) * this.radii[r]!, heights[i]!, Math.sin(a) * this.radii[r]!], i * 3);
+        rgb.set([colors[i * 3]! / 255, colors[i * 3 + 1]! / 255, colors[i * 3 + 2]! / 255], i * 3);
+      }
+    }
+    const index: number[] = [];
+    for (let r = 0; r < rings - 1; r++) {
+      for (let k = 0; k < seg; k++) {
+        const a = r * seg + k, b = r * seg + ((k + 1) % seg), c = a + seg, d = b + seg;
+        index.push(a, b, c, b, d, c);
+      }
+    }
+    const g = this.mesh.geometry;
+    g.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    g.setAttribute('color', new THREE.BufferAttribute(rgb, 3));
+    g.setIndex(index);
+    g.computeVertexNormals();
+    this.mesh.position.set(x, 0, z);
+    this.mesh.updateMatrix();
+    this.center = [x, z];
+    this.mesh.visible = true;
+  }
 }

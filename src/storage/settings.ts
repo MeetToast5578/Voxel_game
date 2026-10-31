@@ -1,68 +1,41 @@
-import {
-  DEFAULT_FOV, DEFAULT_RENDER_DISTANCE, MAX_FOV, MAX_RENDER_DISTANCE, MIN_FOV, MIN_RENDER_DISTANCE,
-} from '../config';
-import { clamp } from '../core/math';
-import type { KeyValueStore } from './store';
+import { DEFAULT_VIEW_CHUNKS, MAX_VIEW_CHUNKS, MIN_VIEW_CHUNKS, MOUSE_SENSITIVITY } from '../config';
 
 export interface Settings {
-  renderDistance: number; // chunks, integer
-  fov: number; // degrees
-  mouseSensitivity: number; // multiplier for DEFAULT_MOUSE_SENSITIVITY
-  resolution: number; // share of the screen's pixel density rendered, MIN_RESOLUTION..1 (T-J7)
+  viewChunks: number;
+  /** Radians per pixel of mouse movement. */
+  mouseSensitivity: number;
+  /** Vertical field of view in degrees. */
+  fov: number;
 }
 
-export const MIN_RESOLUTION = 0.5;
+const KEY = 'voxel-next-settings';
+export const DEFAULT_SETTINGS: Settings = { viewChunks: DEFAULT_VIEW_CHUNKS, mouseSensitivity: MOUSE_SENSITIVITY, fov: 70 };
 
-/** Quality presets (T-J7): each sets the settings that cost the most frame time. */
-export const QUALITY_PRESETS = {
-  Low: { renderDistance: 4, resolution: 0.5 },
-  Medium: { renderDistance: 8, resolution: 0.75 },
-  High: { renderDistance: 12, resolution: 1 },
-} as const satisfies Record<string, Partial<Settings>>;
-export type QualityPreset = keyof typeof QUALITY_PRESETS;
+const clampNum = (v: unknown, min: number, max: number, fallback: number) =>
+  typeof v === 'number' && Number.isFinite(v) ? Math.max(min, Math.min(max, v)) : fallback;
 
-/** The preset the settings match, or null when they have been tuned by hand. */
-export function presetOf(s: Settings): QualityPreset | null {
-  const match = Object.entries(QUALITY_PRESETS).find(([, p]) => p.renderDistance === s.renderDistance && p.resolution === s.resolution);
-  return match ? (match[0] as QualityPreset) : null;
-}
-
-export const MIN_SENSITIVITY = 0.25;
-export const MAX_SENSITIVITY = 3;
-
-export const DEFAULT_SETTINGS: Readonly<Settings> = {
-  renderDistance: DEFAULT_RENDER_DISTANCE,
-  fov: DEFAULT_FOV,
-  mouseSensitivity: 1,
-  resolution: 1,
-};
-
-/** Turns anything (parsed JSON, garbage, null) into valid settings: clamps numbers, fills defaults. */
-export function sanitizeSettings(raw: unknown): Settings {
-  const r = (typeof raw === 'object' && raw !== null ? raw : {}) as Record<string, unknown>;
-  const num = (v: unknown, fallback: number, min: number, max: number): number =>
-    typeof v === 'number' && Number.isFinite(v) ? clamp(v, min, max) : fallback;
+/** Settings from any stored value: every field is checked and clamped, and anything unusable gets its default. */
+export function parseSettings(value: unknown): Settings {
+  const s = (typeof value === 'object' && value !== null ? value : {}) as Record<string, unknown>;
   return {
-    renderDistance: Math.round(num(r.renderDistance, DEFAULT_SETTINGS.renderDistance, MIN_RENDER_DISTANCE, MAX_RENDER_DISTANCE)),
-    fov: num(r.fov, DEFAULT_SETTINGS.fov, MIN_FOV, MAX_FOV),
-    mouseSensitivity: num(r.mouseSensitivity, DEFAULT_SETTINGS.mouseSensitivity, MIN_SENSITIVITY, MAX_SENSITIVITY),
-    resolution: num(r.resolution, DEFAULT_SETTINGS.resolution, MIN_RESOLUTION, 1),
+    viewChunks: Math.round(clampNum(s.viewChunks, MIN_VIEW_CHUNKS, MAX_VIEW_CHUNKS, DEFAULT_SETTINGS.viewChunks)),
+    mouseSensitivity: clampNum(s.mouseSensitivity, 0.0002, 0.02, DEFAULT_SETTINGS.mouseSensitivity),
+    fov: clampNum(s.fov, 40, 110, DEFAULT_SETTINGS.fov),
   };
 }
 
-export function loadSettings(store: KeyValueStore, key: string): Settings {
+export function loadSettings(): Settings {
   try {
-    const text = store.getItem(key);
-    return sanitizeSettings(text ? JSON.parse(text) : null);
+    return parseSettings(JSON.parse(localStorage.getItem(KEY) ?? 'null'));
   } catch {
     return { ...DEFAULT_SETTINGS };
   }
 }
 
-export function saveSettings(store: KeyValueStore, key: string, settings: Settings): void {
+export function saveSettings(settings: Settings): void {
   try {
-    store.setItem(key, JSON.stringify(settings));
+    localStorage.setItem(KEY, JSON.stringify(settings));
   } catch {
-    // Quota exceeded or storage disabled: settings just won't persist.
+    // Storage can be full or blocked (private windows); settings then last for this session only.
   }
 }
