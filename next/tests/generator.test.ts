@@ -143,4 +143,13 @@ describe('trees', () => {
     }
     throw new Error('no tree crossing a column border found');
   });
+
+  it('reports how deep a cave opening the surface goes, so its inside gets meshed', () => {
+    const gen = new Generator(1);
+    // Chunk column (-6, -5) holds a cave mouth in seed 1; columns without one report no floor.
+    const open = gen.column(-6, -5);
+    expect(open.open.some((v) => v === 1)).toBe(true);
+    expect(open.caveFloor).toBeLessThan(open.minTop);
+    expect(gen.column(0, 0).caveFloor).toBe(Infinity);
+  });
 });

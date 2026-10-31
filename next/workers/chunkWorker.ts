@@ -18,7 +18,7 @@ self.onmessage = (e: MessageEvent<WorkerRequest>) => {
     if (req.type === 'column') {
       const c = generator!.column(req.cx, req.cz);
       const top = c.top.slice(), skyTop = c.skyTop.slice(), climate = c.climate.slice(), biome = c.biome.slice(), water = c.water.slice();
-      post({ type: 'column', id: req.id, top, skyTop, climate, biome, water, minTop: c.minTop, maxTop: c.maxTop },
+      post({ type: 'column', id: req.id, top, skyTop, climate, biome, water, minTop: c.minTop, caveFloor: c.caveFloor, maxTop: c.maxTop },
         [top.buffer, skyTop.buffer, climate.buffer, biome.buffer, water.buffer]);
     } else if (req.type === 'generate') {
       const states = new Uint16Array(CHUNK_VOLUME);

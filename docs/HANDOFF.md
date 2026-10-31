@@ -208,6 +208,11 @@ Polish:
 - **Path-finding for hunters** (`next/creatures/pathfinding.ts`, ported A* with integer keys): a hunting land
   creature plans a path to its target every second and walks it cell by cell, so a zombie goes round a wall instead
   of pressing against it.
+- **Worker light 3.6× faster** (`chunkLight`): open cells are marked once, neighbours are stepped to by index, and
+  all-solid or all-sky chunks return at once. 0.70 → 0.19 ms per chunk; CI had failed the 1 ms gate at 1.03 ms.
+- **Cave mouths** no longer show the sky: the generator reports each column's cave floor under surface openings
+  (`ColumnData.caveFloor`), and streaming meshes a column down to the lowest floor of itself and its 8 neighbours.
+  Cost in seed 1: 16% more meshed chunks at view 12 (926 → 1,075) and about 8 s more loading in SwiftShader.
 
 ## 2026-10-24 — performance (Claude)
 

@@ -32,6 +32,7 @@ interface ColumnInfo {
   biome: Uint8Array;
   water: Int32Array;
   minTop: number;
+  caveFloor: number;
   maxTop: number;
 }
 
@@ -196,7 +197,7 @@ export class Streamer {
       this.columnJobs.add(key);
       this.pool.run(w, { type: 'column', cx: col.cx, cz: col.cz }).then((r) => {
         this.columnJobs.delete(key);
-        this.infos.set(key, { cx: col.cx, cz: col.cz, top: r.top, skyTop: r.skyTop, climate: r.climate, biome: r.biome, water: r.water, minTop: r.minTop, maxTop: r.maxTop });
+        this.infos.set(key, { cx: col.cx, cz: col.cz, top: r.top, skyTop: r.skyTop, climate: r.climate, biome: r.biome, water: r.water, minTop: r.minTop, caveFloor: r.caveFloor, maxTop: r.maxTop });
         this.stale = true;
       }, () => {
         this.columnJobs.delete(key);
@@ -208,7 +209,12 @@ export class Streamer {
   /** The chunk heights to mesh in a column, or null until its heights are known. */
   private meshRange(col: Planned, info: ColumnInfo): number[] {
     const ys = new Set<number>();
-    const lo = Math.floor((info.minTop - 1) / CHUNK_SIZE), hi = Math.floor((info.maxTop + 1) / CHUNK_SIZE);
+    // Caves opening the surface here or next door are seen into, down to their floor.
+    let floor = info.minTop;
+    for (let dx = -1; dx <= 1; dx++) for (let dz = -1; dz <= 1; dz++) {
+      floor = Math.min(floor, this.infos.get(columnKey(info.cx + dx, info.cz + dz))?.caveFloor ?? Infinity);
+    }
+    const lo = Math.floor((floor - 1) / CHUNK_SIZE), hi = Math.floor((info.maxTop + 1) / CHUNK_SIZE);
     for (let y = lo; y <= hi; y++) ys.add(y);
     if (info.minTop < SEA_CELL) ys.add(Math.floor((SEA_CELL - 1) / CHUNK_SIZE));
     if (col.d2 <= NEAR_RADIUS_CHUNKS * NEAR_RADIUS_CHUNKS) {

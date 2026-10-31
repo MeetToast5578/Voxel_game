@@ -24,6 +24,8 @@ const REED = S('reed'), LILY = S('lily_pad'), LAVA = S('lava');
 /** Flowing water at full level, resting and falling (variants: level - 1, plus FLUID_LEVELS when falling). */
 const SPILL = BLOCKS.state('flowing_water', FLUID_LEVELS - 1), FALLING = BLOCKS.state('flowing_water', 2 * FLUID_LEVELS - 1);
 const N4 = [[1, 0], [-1, 0], [0, 1], [0, -1]] as const;
+/** How far below an opened surface cell the cave floor is looked for. */
+const OPENING_DEPTH_CELLS = 48;
 const COVER = { tall: S('tall_grass'), fern: S('fern'), poppy: S('poppy'), dandelion: S('dandelion'),
   brown: S('brown_mushroom'), red: S('red_mushroom') };
 
@@ -61,6 +63,8 @@ export interface ColumnData {
   /** Tree and feature cells in this column: column index, y, state (flat triples). */
   features: Int32Array;
   minTop: number;
+  /** Lowest cave floor seen through an opening in the surface, or Infinity where no cave opens it. */
+  caveFloor: number;
   /** Highest terrain or feature cell. */
   maxTop: number;
 }
@@ -120,7 +124,7 @@ export class Generator {
     const d: Base = {
       top: new Int32Array(AREA), climate: new Uint8Array(AREA), offset: new Float32Array(AREA), amp: new Float32Array(AREA),
       surface: new Uint16Array(AREA), soil: new Uint16Array(AREA), biome: new Uint8Array(AREA), warp: new Float32Array(AREA),
-      open: new Uint8Array(AREA), water: new Int32Array(AREA), shore: new Uint8Array(AREA), minTop: Infinity, terrainMax: -Infinity,
+      open: new Uint8Array(AREA), water: new Int32Array(AREA), shore: new Uint8Array(AREA), minTop: Infinity, caveFloor: Infinity, terrainMax: -Infinity,
     };
     const ws: WaterSample = { level: 0, ground: 0, kind: 0, near: 0 };
     for (let lz = 0; lz < N; lz++) {
@@ -162,6 +166,12 @@ export class Generator {
           d.soil[i] = S(biome.soil);
         }
         d.open[i] = y <= this.caveTop(y, water) && this.underground.isCave(x, y, z, 0) ? 1 : 0;
+        // Where a cave opens the surface, its floor is seen through the opening: streaming meshes down to it.
+        if (d.open[i]) {
+          let floor = y;
+          while (floor > y - OPENING_DEPTH_CELLS && this.underground.isCave(x, floor - 1, z, (y - floor + 1) * B)) floor--;
+          d.caveFloor = Math.min(d.caveFloor, floor);
+        }
         d.minTop = Math.min(d.minTop, y);
         d.terrainMax = Math.max(d.terrainMax, y);
       }
