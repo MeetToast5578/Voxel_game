@@ -1,5 +1,5 @@
 import {
-  ATTACK_COOLDOWN_S, ATTACK_REACH_M, CREATURE_CAP, CREATURE_FALL_M, DESPAWN_M, FLEE_M, GRAVITY_M_S2, HOSTILE_CAP, HUNT_M,
+  ATTACK_COOLDOWN_S, ATTACK_REACH_M, BURN_PER_S, BURN_S, CREATURE_CAP, CREATURE_FALL_M, DESPAWN_M, FLEE_M, GRAVITY_M_S2, HOSTILE_CAP, HUNT_M,
   KNOCKBACK_M_S, RUN_FACTOR, SPAWN_INTERVAL_S, SPAWN_MAX_M, SPAWN_MIN_M, STEP_HEIGHT_M, cells, toCells,
 } from '../config';
 import { columnIndex, localIndex, toChunk, toLocal } from '../core/coords';
@@ -28,6 +28,8 @@ export interface Creature {
   /** Walk cycle phase, and a short red flash after being hit. */
   walk: number;
   hurt: number;
+  /** Seconds it keeps burning after touching lava or fire. */
+  burning: number;
   /** While hunting on land: cells to walk through (flat x, y, z), and seconds until it is planned again. */
   path: number[];
   replan: number;
@@ -39,6 +41,8 @@ export interface CreatureContext {
   /** Survival: hostiles hunt the player and bites hurt. */
   survival: boolean;
   day: boolean;
+  /** Share of the hostile cap that may be alive, from the difficulty: 0 keeps hostiles away entirely. */
+  hostiles: number;
   boxAt: BoxAt;
   waterAt: (x: number, y: number, z: number) => boolean;
 }
@@ -73,8 +77,8 @@ export class Creatures {
     for (let i = this.list.length - 1; i >= 0; i--) {
       const c = this.list[i]!;
       const d = Math.hypot(c.body.x - p.x, c.body.z - p.z);
-      // Out of range, or a monster caught far away by daylight: gone.
-      if (d > toCells(DESPAWN_M) || (c.species.hostile && ctx.day && d > toCells(SPAWN_MIN_M) && this.rand() < dt * 0.2)) {
+      // Out of range, a monster caught far away by daylight, or any monster when the difficulty allows none: gone.
+      if (d > toCells(DESPAWN_M) || (c.species.hostile && ((ctx.day && d > toCells(SPAWN_MIN_M) && this.rand() < dt * 0.2) || ctx.hostiles <= 0))) {
         this.list.splice(i, 1);
         continue;
       }
@@ -87,6 +91,7 @@ export class Creatures {
         this.decide(c, ctx);
       }
       this.move(c, dt, ctx);
+      if (this.burn(c, dt, ctx)) this.list.splice(this.list.indexOf(c), 1);
     }
   }
 
@@ -228,6 +233,18 @@ export class Creatures {
     c.walk += Math.hypot(b.vx, b.vz) * dt * 3;
   }
 
+  /** Lava and campfires set a creature alight and water puts it out; returns whether it burned to death. */
+  private burn(c: Creature, dt: number, ctx: CreatureContext): boolean {
+    const b = c.body, key = BLOCKS.type(this.world.get(Math.floor(b.x), Math.floor(b.y + 0.1), Math.floor(b.z))).key;
+    if (key === 'lava' || key === 'flowing_lava' || key === 'campfire') c.burning = BURN_S;
+    if (ctx.waterAt(Math.floor(b.x), Math.floor(b.y + b.height * 0.5), Math.floor(b.z))) c.burning = 0;
+    if (c.burning <= 0) return false;
+    c.burning -= dt;
+    c.health -= BURN_PER_S * 2 * dt;
+    c.hurt = Math.max(c.hurt, 0.1);
+    return c.health <= 0;
+  }
+
   /** Hurts a creature, knocking it away from (fromX, fromZ); returns whether it died (and was removed). */
   damage(c: Creature, amount: number, fromX: number, fromZ: number): boolean {
     c.health -= amount;
@@ -286,7 +303,7 @@ export class Creatures {
     const chunk = this.world.chunkAt(x, y, z)!;
     const dark = chunk.skyLight(localIndex(toLocal(x), toLocal(y), toLocal(z))) < 7 || !ctx.day;
     const options = SPECIES.filter((s) => (water ? s.medium === 'water' : s.medium === 'land' && (s.biomes.includes(biome) ||
-      (s.biomes.includes('dark') && dark && hostiles < HOSTILE_CAP))));
+      (s.biomes.includes('dark') && dark && hostiles < HOSTILE_CAP * ctx.hostiles))));
     if (options.length === 0) return;
     const s = options[Math.floor(this.rand() * options.length)]!;
     const n = s.group[0] + Math.floor(this.rand() * (s.group[1] - s.group[0] + 1));
@@ -298,7 +315,7 @@ export class Creatures {
   add(s: Species, x: number, y: number, z: number, health: number): Creature {
     const c: Creature = {
       id: this.nextId++, species: s, yaw: this.rand() * Math.PI * 2, health, mode: 'idle', goal: null, target: null,
-      think: this.rand() * THINK_S, cooldown: 0, walk: 0, hurt: 0, path: [], replan: 0,
+      think: this.rand() * THINK_S, cooldown: 0, walk: 0, hurt: 0, path: [], replan: 0, burning: 0,
       body: { x, y, z, vx: 0, vy: 0, vz: 0, onGround: false, halfWidth: toCells(s.halfWidthM), height: toCells(s.heightM) },
     };
     this.list.push(c);

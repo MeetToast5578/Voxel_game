@@ -1,4 +1,4 @@
-export type SoundName = 'break' | 'place' | 'step' | 'splash' | 'thunder';
+export type SoundName = 'break' | 'place' | 'step' | 'splash' | 'thunder' | 'hurt';
 
 interface Preset {
   /** Low-pass cutoff in Hz: lower sounds duller. */
@@ -14,12 +14,15 @@ const PRESETS: Record<SoundName, Preset> = {
   step: { frequency: 500, volume: 0.15, duration: 0.06 },
   splash: { frequency: 700, volume: 0.3, duration: 0.35 },
   thunder: { frequency: 150, volume: 0.7, duration: 2.5 },
+  hurt: { frequency: 300, volume: 0.6, duration: 0.25 },
 };
 
 /** Procedural sound effects: filtered noise bursts, so no audio files are needed. Ported from the old game. */
 export class Sounds {
   private ctx: AudioContext | null = null;
   private noise: AudioBuffer | null = null;
+  /** Effects volume from the settings, 0..1. */
+  volume = 1;
 
   /** Browsers only allow audio after a user gesture: call from a click. */
   unlock(): void {
@@ -34,7 +37,7 @@ export class Sounds {
 
   play(name: SoundName, volume = 1): void {
     const ctx = this.ctx;
-    if (!ctx || !this.noise || ctx.state !== 'running') return;
+    if (!ctx || !this.noise || ctx.state !== 'running' || this.volume <= 0) return;
     const p = PRESETS[name];
     const t = ctx.currentTime;
     const source = ctx.createBufferSource();
@@ -44,7 +47,7 @@ export class Sounds {
     filter.type = 'lowpass';
     filter.frequency.value = p.frequency * (0.9 + Math.random() * 0.2);
     const gain = ctx.createGain();
-    gain.gain.setValueAtTime(Math.max(0.002, p.volume * volume), t);
+    gain.gain.setValueAtTime(Math.max(0.002, p.volume * volume * this.volume), t);
     gain.gain.exponentialRampToValueAtTime(0.001, t + p.duration);
     source.connect(filter).connect(gain).connect(ctx.destination);
     source.start(t);

@@ -12,7 +12,7 @@ export interface Recipe {
 }
 
 const TOOL_HEADS = { wooden: ['planks'], stone: ['cobblestone'], iron: ['iron_ingot'] } as const;
-const TOOL_PATTERNS = { pickaxe: ['MMM', ' S ', ' S '], axe: ['MM', 'MS', ' S'], shovel: ['M', 'S', 'S'] } as const;
+const TOOL_PATTERNS = { pickaxe: ['MMM', ' S ', ' S '], axe: ['MM', 'MS', ' S'], shovel: ['M', 'S', 'S'], sword: ['M', 'M', 'S'] } as const;
 
 export const RECIPES: readonly Recipe[] = [
   { pattern: ['L'], key: { L: ['log'] }, result: ['planks', 4] },
@@ -24,6 +24,9 @@ export const RECIPES: readonly Recipe[] = [
   { pattern: ['WWW', 'PPP'], key: { W: ['wheat'], P: ['planks'] }, result: ['bed', 1] },
   { pattern: ['PP', 'PP', 'PP'], key: { P: ['planks'] }, result: ['door', 1] },
   { pattern: ['SS', 'SS'], key: { S: ['sand'] }, result: ['sandstone', 1] },
+  { pattern: ['SS', 'LL'], key: { S: ['stick'], L: ['log'] }, result: ['campfire', 1] },
+  { pattern: ['S S', 'SSS', 'S S'], key: { S: ['stick'] }, result: ['ladder', 3] },
+  { pattern: ['I I', ' I '], key: { I: ['iron_ingot'] }, result: ['bucket', 1] },
   ...Object.entries(TOOL_HEADS).flatMap(([tier, head]) => Object.entries(TOOL_PATTERNS).map(([kind, pattern]) =>
     ({ pattern, key: { M: head, S: ['stick'] }, result: [`${tier}_${kind}`, 1] as const }))),
   ...BLOCKS.types.filter((t) => t.key.endsWith('_stairs')).map((t) => ({
@@ -58,4 +61,33 @@ export function consumeIngredients(cells: (ItemStack | null)[]): void {
   cells.forEach((s, i) => {
     if (s && --s.count <= 0) cells[i] = null;
   });
+}
+
+/** Whether a recipe fits a `size`×`size` grid. */
+export function fits(r: Recipe, size: number): boolean {
+  return r.pattern.length <= size && r.pattern.every((row) => row.length <= size);
+}
+
+/**
+ * For the recipe list: takes one ingredient per filled cell of `r` out of `slots` and lays them out in a `size`×`size`
+ * grid from the top left. Only fresh items are used, as in crafting. Returns the grid, or null (leaving `slots` as they
+ * were) when something is missing or the recipe does not fit.
+ */
+export function takeIngredients(r: Recipe, size: number, slots: (ItemStack | null)[]): (ItemStack | null)[] | null {
+  if (!fits(r, size)) return null;
+  const work = slots.map((s) => s && { ...s });
+  const grid: (ItemStack | null)[] = new Array(size * size).fill(null);
+  for (let y = 0; y < r.pattern.length; y++) {
+    for (let x = 0; x < r.pattern[y]!.length; x++) {
+      const ch = r.pattern[y]![x]!;
+      if (ch === ' ') continue;
+      const i = work.findIndex((s) => s !== null && !s.wear && BLOCKS.variant(s.state) === 0 && r.key[ch]!.includes(BLOCKS.type(s.state).key));
+      if (i < 0) return null;
+      const s = work[i]!;
+      grid[y * size + x] = { state: s.state, count: 1 };
+      if (--s.count <= 0) work[i] = null;
+    }
+  }
+  slots.splice(0, slots.length, ...work);
+  return grid;
 }

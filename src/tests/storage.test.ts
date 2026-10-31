@@ -146,4 +146,16 @@ describe('archives and settings', () => {
     expect(parseSettings(null)).toEqual(DEFAULT_SETTINGS);
     expect(parseSettings({ viewChunks: 999, fov: 'x', mouseSensitivity: 0.004 })).toEqual({ ...DEFAULT_SETTINGS, viewChunks: 32, mouseSensitivity: 0.004 });
   });
+
+  it('keeps good settings, and puts defaults back for bad volume, scale, flags and keys', async () => {
+    const { parseSettings, DEFAULT_SETTINGS, DEFAULT_KEYS } = await import('../storage/settings');
+    const good = { ...DEFAULT_SETTINGS, effectsVolume: 0.3, guiScale: 1.25, invertY: true, hints: false, keys: { ...DEFAULT_KEYS, jump: 'KeyJ' } };
+    expect(parseSettings(JSON.parse(JSON.stringify(good)))).toEqual(good);
+    const bad = parseSettings({ effectsVolume: 7, guiScale: 'big', invertY: 1, hints: null, keys: { jump: '<script>', forward: 42, drop: 'KeyX' } });
+    expect(bad.effectsVolume).toBe(1);
+    expect(bad.guiScale).toBe(DEFAULT_SETTINGS.guiScale);
+    expect(bad.invertY).toBe(false);
+    expect(bad.hints).toBe(true);
+    expect(bad.keys).toEqual({ ...DEFAULT_KEYS, drop: 'KeyX' });
+  });
 });

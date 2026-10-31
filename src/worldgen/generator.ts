@@ -3,7 +3,7 @@ import {
   BARE_ROCK_AMP_M, BEACH_BAND_M, BIOME_JITTER_C, BIOME_JITTER_MM, BLOCK_SIZE_M, BOULDER_DENSITY_PER_M2, BOULDER_RADIUS_M, CHUNK_AREA, CHUNK_SIZE,
   COLUMN_CACHE, DEEP_SEA_FLOOR_M, DETAIL_H_M, DETAIL_V_M, FALLEN_LOG_DENSITY_PER_M2, FALLEN_LOG_MAX_M,
   FALLEN_LOG_MIN_M, FERN_CHANCE, FLOWER_CHANCE, LILY_PAD_CHANCE, MUSHROOM_CHANCE, REED_CHANCE, SEA_LEVEL_M, SECONDARY_TREE_CHANCE,
-  SHORE_CAVE_BAND_M, SHORE_ROOF_CELLS, SOIL_DEPTH_M, TALL_GRASS_CHANCE, TREE_DENSITY_PER_M2, TREE_REACH_CELLS, cells,
+  SHORE_CAVE_BAND_M, SHORE_ROOF_CELLS, SOIL_DEPTH_M, SPAWN_SEARCH_M, TALL_GRASS_CHANCE, TREE_DENSITY_PER_M2, TREE_REACH_CELLS, cells,
 } from '../config';
 import { hash2, mulberry32 } from '../core/random';
 import { BLOCKS, BLOCKS_SKY, FLUID_LEVELS } from '../engine/blocks';
@@ -179,6 +179,35 @@ export class Generator {
     this.bases.set(key, d);
     if (this.bases.size > COLUMN_CACHE) this.bases.delete(this.bases.keys().next().value!);
     return d;
+  }
+
+  /**
+   * Where a new player starts: the cell above dry, open, level ground nearest (x, z), searched on widening rings. Never
+   * in water, a cave opening, on a bank, a tree or a slope steeper than one cell. [x, y, z] in cells; y is NaN if the
+   * search finds nothing.
+   */
+  spawnPoint(x: number, z: number): [number, number, number] {
+    const max = cells(SPAWN_SEARCH_M);
+    for (let r = 0; r <= max; r = r < N ? r + N : Math.ceil(r * 1.25)) {
+      const n = r === 0 ? 1 : Math.max(8, Math.min(32, Math.round((2 * Math.PI * r) / N)));
+      for (let k = 0; k < n; k++) {
+        const a = (k / n) * Math.PI * 2, px = Math.floor(x + Math.cos(a) * r), pz = Math.floor(z + Math.sin(a) * r);
+        const y = this.standable(px, pz);
+        if (y !== null) return [px + 0.5, y, pz + 0.5];
+      }
+    }
+    return [Math.floor(x) + 0.5, NaN, Math.floor(z) + 0.5];
+  }
+
+  /** The cell above (x, z)'s ground if a player can safely start there, else null. */
+  private standable(x: number, z: number): number | null {
+    const [c, i] = this.cellBase(x, z), top = c.top[i]!;
+    if (top + 1 < c.water[i]! || c.open[i] || c.shore[i] || this.featureAt(x, z)) return null;
+    for (const [dx, dz] of N4) {
+      const [d, j] = this.cellBase(x + dx, z + dz);
+      if (Math.abs(d.top[j]! - top) > 1 || d.top[j]! + 1 < d.water[j]! || d.open[j]) return null;
+    }
+    return top + 1;
   }
 
   /** Base data of the column holding cell (x, z), and the cell's index in it. */

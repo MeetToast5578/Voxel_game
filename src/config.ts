@@ -71,6 +71,9 @@ export const NIGHT_DAYLIGHT = 0.22;
 export const PLAYER_HALF_WIDTH_M = 0.28;
 export const PLAYER_HEIGHT_M = 1.75;
 export const WALK_SPEED_M_S = 4.3;
+/** Crouching walks at this share of the walking speed; ladders are climbed at CLIMB_SPEED_M_S. */
+export const CROUCH_FACTOR = 0.3;
+export const CLIMB_SPEED_M_S = 2.4;
 export const SPRINT_SPEED_M_S = 6;
 export const GRAVITY_M_S2 = 28;
 /** Jump height is about 1.35 m. */
@@ -258,6 +261,15 @@ export const REED_CHANCE = 0.15;
 export const LILY_PAD_CHANCE = 0.04;
 
 // ---- Survival ----
+/** How far from the origin a new world looks for dry, open, level ground to start the player on. */
+export const SPAWN_SEARCH_M = 2000;
+export type Difficulty = 'peaceful' | 'normal' | 'hard';
+/** Per difficulty: share of the hostile cap that may spawn, damage they deal, and how fast hunger drains. */
+export const DIFFICULTY: Readonly<Record<Difficulty, { hostiles: number; damage: number; hunger: number }>> = {
+  peaceful: { hostiles: 0, damage: 0, hunger: 0.5 },
+  normal: { hostiles: 1, damage: 1, hunger: 1 },
+  hard: { hostiles: 1.5, damage: 1.5, hunger: 1.25 },
+};
 export const MAX_HEALTH = 20;
 export const MAX_HUNGER = 20;
 /** Hunger lost per second, and extra while sprinting. */
@@ -273,6 +285,32 @@ export const SAFE_FALL_SPEED_M_S = 10;
 export const BREATH_S = 15;
 export const DROWN_PER_S = 2;
 export const LAVA_PER_S = 8;
+/** After touching lava or fire a body burns this long (water puts it out), losing BURN_PER_S health a second. */
+export const BURN_S = 4;
+export const BURN_PER_S = 1;
+/**
+ * Body temperature (°C). The body holds BODY_NORMAL_C while the felt temperature is in the comfortable band, and drifts
+ * by BODY_RATE_PER_S per second for every degree outside it. Below BODY_COLD_C or above BODY_HOT_C it hurts.
+ */
+export const BODY_NORMAL_C = 37;
+export const BODY_COLD_C = 35;
+export const BODY_HOT_C = 39.5;
+export const COMFORT_MIN_C = 8;
+export const COMFORT_MAX_C = 34;
+export const BODY_RATE_PER_S = 0.0015;
+export const TEMPERATURE_DAMAGE_PER_S = 0.5;
+/** Night air, a roof, wind (per m/s, out in the open) and being wet change the felt temperature by this much. */
+export const NIGHT_COOLING_C = 6;
+/** Night, for cooling and the night warning: before this time of day or after its mirror. */
+export const NIGHT_BEFORE = 0.24;
+export const SHELTER_C = 6;
+export const WIND_CHILL_PER_M_S = 0.6;
+export const WET_COOLING_C = 8;
+/** Underground (no sky light, a few meters under the surface) the air is this temperature whatever the weather. */
+export const CAVE_AIR_C = 12;
+/** Heat felt beside a source (°C), falling off to nothing at HEAT_REACH_M. */
+export const HEAT_SOURCES_C: Readonly<Record<string, number>> = { campfire: 22, lava: 25, flowing_lava: 25, lit_furnace: 12, torch: 4 };
+export const HEAT_REACH_M = 3;
 /** Seconds a furnace takes per item. */
 export const SMELT_S = 8;
 /** Chance a broken tall grass gives wheat seeds, and broken or decayed natural leaves a sapling. */
@@ -309,10 +347,16 @@ export const ATTACK_COOLDOWN_S = 1.2;
 /** Creatures do not walk off drops deeper than this. */
 export const CREATURE_FALL_M = 3;
 export const RUN_FACTOR = 1.8;
-/** Hits on a creature: by hand, and with an axe, which is the best weapon there is. */
+/** Hits on a creature: by hand, with an axe, with other tools, and with a sword (plus the tool's tier each). */
 export const HAND_DAMAGE = 1;
-export const AXE_DAMAGE = 4;
+export const AXE_DAMAGE = 3;
 export const TOOL_DAMAGE = 2;
+export const SWORD_DAMAGE = 4;
+/** A hit at full strength needs this long since the last one; quicker hits do a share of the damage. */
+export const PLAYER_ATTACK_COOLDOWN_S = 0.6;
+/** Campfires: seconds to cook one item, and how many fit on one. */
+export const CAMPFIRE_COOK_S = 20;
+export const CAMPFIRE_SLOTS = 4;
 export const KNOCKBACK_M_S = 5;
 
 // ---- Building (creative) ----

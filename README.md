@@ -20,7 +20,11 @@ All textures and sounds are generated in code; there are no asset files.
 Requires Node.js 22.
 
     npm install
-    npm run dev        # then open http://localhost:5173 and click the page
+    npm run dev        # then open http://localhost:5173
+
+The title screen continues the last world or starts a new one: survival or creative, with a difficulty (peaceful,
+normal or hard). New players get short hints in survival; the recipe list in the crafting screens fills the grid for
+you.
 
 A production build (`npm run build`, then `npm run preview`) can be installed from the browser and played offline.
 
@@ -38,24 +42,32 @@ A production build (`npm run build`, then `npm run preview`) can be installed fr
 | 1–9, mouse wheel | Choose a hotbar slot |
 | E | Inventory and crafting |
 | Q | Throw one of the held item |
+| H | Hide the current hint |
 | F | Toggle flying |
 | T | Skip an hour |
 | + / − | View distance |
 | B / G | Creative: mark corners and fill / clear a box with the held block |
 | Ctrl+Z / Ctrl+Y | Creative: undo / redo |
 | F3 | Debug text and frame-time graph |
-| Esc | Pause menu: settings, worlds, export and import |
+| Esc | Pause menu: difficulty, settings (keys, volume, invert Y, menu size), worlds, export and import |
 
-A gamepad works too, and touch screens get on-screen controls (`?touch=1` forces them).
+Every key above except the hotbar numbers, Ctrl+Z/Y and Esc can be changed in the settings.
+
+A gamepad works too: in menus and inventory screens the d-pad or left stick moves between buttons and slots, A clicks,
+X right-clicks a slot, B goes back and Start pauses or resumes. Touch screens get on-screen controls (`?touch=1`
+forces them).
 
 ## URL parameters
+
+Without any, the title screen opens. With any, the game skips it and opens a world directly.
 
 | Parameter | Effect |
 |-----------|--------|
 | `seed=N` | World seed for a new world |
 | `world=name` | Open (or create) the named world |
 | `new=1` | Start the named world afresh |
-| `mode=survival` | Survival instead of creative |
+| `mode=creative` | Creative instead of survival |
+| `difficulty=peaceful\|normal\|hard` | Difficulty of a new world (default normal) |
 | `view=N` | View distance in chunks (default 12, 115 m) |
 | `x=…&y=…&z=…`, `yaw=…`, `pitch=…`, `fly=1` | Start position (in cells) and view |
 | `time=0..1`, `year=0..1` | Time of day and of year |

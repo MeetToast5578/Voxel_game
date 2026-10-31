@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { BLOCKS } from '../engine/blocks';
 import { COLLISION, type BoxAt } from '../game/collision';
 import { moveBody, overlapsSolid, unstick, type Body } from '../game/physics';
+import { Player } from '../game/player';
+import type { Input } from '../game/input';
 
 const STONE = COLLISION[BLOCKS.state('stone')]!;
 const SLAB = COLLISION[BLOCKS.state('stone_slab')]!;
@@ -109,5 +111,39 @@ describe('physics', () => {
     // Searched in sixteenths of a cell: the first free height above the block.
     expect(b.y).toBeGreaterThanOrEqual(1);
     expect(b.y).toBeLessThan(1 + 1 / 16);
+  });
+});
+
+describe('crouching and ladders', () => {
+  /** A player on a platform x < 3 (cells), with keys held as given. */
+  const keys = (over: Partial<Input>) => ({ moveX: 0, moveZ: 0, jump: false, sprint: false, descend: false, consume: () => false, ...over }) as unknown as Input;
+  const platform = (x: number, y: number) => (y < 0 && x < 3 ? STONE : 0);
+
+  it('crouching stops at the edge; walking goes over it', () => {
+    for (const crouch of [true, false]) {
+      const p = new Player(1.5, 0, 0.5);
+      p.body.onGround = true;
+      p.yaw = -Math.PI / 2; // facing +x
+      for (let i = 0; i < 120; i++) p.update(1 / 60, keys({ moveZ: 1, descend: crouch }), platform, () => false);
+      if (crouch) {
+        expect(p.body.y).toBeCloseTo(0, 5);
+        expect(p.body.x).toBeLessThan(3 + p.body.halfWidth);
+      } else expect(p.body.y).toBeLessThan(-1);
+    }
+  });
+
+  it('climbs a ladder by walking into it, holds on, and climbs down crouching', () => {
+    const wall = (x: number, y: number) => (y < 0 || (x === 1 && y < 20) ? STONE : 0);
+    const ladder = (x: number, y: number, z: number) => x === 0 && z === 0 && y >= 0 && y < 20;
+    const p = new Player(0.5, 0, 0.5);
+    p.body.onGround = true;
+    p.yaw = -Math.PI / 2;
+    for (let i = 0; i < 60; i++) p.update(1 / 60, keys({ moveZ: 1 }), wall, () => false, ladder);
+    const up = p.body.y;
+    expect(up).toBeGreaterThan(3.5); // 2.4 m/s is 4 cells a second
+    for (let i = 0; i < 60; i++) p.update(1 / 60, keys({}), wall, () => false, ladder);
+    expect(p.body.y).toBeCloseTo(up, 3);
+    for (let i = 0; i < 30; i++) p.update(1 / 60, keys({ descend: true }), wall, () => false, ladder);
+    expect(p.body.y).toBeLessThan(up - 1.5);
   });
 });

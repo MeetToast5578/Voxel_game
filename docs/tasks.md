@@ -47,60 +47,60 @@ iron, real danger, places worth finding and an end point. Onboarding, sound and 
 
 ## 1. Front door
 
-- [ ] **1.1 Title screen.** On load, show Continue (the last world), New world, Load world and Settings. Nothing
+- [x] **1.1 Title screen.** On load, show Continue (the last world), New world, Load world and Settings. Nothing
   streams until a world is chosen. URL parameters still skip straight into a world.
   **Done when:** a fresh visit shows the title screen, not a creative world, and the smoke test covers it.
-- [ ] **1.2 Survival by default, and difficulty.**
+- [x] **1.2 Survival by default, and difficulty.**
   - New worlds start in survival.
   - A difficulty (Peaceful, Normal, Hard) scales hostile spawns, the damage they deal and how fast hunger drains.
   - It is saved in the meta record and can be changed from the pause menu.
   **Done when:** unit tests cover the scaling, and Peaceful spawns no hostiles.
-- [ ] **1.3 Settings.** Add music and effects volume, invert Y, key rebinding and GUI scale. `parseSettings` checks
+- [x] **1.3 Settings.** (Music volume comes with music, 8.2.) Add music and effects volume, invert Y, key rebinding and GUI scale. `parseSettings` checks
   every new field.
   **Done when:** each setting survives a reload, and a bad stored value falls back to its default.
-- [ ] **1.4 Loading and a safe spawn.**
+- [x] **1.4 Loading and a safe spawn.**
   - A loading screen shows progress until the chunks around the spawn are meshed.
   - The first spawn is never in water, inside a cave or on a cliff edge.
   **Done when:** ten random seeds spawn on dry, open ground (unit test on the spawn search).
-- [ ] **1.5 First-steps hints.** Short prompts in survival, in this order: move, break a log, open the inventory, craft
+- [x] **1.5 First-steps hints.** Short prompts in survival, in this order: move, break a log, open the inventory, craft
   planks, a table and a pickaxe; then night is coming, and eat.
   - Each hint shows once per world and can be dismissed.
   - All hints can be turned off in settings.
   **Done when:** someone who has not read the README reaches a stone pickaxe in their first world.
-- [ ] **1.6 Recipe book.** The crafting screens list every recipe and grey out the ones you cannot make. A click fills
+- [x] **1.6 Recipe book.** The crafting screens list every recipe and grey out the ones you cannot make. A click fills
   the grid from the inventory.
   **Done when:** every entry in `RECIPES` appears, and filling works in both the 2×2 and 3×3 grids.
-- [ ] **1.7 Item tooltips.** Show the name, food value, tool tier and uses left, and fuel time.
+- [x] **1.7 Item tooltips.** Show the name, food value, tool tier and uses left, and fuel time.
   **Done when:** every item type shows a tooltip in the inventory and the hotbar.
-- [ ] **1.8 Gamepad in menus** (old T-K6 gap). The title screen, menus, inventory and crafting screens work with a
+- [x] **1.8 Gamepad in menus** (old T-K6 gap). The title screen, menus, inventory and crafting screens work with a
   gamepad.
   **Done when:** a gamepad alone can start a world, craft a pickaxe and quit to the title.
 
 ## 2. A world that pushes back
 
-- [ ] **2.1 Body temperature** (lost in the switch-over).
+- [x] **2.1 Body temperature** (lost in the switch-over).
   - It comes from the biome, season, altitude, weather, wetness, a roof overhead, and nearby torches, campfires or lava.
   - A HUD gauge shows it. Hypothermia and heatstroke hurt, and the value is saved.
   **Done when:** standing outside at night in a snowstorm hurts, and a roofed room with torches does not. Unit tests
   cover the formula.
-- [ ] **2.2 Campfire.** Crafted from sticks and logs. It gives light and warmth, and cooks food slowly without fuel.
+- [x] **2.2 Campfire.** Crafted from sticks and logs. It gives light and warmth, and cooks food slowly without fuel.
   **Done when:** it warms the player (2.1) and cooks raw meat; unit test.
-- [ ] **2.3 Weapons.** Swords for each tier, with an attack cooldown and damage by tier.
+- [x] **2.3 Weapons.** Swords for each tier, with an attack cooldown and damage by tier.
   **Done when:** a test pins the damage table, and an iron sword kills a zombie in fewer hits than a fist.
-- [ ] **2.4 Bow and arrows.** Ranged damage that falls off with distance, with arrows as items. The string comes from
+- [ ] **2.4 Bow and arrows** (waits for string from 4.1). Ranged damage that falls off with distance, with arrows as items. The string comes from
   4.1.
   **Done when:** arrows fly, hit creatures, and can be picked up again; unit test on the flight path.
-- [ ] **2.5 Taking damage feels like it.**
+- [x] **2.5 Taking damage feels like it.**
   - The screen flashes red and the camera kicks, with a hurt sound.
   - The death screen names the cause, which `Survival.cause` already records.
   **Done when:** every cause of damage triggers the flash, and the smoke test checks the death message.
-- [ ] **2.6 Buckets.** An iron bucket picks up and places water and lava sources, and a lava bucket is furnace fuel.
+- [x] **2.6 Buckets.** An iron bucket picks up and places water and lava sources, and a lava bucket is furnace fuel.
   **Done when:** unit tests cover pick-up, placement and fuel, and placed water flows through the existing ticks.
-- [ ] **2.7 Crouch and ladders.**
+- [x] **2.7 Crouch and ladders.** Shortcut: a ladder stays when its wall is broken.
   - Crouching is slower and stops you walking off edges.
   - Ladders can be climbed and placed on walls.
   **Done when:** physics tests cover the edge stop and climbing.
-- [ ] **2.8 Burning.** Lava and fire set the player and creatures alight for a few seconds, and water puts them out.
+- [x] **2.8 Burning.** Lava and fire set the player and creatures alight for a few seconds, and water puts them out.
   **Done when:** unit tests in `survival.ts`.
 
 ## 3. Progression past iron

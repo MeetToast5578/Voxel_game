@@ -1,7 +1,7 @@
 import {
   AIR_ACCEL, EYE_HEIGHT_M, FLY_FAST_FACTOR, FLY_SPEED_M_S, GRAVITY_M_S2, GROUND_ACCEL, JUMP_SPEED_M_S, PLAYER_DENSITY,
   PLAYER_HALF_WIDTH_M, PLAYER_HEIGHT_M, SPRINT_SPEED_M_S, STEP_HEIGHT_M, STEP_SMOOTH_S, SWIM_THRUST_M_S2, SWIM_UP_M_S2,
-  TERMINAL_SPEED_M_S, WALK_SPEED_M_S, WATER_DENSITY, WATER_DRAG_PER_M, toCells, BLOCK_SIZE_M,
+  TERMINAL_SPEED_M_S, WALK_SPEED_M_S, WATER_DENSITY, WATER_DRAG_PER_M, toCells, BLOCK_SIZE_M, CROUCH_FACTOR, CLIMB_SPEED_M_S,
 } from '../config';
 import type { BoxAt } from './collision';
 import type { Input } from './input';
@@ -61,7 +61,23 @@ export class Player {
     return [-Math.sin(this.yaw) * c, Math.sin(this.pitch), -Math.cos(this.yaw) * c];
   }
 
-  update(dt: number, input: Input, boxAt: BoxAt, waterAt: WaterAt): void {
+  /** Crouching: walking slowly, and not off edges. */
+  crouching = false;
+
+  /** Whether the body touches a climbable cell (a ladder) at its feet or middle. */
+  private onLadder(climbAt: (x: number, y: number, z: number) => boolean): boolean {
+    const b = this.body, x = Math.floor(b.x), z = Math.floor(b.z);
+    return climbAt(x, Math.floor(b.y + 0.1), z) || climbAt(x, Math.floor(b.y + b.height / 2), z);
+  }
+
+  /** Whether anything solid is under the body's footprint if it stood at (x, z). */
+  private supported(x: number, z: number, boxAt: BoxAt): boolean {
+    const b = this.body, y = Math.floor(b.y - 0.05), w = b.halfWidth - 0.01;
+    for (const cx of [x - w, x + w]) for (const cz of [z - w, z + w]) if (boxAt(Math.floor(cx), y, Math.floor(cz)) !== 0) return true;
+    return false;
+  }
+
+  update(dt: number, input: Input, boxAt: BoxAt, waterAt: WaterAt, climbAt: (x: number, y: number, z: number) => boolean = () => false): void {
     const b = this.body;
     if (input.consume('fly')) {
       this.flying = !this.flying;
@@ -94,12 +110,24 @@ export class Player {
       // Climbing out onto a ledge from the water works like walking up a step.
       this.move(dt, boxAt, toCells(STEP_HEIGHT_M));
     } else {
-      const speed = toCells(input.sprint ? SPRINT_SPEED_M_S : WALK_SPEED_M_S);
+      this.crouching = input.descend && b.onGround;
+      const speed = toCells(input.sprint && !this.crouching ? SPRINT_SPEED_M_S : WALK_SPEED_M_S) * (this.crouching ? CROUCH_FACTOR : 1);
       const blend = Math.min(1, (b.onGround ? GROUND_ACCEL : AIR_ACCEL) * dt);
       b.vx += (wx * speed - b.vx) * blend;
       b.vz += (wz * speed - b.vz) * blend;
-      if (input.jump && b.onGround) b.vy = toCells(JUMP_SPEED_M_S);
-      b.vy = Math.max(-toCells(TERMINAL_SPEED_M_S), b.vy - GRAVITY * dt);
+      // Crouching never steps off an edge: movement that would leave nothing underfoot stops, per axis.
+      if (this.crouching && this.supported(b.x, b.z, boxAt)) {
+        if (!this.supported(b.x + b.vx * dt, b.z, boxAt)) b.vx = 0;
+        if (!this.supported(b.x, b.z + b.vz * dt, boxAt)) b.vz = 0;
+      }
+      if (this.onLadder(climbAt)) {
+        // On a ladder: walking or jumping climbs, crouching climbs down, otherwise the player holds on.
+        const climb = toCells(CLIMB_SPEED_M_S);
+        b.vy = input.moveZ !== 0 || input.jump ? climb : input.descend ? -climb : 0;
+      } else {
+        if (input.jump && b.onGround) b.vy = toCells(JUMP_SPEED_M_S);
+        b.vy = Math.max(-toCells(TERMINAL_SPEED_M_S), b.vy - GRAVITY * dt);
+      }
       this.move(dt, boxAt, toCells(STEP_HEIGHT_M));
     }
     this.stepOffset *= Math.max(0, 1 - dt / STEP_SMOOTH_S);

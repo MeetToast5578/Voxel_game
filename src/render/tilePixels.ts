@@ -39,12 +39,24 @@ function toolPainter(kind: string, head: RGB): PixelFn {
     const along = x + y, across = x - y;
     if (kind === 'pickaxe') return Math.abs(across - 7) <= 1 && Math.abs(along - 15) <= 6;
     if (kind === 'axe') return along >= 14 && along <= 19 && across >= 5 && across <= 10;
+    // A sword: a long blade up the diagonal and a crossguard across it.
+    if (kind === 'sword') return (Math.abs(along - 15) <= 1 && x >= 6) || (across === -6 && Math.abs(along - 15) <= 3);
     return Math.hypot(x - 12.5, y - 2.5) <= 2.6;
   };
-  return (x, y, r) => inHead(x, y) ? shade(head, 0.85 + r() * 0.3) : onHandle(x, y) ? shade(HANDLE, 0.9 + r() * 0.2) : [0, 0, 0, 0];
+  const handle = kind === 'sword' ? (x: number, y: number) => onHandle(x, y) && x <= 4 : onHandle;
+  return (x, y, r) => inHead(x, y) ? shade(head, 0.85 + r() * 0.3) : handle(x, y) ? shade(HANDLE, 0.9 + r() * 0.2) : [0, 0, 0, 0];
 }
 const TOOL_HEADS: Record<string, RGB> = { wooden: [162, 130, 78], stone: [125, 125, 125], iron: [216, 216, 216] };
 const COBBLE: RGB = [118, 118, 118];
+/** A bucket: a pail narrowing to the bottom, filled at the top with `fill` if given. */
+function bucketPainter(fill: RGB | null): PixelFn {
+  return (x, y, r) => {
+    const half = 6 - (y - 4) * 0.25;
+    if (y < 4 || y > 13 || Math.abs(x - 7.5) > half) return [0, 0, 0, 0];
+    if (fill && y <= 5 && Math.abs(x - 7.5) < half - 1) return shade(fill, 0.85 + r() * 0.3);
+    return shade([170, 170, 175], (Math.abs(x - 7.5) > half - 1 || y === 13 ? 0.7 : 1) + (r() - 0.5) * 0.1);
+  };
+}
 /** A furnace front: cobble with a dark mouth in the lower half, glowing when lit. */
 function furnaceFront(lit: boolean): PixelFn {
   return (x, y, r) => {
@@ -106,7 +118,19 @@ const PAINTERS: Record<string, PixelFn> = {
   ...cropPainters('wheat', [205, 175, 70]),
   ...cropPainters('carrots', [235, 125, 35]),
   ...cropPainters('potatoes', [225, 215, 160]),
-  ...Object.fromEntries(Object.entries(TOOL_HEADS).flatMap(([tier, head]) => ['pickaxe', 'axe', 'shovel'].map((k) => [tier + '_' + k, toolPainter(k, head)]))),
+  ...Object.fromEntries(Object.entries(TOOL_HEADS).flatMap(([tier, head]) => ['pickaxe', 'axe', 'shovel', 'sword'].map((k) => [tier + '_' + k, toolPainter(k, head)]))),
+  // Buckets: a grey pail, empty or with water or lava showing at the top.
+  bucket: bucketPainter(null),
+  water_bucket: bucketPainter([50, 90, 210]),
+  lava_bucket: bucketPainter([235, 110, 25]),
+  // A campfire: two crossed logs over glowing embers.
+  campfire_top: (x, y, r) => {
+    const log = (y >= 3 && y <= 5) || (y >= 10 && y <= 12) || (x >= 3 && x <= 5) || (x >= 10 && x <= 12);
+    return log ? shade(BARK, 0.8 + r() * 0.3) : r() < 0.6 ? shade([255, 120 + r() * 80, 30], 1) : shade([60, 30, 20], 1);
+  },
+  campfire_side: (_x, y, r) => (y < 10 ? [0, 0, 0, 0] : y >= 13 ? shade([255, 140, 40], 0.7 + r() * 0.4) : shade(BARK, 0.8 + r() * 0.3)),
+  // A ladder: two rails and rungs, clear between.
+  ladder: (x, y, r) => ((x >= 2 && x <= 3) || (x >= 12 && x <= 13) || (y % 4 === 1 && x > 3 && x < 12) ? shade([150, 112, 66], 0.85 + r() * 0.25) : [0, 0, 0, 0]),
   // A chest: planks with a dark rim, and a latch on the front.
   chest_side: (x, y, r) => shade([150, 110, 60], (x === 0 || x === 15 || y === 0 || y === 15 || y === 5 ? 0.6 : 1) + (r() - 0.5) * 0.12),
   chest_top: (x, y, r) => shade([160, 120, 66], (x === 0 || x === 15 || y === 0 || y === 15 ? 0.6 : 1) + (r() - 0.5) * 0.12),

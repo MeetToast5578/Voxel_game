@@ -5,7 +5,7 @@
 
 export type RenderLayer = 'none' | 'opaque' | 'cutout' | 'water' | 'ice';
 export type BlockShape = 'cube' | 'cross' | 'layer' | 'slab' | 'boxes';
-export type ToolKind = 'pickaxe' | 'axe' | 'shovel';
+export type ToolKind = 'pickaxe' | 'axe' | 'shovel' | 'sword';
 /** A box inside a cell, in sixteenths: [x0, y0, z0, x1, y1, z1]. */
 export type Box = readonly [number, number, number, number, number, number];
 
@@ -64,6 +64,8 @@ export interface BlockType {
   readonly drops?: string;
   /** Seconds it burns in a furnace. */
   readonly fuel?: number;
+  /** What is left when it is used up as fuel or emptied (a bucket). */
+  readonly emptiesTo?: string;
   /** What a furnace makes of it. */
   readonly smeltsTo?: string;
   /** It falls off without a solid cell below (plants, torches). */
@@ -260,7 +262,7 @@ const TURN = [2, 3, 1, 0];
 const HIGH_HALF: Record<number, Box> = { 0: [8, 8, 0, 16, 16, 16], 1: [0, 8, 0, 8, 16, 16], 2: [0, 8, 8, 16, 16, 16], 3: [0, 8, 0, 16, 16, 8] };
 const STAIR_MATERIALS = ['planks', 'cobblestone', 'stone', 'brick', 'sandstone'];
 export const TOOL_TIERS = ['wooden', 'stone', 'iron'] as const;
-export const TOOL_KINDS: readonly ToolKind[] = ['pickaxe', 'axe', 'shovel'];
+export const TOOL_KINDS: readonly ToolKind[] = ['pickaxe', 'axe', 'shovel', 'sword'];
 const DURABILITY = [60, 132, 251];
 export const CROP_STAGES = 4;
 /** Sapling variants: the tree species each grows into. */
@@ -292,6 +294,13 @@ function gameplay(): BlockSpec[] {
       boxes: (v) => [[0, 0, 0, 16, 8, 16], HIGH_HALF[v]!], hardness: 2, mineWith: m === 'planks' ? 'axe' : 'pickaxe',
       needsTier: m === 'planks' ? undefined : 0, blocksSky: false,
     })),
+    // A campfire: crossed logs on embers. It lights, warms and slowly cooks food without fuel; standing in it burns.
+    { key: 'campfire', name: 'Campfire', tiles: { top: 'campfire_top', side: 'campfire_side', bottom: 'campfire_side' }, shape: 'boxes',
+      boxes: () => [[1, 0, 3, 15, 3, 6], [1, 0, 10, 15, 3, 13], [3, 3, 1, 6, 6, 15], [10, 3, 1, 13, 6, 15]], layer: 'cutout',
+      lightEmission: 14, hardness: 1, density: 600, mineWith: 'axe', blocksSky: false, supports: false },
+    // A ladder hangs on the side of the cell it was placed against (variant: facing); climbed by walking into it.
+    { key: 'ladder', name: 'Ladder', tiles: all('ladder'), shape: 'boxes', variants: 4, boxes: (v) => [PANEL[v]!], solid: false,
+      layer: 'cutout', hardness: 0.5, density: 600, mineWith: 'axe', fuel: 5, supports: false, blocksSky: false },
     crop('wheat', 'Wheat', 0),
     crop('carrots', 'Carrots', 3),
     { ...crop('potatoes', 'Potatoes', 1), smeltsTo: 'baked_potato' },
@@ -299,6 +308,9 @@ function gameplay(): BlockSpec[] {
     item('stick', 'Stick', { fuel: 5 }),
     item('coal', 'Coal', { fuel: 80 }),
     item('iron_ingot', 'Iron ingot'),
+    item('bucket', 'Bucket', { maxStack: 16 }),
+    item('water_bucket', 'Water bucket', { maxStack: 1, emptiesTo: 'bucket' }),
+    item('lava_bucket', 'Lava bucket', { maxStack: 1, emptiesTo: 'bucket', fuel: 200 }),
     item('baked_potato', 'Baked potato', { food: 5 }),
     item('raw_meat', 'Raw meat', { food: 2, smeltsTo: 'cooked_meat' }),
     item('cooked_meat', 'Cooked meat', { food: 6 }),

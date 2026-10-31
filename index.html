@@ -24,10 +24,15 @@
         box-sizing: border-box; pointer-events: auto; }
       .slot.selected { border-color: #fff; }
       .slot.big { width: 52px; height: 52px; }
+      .slot.dim img { opacity: 0.3; }
+      .slot:focus-visible, .menu button:focus-visible, .menu input:focus-visible, .menu select:focus-visible, summary:focus-visible { outline: 3px solid #fd4; outline-offset: 1px; }
+      .recipes summary { cursor: pointer; color: #aaa; }
+      .recipes .palette { max-height: 22vh; margin-top: 4px; }
       .slot img { position: absolute; inset: 4px; width: calc(100% - 8px); height: calc(100% - 8px); image-rendering: pixelated; }
       .slot .count { position: absolute; right: 2px; bottom: 0; font-weight: 700; text-shadow: 1px 1px 0 #000; }
       .slot .wear { position: absolute; left: 3px; bottom: 3px; height: 3px; background: #4c4; }
-      .bars { display: flex; gap: 10px; }
+      .bars { display: flex; gap: 10px; align-items: center; }
+      .thermo { font-size: 12px; text-shadow: 0 1px 2px #000; }
       .bar { width: 150px; height: 8px; background: rgba(0, 0, 0, 0.5); border: 1px solid rgba(255, 255, 255, 0.3); }
       .bar > div { height: 100%; }
       .progress { width: 120px; height: 5px; background: rgba(0, 0, 0, 0.5); }
@@ -51,6 +56,22 @@
       .help { color: #bbb; font-size: 13px; margin: 0; }
       .hint { color: #bbb; font-size: 12px; }
       .death { text-align: center; }
+      body.title { background: linear-gradient(#3b6a8f, #9cc3d8 55%, #4f7a3a 55%, #2f4d24); }
+      body.title #game, body.title #overlay, body.title #crosshair { display: none; }
+      .menu.title { min-width: 480px; }
+      .menu.title h1 { font-size: 34px; text-align: center; letter-spacing: 1px; }
+      .menu.loading { min-width: 260px; text-align: center; }
+      .menu label.check { flex-direction: row; align-items: center; gap: 6px; }
+      .keys summary { cursor: pointer; color: #aaa; }
+      .keygrid { display: grid; grid-template-columns: 1fr auto; gap: 3px 10px; align-items: center; margin: 6px 0; }
+      .keygrid button { min-width: 90px; }
+      .keygrid button.clash { color: #f77; }
+      .hintbox { position: fixed; top: 14px; left: 50%; transform: translateX(-50%); max-width: 560px; padding: 8px 14px;
+        background: rgba(20, 22, 28, 0.82); border: 1px solid #6a7; border-radius: 6px; text-align: center; }
+      .hintbox small { color: #9a9; }
+      #hurt { position: fixed; inset: 0; pointer-events: none; opacity: 0; background: radial-gradient(transparent 40%, rgba(200, 0, 0, 0.9)); }
+      #burn { position: fixed; inset: 0; pointer-events: none; opacity: 0; transition: opacity 0.3s;
+        background: linear-gradient(transparent 60%, rgba(255, 110, 20, 0.55)); }
       .death h1 { color: #e55; }
       .touch-look { position: fixed; top: 0; right: 0; width: 55%; height: 75%; touch-action: none; }
       .touch-stick { position: fixed; left: 24px; bottom: 90px; width: 120px; height: 120px; border-radius: 50%;
@@ -66,6 +87,8 @@
     <canvas id="game"></canvas>
     <div id="overlay">loading…</div>
     <div id="crosshair"></div>
+    <div id="hurt"></div>
+    <div id="burn"></div>
     <div id="ui"></div>
     <script type="module" src="/src/main.ts"></script>
   </body>

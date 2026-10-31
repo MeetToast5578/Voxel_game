@@ -1,10 +1,11 @@
-import { AXE_DAMAGE, BUILD_CELLS_PER_TICK, BUILD_MAX_M, DROP_PICKUP_DELAY_S, DROP_THROW_M_S, HAND_DAMAGE, REACH_M, REPEAT_S, TOOL_DAMAGE, UNDO_STEPS, cells, toCells } from '../config';
+import { AXE_DAMAGE, BUILD_CELLS_PER_TICK, CAMPFIRE_COOK_S, CAMPFIRE_SLOTS, DIFFICULTY, PLAYER_ATTACK_COOLDOWN_S, SWORD_DAMAGE, type Difficulty, BUILD_MAX_M, DROP_PICKUP_DELAY_S, DROP_THROW_M_S, HAND_DAMAGE, REACH_M, REPEAT_S, TOOL_DAMAGE, UNDO_STEPS, cells, toCells } from '../config';
 import { meatOf, type Creatures } from '../creatures/creatures';
 import { AIR, BLOCKS, SOLID } from '../engine/blocks';
 import type { World } from '../engine/world';
 import { COLLISION } from './collision';
-import { consumeIngredients, craftResult } from './crafting';
+import { consumeIngredients, craftResult, takeIngredients, type Recipe } from './crafting';
 import { Drops } from './drops';
+import { Hints } from './hints';
 import { newFurnace, tickFurnace, type FurnaceState } from './furnace';
 import type { Input } from './input';
 import { Inventory, type ItemStack } from './inventory';
@@ -20,7 +21,11 @@ const S = (key: string, v = 0) => BLOCKS.state(key, v);
 const DOOR = BLOCKS.byName('door'), BED = BLOCKS.byName('bed'), FURNACE = BLOCKS.byName('furnace'), LIT = BLOCKS.byName('lit_furnace');
 const CHEST = BLOCKS.byName('chest');
 export const CHEST_SLOTS = 27;
-const TABLE = S('crafting_table'), TORCH = S('torch'), GRASS = S('grass'), DIRT = S('dirt');
+const TABLE = S('crafting_table'), TORCH = S('torch'), GRASS = S('grass'), DIRT = S('dirt'), CAMPFIRE = S('campfire');
+const LADDER = BLOCKS.byName('ladder');
+/** Fluid sources a bucket picks up, and the full bucket each gives. */
+const BUCKET_FILLS = new Map([[S('water'), S('water_bucket')], [S('lava'), S('lava_bucket')]]);
+const BUCKET = S('bucket');
 /** Cells a door is tall: 2.1 m at 0.6 m cells rounds up to 4. */
 export const DOOR_CELLS = 4;
 const FACING_OFFSET = [[1, 0], [-1, 0], [0, 1], [0, -1]] as const;
@@ -28,8 +33,11 @@ const FACING_OFFSET = [[1, 0], [-1, 0], [0, 1], [0, -1]] as const;
 /** Everything one player can do with the world: break, place, use blocks, carry and craft. Ported from the old game. */
 export class Play {
   mode: Mode;
+  private _difficulty: Difficulty = 'normal';
   readonly inventory = new Inventory();
   readonly survival = new Survival();
+  /** First-steps hints in survival, and which are done. */
+  readonly hints = new Hints();
   /** The crafting grid shown in the inventory screen: 2×2, or 3×3 at a table. */
   readonly craft: (ItemStack | null)[] = new Array(9).fill(null);
   craftSize = 2;
@@ -64,6 +72,10 @@ export class Play {
   private readonly redoStack: [number, number, number, number, number][][] = [];
   private group: [number, number, number, number, number][] | null = null;
   private readonly setBlock: (x: number, y: number, z: number, s: number) => void;
+  /** Seconds since the player last hit a creature. */
+  private sinceAttack = PLAYER_ATTACK_COOLDOWN_S;
+  /** Food cooking on campfires by cell key: the raw item's state and seconds left for each. */
+  readonly campfires = new Map<string, [number, number][]>();
 
   constructor(private readonly world: World, setBlock: (x: number, y: number, z: number, s: number) => void,
     private readonly events: { sound(name: 'break' | 'place'): void; sleep(): boolean }, mode: Mode = 'creative') {
@@ -138,6 +150,22 @@ export class Play {
     this.version++;
   }
 
+  /** Peaceful, normal or hard: scales hostile spawns, their damage and hunger. */
+  get difficulty(): Difficulty {
+    return this._difficulty;
+  }
+
+  set difficulty(d: Difficulty) {
+    this._difficulty = d;
+    this.survival.hungerRate = DIFFICULTY[d].hunger;
+    this.version++;
+  }
+
+  /** Whether the inventory holds anything of the type `key` (any variant or wear). */
+  hasItem(key: string): boolean {
+    return this.inventory.slots.some((s) => s !== null && BLOCKS.type(s.state).key === key);
+  }
+
   get held(): ItemStack | null {
     return this.inventory.held;
   }
@@ -193,6 +221,7 @@ export class Play {
     this.feet = [b.x, b.y, b.z];
     this.target = raycast(b.x, player.eyeY, b.z, dx, dy, dz, toCells(REACH_M), (x, y, z) => TARGET[this.world.get(x, y, z)]!);
     this.repeat -= dt;
+    this.sinceAttack += dt;
     if (input.consume('pick') && this.target && this.mode === 'creative') this.pick(this.target);
     const placeNow = input.consume('place') || (input.placing && this.repeat <= 0);
     if (placeNow) {
@@ -213,7 +242,10 @@ export class Play {
     const hit = this.creatures!.raycast(ox, oy, oz, dx, dy, dz, toCells(REACH_M));
     if (!hit || (this.target && this.target.distance < hit.distance)) return false;
     const held = this.held, tool = held ? BLOCKS.type(held.state).tool : undefined;
-    const damage = tool ? (tool.kind === 'axe' ? AXE_DAMAGE : TOOL_DAMAGE) + tool.tier : HAND_DAMAGE;
+    // Quick swings land weaker blows: the hit's strength recovers over the cooldown.
+    const strength = Math.max(0.2, Math.min(1, this.sinceAttack / PLAYER_ATTACK_COOLDOWN_S));
+    this.sinceAttack = 0;
+    const damage = strength * weaponDamage(held);
     const c = hit.creature;
     if (this.creatures!.damage(c, damage, ox, oz) && this.mode === 'survival') {
       const meat = meatOf(c);
@@ -223,6 +255,37 @@ export class Play {
     this.events.sound('break');
     this.version++;
     return true;
+  }
+
+  /** Puts the held raw food on the campfire at `key`, if it has room. */
+  private cookOnFire(key: string, held: ItemStack): boolean {
+    const cooking = this.campfires.get(key) ?? [];
+    if (cooking.length >= CAMPFIRE_SLOTS) return false;
+    cooking.push([BLOCKS.type(held.state).id, CAMPFIRE_COOK_S]);
+    this.campfires.set(key, cooking);
+    this.consumeHeld();
+    return true;
+  }
+
+  /** Campfires cook their food; done food pops out on top. Fires broken or unloaded meanwhile give back raw food. */
+  tickCampfires(dt: number): void {
+    for (const [key, cooking] of this.campfires) {
+      const [x, y, z] = key.split(',').map(Number) as [number, number, number];
+      if (!this.world.isLoaded(x, y, z)) continue;
+      if (this.world.get(x, y, z) !== CAMPFIRE) {
+        for (const [state] of cooking) this.drop({ state, count: 1 }, x + 0.5, y + 0.5, z + 0.5);
+        this.campfires.delete(key);
+        continue;
+      }
+      for (let i = cooking.length - 1; i >= 0; i--) {
+        const c = cooking[i]!;
+        c[1] -= dt;
+        if (c[1] > 0) continue;
+        this.drop({ state: BLOCKS.state(BLOCKS.type(c[0]).smeltsTo!), count: 1 }, x + 0.5, y + 0.6, z + 0.5);
+        cooking.splice(i, 1);
+      }
+      if (cooking.length === 0) this.campfires.delete(key);
+    }
   }
 
   private select(slot: number): void {
@@ -306,6 +369,7 @@ export class Play {
 
   /** Right click: use the targeted block (door, table, furnace, bed), eat, or place the held block. */
   private use(player: Player): void {
+    if (this.useBucket(player)) return;
     const t = this.target;
     if (t) {
       const state = this.world.get(t.x, t.y, t.z), type = BLOCKS.type(state);
@@ -332,6 +396,11 @@ export class Play {
         this.openScreen('furnace', 2);
         return;
       }
+      const held = this.held;
+      if (state === CAMPFIRE && held && BLOCKS.type(held.state).food !== undefined && BLOCKS.type(held.state).smeltsTo) {
+        this.cookOnFire(`${t.x},${t.y},${t.z}`, held);
+        return;
+      }
       if (type === BED) {
         this.spawn = [t.x + 0.5, t.y + 1, t.z + 0.5];
         this.events.sleep();
@@ -353,6 +422,44 @@ export class Play {
     }
     if (!t || heldType.item) return;
     this.place(t, held, player);
+  }
+
+  /** A bucket scoops up the water or lava source in view; a full one pours its source out against the targeted face. */
+  private useBucket(player: Player): boolean {
+    const held = this.held;
+    if (!held) return false;
+    const type = BLOCKS.type(held.state);
+    if (held.state === BUCKET) {
+      const [dx, dy, dz] = player.direction(), b = player.body;
+      const hit = raycast(b.x, player.eyeY, b.z, dx, dy, dz, toCells(REACH_M), (x, y, z) => {
+        const s = this.world.get(x, y, z);
+        return BUCKET_FILLS.has(s) ? 16 << 5 : TARGET[s]!;
+      });
+      const full = hit ? BUCKET_FILLS.get(this.world.get(hit.x, hit.y, hit.z)) : undefined;
+      if (!hit || full === undefined) return false;
+      this.setBlock(hit.x, hit.y, hit.z, AIR);
+      this.swapHeld({ state: full, count: 1 });
+      return true;
+    }
+    if (!type.emptiesTo || !type.key.endsWith('_bucket') || !this.target) return false;
+    const t = this.target, x = t.x + t.nx, y = t.y + t.ny, z = t.z + t.nz;
+    if (TARGET[this.world.get(x, y, z)] !== 0 || !this.world.isLoaded(x, y, z)) return false;
+    this.setBlock(x, y, z, S(type.key.slice(0, -'_bucket'.length)));
+    this.swapHeld({ state: BUCKET, count: 1 });
+    return true;
+  }
+
+  /** Uses up one held item and hands over `result` instead (a bucket filled or emptied). Creative keeps the item. */
+  private swapHeld(result: ItemStack): void {
+    if (this.mode === 'creative') return;
+    const held = this.held!;
+    if (held.count <= 1) this.inventory.slots[this.inventory.selected] = result;
+    else {
+      held.count--;
+      this.give(result, ...this.feet);
+    }
+    this.events.sound('place');
+    this.version++;
   }
 
   private place(t: RayHit, held: ItemStack, player: Player): void {
@@ -384,7 +491,11 @@ export class Play {
       this.events.sound('place');
       return;
     }
-    if (type.front) state = type.id + toward;
+    // A ladder goes on the side of a wall, hanging on the face that was clicked.
+    if (type === LADDER) {
+      if (t.ny !== 0) return;
+      state = LADDER.id + (t.nx === -1 ? 0 : t.nx === 1 ? 1 : t.nz === -1 ? 2 : 3);
+    } else if (type.front) state = type.id + toward;
     else if (type.key.endsWith('_stairs')) state = type.id + facing;
     else if (type.slabOf && t.ny === -1) state = type.id + 1;
     if (!this.free(x, y, z, player, false, state)) return;
@@ -423,6 +534,26 @@ export class Play {
     this.openFurnace = null;
     this.openChest = null;
     this.version++;
+  }
+
+  /** Whether the inventory and the grid together hold what `r` needs, and it fits the open grid. */
+  canMake(r: Recipe): boolean {
+    return takeIngredients(r, this.craftSize, [...this.inventory.slots, ...this.craft]) !== null;
+  }
+
+  /** The recipe list: puts the grid back into the inventory, then lays out `r` from it. Returns whether it could. */
+  fillRecipe(r: Recipe): boolean {
+    // Work on a copy: the grid goes back into the inventory first, and nothing changes unless all of it fits.
+    const slots = this.inventory.slots.map((s) => s && { ...s });
+    const back = new Inventory();
+    back.slots.splice(0, back.slots.length, ...slots);
+    if (this.craft.some((c) => c && back.add({ ...c }) > 0)) return false;
+    const grid = takeIngredients(r, this.craftSize, back.slots);
+    if (!grid) return false;
+    this.inventory.slots.splice(0, this.inventory.slots.length, ...back.slots);
+    for (let i = 0; i < 9; i++) this.craft[i] = grid[i] ?? null;
+    this.version++;
+    return true;
   }
 
   /** What the grid crafts now. */
@@ -464,9 +595,10 @@ export class Play {
   save(): unknown {
     const s = (st: ItemStack | null) => (st ? [BLOCKS.stateName(st.state), st.count] : null);
     return {
-      mode: this.mode, inventory: this.inventory.save(), selected: this.inventory.selected, drops: this.drops.save(),
-      health: this.survival.health, hunger: this.survival.hunger, air: this.survival.air, spawn: this.spawn,
+      mode: this.mode, difficulty: this.difficulty, hints: this.hints.save(), inventory: this.inventory.save(), selected: this.inventory.selected, drops: this.drops.save(),
+      health: this.survival.health, hunger: this.survival.hunger, air: this.survival.air, bodyC: this.survival.temperature.coreC, spawn: this.spawn,
       furnaces: [...this.furnaces].map(([k, f]) => [k, s(f.input), s(f.fuel), s(f.output), f.burn, f.progress]),
+      campfires: [...this.campfires].map(([k, c]) => [k, c.map(([st, left]) => [BLOCKS.stateName(st), left])]),
       chests: [...this.chests].map(([k, slots]) => [k, slots.map((st) => (st ? [BLOCKS.stateName(st.state), st.count, st.wear ?? 0] : null))]),
     };
   }
@@ -477,12 +609,15 @@ export class Play {
     const p = saved as Record<string, unknown>;
     const num = (v: unknown, d: number) => (typeof v === 'number' && Number.isFinite(v) ? v : d);
     if (p.mode === 'creative' || p.mode === 'survival') this.mode = p.mode;
+    if (typeof p.difficulty === 'string' && p.difficulty in DIFFICULTY) this.difficulty = p.difficulty as Difficulty;
+    this.hints.load(p.hints);
     this.inventory.load(p.inventory);
     this.drops.load(p.drops);
     this.inventory.selected = Math.max(0, Math.min(8, Math.floor(num(p.selected, 0))));
     this.survival.health = num(p.health, this.survival.health);
     this.survival.hunger = num(p.hunger, this.survival.hunger);
     this.survival.air = num(p.air, this.survival.air);
+    this.survival.temperature.coreC = Math.max(30, Math.min(42, num(p.bodyC, this.survival.temperature.coreC)));
     if (Array.isArray(p.spawn) && p.spawn.length === 3 && p.spawn.every((v) => typeof v === 'number')) this.spawn = p.spawn as [number, number, number];
     const stack = (e: unknown): ItemStack | null => {
       if (!Array.isArray(e) || typeof e[0] !== 'string') return null;
@@ -495,6 +630,17 @@ export class Play {
         this.furnaces.set(f[0], { input: stack(f[1]), fuel: stack(f[2]), output: stack(f[3]), burn: num(f[4], 0), progress: num(f[5], 0) });
       }
     }
+    if (Array.isArray(p.campfires)) {
+      for (const c of p.campfires) {
+        if (!Array.isArray(c) || typeof c[0] !== 'string' || !/^-?\d+,-?\d+,-?\d+$/.test(c[0]) || !Array.isArray(c[1])) continue;
+        const cooking: [number, number][] = [];
+        for (const e of c[1].slice(0, CAMPFIRE_SLOTS)) {
+          const state = Array.isArray(e) && typeof e[0] === 'string' ? BLOCKS.parseStateName(e[0]) : null;
+          if (state !== null && BLOCKS.type(state).smeltsTo) cooking.push([state, num(e[1], CAMPFIRE_COOK_S)]);
+        }
+        if (cooking.length) this.campfires.set(c[0], cooking);
+      }
+    }
     if (Array.isArray(p.chests)) {
       for (const c of p.chests) {
         if (!Array.isArray(c) || typeof c[0] !== 'string' || !/^-?\d+,-?\d+,-?\d+$/.test(c[0]) || !Array.isArray(c[1])) continue;
@@ -505,4 +651,11 @@ export class Play {
     }
     this.version++;
   }
+}
+
+/** Damage of one full-strength hit with `held` (or a bare hand): swords best, then axes, then other tools; more per tier. */
+export function weaponDamage(held: ItemStack | null): number {
+  const tool = held ? BLOCKS.type(held.state).tool : undefined;
+  if (!tool) return HAND_DAMAGE;
+  return (tool.kind === 'sword' ? SWORD_DAMAGE : tool.kind === 'axe' ? AXE_DAMAGE : TOOL_DAMAGE) + tool.tier;
 }

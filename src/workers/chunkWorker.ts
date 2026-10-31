@@ -34,6 +34,8 @@ self.onmessage = (e: MessageEvent<WorkerRequest>) => {
         type: 'generate', id: req.id, uniform, uniformLight,
         ...(uniform < 0 ? { states } : {}), ...(uniformLight < 0 ? { light } : {}),
       }, transfer);
+    } else if (req.type === 'spawn') {
+      post({ type: 'spawn', id: req.id, at: generator!.spawnPoint(req.x, req.z) });
     } else if (req.type === 'horizon') {
       const n = req.radii.length * req.segments;
       const heights = new Float32Array(n), colors = new Uint8Array(n * 3);

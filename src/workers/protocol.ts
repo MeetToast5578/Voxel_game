@@ -5,7 +5,9 @@ export type WorkerRequest =
   | { type: 'generate'; id: number; cx: number; cy: number; cz: number }
   | { type: 'mesh'; id: number; states: Uint16Array; light: Uint8Array; climate: Uint8Array }
   /** Far terrain on rings around (x, z) (cells): `radii` ring distances, `segments` samples per ring. */
-  | { type: 'horizon'; id: number; x: number; z: number; radii: Float32Array; segments: number };
+  | { type: 'horizon'; id: number; x: number; z: number; radii: Float32Array; segments: number }
+  /** Where a new player starts, searched outward from (x, z) (cells). */
+  | { type: 'spawn'; id: number; x: number; z: number };
 
 export type WorkerResponse =
   | { type: 'column'; id: number; top: Int32Array; skyTop: Int32Array; climate: Uint8Array; biome: Uint8Array; water: Int32Array; minTop: number; caveFloor: number; maxTop: number }
@@ -17,4 +19,5 @@ export type WorkerResponse =
   /** `visibility`: which pairs of the chunk's faces are joined through open cells (see engine/visibility.ts). */
   | { type: 'mesh'; id: number; layers: Uint32Array[]; visibility: number }
   | { type: 'horizon'; id: number; heights: Float32Array; colors: Uint8Array }
+  | { type: 'spawn'; id: number; at: [number, number, number] }
   | { type: 'error'; id: number; message: string };
