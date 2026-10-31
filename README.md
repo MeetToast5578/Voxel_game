@@ -8,13 +8,13 @@ world is made of 16×16×16 chunks (9.6 m) with no height limit.
   terrain out to 2 km.
 - **Living world:** water and lava flow; sand and gravel fall; grass spreads; leaves decay; crops and saplings grow;
   snow settles and ice forms in the cold.
-- **Sky:** seasons, day and night, moon phases, clouds, rain, snow and storms with lightning and thunder.
+- **Sky:** seasons, day and night, moon phases, clouds, rain, snow and thunderstorms whose lightning strikes the ground.
 - **Survival with a goal:** find three beacon shards in ember shrines deep underground, craft a beacon with ember
   crystals, and light it on a mountaintop above 150 m. On the way: ruins, watchtowers, camps, old mines and dark
-  vaults with loot; skulkers, cave crawlers and frost brutes; body temperature, armour, bows, farming and fishing;
-  a journal of 21 milestones.
+  vaults with loot; skulkers, cave crawlers and frost brutes; an Ember Warden guarding each shrine; body temperature,
+  armour, bows, boats, farming and fishing; a map that remembers where you have been; a journal of 21 milestones.
 - **Play:** creative and survival; inventory, crafting, furnaces, tools that wear out, health, hunger and breath;
-  torches, doors, beds, stairs, slabs and chests; dropped items; 12 creature species, some of them hostile at night.
+  torches, doors, beds, stairs, slabs and chests; dropped items; 16 creature species, some of them hostile.
 - **Saves:** automatic, in the browser (IndexedDB). Worlds can be exported and imported as files from the pause menu.
 
 All textures and sounds are generated in code; there are no asset files.
@@ -38,7 +38,7 @@ A production build (`npm run build`, then `npm run preview`) can be installed fr
 |-------|--------|
 | Mouse, W A S D | Look, move |
 | Space | Jump; swim up; fly up |
-| Shift | Fly down; crouch (stops you walking off edges); climb down a ladder |
+| Shift | Fly down; crouch (stops you walking off edges); climb down a ladder; step out of a boat |
 | Ctrl | Sprint; fly faster |
 | Left click | Break (takes time in survival) or hit a creature |
 | Right click | Place, use (doors, beds, chests, furnaces, crafting tables, campfires), eat, wear armour, fill or empty a bucket, bone meal on crops, till with a hoe, feed animals (they follow their food and breed), cast a fishing rod; hold with a bow to draw, let go to shoot |

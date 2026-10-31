@@ -3,6 +3,19 @@
 The newest version comes first. `npm run check` fails if the version at the top here is not the one in
 `package.json`, so the two are changed together.
 
+## 0.3.0 — 2026-10-31
+
+More to find and do (milestone 11 of `docs/tasks.md`), and task 9.5.
+
+- **Boats:** craft one from planks, put it on water and ride it; crouch to step out and take it back.
+- **The Ember Warden:** a guardian wakes in each ember shrine and keeps the ancient chest shut until it falls; it
+  drops ember crystals and diamonds. A new journal milestone (21 in all).
+- **Thunderstorms:** lightning strikes near the player, scorches the ground and hurts whatever stands in the open;
+  the thunder follows by distance.
+- **The map remembers** the land walked through, and keeps it in the save.
+- **Fittings fall:** ladders, lanterns and torches drop as items when what holds them goes.
+- **Stairs and doors** collide as their real shapes: stairs climb in half steps, a closed door is a thin panel.
+
 ## 0.2.0 — 2026-10-31
 
 The sandbox becomes a survival game with a goal (milestones 1–9 of `docs/tasks.md`).
