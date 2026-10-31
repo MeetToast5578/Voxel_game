@@ -76,6 +76,7 @@ Status is checked against the code on 2026-10-17. "Open" means the spec's goal i
 | [51-terrain-visual-acceptance.md](51-terrain-visual-acceptance.md) | Terrain coordinates, lake basins and visual transitions | Partial acceptance | Region/lake/build visibility repairs; coarse far coastlines and owner/real-river review remain open. |
 | [52-building-interface-platforms.md](52-building-interface-platforms.md) | Slabs, redo, accessible inventory and offline installation | Implemented; owner review open | Partial-height collision/placement/items, conflict-safe redo, modal/native inventory and worker-backed offline subpath reload |
 | [53-building-copy-world-backups.md](53-building-copy-world-backups.md) | Creative copy/paste and portable world backups | Implemented | State snapshots, fill/undo/redo, strict files, atomic replacement and stale-tab protection; browser transfer/rollback verified |
+| [54-engine-rewrite.md](54-engine-rewrite.md) | Engine rewrite at 0.6 m blocks (`next/`) | Phases 1–11 built; switch-over open | Stored light, greedy packed meshing, palette chunks, seamless rivers, chunk-blob saves, survival, creatures and UI |
 
 ### Known problems in the spec files
 

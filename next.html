@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Voxel (new engine)</title>
+    <style>
+      html, body { margin: 0; height: 100%; overflow: hidden; background: #000; }
+      #game { display: block; width: 100%; height: 100%; }
+      #overlay { position: fixed; top: 8px; left: 8px; color: #fff; font: 12px/1.4 monospace; white-space: pre;
+        text-shadow: 0 1px 2px #000; pointer-events: none; }
+      #frames { position: fixed; top: 150px; left: 8px; pointer-events: none; }
+      #crosshair { position: fixed; left: 50%; top: 50%; width: 16px; height: 16px; margin: -8px 0 0 -8px; pointer-events: none;
+        background: linear-gradient(#fff, #fff) center / 2px 16px no-repeat, linear-gradient(#fff, #fff) center / 16px 2px no-repeat;
+        mix-blend-mode: difference; }
+      #ui { font: 14px/1.4 system-ui, sans-serif; color: #eee; }
+      .hud { position: fixed; bottom: 10px; left: 0; right: 0; display: flex; flex-direction: column; align-items: center; gap: 6px; pointer-events: none; }
+      .hotbar, .grid { display: grid; grid-auto-flow: row; gap: 3px; }
+      .hotbar { grid-template-columns: repeat(9, auto); }
+      .slot { position: relative; width: 40px; height: 40px; background: rgba(20, 20, 24, 0.7); border: 2px solid rgba(255, 255, 255, 0.25);
+        box-sizing: border-box; pointer-events: auto; }
+      .slot.selected { border-color: #fff; }
+      .slot.big { width: 52px; height: 52px; }
+      .slot img { position: absolute; inset: 4px; width: calc(100% - 8px); height: calc(100% - 8px); image-rendering: pixelated; }
+      .slot .count { position: absolute; right: 2px; bottom: 0; font-weight: 700; text-shadow: 1px 1px 0 #000; }
+      .slot .wear { position: absolute; left: 3px; bottom: 3px; height: 3px; background: #4c4; }
+      .bars { display: flex; gap: 10px; }
+      .bar { width: 150px; height: 8px; background: rgba(0, 0, 0, 0.5); border: 1px solid rgba(255, 255, 255, 0.3); }
+      .bar > div { height: 100%; }
+      .progress { width: 120px; height: 5px; background: rgba(0, 0, 0, 0.5); }
+      .progress > div { height: 100%; background: #fff; }
+      .progress.small { width: 60px; align-self: center; }
+      .screen, .menu { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); background: rgba(24, 26, 32, 0.94);
+        border: 1px solid #555; padding: 16px; display: flex; flex-direction: column; gap: 10px; max-height: 90vh; overflow: auto; }
+      .row { display: flex; align-items: center; gap: 12px; }
+      .col { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+      .arrow { font-size: 24px; }
+      .palette { display: grid; grid-template-columns: repeat(12, auto); gap: 3px; max-height: 40vh; overflow: auto; }
+      .menu { min-width: 420px; }
+      .menu h1 { margin: 0; font-size: 22px; }
+      .menu h2 { margin: 6px 0 0; font-size: 15px; color: #aaa; }
+      .menu label { display: flex; flex-direction: column; gap: 2px; }
+      .menu button { padding: 6px 12px; cursor: pointer; }
+      .menu button.primary { font-size: 16px; padding: 10px; }
+      .worlds { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 4px; }
+      .worlds li { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+      .newworld { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+      .help { color: #bbb; font-size: 13px; margin: 0; }
+      .hint { color: #bbb; font-size: 12px; }
+      .death { text-align: center; }
+      .death h1 { color: #e55; }
+      .touch-look { position: fixed; top: 0; right: 0; width: 55%; height: 75%; touch-action: none; }
+      .touch-stick { position: fixed; left: 24px; bottom: 90px; width: 120px; height: 120px; border-radius: 50%;
+        background: rgba(255, 255, 255, 0.12); border: 2px solid rgba(255, 255, 255, 0.3); touch-action: none; }
+      .touch-knob { position: absolute; left: 36px; top: 36px; width: 48px; height: 48px; border-radius: 50%; background: rgba(255, 255, 255, 0.45); }
+      .touch-buttons { position: fixed; right: 12px; bottom: 80px; display: grid; grid-template-columns: repeat(4, 58px); gap: 8px; }
+      .touch-buttons button, .touch-pause { height: 50px; border-radius: 10px; border: 1px solid rgba(255, 255, 255, 0.4);
+        background: rgba(20, 20, 24, 0.55); color: #fff; font-size: 14px; touch-action: none; }
+      .touch-pause { position: fixed; top: 10px; right: 10px; width: 50px; }
+    </style>
+  </head>
+  <body>
+    <canvas id="game"></canvas>
+    <div id="overlay">loading…</div>
+    <div id="crosshair"></div>
+    <div id="ui"></div>
+    <script type="module" src="/next/main.ts"></script>
+  </body>
+</html>

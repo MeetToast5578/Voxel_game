@@ -1,5 +1,223 @@
 # Handoff: Voxel Game (MeetToast5578/Voxel_game)
 
+## 2026-10-30 — engine rewrite, phase 1 (Claude)
+
+The owner chose a full rewrite at 0.6 m blocks (16³ chunks, 9.6 m). It is built in `next/` beside the old game, which
+stays in `src/` and keeps working until the switch-over phase. Plan: engine review findings and 12 phases (core,
+generation and meshing, stored lighting, player, saves, simulation, worldgen, atmosphere, gameplay, creatures, UI,
+switch-over). Phase 1 adds `next/config.ts` (meters only; cell counts come from `cells()`), packed integer chunk keys,
+a growable `IntQueue`, a name-based block registry (`next/engine/blocks.ts`), palette-compressed chunks with nibble
+light (`next/engine/chunk.ts`) and the `World` store. Tests are in `next/tests`.
+
+Phase 2 makes `next.html` playable as a fly camera (WASD, space/shift, ctrl fast, +/- view distance; URL `seed`, `view`,
+`x`, `y`, `z`, `yaw`, `pitch`). Climate fields and density terrain are ported without rivers, caves or features
+(`next/worldgen`). Workers are picked by column hash so their column caches hit (`next/workers/pool.ts`). The mesher
+merges cube faces greedily and packs a vertex into two uint32 words (`next/engine/mesher.ts`); tiles are a texture
+array so merged faces repeat them (`next/render/tilePixels.ts`). Four passes: opaque (no discard), cutout, water, ice.
+Streaming (`next/engine/streaming.ts`) never discards a mesh result; a chunk changed meanwhile is meshed again.
+`node scripts/next-benchmark.mjs --assert` gates generation under 2 ms and meshing under 1 ms per chunk (here 0.42 and
+0.79 ms). `node scripts/next-smoke.mjs` (after a build) loads the page headless and screenshots it; at 12 chunks
+(115 m) SwiftShader showed 2,422 chunks, 762 meshes and 192 draw calls.
+
+Phase 3 stores light (`next/engine/light.ts`). Sky light is 15 above each column's sky top (the highest cell that stops
+sunlight; kept on the `Column`) and both channels fall by one per cell. Workers compute a chunk's own light
+(`chunkLight`); the main thread joins it to loaded neighbours (`LightEngine.stitch`, only where light can cross) and
+keeps it exact through edits with remove/add flood fills (`onBlockChanged`). `drainChanged` names the chunks to
+remesh: the changed chunk plus neighbours across a changed border cell, not all 26. A test checks the result equals
+a full recompute after random edits. Shortcut: when the sky top drops below the loaded chunks, the generated sky top
+is assumed (edits stored in unloaded chunks are not seen). Day and night: `T` skips an hour; `time` URL parameter.
+Benchmark gates now also cover worker light and stitching (here 0.6 ms and 0.3 ms per chunk). Hot modules copy
+imported constants into locals, because the benchmark's module loader turns each into a getter call.
+
+Phases 4 to 6 (same PR):
+- **Player** (`next/game`): swept-box physics in cells (`physics.ts`). Stepping is one step per move, also right
+  after landing, and steps down so stairs and slabs are walked, not fallen down. A body stuck in solid is pushed to
+  the nearest free spot. Swimming uses buoyancy from how much of the body is in water. Raycast with exact slab and
+  snow boxes. Keyboard, mouse and gamepad (`input.ts`); touch controls wait for the UI phase. Break and place with
+  a 9-slot hotbar; F flies.
+- **Edits**: `setBlock` in `next/main.ts` is the one path. Player edits remesh first (urgent). In the browser smoke
+  test a typical edit took 0.5 to 1.1 ms on the main thread, and every edit was on screen within 2 frames. An
+  opaque block next to glowstone, which removes a lot of light, took up to 5.7 ms under software rendering.
+- **Saves** (`next/storage`, IndexedDB database `voxel-next`):
+  - Whole chunks that differ from generation are saved, with their light, deflated and with states stored by
+    name. Their columns' sky tops and a meta record are saved too.
+  - Unloading chunks are encoded at once.
+  - A revision check refuses to overwrite a save from another tab.
+  - World backups export and import as JSON (`archive.ts`). Settings live in localStorage.
+  - URL: `world=name`, `new=1`.
+  - Saves from 0.3 m blocks are not read; the old game keeps its own database.
+- **Simulation** (`next/sim`):
+  - Scheduled ticks (fluids, falling sand and gravel, plants losing their ground) at 20 Hz. Ticks of unloaded
+    chunks wait with their remaining delay and are saved.
+  - Water and lava spread with levels (lava loses two per cell) and harden into obsidian or cobblestone where
+    they meet. Fluid speeds are set in m/s.
+  - Random ticks (grass spread and dieback, leaf decay; placed leaves are variant 1) run at a fixed rate per chunk
+    within `SIM_RADIUS_CHUNKS` of the player, so their speed does not depend on the view distance.
+  - Snow, ice, crops and saplings come with weather (phase 8) and gameplay (phase 9).
+
+Phase 7a: world generation without water bodies (`next/worldgen`).
+- **Biomes** (`biomes.ts`): the old table, with temperature and precipitation per cell; surface and soil come from
+  the biome. Steep ground is bare rock. Shortcut: no dithering between neighbouring biomes' surfaces yet.
+- **Underground** (`underground.ts`):
+  - bent rock strata, and deepslate below -100 m;
+  - the four cave systems, with sizes in meters, and a 5 m roof under ground near sea level so the sea cannot drain
+    into caves;
+  - ore veins placed at a rate per 1000 m³.
+- **Trees** (`trees.ts`): every species in meters. Each tree is built whole and clipped per column. Canopies count
+  in the column's sky top, so the ground under them is shaded.
+- **Ground cover and features:** grass, ferns, flowers and mushrooms weighted per biome; boulders and fallen logs.
+- **Leaves:**
+  - Faces between leaves are hidden ("fast leaves"). That took the forest views in software rendering from 3-8
+    fps to 15-17.
+  - Generated leaves only check for decay when a log near them is removed. A random tick per leaf (a flood fill
+    each) cost about 100 ms a second.
+- **Cave culling** (`engine/visibility.ts`): workers record which pairs of a chunk's faces connect. A walk from the
+  camera hides chunks it cannot reach (sealed caves); unloaded space above a column's top counts as open sky.
+- **Streaming:** never-meshed chunks go before remeshes, so block updates near the player cannot starve the view.
+  `idle` means loaded and meshed once.
+- **Smoke test** adds forest and cave views.
+- **Measurements:**
+  - Generation is about 1.1 ms per surface chunk.
+  - A column with trees takes 1.6 ms to prepare when its neighbours are cached, and 7.4 ms when they are not.
+  - Draw calls rose to about 520 at the spawn view, because chunks now also need a cutout pass for trees and
+    plants.
+- **Still to do in phase 7b:** rivers, lakes, coasts and reeds. Caves out of sight under ground show the sky colour
+  until phase 8's dark underground fog.
+
+Phase 8: atmosphere.
+- **Calendar** (`next/sim/clock.ts`): days and seasons (7 days each), moon phases, and the sun's path, which stands
+  higher at noon in summer. `yearTime` is saved.
+- **Weather** (`next/sim/weather.ts`): ported. Pressure and humidity fields drift east and give cloud cover, rain,
+  snow or sleet by temperature, and storms. `Environment` (`next/sim/environment.ts`) samples it at the player every
+  2 s and eases cloud cover. Storms flash lightning, with thunder a few seconds later. The F3 line shows the season,
+  day, time and weather.
+- **Sky** (`next/render/sky.ts`):
+  - The sky is a gradient dome, warm around the sun at dusk. Sun and moon are drawn as square discs, and the moon's
+    lit part follows its phase. Stars turn with the night.
+  - Fog takes the sky's horizon colour and reaches all the way to the far terrain.
+  - Under ground (from the sky light where the camera is) the fog turns dark and closes in to 30 m; the dome, stars
+    and clouds go dark or hide too. Under water the fog is blue and 9 m.
+- **Clouds and precipitation** (`clouds.ts`, `precipitation.ts`): clouds are a blocky layer at 100 m that thickens
+  with cover. Rain falls as streaks at 9 m/s and snow at 1.5 m/s, never under a roof.
+- **Seasons in the world:**
+  - Leaves turn orange and red in autumn and grass browns in high summer (terrain shader). Water ripples.
+  - Snow settles in layers while it snows below freezing, still water freezes, and both melt when warm (random
+    ticks at the top of columns near the player, `Simulation.weatherTicks`).
+- **Far terrain** (`render/horizon.ts`, worker job `horizon`):
+  - 48 rings × 128 samples of the climate surface out to 2 km, coloured by biome; rebuilt every 40 m the player
+    moves.
+  - It writes depth, sits behind the real chunks (polygon offset), and is cut out where they are drawn.
+- **Sounds** (`next/audio/sounds.ts`): the old procedural noise bursts for breaking, placing, footsteps, splashes
+  and thunder.
+- **Cave culling fix:** the walk is now bounded by the highest generated terrain and 64 chunks down, not by the view
+  radius vertically. That radius had hidden water and ponds below sea level when seen from high up.
+
+Phase 7b: rivers and lakes (`next/worldgen/rivers.ts`). This closes T-C6 by design.
+- **Network:** a drainage network over the whole world, with no regions. There are three levels of jittered nodes:
+  every 200 m (35% carry streams, 2.4 m wide), every 420 m (60%, 4.8 m) and every 900 m (all, 9.6 m).
+  - A node drains to its lowest neighbour on the same grid.
+  - The water falls linearly along each segment, and never stands above the land.
+  - A node lower than all its neighbours holds a lake.
+  - Paths meander through a domain warp.
+- **No seams:** every decision reads only nearby nodes, so places agree whatever order they are generated in.
+  Tests follow one river across more than 8 chunks and swap the generation order.
+- **Carving:** channels and banks cut into the surface and calm its 3D detail. Beds are sand, gravel and clay.
+  Reeds grow on the edge, lily pads on lakes. Trees, boulders and logs keep out of the water. Caves keep a roof
+  under rivers and lakes as they do under the sea. Rivers also show on the far terrain.
+- **Still missing:** waterfalls are just steps of still water; there are no stony shores or sandbars.
+
+Phase 9 with the UI part of phase 11: play.
+- **New blocks and items** (`next/engine/blocks.ts`): torch (light 14), crafting table, furnace and lit furnace
+  (facing fronts), doors (4 cells, 2.4 m), beds (2 cells), stairs of five materials, wheat, carrots and potatoes (4
+  growth stages), saplings of 8 species, sticks, coal, iron ingots, food, and wooden, stone and iron tools.
+  - Block types now carry: tool kind and tier, drops, fuel, smelting result, food, `needsSupport` and per-variant
+    tiles.
+  - The mesher draws any list of boxes per state.
+  - Shortcut: stairs and closed doors collide as whole cells, as in the old game.
+- **Rules** (`next/game`), all tested:
+  - inventory stacks with tool wear (`inventory.ts`);
+  - shaped recipes ported by name (`crafting.ts`);
+  - furnaces that burn fuel and light up (`furnace.ts`);
+  - break times by tool and tier, with drops (`mining.ts`);
+  - health, hunger, breath, fall damage, drowning and lava (`survival.ts`).
+- **`Play`** (`game/play.ts`) ties it together:
+  - creative breaks at once and places freely; survival digs over time, drops into the inventory and uses items up;
+  - right click opens tables and furnaces, toggles doors, sleeps in beds (skips the night, sets the spawn) and eats;
+  - furnaces keep running; everything is saved in the meta record's `play` field;
+  - death clears the inventory and respawns at the bed or the first spawn.
+- **Growth:** crops grow and saplings become trees on random ticks.
+- **UI** (`next/ui/app.tsx`, Preact):
+  - hotbar with icons drawn from the tile textures, plus health, hunger and air bars;
+  - the inventory screen (E) with 2×2 crafting, 3×3 at a table, a furnace screen, and a block palette in creative;
+  - a pause menu whenever the pointer is free: settings sliders, the world list (open, export, delete), a new world
+    form (name, seed, mode) and import from a file;
+  - a death screen; F3 hides the debug text; a crack overlay while digging.
+- **URL `mode`:** `creative` or `survival` for a new world. Worlds made from the URL default to creative, worlds made
+  from the menu to the mode picked there.
+
+Phase 10: creatures (`next/creatures`, `next/render/creatureMeshes.ts`).
+- **Species:** the old twelve, with sizes and speeds now in meters.
+- **Spawning:** groups appear 24–64 m from the player by biome. Fish appear in water, and zombies in the dark or at
+  night. At most 48 creatures and 12 monsters; they leave beyond 110 m, and monsters slip away by day.
+- **Behaviour:**
+  - grazers flee the player and predators; herds keep together; predators hunt their prey;
+  - in survival, monsters hunt and bite the player;
+  - creatures sleep by their day or night;
+  - they wander without walking into water, off drops over 3 m, or into walls too high to step;
+  - physics is the player's own.
+  - Shortcut: no path-finding, only steering.
+- **Combat:** the player hits the nearest creature under the crosshair (axes hit hardest). Hits knock creatures back;
+  dead animals leave raw meat in survival.
+- **Drawing:** boxes in one instanced mesh, posed per frame, lit by the light where each creature stands and
+  flashing red when hit. Only the used part of the instance buffers is uploaded.
+- **Saving:** creatures go in the meta record.
+
+Phase 11, the rest:
+- **Touch controls** (`next/ui/touch.ts`): on coarse-pointer devices or with `?touch=1`. A stick moves, dragging on
+  the right looks, and buttons cover jump, down, break, place, fly, inventory, slots and pause. `Input.playing` and
+  `start()`/`stop()` stand in for pointer lock.
+- **Creative building** (`Play.build`):
+  - B marks a corner; B again fills the box (up to 19.2 m a side) with the held block. G does the same to clear.
+  - Boxes are applied 1,500 cells per tick.
+  - Every player edit goes into a 32-step undo history: Ctrl+Z to undo, Ctrl+Y to redo.
+- **Chests:** 27 slots, crafted from eight planks. They face the player, are saved in `play`, and empty into the
+  inventory when broken in survival.
+- **Biome borders** dither: each cell's temperature and rainfall get a small nudge before its biome is chosen.
+- **Groundwater:** caves fill with water below a water table at about -42 m ± 30 m (old tuning), and with lava below
+  -100 m.
+- **Fix:** block updates scheduled across the edge of the loaded area now wait for their chunk (`TickScheduler.defer`)
+  instead of being lost when due.
+
+Polish:
+- **Draw calls** (`next/render/chunkMeshes.ts`): chunks are drawn from pools of 131,072 quads, one multi-draw per pool
+  and pass (three's `BatchedMesh`), with space handed out first-fit. At view 12 the terrain takes 10 draw calls instead
+  of about 500. The vertex shader finds each chunk's origin from `gl_DrawID`. SwiftShader frame rates do not change,
+  because software rasterising dominates there; the saving is CPU time per frame on real GPUs.
+- **Dropped items** (`next/game/drops.ts`, `next/render/dropMeshes.ts`): what does not fit in the inventory drops into
+  the world. Q throws one of the held item, and death scatters the inventory. Drops fall, slide to a stop, are picked
+  up within 1.5 m, vanish after 5 minutes (at most 256 at once) and are saved with `play`.
+- **Waterfalls** (`Generator.column`): where a neighbour's water stands higher, a curtain of flowing water spills
+  over the step. The top cell is full level and the rest are falling cells, which is exactly what the block updates
+  settle on, so a test can tick every waterfall cell and see nothing change. A one-cell step gets a source instead,
+  because water between two sources becomes one. Real falls are rare: 2 in a 768 m square of seed 1, with one at
+  (-591, 32, -468) in cells.
+- **F3 frame graph** (`next/ui/frameGraph.ts`): the last 120 frames as bars (time since the previous frame, with the
+  main thread's own share darker; lines at 60 and 30 fps), and a line with averages and maxima. In headless
+  SwiftShader at view 8 the main thread takes about 4 ms per frame, at most 19 ms while flying at 22 m/s through new
+  terrain; the rest of each frame is software rasterising.
+- **Path-finding for hunters** (`next/creatures/pathfinding.ts`, ported A* with integer keys): a hunting land
+  creature plans a path to its target every second and walks it cell by cell, so a zombie goes round a wall instead
+  of pressing against it.
+- **Worker light 3.6× faster** (`chunkLight`): open cells are marked once, neighbours are stepped to by index, and
+  all-solid or all-sky chunks return at once. 0.70 → 0.19 ms per chunk; CI had failed the 1 ms gate at 1.03 ms.
+- **Cave mouths** no longer show the sky: the generator reports each column's cave floor under surface openings
+  (`ColumnData.caveFloor`), and streaming meshes a column down to the lowest floor of itself and its 8 neighbours.
+  Cost in seed 1: 16% more meshed chunks at view 12 (926 → 1,075) and about 8 s more loading in SwiftShader.
+- **Far terrain:** coloured by the generated surface instead of painting everything below -6 °C as snow, which
+  made green taiga turn white in the distance. Banks beside a channel count as water, so thin rivers don't break into
+  dashes. Fog is now haze that thickens quickly and levels off (exponential, reaching the fog colour exactly at 2 km)
+  in both the terrain and far-terrain shaders, so the seam still matches.
+
 ## 2026-10-24 — performance (Claude)
 
 T-J13: an edit remeshes at once only the chunks the changed cell faces (at most 4, was 8). T-J6: chunk budgets
