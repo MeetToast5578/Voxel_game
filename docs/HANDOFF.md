@@ -213,6 +213,10 @@ Polish:
 - **Cave mouths** no longer show the sky: the generator reports each column's cave floor under surface openings
   (`ColumnData.caveFloor`), and streaming meshes a column down to the lowest floor of itself and its 8 neighbours.
   Cost in seed 1: 16% more meshed chunks at view 12 (926 → 1,075) and about 8 s more loading in SwiftShader.
+- **Far terrain:** coloured by the generated surface instead of painting everything below -6 °C as snow, which
+  made green taiga turn white in the distance. Banks beside a channel count as water, so thin rivers don't break into
+  dashes. Fog is now haze that thickens quickly and levels off (exponential, reaching the fog colour exactly at 2 km)
+  in both the terrain and far-terrain shaders, so the seam still matches.
 
 ## 2026-10-24 — performance (Claude)
 

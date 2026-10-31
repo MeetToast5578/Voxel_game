@@ -108,7 +108,8 @@ void main() {
   float ripple = sin(vWorldXZ.x * 1.3 + time * 1.7) * sin(vWorldXZ.y * 1.1 - time * 1.3);
   color *= 1.0 + 0.1 * ripple;
 #endif
-  color = mix(color, fogColor, smoothstep(fogNear, fogFar, vDepth));
+  // Haze that thickens quickly then levels off, reaching the fog colour exactly at fogFar (same curve as the horizon).
+  color = mix(color, fogColor, (1.0 - exp(-3.0 * clamp((vDepth - fogNear) / (fogFar - fogNear), 0.0, 1.0))) / (1.0 - exp(-3.0)));
   outColor = vec4(color, opacity);
 }`;
 

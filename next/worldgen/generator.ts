@@ -345,8 +345,9 @@ export class Generator {
     const amp = detailAmpMeters(f);
     const set = (r: number, g: number, b: number) => { out.r = r; out.g = g; out.b = b; };
     const ws = this.rivers.sample((x + 0.5) * B, (z + 0.5) * B, h, this.horizonWater);
-    if (ws.kind && h > SEA_LEVEL_M) {
-      out.height = ws.level / B - 0.15;
+    // Banks next to the channel count as water too, so rivers narrower than the far rings stay unbroken.
+    if ((ws.kind || ws.near > 0.6) && h > SEA_LEVEL_M) {
+      out.height = (ws.kind ? ws.level : ws.ground - 0.5) / B - 0.15;
       set(56, 100, 186);
       return;
     }
@@ -359,8 +360,8 @@ export class Generator {
     out.height = h / B;
     const temp = temperatureAt(f, h);
     const biome = biomeAt(temp, precipitationAt(f, amp), h, amp, f.weirdness);
-    if (temp < -6) set(232, 238, 244);
-    else if (h <= BEACH_TOP_M) set(214, 202, 160);
+    // Coloured by the generated surface, as the chunks there will look on arrival (snow only settles near the player).
+    if (h <= BEACH_TOP_M) set(214, 202, 160);
     else if (amp >= BARE_ROCK_AMP_M) set(122, 122, 122);
     else if (biome.surface === 'sand') set(214, 202, 160);
     else if (biome.surface === 'grass') set(biome.trees && biome.trees !== 'bush' ? 70 : 92, biome.trees && biome.trees !== 'bush' ? 128 : 150, 50);

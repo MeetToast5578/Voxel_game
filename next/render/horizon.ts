@@ -29,7 +29,7 @@ void main() {
   // Inside the loaded terrain the real chunks are drawn instead.
   if (d < hole) discard;
   vec3 c = vColor * (0.04 + 0.96 * daylight);
-  outColor = vec4(mix(c, fogColor, smoothstep(fogNear, fogFar, d)), 1.0);
+  outColor = vec4(mix(c, fogColor, (1.0 - exp(-3.0 * clamp((d - fogNear) / (fogFar - fogNear), 0.0, 1.0))) / (1.0 - exp(-3.0))), 1.0);
 }`;
 
 /** Rings of far terrain heights around a centre, built in a worker and drawn under the real chunks. */
