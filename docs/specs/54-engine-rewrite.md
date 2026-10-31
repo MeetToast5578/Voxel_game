@@ -77,7 +77,7 @@ The owner chose a full rewrite with 0.6 m blocks and 16³ chunks (9.6 m).
 
 ## Measured (benchmark and headless Chromium with SwiftShader)
 
-- **Per chunk:** generation about 1.2 ms, meshing about 0.5 ms, worker light about 0.7 ms, stitching about 0.3 ms.
+- **Per chunk:** generation about 1.1 ms, meshing about 0.5 ms, worker light about 0.19 ms, stitching about 0.3 ms.
   `scripts/next-benchmark.mjs --assert` gates them at 2, 1, 1 and 1 ms.
 - **Edits:** 0.3–3.9 ms on the main thread; on screen within 2 frames (`scripts/next-smoke.mjs`).
 - **View distance 12 chunks (115 m):** about 2,700 chunks loaded and about 330,000 quads in 13 draw calls. Before
