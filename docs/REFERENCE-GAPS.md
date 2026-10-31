@@ -1,5 +1,9 @@
 # Reference gaps: nrz/Voxels
 
+> **Historical (2026-10-31):** this file describes the old 0.3 m game, which was deleted when the 0.6 m rewrite
+> replaced it (spec 54, phase 12). Paths such as `src/world/…` and `tests/` refer to code that no longer exists.
+> Current state: `docs/HANDOFF.md` and `docs/specs/54-engine-rewrite.md`.
+
 Last updated 2026-10-15. A docs-only comparison. No code or specs are changed by this file.
 
 ## Source and rules

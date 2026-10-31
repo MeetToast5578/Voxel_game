@@ -1,82 +1,39 @@
 import * as THREE from 'three';
-import { crackGeometry } from './blockGeometry';
+import type { RayHit } from '../game/raycast';
+import { TILE_NAMES, TILE_SIZE, tilePixels } from './tilePixels';
 
-/** Thin dark outline around the block the player is looking at, or around a volume the build tools would change. */
-export class BlockHighlight {
+/** Outline of the targeted cell, and cracks spreading over it while it is being broken. */
+export class Highlight {
   private readonly lines: THREE.LineSegments;
-  private readonly area: THREE.LineSegments;
-  private areaKey = '';
+  private readonly cracks: THREE.Mesh;
+  private readonly stages: THREE.DataTexture[] = [];
 
   constructor(scene: THREE.Scene) {
-    const box = new THREE.BoxGeometry(1.002, 1.002, 1.002); // slightly larger than a block to avoid z-fighting
-    const edges = new THREE.EdgesGeometry(box);
-    box.dispose();
-    const material = new THREE.LineBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.6 });
-    this.lines = new THREE.LineSegments(edges, material);
+    const geometry = new THREE.EdgesGeometry(new THREE.BoxGeometry(1.004, 1.004, 1.004));
+    this.lines = new THREE.LineSegments(geometry, new THREE.LineBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.6 }));
     this.lines.visible = false;
-    this.area = new THREE.LineSegments(new THREE.BufferGeometry(), material);
-    this.area.visible = false;
-    scene.add(this.lines, this.area);
+    scene.add(this.lines);
+    const pixels = tilePixels(), size = TILE_SIZE * TILE_SIZE * 4;
+    for (let i = 0; i < 10; i++) {
+      const layer = TILE_NAMES.indexOf(`crack_${i}`);
+      const t = new THREE.DataTexture(new Uint8Array(pixels.subarray(layer * size, (layer + 1) * size)), TILE_SIZE, TILE_SIZE);
+      t.magFilter = THREE.NearestFilter;
+      t.needsUpdate = true;
+      this.stages.push(t);
+    }
+    this.cracks = new THREE.Mesh(new THREE.BoxGeometry(1.006, 1.006, 1.006),
+      new THREE.MeshBasicMaterial({ map: this.stages[0]!, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -1, fog: false }));
+    this.cracks.visible = false;
+    scene.add(this.cracks);
   }
 
-  /** Shows the outline around block (x, y, z), or hides it when target is null. */
-  update(target: { x: number; y: number; z: number } | null, bounds?: readonly [number, number] | null): void {
-    this.area.visible = false;
-    if (!target) {
-      this.lines.visible = false;
-      return;
-    }
-    this.lines.visible = true;
-    this.lines.scale.y = bounds ? bounds[1] - bounds[0] : 1;
-    this.lines.position.set(target.x + 0.5, target.y + (bounds ? (bounds[0] + bounds[1]) / 2 : 0.5), target.z + 0.5);
-  }
-
-  /** Shows the outline around a box of blocks (inclusive bounds), or hides it when box is null. */
-  showBox(box: { min: { x: number; y: number; z: number }; max: { x: number; y: number; z: number } } | null): void {
-    this.lines.visible = false;
-    if (!box) {
-      this.area.visible = false;
-      return;
-    }
-    const sx = box.max.x - box.min.x + 1;
-    const sy = box.max.y - box.min.y + 1;
-    const sz = box.max.z - box.min.z + 1;
-    const key = `${sx},${sy},${sz}`;
-    if (key !== this.areaKey) {
-      // The outline is 0.002 larger than the box, like the single-block outline, to avoid z-fighting.
-      const geometry = new THREE.EdgesGeometry(new THREE.BoxGeometry(sx + 0.002, sy + 0.002, sz + 0.002));
-      this.area.geometry.dispose();
-      this.area.geometry = geometry;
-      this.areaKey = key;
-    }
-    this.area.visible = true;
-    this.area.position.set(box.min.x + sx / 2, box.min.y + sy / 2, box.min.z + sz / 2);
+  /** `progress` 0..1 shows cracks (0 none). */
+  set(hit: RayHit | null, progress = 0): void {
+    this.lines.visible = hit !== null;
+    this.cracks.visible = hit !== null && progress > 0;
+    if (!hit) return;
+    this.lines.position.set(hit.x + 0.5, hit.y + 0.5, hit.z + 0.5);
+    this.cracks.position.copy(this.lines.position);
+    if (progress > 0) (this.cracks.material as THREE.MeshBasicMaterial).map = this.stages[Math.min(9, Math.floor(progress * 10))]!;
   }
 }
-
-/** The crack overlay is a cube this much larger than a block, so it does not z-fight with the block's faces. */
-const OVERLAY_SIZE = 1.004;
-
-/** The crack overlay on the block being broken: a cube just larger than the block, showing the crack stage. */
-export class BreakOverlay {
-  private readonly mesh: THREE.Mesh;
-
-  constructor(scene: THREE.Scene, material: THREE.Material) {
-    this.mesh = new THREE.Mesh(crackGeometry(0, OVERLAY_SIZE), material);
-    this.mesh.visible = false;
-    scene.add(this.mesh);
-  }
-
-  /** Shows crack stage 0..9 on block cell, or hides the overlay when there is no cell or the stage is -1. */
-  update(cell: { x: number; y: number; z: number } | null, stage: number, bounds?: readonly [number, number] | null): void {
-    if (!cell || stage < 0) {
-      this.mesh.visible = false;
-      return;
-    }
-    this.mesh.geometry = crackGeometry(stage, OVERLAY_SIZE);
-    this.mesh.scale.y = bounds ? bounds[1] - bounds[0] : 1;
-    this.mesh.position.set(cell.x + 0.5, cell.y + (bounds ? (bounds[0] + bounds[1]) / 2 : 0.5), cell.z + 0.5);
-    this.mesh.visible = true;
-  }
-}
-

@@ -1,5 +1,9 @@
 # Roadmap: Voxel World Simulator
 
+> **Historical (2026-10-31):** this file describes the old 0.3 m game, which was deleted when the 0.6 m rewrite
+> replaced it (spec 54, phase 12). Paths such as `src/world/…` and `tests/` refer to code that no longer exists.
+> Current state: `docs/HANDOFF.md` and `docs/specs/54-engine-rewrite.md`.
+
 Last updated 2026-10-17, checked against the code. This replaces the backlog in `HANDOFF.md`. Phase 1 and 1b are merged (specs 1–10). Phases 2–7 are partly merged; each phase below says what is done, partial or not started. The owner's open choices are in `HANDOFF.md`, "Open decisions".
 
 Spec 53 building/backups (2026-10-22): creative two-corner copy/paste and validated portable

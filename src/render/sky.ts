@@ -1,192 +1,159 @@
 import * as THREE from 'three';
-import { WORLD_LATITUDE_DEG } from '../config';
-import { type SkyUniforms, skyFragmentShader, skyVertexShader } from './skyMaterial';
-import { AXIAL_TILT_DEG } from '../world/calendar';
-import { moonPhaseAt } from '../world/moon';
-import { smoothstep } from '../world/time';
+import { mulberry32 } from '../core/random';
 
-/** Radius of the sky dome, in blocks. Large enough to always be behind the fog. */
-const SKY_RADIUS = 1000;
+/** Sky colours at the zenith and the horizon for a sun height (-1..1) and cloud cover (0..1), in display space. */
+export function skyColors(sunY: number, cloud: number, zenith: THREE.Color, horizon: THREE.Color): void {
+  const day = Math.min(1, Math.max(0, (sunY + 0.15) / 0.4));
+  const dusk = Math.max(0, 1 - Math.abs(sunY) / 0.25);
+  zenith.setRGB(0.02 + 0.33 * day, 0.03 + 0.5 * day, 0.08 + 0.82 * day);
+  horizon.setRGB(0.04 + 0.62 * day + 0.45 * dusk, 0.05 + 0.75 * day + 0.12 * dusk, 0.1 + 0.85 * day - 0.05 * dusk);
+  // Overcast skies turn grey.
+  const grey = 0.08 + 0.55 * day;
+  zenith.lerp(new THREE.Color(grey, grey, grey * 1.05), cloud * 0.75);
+  horizon.lerp(new THREE.Color(grey * 1.05, grey * 1.05, grey * 1.1), cloud * 0.7);
+}
 
-/** Number of points in the star field. */
-const STAR_COUNT = 400;
+const DOME_VERTEX = /* glsl */ `
+out vec3 vDir;
+void main() {
+  vDir = position;
+  vec4 p = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+  gl_Position = p.xyww; // on the far plane, behind everything
+}`;
 
-/** Size of the sun/moon, in blocks. */
-const SUN_SIZE = 12;
-const MOON_SIZE = 10;
+const DOME_FRAGMENT = /* glsl */ `
+uniform vec3 zenith;
+uniform vec3 horizon;
+uniform vec3 sunDir;
+uniform float dusk;
+uniform float flash;
+uniform float underground;
+uniform vec3 caveFog;
+in vec3 vDir;
+out vec4 outColor;
+void main() {
+  vec3 d = normalize(vDir);
+  float up = max(d.y, 0.0);
+  vec3 c = mix(horizon, zenith, pow(up, 0.6));
+  // Below the horizon the sky stays the horizon colour, which is also the fog colour: far terrain fades into it.
+  if (d.y < 0.0) c = horizon;
+  float toward = max(dot(d, normalize(sunDir)), 0.0);
+  // A warm band around the sun near sunrise and sunset, and a glow around the sun by day.
+  c += vec3(1.0, 0.45, 0.15) * dusk * pow(toward, 6.0) * (1.0 - up) * 0.8;
+  c += vec3(1.0, 0.9, 0.7) * pow(toward, 64.0) * 0.4 * clamp(sunDir.y * 4.0 + 0.5, 0.0, 1.0);
+  c = mix(c, vec3(0.85, 0.88, 1.0), flash);
+  // Under ground, whatever shows through gaps beyond the loaded chunks is the dark cave fog.
+  c = mix(c, caveFog, underground);
+  outColor = vec4(c, 1.0);
+}`;
 
-/**
- * The sky: an atmospheric scattering dome with a sun, moon, and stars.
- * All elements are recentred on the camera each frame so they always surround
- * the player. The sky shader never writes to the depth buffer so terrain is
- * always visible through it.
- */
+/** A disc texture for the sun, and the moon lit by its phase. */
+function discTexture(draw: (ctx: CanvasRenderingContext2D, size: number) => void): THREE.CanvasTexture {
+  const canvas = document.createElement('canvas');
+  canvas.width = canvas.height = 64;
+  draw(canvas.getContext('2d')!, 64);
+  const t = new THREE.CanvasTexture(canvas);
+  t.magFilter = THREE.NearestFilter;
+  return t;
+}
+
+/** Sky dome, sun, moon, stars and lightning. Everything sits around the camera, at no fixed place in the world. */
 export class Sky {
-  private readonly uniforms: SkyUniforms;
+  readonly zenith = new THREE.Color();
+  readonly horizon = new THREE.Color();
   private readonly dome: THREE.Mesh;
-  private readonly sun: THREE.Mesh;
-  private readonly moon: THREE.Mesh;
+  private readonly domeUniforms: Record<string, THREE.IUniform>;
+  private readonly sun: THREE.Sprite;
+  private readonly moon: THREE.Sprite;
   private readonly stars: THREE.Points;
-  private readonly starPositions: Float32Array;
-  // North celestial pole: altitude equals latitude, with north along +Z (the sun's south is -Z).
-  private readonly starAxis = new THREE.Vector3(
-    0,
-    Math.sin(WORLD_LATITUDE_DEG * Math.PI / 180),
-    Math.cos(WORLD_LATITUDE_DEG * Math.PI / 180),
-  );
+  private readonly group = new THREE.Group();
+  private moonPhaseDrawn = -1;
+  private readonly moonCanvas: THREE.CanvasTexture;
 
-  constructor(scene: THREE.Scene) {
-    this.uniforms = {
-      uTime: { value: 0 },
-      uSeason: { value: 0 },
-      uSunPos: { value: new THREE.Vector3() },
-      uMoonPos: { value: new THREE.Vector3() },
-      uStarIntensity: { value: 0 },
+  constructor(scene: THREE.Scene, seed: number) {
+    this.domeUniforms = {
+      zenith: { value: this.zenith }, horizon: { value: this.horizon }, sunDir: { value: new THREE.Vector3(0, 1, 0) },
+      dusk: { value: 0 }, flash: { value: 0 }, underground: { value: 0 }, caveFog: { value: new THREE.Color(0.02, 0.02, 0.025) },
     };
-
-    const skyMaterial = new THREE.ShaderMaterial({
-      uniforms: this.uniforms as unknown as { [uniform: string]: THREE.IUniform<any> },
-      vertexShader: skyVertexShader,
-      fragmentShader: skyFragmentShader,
-      side: THREE.BackSide, // inside of the sphere
-      depthWrite: false,
-      fog: false,
-    });
-
-    this.dome = new THREE.Mesh(new THREE.SphereGeometry(SKY_RADIUS, 32, 16), skyMaterial);
-    this.dome.renderOrder = -2; // drawn first, before terrain
-    scene.add(this.dome);
-
-    // Sun: billboard quad facing the camera.
-    const sunMaterial = new THREE.MeshBasicMaterial({
-      color: 0xffaa44,
-      transparent: true,
-      depthWrite: false,
-    });
-    this.sun = new THREE.Mesh(new THREE.PlaneGeometry(SUN_SIZE, SUN_SIZE), sunMaterial);
-    this.sun.renderOrder = -2; // celestial layers precede the distant terrain silhouette
-    scene.add(this.sun);
-
-    // Moon: billboard quad facing the camera.
-    const moonMaterial = new THREE.ShaderMaterial({
-      uniforms: { uPhase: { value: 0 } },
-      vertexShader: `varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
-      fragmentShader: `
-        uniform float uPhase;
-        varying vec2 vUv;
-        void main() {
-          vec2 p = vUv * 2.0 - 1.0;
-          float radius2 = dot(p, p);
-          if (radius2 > 1.0) discard;
-          vec3 normal = vec3(p, sqrt(max(0.0, 1.0 - radius2)));
-          float angle = uPhase * 6.28318530718;
-          float lit = dot(normal, vec3(sin(angle), 0.0, -cos(angle)));
-          if (lit <= 0.0) discard;
-          gl_FragColor = vec4(vec3(0.86, 0.86, 0.94) * (0.7 + 0.3 * lit), 1.0);
-          #include <tonemapping_fragment>
-          #include <colorspace_fragment>
-        }
-      `,
-      transparent: true,
-      depthWrite: false,
-    });
-    this.moon = new THREE.Mesh(new THREE.PlaneGeometry(MOON_SIZE, MOON_SIZE), moonMaterial);
-    this.moon.renderOrder = -2;
-    scene.add(this.moon);
-
-    // Stars: random points in the sky dome.
-    this.starPositions = new Float32Array(STAR_COUNT * 3);
-    for (let i = 0; i < STAR_COUNT; i++) {
-      this.starPositions[i * 3] = (Math.random() - 0.5) * 2 * SKY_RADIUS;
-      this.starPositions[i * 3 + 1] = (Math.random() - 0.5) * SKY_RADIUS;
-      this.starPositions[i * 3 + 2] = (Math.random() - 0.5) * 2 * SKY_RADIUS;
+    this.dome = new THREE.Mesh(new THREE.SphereGeometry(1, 32, 16), new THREE.ShaderMaterial({
+      glslVersion: THREE.GLSL3, vertexShader: DOME_VERTEX, fragmentShader: DOME_FRAGMENT, uniforms: this.domeUniforms,
+      side: THREE.BackSide, depthWrite: false,
+    }));
+    this.dome.renderOrder = -20;
+    this.dome.frustumCulled = false;
+    this.sun = new THREE.Sprite(new THREE.SpriteMaterial({
+      map: discTexture((ctx, s) => {
+        ctx.fillStyle = '#fff6d8';
+        ctx.fillRect(s * 0.2, s * 0.2, s * 0.6, s * 0.6);
+      }), color: 0xffffff, depthWrite: false, fog: false, blending: THREE.AdditiveBlending,
+    }));
+    this.moonCanvas = discTexture(() => undefined);
+    this.moon = new THREE.Sprite(new THREE.SpriteMaterial({ map: this.moonCanvas, depthWrite: false, fog: false, transparent: true }));
+    const rand = mulberry32(seed + 77);
+    const starPositions = new Float32Array(1500 * 3);
+    for (let i = 0; i < 1500; i++) {
+      // Uniform on the sphere.
+      const u = rand() * 2 - 1, a = rand() * Math.PI * 2, r = Math.sqrt(1 - u * u);
+      starPositions.set([r * Math.cos(a), u, r * Math.sin(a)], i * 3);
     }
     const starGeometry = new THREE.BufferGeometry();
-    starGeometry.setAttribute('position', new THREE.BufferAttribute(this.starPositions, 3));
-    const starMaterial = new THREE.PointsMaterial({
-      color: 0xffffff,
-      size: 2,
-      transparent: true,
-      depthWrite: false,
-    });
-    this.stars = new THREE.Points(starGeometry, starMaterial);
-    this.stars.renderOrder = -2;
-    scene.add(this.stars);
+    starGeometry.setAttribute('position', new THREE.BufferAttribute(starPositions, 3));
+    this.stars = new THREE.Points(starGeometry, new THREE.PointsMaterial({
+      color: 0xffffff, size: 2, sizeAttenuation: false, transparent: true, depthWrite: false, fog: false,
+    }));
+    for (const o of [this.dome, this.sun, this.moon, this.stars]) {
+      o.renderOrder = -20;
+      o.frustumCulled = false;
+      this.group.add(o);
+    }
+    scene.add(this.group);
   }
 
   /**
-   * Update sky, sun, moon, and star positions for the current time.
-   * `timeOfDay` is 0..1 (0 = sunrise, 0.25 = noon, 0.5 = sunset, 0.75 = midnight).
-   * `season` is 0..1 (0 = spring equinox). `camera` is the player's camera.
+   * Places everything around `camera` for a sun direction (unit), moon phase (0 new, 0.5 full), cloud cover and a
+   * lightning flash (0..1), and updates `zenith` and `horizon`.
    */
-  update(timeOfDay: number, season: number, camera: THREE.Object3D): void {
-    // Recenter the sky dome on the camera so it always surrounds the player.
-    this.dome.position.copy(camera.position);
-    this.stars.position.copy(camera.position);
-    // Set an absolute orientation, not an accumulated frame delta: save/reload and time jumps agree.
-    this.stars.quaternion.setFromAxisAngle(this.starAxis, timeOfDay * Math.PI * 2);
-
-    // Solar declination: +AXIAL_TILT at summer solstice (season 0.25), -AXIAL_TILT at winter (0.75).
-    const declination = AXIAL_TILT_DEG * Math.sin(2 * Math.PI * season);
-    const declinationRad = (declination * Math.PI) / 180;
-    const latitudeRad = (WORLD_LATITUDE_DEG * Math.PI) / 180;
-
-    // Hour angle: noon is 0, sunrise/sunset at ±~PI/2 (simplified).
-    const hourAngle = (timeOfDay - 0.25) * 2 * Math.PI;
-
-    // Sun altitude: simplified model.
-    const sunAltitudeRad = Math.asin(
-      Math.sin(latitudeRad) * Math.sin(declinationRad) +
-        Math.cos(latitudeRad) * Math.cos(declinationRad) * Math.cos(hourAngle),
-    );
-    const sunAltitude = sunAltitudeRad;
-
-    // Sun azimuth: direction along the horizon (0 = south, positive = west).
-    const sunAzimuthRad = Math.atan2(
-      -Math.sin(hourAngle),
-      Math.cos(latitudeRad) * Math.tan(declinationRad) -
-        Math.sin(latitudeRad) * Math.cos(hourAngle),
-    );
-
-    // Sun position: place it on the sky dome.
-    const sunDistance = SKY_RADIUS * 0.9;
-    const sunX = sunDistance * Math.sin(sunAzimuthRad) * Math.cos(sunAltitude);
-    const sunY = sunDistance * Math.sin(sunAltitude);
-    const sunZ = -sunDistance * Math.cos(sunAzimuthRad) * Math.cos(sunAltitude);
-    this.uniforms.uSunPos.value.set(sunX, sunY, sunZ);
-    this.sun.position.copy(camera.position).add(this.uniforms.uSunPos.value);
-    this.sun.lookAt(camera.position); // billboard: always face camera
-
-    // Stylised night-time orbit; the phase is derived from the saved year clock.
-    (this.moon.material as THREE.ShaderMaterial).uniforms.uPhase.value = moonPhaseAt(season);
-    this.uniforms.uMoonPos.value.set(-sunX, -sunY, -sunZ);
-    this.moon.position.copy(camera.position).add(this.uniforms.uMoonPos.value);
-    this.moon.lookAt(camera.position);
-
-    // Star intensity: 0 at day, 1 at night.
-    const nightFactor = 1 - smoothstep(-0.12, 0.08, Math.sin(sunAltitude));
-    this.uniforms.uStarIntensity.value = nightFactor * nightFactor;
-    (this.stars.material as THREE.PointsMaterial).opacity = this.uniforms.uStarIntensity.value;
-
-    // Sun/moon visibility: sun up during day, moon up at night.
-    const sunVisible = sunAltitude > -0.1;
-    this.sun.visible = sunVisible;
-    this.moon.visible = !sunVisible;
-
-    // Uniforms for the sky shader.
-    this.uniforms.uTime.value = timeOfDay;
-    this.uniforms.uSeason.value = season;
+  update(camera: THREE.Camera, distance: number, sun: [number, number, number], moonPhase: number, cloud: number,
+    flash: number, starAngle: number, underground = 0): void {
+    this.domeUniforms.underground!.value = underground;
+    this.group.position.copy(camera.position);
+    this.dome.scale.setScalar(distance);
+    skyColors(sun[1], cloud, this.zenith, this.horizon);
+    this.domeUniforms.sunDir!.value.set(sun[0], sun[1], sun[2]);
+    this.domeUniforms.dusk!.value = Math.max(0, 1 - Math.abs(sun[1]) / 0.25) * (1 - cloud);
+    this.domeUniforms.flash!.value = flash;
+    const d = distance * 0.8;
+    this.sun.position.set(sun[0] * d, sun[1] * d, sun[2] * d);
+    this.sun.scale.setScalar(distance * 0.12);
+    this.sun.visible = sun[1] > -0.1 && cloud < 0.85 && underground < 0.5;
+    this.moon.position.set(-sun[0] * d, -sun[1] * d, -sun[2] * d);
+    this.moon.scale.setScalar(distance * 0.08);
+    this.moon.visible = sun[1] < 0.1 && cloud < 0.85 && underground < 0.5;
+    const night = Math.min(1, Math.max(0, (-sun[1] + 0.05) / 0.25));
+    (this.stars.material as THREE.PointsMaterial).opacity = night * (1 - cloud) * (1 - underground);
+    this.stars.scale.setScalar(d);
+    this.stars.rotation.set(starAngle, 0, 0.4);
+    this.drawMoon(moonPhase);
   }
 
-  /** Dispose of all geometries and materials. */
-  dispose(): void {
-    (this.dome.geometry as THREE.BufferGeometry).dispose();
-    (this.dome.material as THREE.Material).dispose();
-    (this.sun.geometry as THREE.BufferGeometry).dispose();
-    (this.sun.material as THREE.Material).dispose();
-    (this.moon.geometry as THREE.BufferGeometry).dispose();
-    (this.moon.material as THREE.Material).dispose();
-    (this.stars.geometry as THREE.BufferGeometry).dispose();
-    (this.stars.material as THREE.Material).dispose();
+  /** The moon's lit part: a disc with a shadow sliding across it through the month. */
+  private drawMoon(phase: number): void {
+    const bucket = Math.round(phase * 16) % 16;
+    if (bucket === this.moonPhaseDrawn) return;
+    this.moonPhaseDrawn = bucket;
+    const canvas = this.moonCanvas.image as HTMLCanvasElement;
+    const ctx = canvas.getContext('2d')!;
+    const s = canvas.width;
+    ctx.clearRect(0, 0, s, s);
+    ctx.fillStyle = '#e8ecf4';
+    ctx.fillRect(s * 0.25, s * 0.25, s * 0.5, s * 0.5);
+    // Shadow offset: covers the disc at new moon, leaves it whole at full moon.
+    const lit = (1 - Math.cos((bucket / 16) * Math.PI * 2)) / 2;
+    const offset = (bucket < 8 ? -1 : 1) * lit * s * 0.5;
+    ctx.fillStyle = 'rgba(8, 10, 20, 0.92)';
+    if (lit < 0.97) ctx.fillRect(s * 0.25 + offset, s * 0.25, s * 0.5, s * 0.5);
+    ctx.clearRect(0, 0, s * 0.25, s);
+    ctx.clearRect(s * 0.75, 0, s * 0.25, s);
+    this.moonCanvas.needsUpdate = true;
   }
 }
