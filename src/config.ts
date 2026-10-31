@@ -101,6 +101,8 @@ export const PLAYER_DENSITY = 800;
 export const WATER_DRAG_PER_M = 0.9;
 export const SWIM_THRUST_M_S2 = 6;
 export const SWIM_UP_M_S2 = 6;
+/** A boat's top speed on water; on land it drags at a tenth of that. */
+export const BOAT_SPEED_M_S = 8;
 
 // ---- Saving ----
 export const AUTOSAVE_S = 30;

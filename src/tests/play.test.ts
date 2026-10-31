@@ -359,3 +359,22 @@ describe('chests', () => {
     expect(play.drops.list[1]!.body.vx).toBeGreaterThan(0); // thrown along +x, where the player looks
   });
 });
+
+describe('boats', () => {
+  it('go on water in view, and come back to the inventory when the rider crouches', () => {
+    const { world, play, player, input, press } = setup('survival');
+    for (let x = 1; x <= 6; x++) world.set(x, -1, 0, S('water'));
+    player.pitch = -0.8;
+    play.inventory.slots[0] = { state: S('boat'), count: 1 };
+    press('place');
+    play.update(0.05, input, player);
+    expect(play.boating).toBe(true);
+    expect(player.boating).toBe(true);
+    expect(play.inventory.slots[0]).toBeNull();
+    expect(world.get(Math.floor(player.body.x), Math.floor(player.body.y) - 1, 0)).toBe(S('water'));
+    (input as { descend: boolean }).descend = true;
+    play.update(0.05, input, player);
+    expect(play.boating).toBe(false);
+    expect(play.inventory.slots[0]?.state).toBe(S('boat'));
+  });
+});

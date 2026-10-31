@@ -181,3 +181,25 @@ describe('currents', () => {
     expect(p.body.x).toBeGreaterThan(3);
   });
 });
+
+describe('boats', () => {
+  it('float on the surface, cross water faster than swimming, and stop at a raised bank', () => {
+    const keys = { moveX: 0, moveZ: 1, jump: false, sprint: false, descend: false, consume: () => false } as unknown as Input;
+    // Water fills y = 0 for x < 30, over a stone bed; at x >= 30 a bank rises to y = 2.
+    const solid: BoxAt = (x, y) => (y < 0 || (x >= 30 && y < 2) ? STONE : 0);
+    const water = (x: number, y: number) => y === 0 && x < 30;
+    const boat = new Player(0.5, 1, 0.5), swimmer = new Player(0.5, 0.2, 0.5);
+    boat.boating = true;
+    for (const p of [boat, swimmer]) p.yaw = -Math.PI / 2;
+    for (let i = 0; i < 120; i++) {
+      boat.update(1 / 60, keys, solid, water);
+      swimmer.update(1 / 60, keys, solid, water);
+      expect(boat.body.y).toBeCloseTo(1, 5);
+    }
+    expect(boat.body.x).toBeGreaterThan(swimmer.body.x + 3);
+    for (let i = 0; i < 600; i++) boat.update(1 / 60, keys, solid, water);
+    expect(boat.body.x).toBeLessThan(30);
+    expect(boat.body.x).toBeGreaterThan(29);
+    expect(boat.body.y).toBeCloseTo(1, 5);
+  });
+});

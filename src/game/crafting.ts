@@ -34,6 +34,7 @@ export const RECIPES: readonly Recipe[] = [
   { pattern: [' SX', 'S X', ' SX'], key: { S: ['stick'], X: ['string'] }, result: ['bow', 1] },
   { pattern: ['B'], key: { B: ['bone'] }, result: ['bone_meal', 3] },
   { pattern: ['  S', ' SX', 'S X'], key: { S: ['stick'], X: ['string'] }, result: ['fishing_rod', 1] },
+  { pattern: ['P P', 'PPP'], key: { P: ['planks'] }, result: ['boat', 1] },
   { pattern: ['ESE', 'SGS', 'EEE'], key: { E: ['ember_crystal'], S: ['beacon_shard'], G: ['glass'] }, result: ['beacon', 1] },
   { pattern: [' G ', 'GIG', ' G '], key: { G: ['gold_ingot'], I: ['iron_ingot'] }, result: ['compass', 1] },
   { pattern: ['PPP', 'PCP', 'PLP'], key: { P: ['paper'], C: ['compass'], L: ['lapis'] }, result: ['map', 1] },

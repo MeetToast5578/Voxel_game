@@ -17,6 +17,7 @@ import { Renderer } from './render/renderer';
 import { Creatures } from './creatures/creatures';
 import { CreatureMeshes } from './render/creatureMeshes';
 import { DropMeshes } from './render/dropMeshes';
+import { BoatMesh } from './render/boatMesh';
 import { FrameGraph } from './ui/frameGraph';
 import { mulberry32 } from './core/random';
 import { Environment } from './sim/environment';
@@ -230,10 +231,14 @@ const creatures = new Creatures(world, mulberry32(seed ^ 0xc0ffee), {
 creatures.load(saver.worldMeta.creatures);
 play.creatures = creatures;
 const creatureMeshes = new CreatureMeshes(renderer.scene);
+const boatMesh = new BoatMesh(renderer.scene);
+/** The boat turns to where it is going, not where the rider looks. */
+let boatYaw = 0;
 const dropMeshes = new DropMeshes(renderer.scene, renderer.uniforms.tiles!.value as ConstructorParameters<typeof DropMeshes>[1]);
 play.seed = seed;
 if (saver.worldMeta.play) play.load(saver.worldMeta.play);
 else if (play.mode === 'creative') play.creativeHotbar();
+player.boating = play.boating;
 /** Where the player starts: where they first stood, or their bed. */
 let worldSpawn: [number, number, number] | null = null;
 const env = new Environment(seed, Number(params.get('time') ?? saver.worldMeta.dayTime),
@@ -341,6 +346,7 @@ function update(dt: number): void {
     });
     if (play.survival.dead) {
       play.stats.deaths++;
+      play.leaveBoat(player);
       play.dropAll();
       input.stop();
       play.version++;
@@ -700,6 +706,8 @@ const loop = new FixedStepLoop(1 / 60, 0.25, timedUpdate, (_alpha, frameDt) => {
     body: { x: f.x, y: f.y, z: f.z, vx: 0, vy: 0, vz: 0, halfWidth: f.size / 2, height: f.size, onGround: false } }));
   // Real drops first: when over the cap, arrows and bits are what is left out.
   const drawn = flying.length ? [...play.drops.list, ...flying].slice(0, DROP_CAP) : play.drops.list;
+  if (Math.hypot(player.body.vx, player.body.vz) > 0.5) boatYaw = Math.atan2(-player.body.vx, -player.body.vz);
+  boatMesh.update(player.boating, player.body.x, player.body.y, player.body.z, boatYaw, lightAt(player.body.x, player.body.y + 0.5, player.body.z));
   dropMeshes.update(drawn, now / 1000, (d) => lightAt(d.body.x, d.body.y + d.body.height / 2, d.body.z));
   cull();
   const cam = renderer.camera.position;

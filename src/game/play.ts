@@ -30,7 +30,7 @@ const BEACON = S('beacon'), LIT_BEACON = S('lit_beacon');
 export const BEACON_MIN_M = 150;
 export const CHEST_SLOTS = 27;
 const TABLE = S('crafting_table'), TORCH = S('torch'), GRASS = S('grass'), DIRT = S('dirt'), CAMPFIRE = S('campfire'), FARMLAND = S('farmland');
-const ROD = S('fishing_rod'), FISH = S('raw_fish');
+const ROD = S('fishing_rod'), FISH = S('raw_fish'), BOAT = S('boat');
 const WATERS = new Set([S('water'), ...Array.from({ length: BLOCKS.byName('flowing_water').variants }, (_, v) => S('flowing_water', v))]);
 const LADDER = BLOCKS.byName('ladder');
 /** Fluid sources a bucket picks up, and the full bucket each gives. */
@@ -286,6 +286,7 @@ export class Play {
     if (input.consume('slotNext')) this.select((this.inventory.selected + 1) % 9);
     if (input.consume('slotPrev')) this.select((this.inventory.selected + 8) % 9);
     if (input.consume('drop')) this.throwHeld(player);
+    if (this.boating && input.descend) this.leaveBoat(player);
     const [dx, dy, dz] = player.direction();
     const b = player.body;
     this.feet = [b.x, b.y, b.z];
@@ -379,6 +380,35 @@ export class Play {
     }
     this.fishingS = FISH_MIN_S + Math.random() * (FISH_MAX_S - FISH_MIN_S);
     this.toast('Waiting for a bite…', this.fishingS);
+  }
+
+  /** Riding a boat (saved; the player's body follows it). */
+  boating = false;
+
+  /** Right click with a boat on water in view: put it in and get in. */
+  private board(player: Player): void {
+    const [dx, dy, dz] = player.direction(), b = player.body;
+    const hit = raycast(b.x, player.eyeY, b.z, dx, dy, dz, toCells(REACH_M), (x, y, z) => {
+      const s = this.world.get(x, y, z);
+      return WATERS.has(s) ? 16 << 5 : TARGET[s]!;
+    });
+    if (!hit || !WATERS.has(this.world.get(hit.x, hit.y, hit.z)) || WATERS.has(this.world.get(hit.x, hit.y + 1, hit.z))) {
+      this.toast('Put the boat on the surface of water.', 2);
+      return;
+    }
+    this.consumeHeld();
+    this.boating = player.boating = true;
+    Object.assign(b, { x: hit.x + 0.5, y: hit.y + 1, z: hit.z + 0.5, vx: 0, vy: 0, vz: 0 });
+    this.toast('Crouch to step out of the boat.', 3);
+    this.events.sound('place');
+  }
+
+  /** Steps out of the boat; in survival it goes back in the inventory. */
+  leaveBoat(player: Player): void {
+    if (!this.boating) return;
+    this.boating = player.boating = false;
+    const b = player.body;
+    if (this.mode === 'survival') this.give({ state: BOAT, count: 1 }, b.x, b.y + 1, b.z);
   }
 
   /** Shows `text` on screen for a few seconds. */
@@ -616,6 +646,10 @@ export class Play {
     if (this.useBucket(player)) return;
     if (this.held?.state === ROD) {
       this.castRod(player);
+      return;
+    }
+    if (this.held?.state === BOAT && !this.boating) {
+      this.board(player);
       return;
     }
     if (this.feedCreature(player)) return;
@@ -885,7 +919,7 @@ export class Play {
       mode: this.mode, difficulty: this.difficulty, hints: this.hints.save(), inventory: this.inventory.save(), selected: this.inventory.selected, drops: this.drops.save(),
       health: this.survival.health, hunger: this.survival.hunger, air: this.survival.air, bodyC: this.survival.temperature.coreC, spawn: this.spawn,
       furnaces: [...this.furnaces].map(([k, f]) => [k, s(f.input), s(f.fuel), s(f.output), f.burn, f.progress]),
-      journal: this.journal.save(), stats: this.stats, biomesSeen: [...this.biomesSeen], deepestM: this.deepestM, found: [...this.found], beaconLit: this.beaconLit, endingSeen: this.endingSeen,
+      journal: this.journal.save(), stats: this.stats, biomesSeen: [...this.biomesSeen], deepestM: this.deepestM, found: [...this.found], beaconLit: this.beaconLit, endingSeen: this.endingSeen, boating: this.boating,
       armour: this.armour.map((a) => (a ? [BLOCKS.stateName(a.state), 1, a.wear ?? 0] : null)),
       campfires: [...this.campfires].map(([k, c]) => [k, c.map(([st, left]) => [BLOCKS.stateName(st), left])]),
       chests: [...this.chests].map(([k, slots]) => [k, slots.map((st) => (st ? [BLOCKS.stateName(st.state), st.count, st.wear ?? 0] : null))]),
@@ -900,6 +934,7 @@ export class Play {
     if (p.mode === 'creative' || p.mode === 'survival') this.mode = p.mode;
     if (typeof p.difficulty === 'string' && p.difficulty in DIFFICULTY) this.difficulty = p.difficulty as Difficulty;
     this.hints.load(p.hints);
+    this.boating = p.boating === true;
     this.inventory.load(p.inventory);
     this.drops.load(p.drops);
     this.inventory.selected = Math.max(0, Math.min(8, Math.floor(num(p.selected, 0))));

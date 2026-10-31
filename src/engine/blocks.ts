@@ -342,6 +342,7 @@ function gameplay(): BlockSpec[] {
     item('raw_fish', 'Raw fish', { food: 2, smeltsTo: 'cooked_fish' }),
     item('cooked_fish', 'Cooked fish', { food: 5 }),
     item('fishing_rod', 'Fishing rod', { maxStack: 1, fuel: 10 }),
+    item('boat', 'Boat', { maxStack: 1, fuel: 20 }),
     item('string', 'String'),
     item('bone', 'Bone'),
     item('bone_meal', 'Bone meal'),

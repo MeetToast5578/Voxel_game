@@ -1,7 +1,7 @@
 import {
   AIR_ACCEL, EYE_HEIGHT_M, FLY_FAST_FACTOR, FLY_SPEED_M_S, GRAVITY_M_S2, GROUND_ACCEL, JUMP_SPEED_M_S, PLAYER_DENSITY,
   PLAYER_HALF_WIDTH_M, PLAYER_HEIGHT_M, SPRINT_SPEED_M_S, STEP_HEIGHT_M, STEP_SMOOTH_S, SWIM_THRUST_M_S2, SWIM_UP_M_S2,
-  TERMINAL_SPEED_M_S, WALK_SPEED_M_S, WATER_DENSITY, WATER_DRAG_PER_M, toCells, BLOCK_SIZE_M, CROUCH_FACTOR, CLIMB_SPEED_M_S, CURRENT_ACCEL_M_S2,
+  TERMINAL_SPEED_M_S, WALK_SPEED_M_S, BOAT_SPEED_M_S, WATER_DENSITY, WATER_DRAG_PER_M, toCells, BLOCK_SIZE_M, CROUCH_FACTOR, CLIMB_SPEED_M_S, CURRENT_ACCEL_M_S2,
 } from '../config';
 import type { BoxAt } from './collision';
 import type { Input } from './input';
@@ -63,6 +63,8 @@ export class Player {
 
   /** Crouching: walking slowly, and not off edges. */
   crouching = false;
+  /** Riding a boat: it floats on the water and goes fast there, and drags slowly on land. */
+  boating = false;
 
   /** Whether the body touches a climbable cell (a ladder) at its feet or middle. */
   private onLadder(climbAt: (x: number, y: number, z: number) => boolean): boolean {
@@ -102,6 +104,23 @@ export class Player {
       b.vz += (wz * speed - b.vz) * blend;
       b.vy += (((input.jump ? 1 : 0) - (input.descend ? 1 : 0)) * speed - b.vy) * blend;
       moveBody(b, dt, boxAt, 0);
+    } else if (this.boating) {
+      const x = Math.floor(b.x), z = Math.floor(b.z), feet = Math.floor(b.y + 0.05);
+      const afloat = waterAt(x, feet, z) || waterAt(x, Math.floor(b.y - 0.1), z);
+      const speed = toCells(BOAT_SPEED_M_S) * (afloat ? 1 : 0.1);
+      const blend = Math.min(1, 1.5 * dt);
+      b.vx += (wx * speed - b.vx) * blend;
+      b.vz += (wz * speed - b.vz) * blend;
+      // The hull rides on the surface: rise while the feet are under water, rest on it, fall when off it.
+      if (waterAt(x, feet, z)) b.vy = Math.min(toCells(3), b.vy + toCells(20) * dt);
+      else if (afloat) {
+        b.vy = 0;
+        b.y = Math.floor(b.y - 0.1) + 1;
+      }
+      else b.vy = Math.max(-toCells(TERMINAL_SPEED_M_S), b.vy - GRAVITY * dt);
+      // No stepping: a bank higher than the water stops the boat.
+      this.move(dt, boxAt, 0);
+      if (afloat && b.vy === 0) b.onGround = true;
     } else if (this.submerged > 0.05) {
       const thrust = toCells(SWIM_THRUST_M_S2);
       b.vx += wx * thrust * dt;

@@ -300,6 +300,9 @@ const PAINTERS: Record<string, PixelFn> = {
   wool: (x, y, r) => (Math.hypot(x - 7.5, y - 8) <= 6 ? shade([238, 236, 228], 0.85 + r() * 0.2) : [0, 0, 0, 0]),
   raw_fish: fishPainter([110, 150, 180]),
   cooked_fish: fishPainter([190, 130, 70]),
+  // A rowing boat seen from the side: a curved hull with a darker rim.
+  boat: (x, y, r) => (y >= 7 && y <= 11 && x >= 1 + Math.max(0, y - 9) && x <= 14 - Math.max(0, y - 9)
+    ? shade([150, 105, 60], (y === 7 ? 0.65 : 0.9) + r() * 0.15) : [0, 0, 0, 0]),
   fishing_rod: (x, y, r) => (x + y === 15 && x >= 1 && x <= 13 ? shade(HANDLE, 0.9 + r() * 0.2) : x === 14 && y >= 1 && y <= 12 ? shade([230, 230, 230], 1) : [0, 0, 0, 0]),
   ancient_chest_side: (x, y, r) => shade([46, 40, 56], (x === 0 || x === 15 || y === 0 || y === 15 || y === 5 ? 0.6 : 1) + (r() - 0.5) * 0.15),
   ancient_chest_top: (x, y, r) => shade([52, 44, 62], (x === 0 || x === 15 || y === 0 || y === 15 ? 0.6 : 1) + (r() - 0.5) * 0.15),
