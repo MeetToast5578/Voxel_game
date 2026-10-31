@@ -1,8 +1,34 @@
 # Handoff: Voxel Game (MeetToast5578/Voxel_game)
 
+## Current state (2026-10-31, `main` at 463450a)
+
+- **The game:** the 0.6 m rewrite (spec 54) is the only game. Both PRs are merged: #58 (phases 1–11 and polish) and #59
+  (switch-over).
+- **Running it:** `npm run dev`, then open http://localhost:5173/. The README has the controls and URL options.
+- **Checks:** `npm run check` (119 tests), `npm run benchmark -- --assert`, `npm run smoke`. CI runs all three and was
+  green on #59.
+- **Benchmark, per chunk:** generation about 1.1 ms, meshing about 0.5 ms, worker light about 0.2 ms, stitching
+  about 0.3 ms.
+- **Headless smoke at view 12:** about 2,900 chunks and 8–14 draw calls. Each edit costs 0.3–1.9 ms of main-thread
+  work and is on screen within 2 frames. Steady play costs about 4 ms of main thread per frame.
+- **Owner check still open (T-C3):** nobody has measured frame rate on real hardware yet. Press F3 in game for the
+  frame-time graph; its darker part of each bar is the main thread's share.
+- **Known shortcuts** are listed in spec 54. In short:
+  - stairs and closed doors collide as whole cells;
+  - only hunting creatures path-find;
+  - rivers have no stony shores or sandbars;
+  - `ChunkMeshes` relies on three's private `BatchedMesh` table (three is pinned at 0.186.0; a test guards it).
+- **Candidates for next work** (none chosen by the owner yet):
+  - a higher default view distance, once frame rate is measured on real hardware;
+  - per-box collision for stairs and doors;
+  - path-finding for all creatures;
+  - stony shores and sandbars.
+- **Docs:** ROADMAP, tasks, OPEN-TASKS, REFERENCE-GAPS and specs 1–53 describe the removed 0.3 m game. They are a
+  feature reference only, and a new task list for the rewrite has not been written.
+
 ## 2026-10-31 — switch-over: the rewrite is the game (Claude)
 
-The owner merged the rewrite (PR #58) and asked for the old game to go (spec 54, phase 12).
+The owner merged the rewrite (PR #58) and asked for the old game to go (spec 54, phase 12). Merged as PR #59.
 - **Removed:** the old 0.3 m game: `src/`, `tests/` and its scripts (`smoke`, `render-smoke`, `platform-smoke`,
   `world-transfer-smoke`, `terrain-review`, the old `benchmark`).
 - **Moved:** `next/` is now `src/` (tests in `src/tests`), and `next.html` is now `index.html`.
