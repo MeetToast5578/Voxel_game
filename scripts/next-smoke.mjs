@@ -11,13 +11,13 @@ const context = await browser.newContext({ viewport: { width: 1280, height: 720 
 const errors = [];
 mkdirSync('screenshots', { recursive: true });
 
-/** A fresh page for each step, loaded and idle. */
-async function open(query) {
+/** A fresh page for each step, loaded and idle. Steps that only need the ground near the player load a short view. */
+async function open(query, viewChunks = view) {
   const page = await context.newPage();
   page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
   page.on('pageerror', (e) => errors.push(String(e)));
   const t0 = Date.now();
-  await page.goto(`http://localhost:4174/next.html?view=${view}&${query}`);
+  await page.goto(`http://localhost:4174/next.html?view=${viewChunks}&${query}`);
   await page.waitForFunction(() => window.__next?.idle, null, { timeout: 180_000, polling: 250 });
   await page.waitForTimeout(1000);
   return { page, loadMs: Date.now() - t0 };
@@ -48,7 +48,7 @@ try {
   }
   // The UI: the pause menu with the world list, and a survival inventory with crafting.
   {
-    const { page } = await open('seed=1&world=smoke-ui&new=1&mode=survival');
+    const { page } = await open('seed=1&world=smoke-ui&new=1&mode=survival', 6);
     await page.waitForTimeout(500);
     await page.screenshot({ path: 'screenshots/next-menu.png' });
     await page.evaluate(() => {
@@ -84,7 +84,7 @@ try {
   }
 
   // Edit latency: main-thread time of one edit, and frames until its chunks are remeshed.
-  const { page } = await open('seed=1&world=smoke-edit&new=1');
+  const { page } = await open('seed=1&world=smoke-edit&new=1', 6);
   const edits = await page.evaluate(async () => {
     const n = window.__next;
     const results = [];
@@ -127,7 +127,7 @@ try {
     return { x, y, z, px: n.player.body.x, pz: n.player.body.z };
   });
   await page.close();
-  const reloaded = await open('world=smoke-edit');
+  const reloaded = await open('world=smoke-edit', 6);
   const after = await reloaded.page.evaluate(({ x, y, z }) => {
     const n = window.__next;
     return { name: n.blocks.stateName(n.world.get(x, y, z)), seed: n.seed, px: n.player.body.x, pz: n.player.body.z };
