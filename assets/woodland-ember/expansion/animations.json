@@ -1,0 +1,114 @@
+{
+  "fire": {
+    "fps": 10,
+    "loop": true,
+    "frames": [
+      "tiles/effects/fire_0.png",
+      "tiles/effects/fire_1.png",
+      "tiles/effects/fire_2.png",
+      "tiles/effects/fire_3.png",
+      "tiles/effects/fire_4.png",
+      "tiles/effects/fire_5.png",
+      "tiles/effects/fire_6.png",
+      "tiles/effects/fire_7.png"
+    ]
+  },
+  "smoke": {
+    "fps": 8,
+    "loop": false,
+    "frames": [
+      "tiles/effects/smoke_0.png",
+      "tiles/effects/smoke_1.png",
+      "tiles/effects/smoke_2.png",
+      "tiles/effects/smoke_3.png",
+      "tiles/effects/smoke_4.png",
+      "tiles/effects/smoke_5.png",
+      "tiles/effects/smoke_6.png",
+      "tiles/effects/smoke_7.png"
+    ]
+  },
+  "sparks": {
+    "fps": 12,
+    "loop": false,
+    "frames": [
+      "tiles/effects/sparks_0.png",
+      "tiles/effects/sparks_1.png",
+      "tiles/effects/sparks_2.png",
+      "tiles/effects/sparks_3.png",
+      "tiles/effects/sparks_4.png",
+      "tiles/effects/sparks_5.png",
+      "tiles/effects/sparks_6.png",
+      "tiles/effects/sparks_7.png"
+    ]
+  },
+  "splash": {
+    "fps": 10,
+    "loop": false,
+    "frames": [
+      "tiles/effects/splash_0.png",
+      "tiles/effects/splash_1.png",
+      "tiles/effects/splash_2.png",
+      "tiles/effects/splash_3.png",
+      "tiles/effects/splash_4.png",
+      "tiles/effects/splash_5.png",
+      "tiles/effects/splash_6.png",
+      "tiles/effects/splash_7.png"
+    ]
+  },
+  "lava": {
+    "fps": 4,
+    "loop": true,
+    "frames": [
+      "tiles/effects/lava_0.png",
+      "tiles/effects/lava_1.png",
+      "tiles/effects/lava_2.png",
+      "tiles/effects/lava_3.png",
+      "tiles/effects/lava_4.png",
+      "tiles/effects/lava_5.png",
+      "tiles/effects/lava_6.png",
+      "tiles/effects/lava_7.png"
+    ]
+  },
+  "water": {
+    "fps": 4,
+    "loop": true,
+    "frames": [
+      "tiles/effects/water_0.png",
+      "tiles/effects/water_1.png",
+      "tiles/effects/water_2.png",
+      "tiles/effects/water_3.png",
+      "tiles/effects/water_4.png",
+      "tiles/effects/water_5.png",
+      "tiles/effects/water_6.png",
+      "tiles/effects/water_7.png"
+    ]
+  },
+  "lightning": {
+    "fps": 16,
+    "loop": false,
+    "frames": [
+      "tiles/effects/lightning_0.png",
+      "tiles/effects/lightning_1.png",
+      "tiles/effects/lightning_2.png",
+      "tiles/effects/lightning_3.png",
+      "tiles/effects/lightning_4.png",
+      "tiles/effects/lightning_5.png",
+      "tiles/effects/lightning_6.png",
+      "tiles/effects/lightning_7.png"
+    ]
+  },
+  "impact": {
+    "fps": 16,
+    "loop": false,
+    "frames": [
+      "tiles/effects/impact_0.png",
+      "tiles/effects/impact_1.png",
+      "tiles/effects/impact_2.png",
+      "tiles/effects/impact_3.png",
+      "tiles/effects/impact_4.png",
+      "tiles/effects/impact_5.png",
+      "tiles/effects/impact_6.png",
+      "tiles/effects/impact_7.png"
+    ]
+  }
+}

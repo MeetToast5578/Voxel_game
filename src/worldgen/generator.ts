@@ -21,6 +21,7 @@ const B = BLOCK_SIZE_M;
 const S = (key: string) => BLOCKS.state(key);
 const AIR = S('air'), STONE = S('stone'), DIRT = S('dirt'), GRASS = S('grass'), SAND = S('sand'), GRAVEL = S('gravel');
 const WATER = S('water'), LOG = S('log'), LEAVES = S('leaves'), COBBLE = S('cobblestone'), CLAY = S('clay');
+const LEAF_TYPE = BLOCKS.typeIndex[LEAVES];
 const REED = S('reed'), LILY = S('lily_pad'), LAVA = S('lava');
 /** Flowing water at full level, resting and falling (variants: level - 1, plus FLUID_LEVELS when falling). */
 const SPILL = BLOCKS.state('flowing_water', FLUID_LEVELS - 1), FALLING = BLOCKS.state('flowing_water', 2 * FLUID_LEVELS - 1);
@@ -76,7 +77,7 @@ type Base = Omit<ColumnData, 'skyTop' | 'features' | 'maxTop'> & { terrainMax: n
 const quantize = (v: number) => Math.max(0, Math.min(15, Math.round((v + 1) * 7.5)));
 /** Leaves only grow into open air; logs and cacti also push through leaves and plants; anything replaces lily pads. */
 const replaceableBy = (state: number, cell: number) =>
-  cell === AIR || cell === LILY || (state !== LEAVES && (cell === LEAVES || BLOCKS.types[BLOCKS.typeIndex[cell]!]!.shape === 'cross'));
+  cell === AIR || cell === LILY || (BLOCKS.typeIndex[state] !== LEAF_TYPE && (BLOCKS.typeIndex[cell] === LEAF_TYPE || BLOCKS.types[BLOCKS.typeIndex[cell]!]!.shape === 'cross'));
 
 /**
  * Terrain from climate fields and 3D density, with biomes, bent rock strata, caves, ore veins, trees, ground cover,

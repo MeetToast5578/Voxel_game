@@ -14,7 +14,11 @@ import { Play, type Mode } from './game/play';
 import { Player } from './game/player';
 import { Highlight } from './render/highlight';
 import { Renderer } from './render/renderer';
+import { artUrl, installAeroTheme } from './ui/artAssets';
 import { Creatures } from './creatures/creatures';
+import { WorldEffects, type EffectKind } from './render/worldEffects';
+import { SPECIES } from './creatures/species';
+import { DecorationMeshes } from './render/decorations';
 import { CreatureMeshes } from './render/creatureMeshes';
 import { DropMeshes } from './render/dropMeshes';
 import { BoatMesh } from './render/boatMesh';
@@ -29,7 +33,7 @@ import { drawTitle, drawUi, type UiModel, type WorldsModel } from './ui/app';
 import { worldActions } from './ui/worldActions';
 import { PadMenu } from './ui/padMenu';
 import { bearing, Minimap } from './ui/minimap';
-import { iconUrl } from './ui/icons';
+import { stackIconUrl } from './ui/icons';
 import { installTouchControls, wantsTouch } from './ui/touch';
 import { Saver } from './storage/saver';
 import { keyLabel, loadSettings, saveSettings } from './storage/settings';
@@ -42,6 +46,7 @@ if (import.meta.env.PROD && 'serviceWorker' in navigator) {
   void navigator.serviceWorker.register(new URL('sw.js', document.baseURI), { scope: './' })
     .catch((error) => console.warn('Offline support could not be enabled.', error));
 }
+installAeroTheme();
 const params = new URLSearchParams(location.search);
 const settings = loadSettings();
 let viewChunks = Math.max(MIN_VIEW_CHUNKS, Math.min(MAX_VIEW_CHUNKS, Number(params.get('view') ?? settings.viewChunks)));
@@ -167,6 +172,10 @@ const waterAt = (x: number, y: number, z: number) => {
  */
 function setBlock(x: number, y: number, z: number, state: number, urgent = false): void {
   const previous = world.get(x, y, z);
+  if (previous !== state && ['sign','item_frame'].includes(BLOCKS.type(previous).key) && BLOCKS.type(previous).key !== BLOCKS.type(state).key) {
+    const item=play.decorations.remove(`${x},${y},${z}`);
+    if(item)play.drops.spawn(item,x+.5,y+.5,z+.5);
+  }
   if (!world.set(x, y, z, state)) return;
   light.onBlockChanged(x, y, z, previous);
   if (urgent) streamer.markCell(x, y, z);
@@ -231,6 +240,8 @@ const creatures = new Creatures(world, mulberry32(seed ^ 0xc0ffee), {
 creatures.load(saver.worldMeta.creatures);
 play.creatures = creatures;
 const creatureMeshes = new CreatureMeshes(renderer.scene);
+const effects = new WorldEffects(renderer.scene);
+const decorationMeshes = new DecorationMeshes(renderer.scene);
 const boatMesh = new BoatMesh(renderer.scene);
 /** The boat turns to where it is going, not where the rider looks. */
 let boatYaw = 0;
@@ -242,7 +253,7 @@ player.boating = play.boating;
 /** Where the player starts: where they first stood, or their bed. */
 let worldSpawn: [number, number, number] | null = null;
 const env = new Environment(seed, Number(params.get('time') ?? saver.worldMeta.dayTime),
-  Number(params.get('year') ?? saver.worldMeta.yearTime ?? 0), () => sounds.play('thunder'), (x, z) => play.strike(x, z, player));
+  Number(params.get('year') ?? saver.worldMeta.yearTime ?? 0), () => sounds.play('thunder'), (x,z)=>{play.strike(x,z,player);const y=world.surfaceAt(x,z);if(y!==undefined)effects.burst('lightning',x,y+10,z,4);});
 
 /** Saves the world; a small "Saving" note shows while it writes. */
 const savingNote = document.querySelector<HTMLDivElement>('#saving')!;
@@ -432,7 +443,9 @@ function handleActions(): void {
   if (input.consume('time')) env.clock.advance(DAY_LENGTH_S / 24);
   // The beacon was lit: free the pointer for the ending screen.
   if (play.beaconLit && !play.endingSeen && input.playing) input.stop();
-  if (input.consume('pause') && input.playing) {
+  if(play.screen!=='none'&&input.playing)input.stop();
+  if (input.consume('pause')) {
+    if(play.screen!=='none'){play.closeScreen();input.start();return;}
     input.stop();
     ui.refreshWorlds();
   }
@@ -600,24 +613,20 @@ const hurtFlash = document.querySelector<HTMLDivElement>('#hurt')!, burnGlow = d
 let bobPhase = 0;
 /** The first-person hand: the held item's picture (or a fist), swinging with each break, place or hit. */
 const hand = document.querySelector<HTMLDivElement>('#hand')!, handImg = hand.querySelector('img')!;
-let handState = -2, handSwings = 0;
-function updateHand(): void {
-  const state = play.held?.state ?? -1;
-  hand.style.display = input.playing && !player.flying && play.screen === 'none' ? '' : 'none';
-  if (state !== handState) {
-    handState = state;
-    handImg.style.display = state < 0 ? 'none' : '';
-    if (state >= 0) handImg.src = iconUrl(state);
-    hand.classList.toggle('fist', state < 0);
+let handSwings = 0;
+function updateHand():void {
+  const state=play.held?.state??-1;
+  const armour=play.armour[1],key=armour?BLOCKS.type(armour.state).key:'bare';
+  const material=key.startsWith('diamond')?'diamond':key.startsWith('iron')?'iron':key.startsWith('leather')?'leather':'bare';
+  hand.style.display=input.playing&&!player.flying&&play.screen==='none'?'':'none';
+  if(play.swings!==handSwings||(play.breaking>0&&!hand.classList.contains('swing'))){
+    handSwings=play.swings;hand.classList.remove('swing');void hand.offsetWidth;hand.classList.add('swing');
   }
-  if (play.swings !== handSwings || (play.breaking > 0 && !hand.classList.contains('swing'))) {
-    handSwings = play.swings;
-    hand.classList.remove('swing');
-    void hand.offsetWidth;
-    hand.classList.add('swing');
-  }
+  const desired=state>=0?stackIconUrl(play.held!):artUrl('hands',`${material}_${hand.classList.contains('swing')?'swing':input.placing?'use':'idle'}`);
+  if(handImg.getAttribute('src')!==desired)handImg.src=desired;
+ handImg.style.display='';hand.classList.remove('fist');
 }
-hand.addEventListener('animationend', () => hand.classList.remove('swing'));
+hand.addEventListener('animationend',()=>hand.classList.remove('swing'));
 let lastHealth = play.survival.health, kick = 0, milestones = play.journal.done.size;
 const compass = document.querySelector<HTMLDivElement>('#compass')!, minimap = new Minimap();
 document.body.append(minimap.canvas);
@@ -639,6 +648,8 @@ function updateHeldTools(now: number): void {
     minimap.atlas.record(world, player.body.x, player.body.z, 64);
   }
 }
+let effectScan=0, effectWet=false;
+let emitters:{kind:EffectKind;x:number;y:number;z:number;size:number}[]=[];
 let frames = 0, fps = 0, fpsTime = performance.now(), lastVersion = -1, lastUiDraw = 0;
 /** Main-thread time of this frame's fixed steps, and when the previous frame started (for the F3 graph). */
 let updateMs = 0, lastFrame = performance.now();
@@ -689,6 +700,7 @@ const loop = new FixedStepLoop(1 / 60, 0.25, timedUpdate, (_alpha, frameDt) => {
   milestones = play.journal.done.size;
   renderer.camera.rotation.set(player.pitch + kick, player.yaw, 0, 'YXZ');
   highlight.set(play.target, play.breaking);
+  document.querySelector<HTMLElement>('#crosshair')!.style.background=`url("${artUrl('ui',play.target?'prompt_target':'prompt_idle')}") center/contain no-repeat`;
   const daylight = renderer.uniforms.daylight!.value as number;
   /** Brightness (0..1) of a cell for things drawn outside the terrain. */
   const lightAt = (cx: number, cy: number, cz: number) => {
@@ -698,7 +710,24 @@ const loop = new FixedStepLoop(1 / 60, 0.25, timedUpdate, (_alpha, frameDt) => {
     const i = localIndex(x & 15, y & 15, z & 15), sky = chunk.skyLight(i) / 15, block = chunk.blockLight(i) / 15;
     return 0.07 + 0.93 * Math.max(sky * sky * daylight, block * block);
   };
-  creatureMeshes.update(creatures.list, (c) => lightAt(c.body.x, c.body.y + c.body.height * 0.6, c.body.z));
+  for(const event of play.visualEvents.splice(0))effects.burst(event.kind,event.x,event.y,event.z,.8);
+  const wet=player.submerged>.2;
+  if(wet!==effectWet)effects.burst('splash',player.body.x,player.body.y+.5,player.body.z,1.7);
+  effectWet=wet;effectScan-=frameDt;
+  if(effectScan<=0){
+    effectScan=.5;emitters=[];
+    const px=Math.floor(player.body.x),py=Math.floor(player.body.y),pz=Math.floor(player.body.z);
+    for(let y=py-3;y<=py+5;y++)for(let z=pz-7;z<=pz+7;z++)for(let x=px-7;x<=px+7;x++){
+      if(!world.isLoaded(x,y,z))continue;
+      const key=BLOCKS.type(world.get(x,y,z)).key;
+      if(key==='campfire'){emitters.push({kind:'fire',x:x+.5,y:y+.6,z:z+.5,size:1});emitters.push({kind:'smoke',x:x+.5,y:y+1.7,z:z+.5,size:.8});}
+      else if(key==='lit_furnace'||key==='ember_forge')emitters.push({kind:key==='ember_forge'?'sparks':'smoke',x:x+.5,y:y+1.3,z:z+.5,size:.7});
+    }
+  }
+  const burning=creatures.list.filter(c=>c.burning>0).map(c=>({kind:'fire' as const,x:c.body.x,y:c.body.y+c.body.height*.45,z:c.body.z,size:c.body.height*.7}));
+  effects.update(frameDt,now/1000,[...burning,...emitters]);
+  decorationMeshes.update(play.decorations,world,renderer.camera,lightAt);
+  creatureMeshes.update(creatures.list, (c) => lightAt(c.body.x, c.body.y + c.body.height * 0.6, c.body.z), now / 1000);
   // Arrows in flight and bits of broken blocks are drawn like dropped items, smaller.
   const flying = [
     ...play.projectiles.list.map((p) => ({ state: ARROW, x: p.x, y: p.y, z: p.z, size: 0.4 })),
@@ -760,6 +789,8 @@ loop.start();
 
 /** For browser tests. */
 (window as unknown as { __game: unknown }).__game = {
+  species:SPECIES,effects,
+  spawnMob(key:string,x:number,y:number,z:number){const s=SPECIES.find(s=>s.key===key);if(!s)throw new Error('Unknown mob');return creatures.add(s,x,y,z,s.health).id;},
   world, streamer, renderer, pool, light, player, play, setBlock, creatures, blocks: BLOCKS, saver, save, seed, simulation,
   get fps() { return fps; },
   get idle() { return placed && streamer.idle; },

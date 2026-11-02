@@ -37,6 +37,7 @@ export class Input {
   constructor(private readonly canvas: HTMLCanvasElement, public sensitivity: number, keys: Record<Binding, string> = DEFAULT_KEYS) {
     this.bindings = keys;
     addEventListener('keydown', (e) => {
+      if(e.target instanceof HTMLElement && (e.target.matches('input,textarea,select')||e.target.isContentEditable) && e.code !== 'Escape')return;
       this.padActive = false;
       if (e.repeat) return;
       if (e.code.startsWith('F') && this.pressMap.has(e.code)) e.preventDefault();

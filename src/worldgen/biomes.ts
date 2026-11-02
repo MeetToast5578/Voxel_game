@@ -46,6 +46,7 @@ export const BIOMES: readonly Biome[] = [
   b('old_growth_dark_forest', 'Old-Growth Dark Forest', [5, 15], [1500, 2000], 'grass', 'dirt', 'oak'),
   b('taiga', 'Taiga', [-10, 5], [500, 1000], 'grass', 'dirt', 'spruce', [1, 1], 'larch'),
   b('snowy_taiga', 'Snowy Taiga', [-25, -10], [500, 1000], 'grass', 'dirt', 'pine', [0, 0.2], 'fir'),
+  b('swamp', 'Swamp', [12,32], [1400,4000], 'grass','dirt','mangrove',[.3,1],'willow'),
 ];
 const BY_KEY = new Map(BIOMES.map((x) => [x.key, x]));
 const LAND = ['desert', 'badlands', 'shrubland', 'savanna', 'steppe', 'plains', 'meadow', 'tropical_rainforest',
@@ -74,6 +75,7 @@ export function biomeAt(temperatureC: number, precipitationMm: number, heightM: 
   if (heightM >= 2000 && temperatureC >= 2 && temperatureC < 15) return BY_KEY.get('alpine_meadow')!;
   if (detailAmpM >= 18) return BY_KEY.get('scree')!;
   if (temperatureC < 5 && temperatureC >= -10 && precipitationMm < 500) return BY_KEY.get('tundra')!;
+  if(heightM>=-2 && heightM<5 && detailAmpM<8 && temperatureC>=12 && temperatureC<32 && precipitationMm>=1400) return BY_KEY.get('swamp')!;
   return LAND.find((x) => temperatureC >= x.tempMin && temperatureC < x.tempMax && precipitationMm >= x.precipMin &&
     precipitationMm < x.precipMax) ?? BY_KEY.get('plains')!;
 }

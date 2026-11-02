@@ -44,7 +44,11 @@ function strength(state: number, f: Fluid): number {
 const flowing = (f: Fluid, level: number, falling = false) => f.flowing + (level - 1) + (falling ? FALLING_FLAG : 0);
 
 const SAND = new Set([S('sand'), S('gravel')]);
-const GRASS = S('grass'), DIRT = S('dirt'), LOG = S('log'), LEAVES = S('leaves'), LEAVES_PLACED = S('leaves', 1);
+const GRASS = S('grass'), DIRT = S('dirt'), LOG = S('log'), LEAVES = S('leaves');
+const LOG_TYPE = BLOCKS.typeIndex[LOG], LEAF_TYPE = BLOCKS.typeIndex[LEAVES];
+const isLog = (s: number) => BLOCKS.typeIndex[s] === LOG_TYPE;
+const isLeaf = (s: number) => BLOCKS.typeIndex[s] === LEAF_TYPE;
+const naturalLeaf = (s: number) => isLeaf(s) && (s - LEAVES) % 2 === 0;
 const LILY = S('lily_pad'), OBSIDIAN = S('obsidian'), COBBLE = S('cobblestone'), ICE = S('ice'), SNOW = S('snow');
 /** Cells fluids wash away: air, plants and thin layers (not snow, which is solid). */
 const REPLACEABLE = new Uint8Array(BLOCKS.stateCount);
@@ -62,6 +66,7 @@ const LADDER_WALL = [[1, 0, 0], [-1, 0, 0], [0, 0, 1], [0, 0, -1]] as const;
 for (let v = 0; v < 4; v++) HOLDERS.set(S('ladder', v), [LADDER_WALL[v]!]);
 HOLDERS.set(S('lantern'), [[0, 1, 0], [0, -1, 0]]);
 HOLDERS.set(S('torch'), [[0, -1, 0]]);
+for(const key of ['sign','item_frame'])for(let v=0;v<4;v++){const [x,z]=[[1,0],[-1,0],[0,1],[0,-1]][v]!;HOLDERS.set(S(key,v),[[-x!,0,-z!]]);}
 for (const s of HOLDERS.keys()) NEEDS_SUPPORT[s] = 1;
 const LEAF_REACH = cells(LEAF_REACH_M);
 const SAPLING_TYPE = BLOCKS.typeIndex[BLOCKS.state('sapling')]!;
@@ -104,9 +109,9 @@ export class Simulation {
   onCellChanged(x: number, y: number, z: number, previous = AIR): void {
     this.wake(x, y, z);
     for (let d = 0; d < 6; d++) this.wake(x + DX[d]!, y + DY[d]!, z + DZ[d]!);
-    if (previous !== LOG || this.world.get(x, y, z) === LOG) return;
+    if (!isLog(previous) || isLog(this.world.get(x, y, z))) return;
     for (let dy = -LEAF_REACH; dy <= LEAF_REACH; dy++) for (let dz = -LEAF_REACH; dz <= LEAF_REACH; dz++) for (let dx = -LEAF_REACH; dx <= LEAF_REACH; dx++) {
-      if (this.world.get(x + dx, y + dy, z + dz) === LEAVES) {
+      if (naturalLeaf(this.world.get(x + dx, y + dy, z + dz))) {
         this.ticks.schedule(x + dx, y + dy, z + dz, TickKind.Decay, SIM_HZ + Math.floor(this.rand() * 4 * SIM_HZ));
       }
     }
@@ -165,7 +170,7 @@ export class Simulation {
       }
       if (t.kind === TickKind.Flow) this.flow(t.x, t.y, t.z);
       else if (t.kind === TickKind.Fall) this.fall(t.x, t.y, t.z);
-      else if (t.kind === TickKind.Decay) { if (this.world.get(t.x, t.y, t.z) === LEAVES) this.leaves(t.x, t.y, t.z); }
+      else if (t.kind === TickKind.Decay) { if (naturalLeaf(this.world.get(t.x, t.y, t.z))) this.leaves(t.x, t.y, t.z); }
       else this.support(t.x, t.y, t.z);
     }
     this.randomTicks(toChunk(Math.floor(px)), toChunk(Math.floor(pz)));
@@ -402,8 +407,8 @@ export class Simulation {
           seen.add(key);
           if (!this.world.isLoaded(nx, ny, nz)) return; // unknown: decide later
           const n = this.world.get(nx, ny, nz);
-          if (n === LOG) return;
-          if (n === LEAVES || n === LEAVES_PLACED) next.push([nx, ny, nz]);
+          if (isLog(n)) return;
+          if (isLeaf(n)) next.push([nx, ny, nz]);
         }
       }
       frontier = next;

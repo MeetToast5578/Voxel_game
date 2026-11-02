@@ -6,7 +6,7 @@ import { mkdirSync } from 'node:fs';
 
 const view = Number(process.argv[process.argv.indexOf('--view') + 1]) || 12;
 const server = await preview({ preview: { port: 4174, strictPort: true } });
-const browser = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
+const browser = await chromium.launch({ ...(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {}), args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
 const context = await browser.newContext({ viewport: { width: 1280, height: 720 } });
 const errors = [];
 mkdirSync('screenshots', { recursive: true });

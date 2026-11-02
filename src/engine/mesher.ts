@@ -100,10 +100,11 @@ for (const t of BLOCKS.types) {
     if (KIND[s] === 0) continue;
     // A facing block shows its front tile on the side it faces (variant % 4: +x, -x, +z, -z).
     const frontFace = t.front ? [0, 1, 4, 5][v % 4]! : -1;
+    const faces = t.variantFaces?.[v] ?? t.tiles;
     for (let f = 0; f < 6; f++) {
-      const name = t.variantTiles ? t.variantTiles[v]! : f === frontFace ? t.front! : f === 2 ? t.tiles.top : f === 3 ? t.tiles.bottom : t.tiles.side;
+      const name = t.variantTiles ? t.variantTiles[v]! : f === frontFace ? t.front! : f === 2 ? faces.top : f === 3 ? faces.bottom : faces.side;
       FACE_TILE[s * 6 + f] = tileIndex(name);
-      FACE_TINT[s * 6 + f] = TINT_KIND[name] ?? 0;
+      FACE_TINT[s * 6 + f] = TINT_KIND[name] ?? (name.endsWith('_leaves') ? 2 : 0);
     }
   }
 }

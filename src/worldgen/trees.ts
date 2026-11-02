@@ -1,6 +1,6 @@
 import { TREE_BRANCH_MAX_M, TREE_BRANCH_MIN_M, TREE_REACH_CELLS, cells } from '../config';
 import { hash2, mulberry32 } from '../core/random';
-import { BLOCKS } from '../engine/blocks';
+import { BLOCKS, WOOD_SPECIES } from '../engine/blocks';
 
 export type TreeSpecies = 'oak' | 'maple' | 'spruce' | 'fir' | 'larch' | 'birch' | 'pine' | 'jungle_giant' | 'palm' |
   'baobab' | 'acacia' | 'willow' | 'mangrove' | 'saguaro' | 'dead_snag' | 'bush';
@@ -37,7 +37,7 @@ export const SPECIES: Record<TreeSpecies, SpeciesDef> = {
   bush: { heightM: [0.9, 1.8], branches: [0, 0], blobM: 0.6, crownBase: 0.3, crownRadius: 0.8, shape: 'round' },
 };
 
-const LOG = BLOCKS.state('log'), LEAVES = BLOCKS.state('leaves'), CACTUS = BLOCKS.state('cactus');
+const CACTUS = BLOCKS.state('cactus');
 const SALT = 7;
 
 /**
@@ -47,6 +47,8 @@ const SALT = 7;
  */
 export function treeCells(seed: number, ax: number, az: number, species: TreeSpecies): Map<number, number> {
   const def = SPECIES[species];
+  const wood = Math.max(0, WOOD_SPECIES.indexOf(species as typeof WOOD_SPECIES[number]));
+  const LOG = BLOCKS.state('log', wood), LEAVES = BLOCKS.state('leaves', Math.min(wood,13) * 2);
   const rng = mulberry32(Math.floor(hash2(seed + SALT, ax, az) * 4294967296));
   const between = ([a, b]: [number, number]) => a + rng() * (b - a);
   const height = Math.max(1, Math.round(cells(between(def.heightM))));

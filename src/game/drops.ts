@@ -64,7 +64,7 @@ export class Drops {
   }
 
   save(): unknown {
-    return this.list.map((d) => [BLOCKS.stateName(d.stack.state), d.stack.count, d.stack.wear ?? 0, d.body.x, d.body.y, d.body.z, d.age]);
+    return this.list.map((d) => [BLOCKS.stateName(d.stack.state), d.stack.count, d.stack.wear ?? 0, d.body.x, d.body.y, d.body.z, d.age, d.stack.upgrade ?? 0]);
   }
 
   /** Restores a save; malformed entries are skipped. */
@@ -75,7 +75,7 @@ export class Drops {
       if (!Array.isArray(e) || typeof e[0] !== 'string' || e.slice(1).some((v) => typeof v !== 'number' || !Number.isFinite(v))) continue;
       const state = BLOCKS.parseStateName(e[0]);
       if (state === null || !(e[1] > 0)) continue;
-      this.spawn({ state, count: Math.floor(e[1]), ...(e[2] > 0 ? { wear: e[2] } : {}) }, e[3], e[4], e[5]);
+      this.spawn({ state, count: Math.floor(e[1]), ...(e[2] > 0 ? { wear: e[2] } : {}), ...(e[7] > 0 ? {upgrade:Math.min(3,Math.floor(e[7]))} : {}) }, e[3], e[4], e[5]);
       this.list[this.list.length - 1]!.age = e[6];
     }
   }

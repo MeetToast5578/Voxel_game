@@ -49,6 +49,8 @@ export interface BlockType {
   readonly maxStack?: number;
   /** A tile per variant for every face (crop growth stages). */
   readonly variantTiles?: readonly string[];
+  /** Decorative per-variant face sets, independent of crop growth. */
+  readonly variantFaces?: readonly BlockTiles[];
   /** Tile of the face the block looks towards: variant % 4 is the facing (+x, -x, +z, -z). */
   readonly front?: string;
   /** The boxes of a 'boxes' shape, by variant. */
@@ -204,6 +206,9 @@ export const FLUID_LEVELS = 8;
 /** Snow builds up in this many layers; a full stack fills its cell. */
 export const SNOW_LAYERS = 8;
 
+export const WOOD_SPECIES = ['oak','maple','spruce','fir','larch','birch','pine','jungle_giant','palm','baobab','acacia','willow','mangrove','bush','dead_snag'] as const;
+const LEAF_SPECIES = WOOD_SPECIES.slice(0,-1);
+
 const BASE: BlockSpec[] = [
   { key: 'air', name: 'Air', tiles: all('air'), solid: false, layer: 'none', hardness: 0, density: 1 },
   stone('stone', 'Stone', { drops: 'cobblestone' }),
@@ -219,11 +224,11 @@ const BASE: BlockSpec[] = [
   { key: 'lava', name: 'Lava', tiles: all('lava'), ...fluid, opaque: false, lightEmission: 15, density: 3100 },
   { key: 'flowing_lava', name: 'Flowing lava', tiles: all('lava'), ...fluid, opaque: false, lightEmission: 15, flows: true, variants: 2 * FLUID_LEVELS, density: 3100 },
   { key: 'ice', name: 'Ice', tiles: all('ice'), layer: 'ice', opaque: false, cullSame: true, hardness: 0.5, density: 917, mineWith: 'pickaxe', drops: '' },
-  { key: 'log', name: 'Log', tiles: { top: 'log_top', side: 'log_side', bottom: 'log_top' }, hardness: 2, density: 600, smeltsTo: 'coal', ...wood },
+  { key: 'log', name: 'Log', variants: WOOD_SPECIES.length, variantFaces: WOOD_SPECIES.map(s => ({top: s + '_end', side: s + '_bark', bottom: s + '_end'})), tiles: { top: 'log_top', side: 'log_side', bottom: 'log_top' }, hardness: 2, density: 600, smeltsTo: 'coal', ...wood },
   // Variant 1 is placed by the player and never decays.
   // Faces between leaves are hidden (dense crowns would otherwise be thousands of quads); leaves still shade the ground.
-  { key: 'leaves', name: 'Leaves', tiles: all('leaves'), layer: 'cutout', hardness: 0.3, supports: false, density: 300, variants: 2, cullSame: true, blocksSky: true, drops: '' },
-  { key: 'planks', name: 'Planks', tiles: all('planks'), hardness: 2, density: 600, ...wood },
+  { key: 'leaves', name: 'Leaves', variantFaces: LEAF_SPECIES.flatMap(s => [all(s + '_leaves'), all(s + '_leaves')]), tiles: all('leaves'), layer: 'cutout', hardness: 0.3, supports: false, density: 300, variants: LEAF_SPECIES.length * 2, cullSame: true, blocksSky: true, drops: '' },
+  { key: 'planks', name: 'Planks', variants: LEAF_SPECIES.length, variantFaces: LEAF_SPECIES.map(s => all(s + '_planks')), tiles: all('planks'), hardness: 2, density: 600, ...wood },
   { key: 'glass', name: 'Glass', tiles: all('glass'), layer: 'cutout', cullSame: true, hardness: 0.3, drops: '' },
   stone('bedrock', 'Bedrock', { hardness: Infinity }),
   stone('cobblestone', 'Cobblestone', { smeltsTo: 'stone' }),
@@ -248,7 +253,7 @@ const BASE: BlockSpec[] = [
   // Redstone and emerald ore are no longer generated (they had no use); they stay so old worlds keep them.
   // Ember ore: deep down in deepslate near the lava, glowing faintly; only a diamond pickaxe gets its crystals.
   stone('ember_ore', 'Ember ore', { hardness: 6, needsTier: 3, drops: 'ember_crystal', lightEmission: 5 }),
-  { key: 'cactus', name: 'Cactus', tiles: { top: 'cactus_top', side: 'cactus_side', bottom: 'cactus_top' }, hardness: 0.5, density: 700 },
+  { key: 'cactus', name: 'Cactus', tiles: { top: 'saguaro_top', side: 'saguaro_side', bottom: 'saguaro_top' }, hardness: 0.5, density: 700 },
   // Tall grass sometimes gives wheat seeds (handled where blocks are broken).
   plant('tall_grass', 'Tall grass', { drops: '' }),
   plant('fern', 'Fern'),
@@ -266,6 +271,7 @@ const BASE: BlockSpec[] = [
 
 /** The facing of a variant (+x, -x, +z, -z) and the side a quarter-turn on. */
 const PANEL: Record<number, Box> = { 0: [13, 0, 0, 16, 16, 16], 1: [0, 0, 0, 3, 16, 16], 2: [0, 0, 13, 16, 16, 16], 3: [0, 0, 0, 16, 16, 3] };
+const DECOR_PANEL: readonly Box[][] = [[[0,2,2,2,14,14]],[[14,2,2,16,14,14]],[[2,2,0,14,14,2]],[[2,2,14,14,14,16]]];
 const TURN = [2, 3, 1, 0];
 const HIGH_HALF: Record<number, Box> = { 0: [8, 8, 0, 16, 16, 16], 1: [0, 8, 0, 8, 16, 16], 2: [0, 8, 8, 16, 16, 16], 3: [0, 8, 0, 16, 16, 8] };
 const STAIR_MATERIALS = ['planks', 'cobblestone', 'stone', 'brick', 'sandstone'];
@@ -322,7 +328,12 @@ function gameplay(): BlockSpec[] {
     crop('wheat', 'Wheat', 0),
     crop('carrots', 'Carrots', 3),
     { ...crop('potatoes', 'Potatoes', 1), smeltsTo: 'baked_potato' },
-    plant('sapling', 'Sapling', { variants: SAPLING_SPECIES.length, fuel: 5 }),
+    plant('sapling', 'Sapling', { variants: SAPLING_SPECIES.length, variantFaces: SAPLING_SPECIES.map(s => all(s + '_sapling')), fuel: 5 }),
+    { key:'trading_post',name:'Trading Post',variants:4,front:'post_front',tiles:{top:'post_top',side:'post_side',bottom:'planks'},hardness:2,...wood },
+    { key:'ember_forge',name:'Ember Forge',variants:4,front:'forge_front',tiles:{top:'forge_top',side:'forge_side',bottom:'obsidian'},hardness:5,mineWith:'pickaxe',lightEmission:10 },
+    { key:'sign',name:'Sign',tiles:all('sign'),variants:4,shape:'boxes',boxes:v=>DECOR_PANEL[v]!,layer:'cutout',solid:false,blocksSky:false,supports:false,hardness:.5,...wood },
+    { key:'item_frame',name:'Item Frame',tiles:all('frame_empty'),variants:4,shape:'boxes',boxes:v=>DECOR_PANEL[v]!,layer:'cutout',solid:false,blocksSky:false,supports:false,hardness:.5,...wood },
+    item('trade_coin','Trade Coin'),
     item('stick', 'Stick', { fuel: 5 }),
     item('coal', 'Coal', { fuel: 80 }),
     item('iron_ingot', 'Iron ingot'),
@@ -371,7 +382,7 @@ function gameplay(): BlockSpec[] {
 }
 /** Slabs of every full solid cube: variant 0 is the bottom half, 1 the top half. */
 const SLABS: BlockSpec[] = BASE.filter((s) => (s.solid ?? true) && (s.layer ?? 'opaque') === 'opaque' && !s.falls && s.key !== 'bedrock' && !s.lightEmission)
-  .map((s) => ({ ...s, key: `${s.key}_slab`, name: `${s.name} slab`, shape: 'slab', variants: 2, slabOf: s.key, opaque: false, blocksSky: false,
+  .map((s) => ({ ...s, key: `${s.key}_slab`, name: `${s.name} slab`, shape: 'slab', variants: 2, variantFaces: undefined, slabOf: s.key, opaque: false, blocksSky: false,
     drops: undefined, smeltsTo: undefined }));
 
 export const BLOCKS = new BlockRegistry([...BASE, ...SLABS, ...gameplay()]);

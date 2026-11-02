@@ -1,5 +1,5 @@
 import { SAPLING_CHANCE, SEED_CHANCE } from '../config';
-import { BLOCKS } from '../engine/blocks';
+import { BLOCKS, WOOD_SPECIES, SAPLING_SPECIES } from '../engine/blocks';
 import type { ItemStack } from './inventory';
 
 /** Speed of each tool tier on blocks it suits (wood, stone, iron, diamond). */
@@ -20,7 +20,7 @@ export function breakSeconds(state: number, tool: ItemStack | null): number {
   const t = BLOCKS.type(state);
   const def = tool ? BLOCKS.type(tool.state).tool : undefined;
   const speed = def && def.kind === t.mineWith ? TIER_SPEED[def.tier]! : 1;
-  return (t.hardness / speed) * (canHarvest(state, tool) ? 1 : WRONG_TOOL_SLOWDOWN);
+  return (t.hardness / (speed * (1 + (tool?.upgrade ?? 0) * .2))) * (canHarvest(state, tool) ? 1 : WRONG_TOOL_SLOWDOWN);
 }
 
 /** What breaking `state` gives, given a random number in [0, 1) for chance drops. */
@@ -29,14 +29,18 @@ export function dropsOf(state: number, tool: ItemStack | null, roll: number): It
   if (!canHarvest(state, tool)) return [];
   const v = BLOCKS.variant(state);
   if (t.key === 'tall_grass') return roll < SEED_CHANCE ? [{ state: BLOCKS.state('wheat'), count: 1 }] : [];
-  if (t.key === 'leaves' && v === 0) return roll < SAPLING_CHANCE ? [{ state: BLOCKS.state('sapling'), count: 1 }] : [];
+  if (t.key === 'leaves') {
+    const name = WOOD_SPECIES[Math.floor(v / 2)];
+    const sapling = SAPLING_SPECIES.indexOf(name as typeof SAPLING_SPECIES[number]);
+    return v % 2 === 0 && sapling >= 0 && roll < SAPLING_CHANCE ? [{ state: BLOCKS.state('sapling', sapling), count: 1 }] : [];
+  }
   // Ripe crops give a handful of what was planted.
   if (t.variantTiles) return [{ state: t.id, count: v === t.variants - 1 ? 3 : 1 }];
   if (t.key === 'door' || t.key === 'bed') return [{ state: t.id, count: 1 }];
   if (t.drops === '') return [];
   // Everything else gives its first state (slabs, stairs and facing blocks lose their orientation); saplings keep
   // their species.
-  return [{ state: t.drops ? BLOCKS.state(t.drops) : t.key === 'sapling' ? state : t.id, count: 1 }];
+  return [{ state: t.drops ? BLOCKS.state(t.drops) : ['sapling','log','planks'].includes(t.key) ? state : t.id, count: 1 }];
 }
 
 /** Wears the held tool by one use; returns false when it breaks. */
@@ -44,5 +48,5 @@ export function wearTool(tool: ItemStack): boolean {
   const def = BLOCKS.type(tool.state).tool;
   if (!def) return true;
   tool.wear = (tool.wear ?? 0) + 1;
-  return tool.wear < def.durability;
+  return tool.wear < def.durability * (1 + (tool.upgrade ?? 0) * .5);
 }

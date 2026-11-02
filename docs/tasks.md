@@ -295,16 +295,16 @@ All of it stays procedural: no asset files.
 
 ## 13. New content
 
-- [ ] **13.1 Villages and traders.** Small villages on flat land with a few houses, fields and traders who swap
+- [~] **13.1 Villages and traders.** Traveling traders, camp trading posts, two-way coin trades are built (0.6.0); villages remain open. Small villages on flat land with a few houses, fields and traders who swap
   goods for ore, food and wool.
   **Decide:** what traders sell (proposed: seeds, maps to shrines, armour, rare dyes).
   **Done when:** a village appears within 1 km of spawn on most seeds, and a trade works both ways.
-- [ ] **13.2 Ember upgrades.** At an ember forge, spend ember crystals to upgrade a tool or armour piece: faster digging,
+- [x] **13.2 Ember upgrades.** Built in 0.6.0: a crafted ember forge applies up to three persistent upgrades for crystals and iron. At an ember forge, spend ember crystals to upgrade a tool or armour piece: faster digging,
   more durability, more protection or warmth.
   **Done when:** an upgraded pickaxe digs faster in a test, and the upgrade shows in the tooltip.
-- [ ] **13.3 Signs and item frames.** Write on a sign; show an item in a frame on a wall.
+- [x] **13.3 Signs and item frames.** Built in 0.6.0: wall signs and frames, saved contents and item recovery. Write on a sign; show an item in a frame on a wall.
   **Done when:** both survive a save and reload.
-- [ ] **13.4 Monsters by biome and a harder night.** One new monster each for deserts, swamps and snow; nights get a
+- [~] **13.4 Monsters by biome and a harder night.** Three biome monsters built in 0.6.0; increasing danger by world age remains open. One new monster each for deserts, swamps and snow; nights get a
   little harder the longer the world runs, capped by difficulty.
   **Done when:** each biome spawns its monster in a test, and day 20 spawns more than day 1.
 - [ ] **13.5 Rewards for the journal.** Each milestone gives something useful (a map, a stack of torches, a recipe).
@@ -354,3 +354,22 @@ Ideas for later. Pick, change or drop them; they become tasks once decided.
 5. 7, 8 and 9 alongside the above, as smaller tasks.
 6. Milestone 10 last.
 7. After 0.3.0: 12.1 and 12.2 first (save safety, then fire), then 13 in any order, 12.3–12.8 as smaller tasks.
+
+## 15. Artwork
+
+- [x] **15.1 Woodland & Ember texture and asset pass** (owner requested 2026-11-01). All 156 existing tile slots:
+  146 authored terrain/building/item/cutout tiles plus ten connected breaking stages; 48 body/face/leg skins for the
+  16 existing creature species; plank texture on the ridden boat. Inventory, first-person items and drops share art.
+  Source atlases, exact manifest and reproducible packer: `assets/woodland-ember/README.md`.
+  **Done when:** registry/alpha/orientation/seam checks and regular check, benchmark and browser smoke pass.
+
+- [x] **15.2 Expansion artwork** (owner requested 2026-11-02). Create the remaining tree, creature, material,
+  effects, UI, hand and future-content images: 336 named assets with individual PNGs, source sheets and previews.
+  Full manifest and activation status: `assets/woodland-ember/expansion/README.md`. Creature skins, material variants,
+  fluid animation and the bare hand are active; tree-species rendering, other effects, UI redesign and future
+  gameplay remain separate implementation work.
+
+- [x] **15.3 Integration and mobs** (owner requested 2026-11-02). Integrate tree materials, UI panels and icons,
+  effect playback, hand/glove poses; give the original 16 creatures distinct rigs; add Dune Stalker, Mire Hollow,
+  Snow Prowler and Traveling Trader. Owner also requested trading, forge, signs and frames: implemented with
+  recipes, interaction screens and saved data. See the 0.6.0 changelog and feature smoke script.

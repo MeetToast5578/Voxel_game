@@ -20,6 +20,7 @@ import { Journal, type Stats } from './journal';
 import { aimAt, Projectiles } from './projectiles';
 import type { BoxAt } from './collision';
 import { sitesNear, undergroundFloor } from '../worldgen/structures';
+import { Decorations, WORKSHOP_BLOCKS, trade, forge, type WorkshopKind } from './workshops';
 import { SPECIES_BY_KEY } from '../creatures/species';
 
 export type Mode = 'creative' | 'survival';
@@ -66,7 +67,9 @@ export class Play {
   readonly chests = new Map<string, (ItemStack | null)[]>();
   openChest: string | null = null;
   /** Which screen is open: none, the inventory (with crafting), a furnace or a chest. */
-  screen: 'none' | 'inventory' | 'furnace' | 'chest' = 'none';
+  screen: 'none' | 'inventory' | 'furnace' | 'chest' | WorkshopKind = 'none';
+  readonly decorations = new Decorations();
+  workshop: {kind:WorkshopKind;key:string}|null = null;
   /** The item on the mouse in a screen. */
   cursor: ItemStack | null = null;
   spawn: [number, number, number] | null = null;
@@ -111,6 +114,7 @@ export class Play {
   readonly projectiles = new Projectiles();
   /** Bits of broken blocks, and a count of swings of the hand (break, place, hit) for the first-person view. */
   readonly particles = new Particles();
+  readonly visualEvents: {kind:'impact'|'sparks';x:number;y:number;z:number}[] = [];
   swings = 0;
   /** While fishing: seconds until a fish bites, or 0 when the line is not out. */
   fishingS = 0;
@@ -174,8 +178,9 @@ export class Play {
     this.corner = null;
     const max = cells(BUILD_MAX_M);
     if ([0, 1, 2].some((k) => Math.abs(a[k]! - b[k]!) + 1 > max)) return;
-    const held = this.held, state = clear ? AIR : held && !BLOCKS.type(held.state).item ? held.state : -1;
+    const held = this.held; let state = clear ? AIR : held && !BLOCKS.type(held.state).item ? held.state : -1;
     if (state < 0) return;
+    if(BLOCKS.type(state).key==='leaves')state=BLOCKS.byName('leaves').id+((state-BLOCKS.byName('leaves').id)|1);
     for (let y = Math.min(a[1], b[1]); y <= Math.max(a[1], b[1]); y++) {
       for (let z = Math.min(a[2], b[2]); z <= Math.max(a[2], b[2]); z++) {
         for (let x = Math.min(a[0], b[0]); x <= Math.max(a[0], b[0]); x++) this.queue.push([x, y, z, state]);
@@ -336,6 +341,7 @@ export class Play {
     this.sinceAttack = 0;
     const damage = strength * weaponDamage(held);
     const c = hit.creature;
+    if(this.visualEvents.length<64)this.visualEvents.push({kind:'sparks',x:c.body.x,y:c.body.y+c.body.height*.65,z:c.body.z});
     if (this.creatures!.damage(c, damage, ox, oz) && this.mode === 'survival') {
       this.defeated(c);
       for (const loot of lootOf(c)) this.drop(loot, c.body.x, c.body.y, c.body.z);
@@ -556,9 +562,9 @@ export class Play {
     this.armour.forEach((a, i) => {
       if (!a) return;
       const def = BLOCKS.type(a.state).armour!;
-      points += def.protection;
+      points += def.protection + (a.upgrade ?? 0);
       a.wear = (a.wear ?? 0) + 1;
-      if (a.wear >= def.durability) this.armour[i] = null;
+      if (a.wear >= def.durability * (1 + (a.upgrade ?? 0) * .5)) this.armour[i] = null;
     });
     this.version++;
     return damage * (1 - Math.min(0.8, points * 0.04));
@@ -566,7 +572,7 @@ export class Play {
 
   /** °C of cold the worn armour keeps off. */
   get warmth(): number {
-    return this.armour.reduce((sum, a) => sum + (a ? BLOCKS.type(a.state).armour!.warmth : 0), 0);
+    return this.armour.reduce((sum, a) => sum + (a ? BLOCKS.type(a.state).armour!.warmth + (a.upgrade ?? 0) : 0), 0);
   }
 
   /** Puts the held armour on, swapping with what was worn there. */
@@ -658,6 +664,7 @@ export class Play {
   }
 
   private breakCell(x: number, y: number, z: number, state: number, survival: boolean, roll: number): void {
+    if(this.visualEvents.length<64)this.visualEvents.push({kind:'impact',x:x+.5,y:y+.5,z:z+.5});
     const type = BLOCKS.type(state);
     if (survival) {
       this.stats.mined++;
@@ -703,6 +710,13 @@ export class Play {
 
   /** Right click: use the targeted block (door, table, furnace, bed), eat, or place the held block. */
   private use(player: Player): void {
+    if(this.creatures){
+      const [dx,dy,dz]=player.direction(),b=player.body;
+      const hit=this.creatures.raycast(b.x,player.eyeY,b.z,dx,dy,dz,toCells(REACH_M));
+      if(hit?.creature.species.trader&&(!this.target||hit.distance<this.target.distance)){
+        this.openWorkshop('trade',`mob:${hit.creature.id}`);return;
+      }
+    }
     if (this.useBucket(player)) return;
     if (this.held?.state === ROD) {
       this.castRod(player);
@@ -716,6 +730,8 @@ export class Play {
     const t = this.target;
     if (t) {
       const state = this.world.get(t.x, t.y, t.z), type = BLOCKS.type(state);
+      const workshop = WORKSHOP_BLOCKS[type.key];
+      if(workshop){this.openWorkshop(workshop,`${t.x},${t.y},${t.z}`);return;}
       if (type === DOOR) {
         const v = BLOCKS.variant(state), next = DOOR.id + (v < 4 ? v + 4 : v - 4);
         for (const [x, y, z] of this.doorCells(t.x, t.y, t.z)) this.setBlock(x, y, z, next);
@@ -877,7 +893,12 @@ export class Play {
     if (type === LADDER) {
       if (t.ny !== 0) return;
       state = LADDER.id + (t.nx === -1 ? 0 : t.nx === 1 ? 1 : t.nz === -1 ? 2 : 3);
-    } else if (type.front) state = type.id + toward;
+    } else if (type.key === 'leaves') state = type.id + ((held.state-type.id)|1);
+    else if (['sign','item_frame'].includes(type.key)) {
+      if(t.ny!==0){this.toast('Place this against the side of a wall.',2);return;}
+      state=type.id+(t.nx>0?0:t.nx<0?1:t.nz>0?2:3);
+    }
+    else if (type.front) state = type.id + toward;
     else if (type.key.endsWith('_stairs')) state = type.id + facing;
     else if (type.slabOf && t.ny === -1) state = type.id + 1;
     if (!this.free(x, y, z, player, false, state)) return;
@@ -901,7 +922,33 @@ export class Play {
     this.version++;
   }
 
-  openScreen(screen: 'inventory' | 'furnace' | 'chest', craftSize = 2): void {
+  openWorkshop(kind:WorkshopKind,key:string):void {
+    this.workshop={kind,key};this.openScreen(kind);
+  }
+  private workshopValid(kind:WorkshopKind):boolean {
+    const w=this.workshop;if(!w||w.kind!==kind||this.screen!==kind)return false;
+    if(w.key.startsWith('mob:')){
+      const c=this.creatures?.list.find(c=>c.id===Number(w.key.slice(4))&&c.species.trader);
+      return !!c&&Math.hypot(c.body.x-this.feet[0],c.body.y-this.feet[1],c.body.z-this.feet[2])<=toCells(REACH_M)+1;
+    }
+    const [x,y,z]=w.key.split(',').map(Number);
+    return [x,y,z].every(Number.isFinite)&&this.world.isLoaded(x!,y!,z!)&&
+      WORKSHOP_BLOCKS[BLOCKS.type(this.world.get(x!,y!,z!)).key]===kind&&Math.hypot(x!+.5-this.feet[0],y!+.5-this.feet[1],z!+.5-this.feet[2])<=toCells(REACH_M)+2;
+  }
+  performTrade(offer:number):boolean {
+    const ok=this.workshopValid('trade')&&trade(this.inventory,offer);this.toast(ok?'Trade completed.':'Trade unavailable: check payment, space and reach.',2);this.version++;return ok;
+  }
+  performForge(slot:number):boolean {
+    const ok=this.workshopValid('forge')&&forge(this.inventory,slot);this.toast(ok?'Ember upgrade applied.':'Needs ember crystals, two iron ingots and eligible equipment (maximum level 3).',3);this.version++;return ok;
+  }
+  writeSign(text:string):boolean {
+    if(!this.workshopValid('sign'))return false;this.decorations.setSign(this.workshop!.key,text);this.version++;return true;
+  }
+  frameItem(slot:number|null):boolean {
+    if(!this.workshopValid('frame'))return false;const ok=this.decorations.frame(this.inventory,this.workshop!.key,slot);this.version++;return ok;
+  }
+
+  openScreen(screen: 'inventory' | 'furnace' | 'chest' | WorkshopKind, craftSize = 2): void {
     this.screen = screen;
     this.craftSize = craftSize;
     this.version++;
@@ -916,6 +963,7 @@ export class Play {
     if (this.cursor) this.give(this.cursor, ...this.feet);
     this.cursor = null;
     this.screen = 'none';
+    this.workshop = null;
     this.openFurnace = null;
     this.openChest = null;
     this.version++;
@@ -980,13 +1028,13 @@ export class Play {
   save(): unknown {
     const s = (st: ItemStack | null) => (st ? [BLOCKS.stateName(st.state), st.count] : null);
     return {
-      mode: this.mode, difficulty: this.difficulty, hints: this.hints.save(), inventory: this.inventory.save(), selected: this.inventory.selected, drops: this.drops.save(),
+      decorations: this.decorations.save(), mode: this.mode, difficulty: this.difficulty, hints: this.hints.save(), inventory: this.inventory.save(), selected: this.inventory.selected, drops: this.drops.save(),
       health: this.survival.health, hunger: this.survival.hunger, air: this.survival.air, bodyC: this.survival.temperature.coreC, spawn: this.spawn,
       furnaces: [...this.furnaces].map(([k, f]) => [k, s(f.input), s(f.fuel), s(f.output), f.burn, f.progress]),
       journal: this.journal.save(), stats: this.stats, biomesSeen: [...this.biomesSeen], deepestM: this.deepestM, found: [...this.found], beaconLit: this.beaconLit, endingSeen: this.endingSeen, boating: this.boating,
-      armour: this.armour.map((a) => (a ? [BLOCKS.stateName(a.state), 1, a.wear ?? 0] : null)),
+      armour: this.armour.map((a) => (a ? [BLOCKS.stateName(a.state), 1, a.wear ?? 0, a.upgrade ?? 0] : null)),
       campfires: [...this.campfires].map(([k, c]) => [k, c.map(([st, left]) => [BLOCKS.stateName(st), left])]),
-      chests: [...this.chests].map(([k, slots]) => [k, slots.map((st) => (st ? [BLOCKS.stateName(st.state), st.count, st.wear ?? 0] : null))]),
+      chests: [...this.chests].map(([k, slots]) => [k, slots.map((st) => (st ? [BLOCKS.stateName(st.state), st.count, st.wear ?? 0, st.upgrade ?? 0] : null))]),
     };
   }
 
@@ -997,6 +1045,7 @@ export class Play {
     const num = (v: unknown, d: number) => (typeof v === 'number' && Number.isFinite(v) ? v : d);
     if (p.mode === 'creative' || p.mode === 'survival') this.mode = p.mode;
     if (typeof p.difficulty === 'string' && p.difficulty in DIFFICULTY) this.difficulty = p.difficulty as Difficulty;
+    this.decorations.load(p.decorations);
     this.hints.load(p.hints);
     this.boating = p.boating === true;
     this.inventory.load(p.inventory);
@@ -1060,5 +1109,5 @@ export class Play {
 export function weaponDamage(held: ItemStack | null): number {
   const tool = held ? BLOCKS.type(held.state).tool : undefined;
   if (!tool) return HAND_DAMAGE;
-  return (tool.kind === 'sword' ? SWORD_DAMAGE : tool.kind === 'axe' ? AXE_DAMAGE : TOOL_DAMAGE) + tool.tier;
+  return (tool.kind === 'sword' ? SWORD_DAMAGE : tool.kind === 'axe' ? AXE_DAMAGE : TOOL_DAMAGE) + tool.tier + (held?.upgrade ?? 0);
 }

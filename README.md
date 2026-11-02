@@ -14,10 +14,13 @@ world is made of 16×16×16 chunks (9.6 m) with no height limit.
   vaults with loot; skulkers, cave crawlers and frost brutes; an Ember Warden guarding each shrine; body temperature,
   armour, bows, boats, farming and fishing; a map that remembers where you have been; a journal of 21 milestones.
 - **Play:** creative and survival; inventory, crafting, furnaces, tools that wear out, health, hunger and breath;
-  torches, doors, beds, stairs, slabs and chests; dropped items; 16 creature species, some of them hostile.
+  torches, doors, beds, stairs, slabs and chests; dropped items; 20 creature/NPC types, including three biome monsters and Traveling Traders.
 - **Saves:** automatic, in the browser (IndexedDB). Worlds can be exported and imported as files from the pause menu.
 
-All textures and sounds are generated in code; there are no asset files.
+The Woodland & Ember texture pack supplies authored 32×32 pixel art for materials, plants and items. Creature
+skins and sounds are generated in code. All artwork is bundled for offline play. See
+[`assets/woodland-ember/README.md`](assets/woodland-ember/README.md) for sources and rebuilding. The [expansion library](assets/woodland-ember/expansion/README.md) adds creature skins,
+material variations, animated fluid textures and prepared artwork for trees, effects, UI and future content.
 
 ## Run
 
@@ -61,6 +64,18 @@ Every key above except the hotbar numbers, Ctrl+Z/Y and Esc can be changed in th
 A gamepad works too: in menus and inventory screens the d-pad or left stick moves between buttons and slots, A clicks,
 X right-clicks a slot, B goes back and Start pauses or resumes. Touch screens get on-screen controls (`?touch=1`
 forces them).
+
+## Trading, forging and decorations
+
+Right click a Traveling Trader or a trading post to trade. Posts can be crafted from planks and a gold ingot,
+and also appear in camps. Sell wheat, wool or iron for coins; buy supplies, maps and lanterns.
+
+An ember forge takes obsidian, iron and an ember crystal (see the recipe list). Right click it with equipment in
+your inventory to buy up to three upgrades: faster digging, greater durability, and more armour protection/warmth.
+Each level costs 3, 6 or 9 ember crystals plus two iron ingots.
+
+Craft signs from planks and a stick, and frames from sticks and leather. Place them against a wall and right click
+to write a sign or choose a displayed item. Taking/replacing a frame's item returns it to your inventory.
 
 ## URL parameters
 

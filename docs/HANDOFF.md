@@ -959,3 +959,69 @@ See `docs/ROADMAP.md` for the phase list, and the "Decided (owner approved)" abo
 - **Entities.** Not used by the game yet. No creatures.
 - **Survival.** Hunger does not change; no food, tools, crafting or beds.
 - **Edits.** An edit remeshes up to 8 chunks on the main thread at once, about 3 ms each.
+
+## 2026-11-01 — Woodland & Ember artwork (Codex)
+
+Owner requested creation and integration of all existing game textures/assets after approving the Woodland & Ember
+sample direction. Version 0.4.0 adds 146 authored 32×32 tiles, 10 connected breaking overlays and 48 creature skin
+tiles. Existing terrain, blocks, crops, inventory, held/dropped items, boat and creatures use the pack. Sources and
+repacking instructions: `assets/woodland-ember/README.md`. No save or gameplay changes. UI redesign remains separate.
+
+Validation: `npm run check` passes (191 tests, typecheck and production build); benchmark `--assert` passes
+(generation mean 1.59 ms, meshing mean 0.42 ms). Chromium smoke passes at `--view 4`, including all seven scene
+views, inventory and held/drop rendering, edit latency (0.2–0.4 ms, two frames) and save/reload. Scene runs report
+zero chunk failures and the suite reports no browser errors. The default-view run was stopped for software-rendering
+cost; these figures are not owner-hardware performance measurements. Screenshots and packed-art contact sheet are
+in the ignored `screenshots/` folder. The smoke script now accepts `CHROMIUM_PATH` for system Chromium.
+
+## 2026-11-02 — expanded artwork library (Codex)
+
+Owner asked for all textures from the proposed next-asset list. Version 0.5.0 creates 336 additional named images:
+64 trees, 48 creature skins, 48 material variations, 64 effect frames, 64 UI sprites, 16 hands/saplings, 32 future
+content assets. Sources, exported PNGs, previews, animations and activation status are in
+`assets/woodland-ember/expansion/`. Rebuild with `node scripts/pack-expansion.mjs`; validate PNGs with
+`node scripts/validate-expansion.mjs`.
+
+Active: full-colour creature skins on the existing meshes; deterministic shader-level material alternatives;
+eight-frame water/lava loops; bare idle hand image. No save/block-state changes. Tile names are kept separate from
+pixel data so workers do not bundle the extra artwork. Tree-specific rendering, remaining effect playback, Pixel
+Aero UI and future-content gameplay are not implemented by the artwork delivery. See expansion README for details.
+
+Validation for 0.5.0: `npm run check` passes (194 tests, typecheck, production build); the standalone asset validator
+passes all 336 PNGs and packed indices; benchmark `--assert` passes (generation mean 1.21 ms, meshing mean 0.29 ms,
+mesh hash unchanged from 0.4.0). System Chromium smoke passes at view 4 with all seven scenes, inventory, drops,
+edit latency and save/reload, no browser errors or chunk failures. Screenshots remain in ignored `screenshots/`.
+These software-rendered checks do not replace the owner's hardware playtest.
+
+## 2026-11-02 — integration, mobs and workshops (Codex, 0.6.0)
+
+Owner requested integration and mobs, then explicitly included trading, forge, signs and frames. Implemented:
+- Twenty rendered types: original sixteen with distinct rigs, Dune Stalker, Mire Hollow, Snow Prowler and trader.
+  Walking/idle/sleep/attack poses, front-only faces, horns/tusks/antlers, tails/ears/fins, humanoid arms and accessories.
+  Single instanced draw, bounded at 32 parts per creature. New monsters obey biome/darkness/peaceful rules.
+- Species-specific log, leaf and plank variants and eight saplings; old log/leaves state names preserve their meanings.
+  Natural leaves use even variants, placed leaves odd; leaf decay, drops and wood crafting handle all species.
+  Low, wet coastal terrain can classify as swamp, with mangroves/willows and Mire Hollows.
+- Traveling Traders and craftable/camp trading posts. Atomic exchanges use coins and check inventory space.
+- Craftable ember forge: increasing costs, up to three saved upgrades; mining, combat, armour, warmth and wear use them.
+- Wall signs and item frames: editing UI, text/item rendering, optional saved metadata, item recovery on replacement,
+  breakage or support loss. New UI text fields suppress gameplay hotkeys while typing.
+- Nine-slice Pixel Aero theme on the existing responsive CSS UI, plus icons/reticle, upgrade art and hand/glove poses.
+  This does not replace the UI with the older proposal's fixed 640×360 canvas.
+- Instanced sprite effects for fire, smoke, sparks, splash, lightning and impacts; fluid loops remain active.
+
+Source/rebuild scripts: `pack-expansion.mjs`, `export-runtime-art.mjs`, and `pack-stations.mjs`. The six new station
+faces are retained in `assets/woodland-ember/stations-source.png`. Runtime subsets do not bundle artwork in workers.
+`mob-gallery.mjs` renders actual rigs; `features-smoke.mjs` exercises new UI exchanges, typing and persistence.
+Villages, world-age danger scaling, additional NPC roles and unused lore/dye assets remain future work.
+
+Final validation: `npm run check` passes (202 tests in 30 files, typecheck and production build), including atomic
+trade/forge checks, decoration/upgrade persistence, tree species crafting and named chunk round-trip, natural versus
+placed leaf decay, rig bounds/poses and biome-specific monster spawning/peaceful safety. Asset validator passes all
+336 exported source assets. Benchmark `--assert` passes (generation mean 1.48 ms, meshing mean 0.28 ms).
+
+Regular system-Chromium smoke at view 4 passes every scene, inventory, edit latency and save/reload, with no browser
+errors or chunk failures. The separate feature smoke passes two-way trade, forge upgrades, keyboard-entered signs,
+framed items, persistent reload and frame-break item recovery (also in creative). The actual model gallery renders
+without shader/browser errors. Screenshots are in ignored `screenshots/`. These are software-rendered browser checks;
+owner hardware frame rate/balance acceptance remains open. Changes remain local, not deployed.

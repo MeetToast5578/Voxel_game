@@ -39,6 +39,8 @@ export interface Species {
   guardian?: boolean;
   /** Sound pitch, 0..1: low for big animals. */
   voice: number;
+  /** A peaceful merchant: right click opens trade offers. */
+  trader?: boolean;
 }
 
 const BASE = { grazer: false, prey: [], hostile: false, herds: false, nocturnal: false, medium: 'land', attack: 0, meat: 1, voice: 0.5 } as const;
@@ -85,6 +87,18 @@ export const SPECIES: readonly Species[] = [
   { ...BASE, key: 'warden', name: 'Ember Warden', halfWidthM: 0.55, heightM: 2.5, speedM_S: 1.3, health: 160, hostile: true, guardian: true,
     attack: 8, biomes: [], group: [1, 1], colours: { body: [58, 40, 44], head: [255, 120, 40], legs: [40, 30, 34] }, meat: 0,
     loot: [['ember_crystal', 3], ['diamond', 2]], voice: 0.05 },
+  { ...BASE, key: 'desert_stalker', name: 'Dune Stalker', halfWidthM:.48, heightM:.8, speedM_S:2.4, health:24,
+    hostile:true, nocturnal:true, attack:4, biomes:['desert','badlands'], group:[1,2], meat:0, loot:[['iron_ingot',1]],
+    colours:{body:[186,145,75],head:[210,174,98],legs:[144,106,53]}, voice:.65 },
+  { ...BASE, key:'swamp_hollow', name:'Mire Hollow', halfWidthM:.4, heightM:2.1, speedM_S:1.3, health:32,
+    hostile:true, nocturnal:true, attack:5, biomes:['swamp'], group:[1,2], meat:0, loot:[['moss',3],['bone',1]],
+    colours:{body:[72,95,44],head:[80,110,48],legs:[64,78,36]}, voice:.25 },
+  { ...BASE, key:'snow_prowler', name:'Snow Prowler', halfWidthM:.38, heightM:1.15, speedM_S:2.8, health:26,
+    hostile:true, nocturnal:true, attack:4, biomes:['snowy_taiga','tundra','glacier','snowcapped_peaks'], group:[1,2],meat:0,
+    loot:[['leather',2],['bone',1]],colours:{body:[223,234,239],head:[238,244,248],legs:[193,213,226]},voice:.4 },
+  { ...BASE, key:'trader',name:'Traveling Trader',halfWidthM:.28,heightM:1.8,speedM_S:.8,health:30,trader:true,
+    biomes:['plains','meadow','temperate_deciduous','birch','savanna'],group:[1,1],meat:0,
+    colours:{body:[45,99,111],head:[207,162,116],legs:[57,54,66]},voice:.5 },
 ];
 
 export const SPECIES_BY_KEY = new Map(SPECIES.map((s) => [s.key, s]));
