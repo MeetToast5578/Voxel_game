@@ -4,6 +4,7 @@ import { COLLISION, type BoxAt } from '../game/collision';
 import { moveBody, overlapsSolid, unstick, type Body } from '../game/physics';
 import { Player } from '../game/player';
 import type { Input } from '../game/input';
+import { JUMP_GRACE_S, JUMP_BUFFER_S } from '../config';
 
 const STONE = COLLISION[BLOCKS.state('stone')]!;
 const SLAB = COLLISION[BLOCKS.state('stone_slab')]!;
@@ -169,6 +170,45 @@ describe('crouching and ladders', () => {
     expect(p.body.y).toBeCloseTo(up, 3);
     for (let i = 0; i < 30; i++) p.update(1 / 60, keys({ descend: true }), wall, () => false, ladder);
     expect(p.body.y).toBeLessThan(up - 1.5);
+  });
+});
+
+describe('jump timing', () => {
+  const keys = (jump = false) => ({moveX: 0, moveZ: 0, jump, descend: false, sprint: false, consume: () => false}) as unknown as Input;
+  const dt = 1 / 60;
+  const tick = (p: Player, jump = false, floor = true) => p.update(dt, keys(jump), floor ? world({}) : () => 0, () => false);
+
+  it('allows a jump just after leaving a ledge, but never after grace expires', () => {
+    for (const expired of [false, true]) {
+      const p = new Player(0.5, 0, 0.5); p.body.onGround = true;
+      tick(p);
+      for (let i = 0; i < (expired ? Math.ceil(JUMP_GRACE_S / dt) + 2 : 2); i++) tick(p, false, false);
+      tick(p, true, false);
+      expect(p.body.vy > 0).toBe(!expired);
+    }
+  });
+
+  it('remembers a released jump pressed just before landing', () => {
+    const p = new Player(0.5, 0.01, 0.5); p.body.vy = -2;
+    tick(p, true); expect(p.body.onGround).toBe(true);
+    tick(p); expect(p.body.vy).toBeGreaterThan(0);
+  });
+
+  it('expires buffered jumps and cannot jump twice during one flight', () => {
+    const p = new Player(0.5, 10, 0.5);
+    tick(p, true);
+    for (let i = 0; i < Math.ceil(JUMP_BUFFER_S / dt) + 2; i++) tick(p);
+    Object.assign(p.body, {y: 0.01, vy: -2});
+    tick(p); tick(p); expect(p.body.onGround).toBe(true);
+    tick(p, true); const vy = p.body.vy;
+    tick(p); tick(p, true); expect(p.body.vy).toBeLessThan(vy);
+  });
+
+  it('does not carry jump grace from flying into walking', () => {
+    const p = new Player(0.5, 0, 0.5); p.body.onGround = true;
+    tick(p); p.flying = true; tick(p);
+    p.flying = false; p.body.onGround = false; p.body.y = 5;
+    tick(p, true); expect(p.body.vy).toBeLessThan(0);
   });
 });
 

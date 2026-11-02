@@ -8,7 +8,7 @@ import { Drops } from './drops';
 import { Hints } from './hints';
 import { newFurnace, tickFurnace, type FurnaceState } from './furnace';
 import type { Input } from './input';
-import { clickSlot, Inventory, type ItemStack } from './inventory';
+import { clickSlot, Inventory, moveStack, takeOutput, type ItemStack } from './inventory';
 import { breakSeconds, dropsOf, wearTool } from './mining';
 import { overlapsSolid } from './physics';
 import type { Player } from './player';
@@ -22,6 +22,7 @@ import type { BoxAt } from './collision';
 import { sitesNear, undergroundFloor } from '../worldgen/structures';
 import { Decorations, WORKSHOP_BLOCKS, trade, forge, type WorkshopKind } from './workshops';
 import { SPECIES_BY_KEY } from '../creatures/species';
+import { buildingMaterial } from './building';
 
 export type Mode = 'creative' | 'survival';
 
@@ -310,7 +311,7 @@ export class Play {
       this.message = '';
       this.version++;
     }
-    if (input.consume('pick') && this.target && this.mode === 'creative') this.pick(this.target);
+    if (input.consume('pick') && this.target) this.pick(this.target);
     if (this.held && this.held.state === BOW) {
       // A bow: hold right click to draw, let go to shoot.
       input.consume('place');
@@ -320,7 +321,7 @@ export class Play {
     const placeNow = input.consume('place') || (input.placing && this.repeat <= 0);
     if (placeNow) {
       this.repeat = REPEAT_S;
-      this.record(() => this.use(player));
+      this.record(() => this.use(player, input.descend));
     }
     const clicked = input.consume('break');
     if (clicked && this.creatures && this.attack(b.x, player.eyeY, b.z, dx, dy, dz)) return;
@@ -630,10 +631,19 @@ export class Play {
     this.version++;
   }
 
-  /** Creative middle click: put the targeted block in the hand. */
+  /** Pick a building material, selecting a hotbar stack or swapping one out of the backpack. */
   private pick(t: RayHit): void {
-    const s = BLOCKS.type(this.world.get(t.x, t.y, t.z)).id;
-    this.inventory.slots[this.inventory.selected] = { state: s, count: 64 };
+    const s = buildingMaterial(this.world.get(t.x, t.y, t.z));
+    const slots = this.inventory.slots;
+    const index = slots.findIndex(stack => stack !== null && buildingMaterial(stack.state) === s);
+    if (index >= 0 && index < 9) this.select(index);
+    else if (this.mode === 'creative') slots[this.inventory.selected] = { state: s, count: 64 };
+    else if (index >= 9) {
+      [slots[this.inventory.selected], slots[index]] = [slots[index]!, slots[this.inventory.selected]!];
+    } else {
+      this.toast(`No ${BLOCKS.type(s).name} in your inventory.`, 2);
+      return;
+    }
     this.version++;
   }
 
@@ -709,7 +719,11 @@ export class Play {
   }
 
   /** Right click: use the targeted block (door, table, furnace, bed), eat, or place the held block. */
-  private use(player: Player): void {
+  private use(player: Player, placeOnly = false): void {
+    if (placeOnly && this.target && this.held && !BLOCKS.type(this.held.state).item) {
+      this.place(this.target, this.held, player);
+      return;
+    }
     if(this.creatures){
       const [dx,dy,dz]=player.direction(),b=player.body;
       const hit=this.creatures.raycast(b.x,player.eyeY,b.z,dx,dy,dz,toCells(REACH_M));
@@ -876,7 +890,7 @@ export class Play {
     if (type === DOOR) {
       for (let k = 0; k < DOOR_CELLS; k++) if (TARGET[this.world.get(x, y + k, z)] !== 0 || !this.free(x, y + k, z, player, true)) return;
       for (let k = 0; k < DOOR_CELLS; k++) this.setBlock(x, y + k, z, DOOR.id + facing);
-      this.consumeHeld();
+      this.consumeHeld(true);
       this.events.sound('place');
       return;
     }
@@ -885,7 +899,7 @@ export class Play {
       if (TARGET[this.world.get(x + ox, y, z + oz)] !== 0 || !this.free(x, y, z, player) || !this.free(x + ox, y, z + oz, player)) return;
       this.setBlock(x, y, z, BED.id + facing);
       this.setBlock(x + ox, y, z + oz, BED.id + facing + 4);
-      this.consumeHeld();
+      this.consumeHeld(true);
       this.events.sound('place');
       return;
     }
@@ -906,7 +920,7 @@ export class Play {
     if (type === FURNACE) this.furnaces.set(`${x},${y},${z}`, newFurnace());
     // A chest the player places starts empty (generated ones roll their loot when first opened).
     if (type === CHEST) this.chests.set(`${x},${y},${z}`, new Array(CHEST_SLOTS).fill(null));
-    this.consumeHeld();
+    this.consumeHeld(true);
     this.swings++;
     this.events.sound('place');
   }
@@ -917,8 +931,8 @@ export class Play {
     return box === 0 || !overlapsSolid(player.body, (cx, cy, cz) => (cx === x && cy === y && cz === z ? box : 0));
   }
 
-  private consumeHeld(): void {
-    if (this.mode === 'survival') this.inventory.useHeld();
+  private consumeHeld(refill = false): void {
+    if (this.mode === 'survival') this.inventory.useHeld(refill);
     this.version++;
   }
 
@@ -996,7 +1010,18 @@ export class Play {
   }
 
   /** Takes the crafted result onto the cursor (if it fits there) and uses up the ingredients. */
-  takeCraft(): void {
+  takeCraft(quick=false): void {
+    if(quick){
+      if(this.cursor)return;
+      for(let batch=0;batch<64;batch++){
+        const out=this.craftOutput;if(!out)break;
+        const next=new Inventory();this.inventory.slots.forEach((s,i)=>next.slots[i]=s?{...s}:null);
+        if(next.add(out)!==0)break;
+        next.slots.forEach((s,i)=>this.inventory.slots[i]=s);
+        const cells=this.craft.slice(0,this.craftSize*this.craftSize);consumeIngredients(cells);cells.forEach((s,i)=>this.craft[i]=s);
+      }
+      this.version++;return;
+    }
     const out = this.craftOutput;
     if (!out) return;
     if (this.cursor && (this.cursor.state !== out.state || this.cursor.count + out.count > (BLOCKS.type(out.state).maxStack ?? 64))) return;
@@ -1004,6 +1029,27 @@ export class Play {
     const cells = this.craft.slice(0, this.craftSize * this.craftSize);
     consumeIngredients(cells);
     cells.forEach((c, i) => (this.craft[i] = c));
+    this.version++;
+  }
+
+  /** Shift-click moves directly between a container and the player, or hotbar and backpack. */
+  quickMove(slots:(ItemStack|null)[],index:number):void {
+    if(this.cursor)return;
+    const s=slots[index];if(!s)return;
+    if(slots!==this.inventory.slots){moveStack(slots,index,this.inventory.slots);this.version++;return;}
+    const chest=this.openChest&&this.screen==='chest'?this.chests.get(this.openChest):null;
+    if(chest){moveStack(slots,index,chest);this.version++;return;}
+    const f=this.openFurnace&&this.screen==='furnace'?this.furnaces.get(this.openFurnace):null;
+    if(f){
+      const t=BLOCKS.type(s.state),field=t.smeltsTo?'input':t.fuel?'fuel':null;
+      if(field){const box=[f[field]];moveStack(slots,index,box);f[field]=box[0]!;this.version++;return;}
+    }
+    moveStack(slots,index,slots,index<9?9:0,index<9?36:9);this.version++;
+  }
+  takeFurnaceOutput(right=false,quick=false):void {
+    const f=this.openFurnace?this.furnaces.get(this.openFurnace):null;if(!f)return;
+    if(quick){if(this.cursor)return;const box=[f.output];moveStack(box,0,this.inventory.slots);f.output=box[0]!;}
+    else {const result=takeOutput(f.output,this.cursor,right);f.output=result.source;this.cursor=result.cursor;}
     this.version++;
   }
 

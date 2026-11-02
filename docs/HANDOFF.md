@@ -1025,3 +1025,85 @@ errors or chunk failures. The separate feature smoke passes two-way trade, forge
 framed items, persistent reload and frame-break item recovery (also in creative). The actual model gallery renders
 without shader/browser errors. Screenshots are in ignored `screenshots/`. These are software-rendered browser checks;
 owner hardware frame rate/balance acceptance remains open. Changes remain local, not deployed.
+
+## 2026-11-02 — core playability / QoL (0.6.1)
+
+Owner chose inventory shortcuts, clearer interactions and easier building. Work is isolated on local
+`codex/gameplay-qol`, based on the asset PR commit; it has not been pushed into that PR.
+
+Added capacity-safe Shift-click/Shift+Enter transfers, including chest, furnace and hotbar/backpack routing;
+Shift-click output crafts complete batches directly into inventory. Cursor-held items block quick transfers.
+Fixed furnace output cursor overflow and prevented output deposits; right-click takes one. Added creative palette
+and recipe searches (species-specific saplings are named), hotbar numbers, and reachable-target interaction prompts.
+
+`npm run check` passes: 209 tests, typecheck and production build. New tests cover capacity/remainders, equipment
+metadata, container routing, furnace withdrawal and atomic bulk crafting. `scripts/qol-smoke.mjs` exercises the UI
+shortcuts/searches, keyboard transfer, bulk craft and a pointer-locked reachable interaction hint in system Chromium.
+
+QoL browser verification completed successfully: creative/recipe searches, mouse and keyboard quick transfers,
+upgraded/worn equipment metadata, capacity-safe furnace output, bulk crafting, all nine hotbar numbers and the
+reachable forge interaction prompt with real pointer lock. No browser errors. Screenshot: `screenshots/qol-search.png`.
+
+## 2026-11-02 — movement and building flow (0.6.2)
+
+Owner requested further gameplay improvements. Continued the local `codex/gameplay-qol` branch, preserving the
+previous QoL work. Added 100 ms of jump grace after leaving a ledge and 120 ms of jump buffering before landing;
+buffered taps survive release, without granting another jump in flight. Swimming, flying, boats and ladders clear
+land-jump timing. Existing held jumping is retained.
+
+Crouch + right click with a placeable block bypasses chest/door/workshop use and places against the targeted face,
+using the existing support, reach and player collision checks. Target prompts reflect this action and the rebound
+crouch key. When placing exhausts a block stack, an exact matching backpack stack moves into the selected slot;
+other hotbar slots, different species and consumed food remain untouched.
+
+Middle click in survival selects an owned material or swaps a backpack stack into the selected hotbar slot, preserving
+the displaced item's wear/upgrades. Missing materials never spawn. Creative picking reuses hotbar matches and keeps
+wood species; orientation, leaf placement, lit furnaces and lit beacons resolve to their building material. Escape is
+now wired to the existing pause/close-screen action. Focus loss, pointer release and stopping play clear held controls
+and pending actions; disconnected gamepad triggers no longer stick.
+
+Added `src/tests/building.test.ts`, jump timing cases in the physics tests and `scripts/building-smoke.mjs` for actual
+mouse/keyboard checks. No saved-world format changes. Work is local and has not been pushed or deployed.
+
+Validation: `npm run check` passes all 219 tests in 32 files, typecheck and production build. Benchmark budgets pass
+when run alone (generation mean 0.83 ms, mesh mean 0.27 ms; unchanged mesh hash). The first benchmark overlapped the
+test suite and was discarded after exceeding the mesh budget; no engine timing code or thresholds were changed.
+
+System-Chromium `building-smoke.mjs` passes real creative/survival middle clicks, equipment-preserving swaps, normal
+chest use, Escape closing the chest, crouch placement prompts, held repeat across stack refill, body collision and
+focus-loss recovery, with no browser errors. Regular `smoke.mjs --view 4` passes title creation, seven scenes,
+inventory/drops/held map and compass, edit latency (0.1–0.5 ms, two frames) and save/reload, with no browser errors or
+chunk failures. These software-rendered checks do not replace an owner hardware/balance playtest.
+
+## 2026-11-02 — asset and mob refinement (0.6.3)
+
+Owner asked to revisit assets and mobs and improve them. Reviewed the existing source sheets and actual twenty-mob
+gallery. Main issues were small-scale skin noise, repeated pictures of multiple legs on individual cuboids, shared
+animal proportions, a trader borrowing monster clothing, and separately rotating feet/hands/accessories.
+
+Created a new authored 8×8 skin atlas with sixty body/face/single-limb skins and four shared cloth/leather/bone/brass
+surfaces. Source, exact manifest, individual PNGs and packed data live in `assets/woodland-ember/refinement/`.
+`pack-mob-refinement.mjs` performs mechanical export and updates runtime aliases; the original expansion export now
+preserves these overrides. Original terrain/item art and the 336-asset library remain intact.
+
+Refined all rigs: bear bulk, rabbit haunches/ears and paired hopping gait, branching antlers, goat beard, fox tail,
+dune-stalker shell/stinger, brute ice spikes, framed Warden core with minimum dark-scene brightness, and trader coat,
+hat, backpack, leather belt and brass fittings. Model limbs/feet, hands/bow, head details and tails share pivots;
+rotations account for actual height-to-width ratios. Feet and limbs sample separate vertical texture intervals, atlas
+coordinates clamp by half a texel, and sleep moves a connected folded rig onto the ground. No AI, hitbox, loot,
+registry or save-format changes. One creature instanced draw, at most 27 actual parts (32-part cap).
+
+The gallery now supports idle/walk/attack/sleep and front/side/three-quarter inspection, fits full rig bounds and checks
+browser/shader errors and draw/part budgets. New tests verify active skin coverage, trader identity, connected foot
+joints in all poses, accessory inheritance for every species, resting bounds, instancing and dark-scene core colour.
+
+Validation so far: `npm run check` passes 224 tests in 33 files, typecheck and production build. After the final
+fish/crawler head-joint consistency fix, typecheck and the 11 focused rig/workshop tests pass again. Benchmark budgets
+pass (generation 0.77 ms mean, mesh 0.27 ms mean, unchanged mesh hash); original 336-asset PNG validation passes.
+Gallery inspections pass with twenty species, max 27 parts, one creature draw plus its presentation shadow, and no
+browser/shader errors. Work remains local on `codex/gameplay-qol`, alongside the earlier QoL changes; not pushed.
+
+Regular Chromium `smoke.mjs --view 4` completed successfully: title creation, all seven scenes, inventory/drops,
+held map/compass, edit latency (0.1–0.4 ms, two frames) and save/reload; no browser errors or chunk failures. Final
+source gallery also passes. Screenshots are in ignored `screenshots/`, with the original saved as
+`mob-gallery-before.png`. These are software-rendered checks, not owner-hardware frame-rate measurements.

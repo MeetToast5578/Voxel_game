@@ -31,3 +31,8 @@
 .equipment-list img { width:40px; height:40px; image-rendering:pixelated; }
 @media(max-width:650px) { .bars{gap:6px;flex-wrap:wrap;justify-content:center;max-width:92vw}.bar{width:70px}.equipment-list{grid-template-columns:repeat(3,1fr)}.menu{min-width:unset!important;width:82vw}.slot{width:34px;height:34px}.palette{grid-template-columns:repeat(8,auto)} }
 @media(prefers-reduced-motion:reduce) { #hand.swing { animation:none!important; } }
+.slot-key {position:absolute;left:0;top:-5px;font-size:10px;line-height:12px;color:#fff;text-shadow:1px 1px #000;z-index:1;pointer-events:none;}
+.palette-search {display:flex;flex-direction:column;gap:4px;}
+.screen input[type=search] {background:#102e3c;border:1px solid #86cfd7;color:#fff;padding:6px;font:inherit;}
+#interaction-hint {position:fixed;left:50%;top:calc(50% + 28px);transform:translateX(-50%);padding:5px 10px;background:#102e3ce8;color:#eff8f6;border:1px solid #76adb4;font:13px system-ui;text-align:center;pointer-events:none;max-width:80vw;}
+.slot.upgraded::after {left:auto;right:0;}

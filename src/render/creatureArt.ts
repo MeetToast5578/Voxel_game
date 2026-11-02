@@ -3,7 +3,7 @@ import skins from './creatureSkins.json';
 import { decodeArtTile, type PackedArtTile } from './artCodec';
 
 export const SKIN_SIZE = 32;
-export const SKIN_ROWS = 4;
+export const SKIN_ROWS = 8;
 export const SKIN_COLUMNS = SPECIES.length;
 export const SKIN_INDEX = new Map(SPECIES.map((s, i) => [s.key, i]));
 const source: Record<string, PackedArtTile> = skins;
@@ -23,7 +23,16 @@ export function creaturePixels(): Uint8Array {
       }
     });
   });
-  // A neutral fourth row supplies untextured horn, tusk and glowing-core parts.
-  pixels.fill(255, width * SKIN_SIZE * 3 * 4);
+  // Neutral tints plus shared cloth, leather, bone and brass accessory surfaces.
+  pixels.fill(255, width * SKIN_SIZE * 3 * 4, width * SKIN_SIZE * 4 * 4);
+  ['cloth', 'leather', 'bone', 'gold'].forEach((name, i) => {
+    const tile = source[`detail_${name}`];
+    if (!tile) throw new Error(`Missing accessory skin: ${name}`);
+    const decoded = decodeArtTile(tile);
+    for (let column = 0; column < SKIN_COLUMNS; column++) for (let y = 0; y < SKIN_SIZE; y++) {
+      const offset = (((i + 4) * SKIN_SIZE + SKIN_SIZE - 1 - y) * width + column * SKIN_SIZE) * 4;
+      pixels.set(decoded.subarray(y * SKIN_SIZE * 4, (y + 1) * SKIN_SIZE * 4), offset);
+    }
+  });
   return pixels;
 }

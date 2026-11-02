@@ -3,6 +3,37 @@
 The newest version comes first. `npm run check` fails if the version at the top here is not the one in
 `package.json`, so the two are changed together.
 
+## 0.6.3 — 2026-11-02
+
+- Refined all twenty mob skins with clearer pixel clusters, readable faces and single-limb textures. Dedicated trader
+  clothing, leather packs, bone and brass replace borrowed monster skins and flat accessory surfaces.
+- More distinct silhouettes: stocky bears, rabbit haunches and tall ears, branched deer antlers, goat beards, fox tails,
+  plated dune stalkers with stingers, frost-brute spikes and a framed Ember Warden core visible in darkness.
+- Legs and feet, arms and hands, bow pieces, tails and head details animate around shared joints at the actual
+  creature proportions. Sleeping lowers the whole connected rig to the ground.
+- Foot/hoof texture crops and half-texel atlas clamps remove repeated whole-leg art on paws and neighbouring-tile bleed.
+  All mobs retain a single instanced draw and the 32-part limit; hit feedback and world lighting remain active.
+- Gallery tools inspect idle, walk, attack and sleep poses from front, side and three-quarter views.
+
+## 0.6.2 — 2026-11-02
+
+- Jumps tolerate a press just after leaving a ledge or just before landing, including a briefly tapped jump.
+- Crouch + right click places held blocks against chests, doors and workshops without opening them. Target prompts
+  show this action and respect the rebound crouch key.
+- Used-up building stacks refill from an exact matching stack in the backpack, so held placement continues.
+- Middle click selects an owned material in survival, swapping from the backpack if needed. Creative picking keeps
+  tree species and reuses matching hotbar slots; facing and lit states resolve to their building materials.
+- Escape closes inventory and workshop screens. Losing focus, pausing or releasing pointer capture clears held
+  controls and pending actions.
+
+## 0.6.1 — 2026-11-02
+
+- Shift-click (or Shift+Enter on a focused slot) transfers items between chests/furnaces and inventory, or between
+  hotbar and backpack. Shift-click crafting output makes complete batches while ingredients and space remain.
+- Furnace output respects cursor stack limits, supports taking one with right click, and cannot accept deposits.
+- Search the creative block/item palette and recipe list. Tree species names, including saplings, are searchable.
+- Hotbar numbers and reachable block/creature interaction prompts make controls easier to discover.
+
 ## 0.6.0 — 2026-11-02
 
 - **Mobs:** distinct voxel rigs with ears, tails, horns, antlers, fins, crawler legs, humanoid arms and accessories;

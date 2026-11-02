@@ -12,7 +12,7 @@ import type { Difficulty } from '../config';
 import type { WorldMeta } from '../storage/store';
 import { artUrl } from './artAssets';
 import { TRADE_OFFERS, upgradeCost } from '../game/workshops';
-import { WOOD_SPECIES } from '../engine/blocks';
+import { WOOD_SPECIES, SAPLING_SPECIES } from '../engine/blocks';
 import './pixelAero.css';
 import { iconUrl, stackIconUrl } from './icons';
 
@@ -63,7 +63,7 @@ const TIERS = ['wooden', 'stone', 'iron', 'diamond'];
 /** A slot's tooltip: the item's name, then what it is good for and how worn it is. */
 export function tooltip(s: ItemStack): string {
   const t = BLOCKS.type(s.state);
-  const wood=t.variantFaces&&['log','leaves','planks'].includes(t.key)?WOOD_SPECIES[t.key==='leaves'?Math.floor(BLOCKS.variant(s.state)/2):BLOCKS.variant(s.state)]:null;
+  const wood=t.key==='sapling'?SAPLING_SPECIES[BLOCKS.variant(s.state)]:t.variantFaces&&['log','leaves','planks'].includes(t.key)?WOOD_SPECIES[t.key==='leaves'?Math.floor(BLOCKS.variant(s.state)/2):BLOCKS.variant(s.state)]:null;
   const lines = [wood?`${wood.replaceAll('_',' ')} ${t.name}`:t.name];
   if(s.upgrade)lines.push(`Ember upgrade ${s.upgrade}/3 · faster, stronger and more durable`);
   if (t.food) lines.push(`Food: restores ${t.food} hunger`);
@@ -75,14 +75,15 @@ export function tooltip(s: ItemStack): string {
   return lines.join('\n');
 }
 
-function Slot(props: { stack: ItemStack | null; onClick?: (right: boolean) => void; selected?: boolean; big?: boolean; title?: string; dim?: boolean }) {
+function Slot(props: { stack: ItemStack | null; onClick?: (right: boolean, quick?:boolean) => void; selected?: boolean; big?: boolean; title?: string; dim?: boolean; shortcut?:number }) {
   const s = props.stack;
   const t = s ? BLOCKS.type(s.state) : undefined;
   const tool = t?.tool ?? (t?.armour && { durability: t.armour.durability });
   return (
     <div class={`slot${props.selected ? ' selected' : ''}${props.big ? ' big' : ''}${props.dim ? ' dim' : ''}${s?.upgrade?' upgraded':''}`} role="button" aria-label={props.title ?? (s ? tooltip(s) : 'Empty slot')} title={props.title ?? (s ? tooltip(s) : '')} tabIndex={0}
-      onKeyDown={(e)=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();props.onClick?.(false);}}}
-      onMouseDown={(e) => { e.preventDefault(); props.onClick?.(e.button === 2); }} onContextMenu={(e) => e.preventDefault()}>
+      onKeyDown={(e)=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();props.onClick?.(false,e.shiftKey);}}}
+      onMouseDown={(e) => { e.preventDefault(); props.onClick?.(e.button === 2,e.shiftKey); }} onContextMenu={(e) => e.preventDefault()}>
+      {props.shortcut&&<span class="slot-key" aria-hidden="true">{props.shortcut}</span>}
       {s && <img src={stackIconUrl(s)} draggable={false} />}
       {s && s.count > 1 && <span class="count">{s.count}</span>}
       {s && tool && s.wear ? <span class="wear" style={{ width: `${100 * (1 - s.wear / (tool.durability*(1+(s.upgrade??0)*.5)))}%` }} /> : null}
@@ -119,7 +120,7 @@ function Hud({ play, hideKey }: { play: Play; hideKey: string }) {
           <Thermometer coreC={s.temperature.coreC} feltC={s.feltC} />
         </div>
       )}
-      <div class="hotbar">{inv.slots.slice(0, 9).map((st, i) => <Slot stack={st} selected={i === inv.selected} />)}</div>
+      <div class="hotbar">{inv.slots.slice(0, 9).map((st, i) => <Slot stack={st} shortcut={i+1} selected={i === inv.selected} />)}</div>
       {play.breaking > 0 && <div class="progress"><div style={{ width: `${play.breaking * 100}%` }} /></div>}
     </div>
   );
@@ -129,7 +130,7 @@ function Grid({ slots, from, to, play, cols = 9 }: { slots: (ItemStack | null)[]
   return (
     <div class="grid" style={{ gridTemplateColumns: `repeat(${cols}, auto)` }}>
       {slots.slice(from, to).map((st, k) => (
-        <Slot stack={st} onClick={(right) => { play.cursor = clickSlot(slots, from + k, play.cursor, right); play.version++; }} />
+        <Slot stack={st} onClick={(right,quick) => { if(quick){play.quickMove(slots,from+k);return;} play.cursor = clickSlot(slots, from + k, play.cursor, right); play.version++; }} />
       ))}
     </div>
   );
@@ -152,6 +153,8 @@ function WorkshopScreen({play}:{play:Play}) {
 }
 
 function InventoryScreen({ play }: { play: Play }) {
+  const [search,setSearch]=useState('');
+  const filtered=PALETTE.filter(state=>tooltip({state,count:1}).split('\n')[0]!.toLowerCase().includes(search.trim().toLowerCase()));
   const inv = play.inventory.slots;
   const furnace = play.screen === 'furnace' && play.openFurnace ? play.furnaces.get(play.openFurnace) : undefined;
   const chest = play.screen === 'chest' && play.openChest ? play.chests.get(play.openChest) : undefined;
@@ -162,23 +165,18 @@ function InventoryScreen({ play }: { play: Play }) {
       ) : furnace ? (
         <div class="row">
           <div class="col">
-            <Slot stack={furnace.input} onClick={(r) => { const box = [furnace.input]; play.cursor = clickSlot(box, 0, play.cursor, r); furnace.input = box[0]!; play.version++; }} />
+            <Slot stack={furnace.input} onClick={(r,q) => { const box = [furnace.input]; if(q)play.quickMove(box,0);else play.cursor = clickSlot(box, 0, play.cursor, r); furnace.input = box[0]!; play.version++; }} />
             <div class="flame" style={{ opacity: furnace.burn > 0 ? 1 : 0.2 }}>🔥</div>
-            <Slot stack={furnace.fuel} onClick={(r) => { const box = [furnace.fuel]; play.cursor = clickSlot(box, 0, play.cursor, r); furnace.fuel = box[0]!; play.version++; }} />
+            <Slot stack={furnace.fuel} onClick={(r,q) => { const box = [furnace.fuel]; if(q)play.quickMove(box,0);else play.cursor = clickSlot(box, 0, play.cursor, r); furnace.fuel = box[0]!; play.version++; }} />
           </div>
           <div class="progress small"><div style={{ width: `${(furnace.progress / 8) * 100}%` }} /></div>
-          <Slot big stack={furnace.output} onClick={() => {
-            if (furnace.output && (!play.cursor || (play.cursor.state === furnace.output.state))) {
-              play.cursor = play.cursor ? { ...play.cursor, count: play.cursor.count + furnace.output.count } : furnace.output;
-              furnace.output = null;
-              play.version++;
-            }
-          }} />
+          <Slot big stack={furnace.output} title="Furnace output · Shift-click to collect · Right-click for one" onClick={(right,quick)=>play.takeFurnaceOutput(right,quick)} />
         </div>
       ) : play.mode === 'creative' ? (
+        <><label class="palette-search">Find a block or item<input type="search" aria-label="Search blocks and items" placeholder="Try birch, stairs or lantern…" value={search} onInput={e=>setSearch(e.currentTarget.value)}/></label>
         <div class="palette">
-          {PALETTE.map((s) => <Slot stack={{ state: s, count: 1 }} onClick={() => { play.cursor = { state: s, count: BLOCKS.type(s).maxStack ?? 64 }; play.version++; }} />)}
-        </div>
+          {filtered.map((s) => <Slot stack={{ state: s, count: 1 }} onClick={() => { play.cursor = { state: s, count: BLOCKS.type(s).maxStack ?? 64 }; play.version++; }} />)}
+        </div>{filtered.length===0&&<p role="status">No matching blocks or items.</p>}</>
       ) : (
         <>
           <div class="row">
@@ -187,11 +185,12 @@ function InventoryScreen({ play }: { play: Play }) {
             </div>
             <Grid slots={play.craft} from={0} to={play.craftSize * play.craftSize} play={play} cols={play.craftSize} />
             <span class="arrow">→</span>
-            <Slot big stack={play.craftOutput} onClick={() => play.takeCraft()} />
+            <Slot big stack={play.craftOutput} onClick={(_r,q) => play.takeCraft(q)} />
           </div>
           <RecipeList play={play} />
         </>
       )}
+      <p class="hint">Shift-click: quick transfer · Right-click: split/place one · Shift+Enter: keyboard quick transfer</p>
       <Grid slots={inv} from={9} to={36} play={play} />
       <Grid slots={inv} from={0} to={9} play={play} />
       {play.cursor && <div class="hint">Holding {BLOCKS.type(play.cursor.state).name} × {play.cursor.count}. E or Esc closes.</div>}
@@ -341,11 +340,15 @@ function ingredients(r: Recipe): string {
 
 /** Every recipe; those you can make now are bright, and a click lays one out in the grid. */
 function RecipeList({ play }: { play: Play }) {
+  const [search,setSearch]=useState('');
+  const recipes=RECIPES.filter(r=>BLOCKS.byName(r.result[0]).name.toLowerCase().includes(search.trim().toLowerCase()));
   return (
     <details class="recipes" open>
       <summary>Recipes</summary>
+      <input type="search" aria-label="Search recipes" placeholder="Find a recipe…" value={search} onInput={e=>setSearch(e.currentTarget.value)}/>
+      {recipes.length===0&&<p role="status">No matching recipes.</p>}
       <div class="palette">
-        {RECIPES.map((r) => {
+        {recipes.map((r) => {
           const out = { state: BLOCKS.state(r.result[0]), count: r.result[1] };
           const small = !fits(r, play.craftSize);
           const title = `${BLOCKS.type(out.state).name}${out.count > 1 ? ` × ${out.count}` : ''}\nNeeds ${ingredients(r)}${small ? '\nOnly at a crafting table' : ''}`;

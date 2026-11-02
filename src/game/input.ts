@@ -42,6 +42,10 @@ export class Input {
       if (e.repeat) return;
       if (e.code.startsWith('F') && this.pressMap.has(e.code)) e.preventDefault();
       this.keys.add(e.code);
+      if (e.code === 'Escape') {
+        this.actions.add('pause');
+        return;
+      }
       // Ctrl+Z undoes and Ctrl+Y (or Ctrl+Shift+Z) redoes; otherwise keys map to actions directly.
       if ((e.ctrlKey || e.metaKey) && (e.code === 'KeyZ' || e.code === 'KeyY')) {
         e.preventDefault();
@@ -53,7 +57,10 @@ export class Input {
       if (/^Digit[1-9]$/.test(e.code)) this.slot = Number(e.code.slice(5)) - 1;
     });
     addEventListener('keyup', (e) => this.keys.delete(e.code));
-    addEventListener('blur', () => this.keys.clear());
+    addEventListener('blur', () => this.reset());
+    document.addEventListener('pointerlockchange', () => {
+      if (document.pointerLockElement !== canvas) this.reset();
+    });
     canvas.addEventListener('click', () => {
       if (document.pointerLockElement !== canvas && this.canLock()) canvas.requestPointerLock();
     });
@@ -100,6 +107,7 @@ export class Input {
 
   /** Reads the keyboard and the first gamepad into the held state. Call once per frame. */
   poll(dt: number): void {
+    this.padBreak = this.padPlace = false;
     const h = (b: Binding) => (this.held(b) ? 1 : 0);
     this.moveZ = Math.max(-1, Math.min(1, h('forward') - h('back') + this.stickZ));
     this.moveX = Math.max(-1, Math.min(1, h('right') - h('left') + this.stickX));
@@ -187,7 +195,19 @@ export class Input {
   /** Stops play (a screen or menu opens). */
   stop(): void {
     this.touchPlaying = false;
+    this.reset();
     if (this.locked) document.exitPointerLock();
+  }
+
+  /** Release gameplay controls when focus or pointer capture is lost. */
+  private reset(): void {
+    this.keys.clear();
+    this.actions.clear();
+    this.breakHeld = this.placeHeld = this.padBreak = this.padPlace = false;
+    this.moveX = this.moveZ = this.stickX = this.stickZ = 0;
+    this.jump = this.sprint = this.descend = false;
+    this.lookYaw = this.lookPitch = 0;
+    this.slot = -1;
   }
 
   // Virtual controls (touch).
