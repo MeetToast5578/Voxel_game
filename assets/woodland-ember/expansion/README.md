@@ -46,3 +46,6 @@ canvas renderer. Effects are bounded animated billboards. First-person hands rem
 
 Additional trader portraits, lore/dye/seed-sack artwork and generic controller/navigation glyphs remain available
 for future features. Villages and world-age difficulty scaling are not implemented by this integration.
+
+The [0.6.3 refinement pack](../refinement/README.md) supersedes the active mob skins. Re-exporting this expansion
+preserves those overrides. The original 336-asset source library and its individual exports remain intact.

@@ -1,4 +1,4 @@
-import { DROP_CAP, NIGHT_BEFORE, AUTOSAVE_S, BLOCK_SIZE_M, CAVE_AIR_C, CHUNK_SIZE, DAY_LENGTH_S, DIFFICULTY, HEAT_REACH_M, HEAT_SOURCES_C, cells, type Difficulty, HORIZON_RECENTER_M, MAX_VIEW_CHUNKS, MIN_VIEW_CHUNKS, SIM_HZ, toCells } from './config';
+import { REACH_M, DROP_CAP, NIGHT_BEFORE, AUTOSAVE_S, BLOCK_SIZE_M, CAVE_AIR_C, CHUNK_SIZE, DAY_LENGTH_S, DIFFICULTY, HEAT_REACH_M, HEAT_SOURCES_C, cells, type Difficulty, HORIZON_RECENTER_M, MAX_VIEW_CHUNKS, MIN_VIEW_CHUNKS, SIM_HZ, toCells } from './config';
 import { Sounds } from './audio/sounds';
 import { Ambience, type Surroundings } from './audio/ambience';
 import { chunkKey, forEachChunkReading, localIndex, unpackChunkKey } from './core/coords';
@@ -10,6 +10,7 @@ import { ALL_CONNECTED, visibleChunks } from './engine/visibility';
 import { World } from './engine/world';
 import { COLLISION } from './game/collision';
 import { Input } from './game/input';
+import { blockInteractionHint } from './game/interactionHint';
 import { Play, type Mode } from './game/play';
 import { Player } from './game/player';
 import { Highlight } from './render/highlight';
@@ -613,6 +614,7 @@ const hurtFlash = document.querySelector<HTMLDivElement>('#hurt')!, burnGlow = d
 let bobPhase = 0;
 /** The first-person hand: the held item's picture (or a fist), swinging with each break, place or hit. */
 const hand = document.querySelector<HTMLDivElement>('#hand')!, handImg = hand.querySelector('img')!;
+const interactionHint=document.createElement('div');interactionHint.id='interaction-hint';interactionHint.hidden=true;document.body.append(interactionHint);
 let handSwings = 0;
 function updateHand():void {
   const state=play.held?.state??-1;
@@ -700,6 +702,19 @@ const loop = new FixedStepLoop(1 / 60, 0.25, timedUpdate, (_alpha, frameDt) => {
   milestones = play.journal.done.size;
   renderer.camera.rotation.set(player.pitch + kick, player.yaw, 0, 'YXZ');
   highlight.set(play.target, play.breaking);
+  let hint='';
+  if(input.playing&&play.screen==='none'&&!play.survival.dead){
+    const heldBlock=play.held&&!BLOCKS.type(play.held.state).item;
+    if(play.target)hint=blockInteractionHint(world.get(play.target.x,play.target.y,play.target.z),heldBlock?{crouchKey:keyLabel(settings.keys.descend),crouching:input.descend}:undefined);
+    const [dx,dy,dz]=player.direction();
+    const hit=creatures.raycast(player.body.x,player.eyeY,player.body.z,dx,dy,dz,toCells(REACH_M));
+    if(hit&&(!play.target||hit.distance<play.target.distance)&&!(heldBlock&&input.descend&&play.target)){
+      const s=hit.creature.species,held=play.held?BLOCKS.type(play.held.state).key:null;
+      hint=s.trader?`${s.name} · Right click: Trade`:held&&s.food?.includes(held)?`${s.name} · Right click: Feed`:`${s.name} · Left click: Attack`;
+    }
+  }
+  interactionHint.hidden=!hint;
+  if(interactionHint.textContent!==hint)interactionHint.textContent=hint;
   document.querySelector<HTMLElement>('#crosshair')!.style.background=`url("${artUrl('ui',play.target?'prompt_target':'prompt_idle')}") center/contain no-repeat`;
   const daylight = renderer.uniforms.daylight!.value as number;
   /** Brightness (0..1) of a cell for things drawn outside the terrain. */

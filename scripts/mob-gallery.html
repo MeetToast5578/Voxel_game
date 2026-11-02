@@ -3,14 +3,23 @@ import * as THREE from 'three';import {CreatureMeshes} from '/src/render/creatur
 THREE.ColorManagement.enabled=false;const renderer=new THREE.WebGLRenderer({antialias:false});renderer.setSize(1600,1100);document.body.append(renderer.domElement);renderer.outputColorSpace=THREE.LinearSRGBColorSpace;
 const scene=new THREE.Scene();scene.background=new THREE.Color('#142b30');
 const camera=new THREE.PerspectiveCamera(35,400/185,.1,200);
-const floor=new THREE.Mesh(new THREE.PlaneGeometry(200,200),new THREE.MeshBasicMaterial({color:0x30473e}));floor.rotation.x=-Math.PI/2;floor.position.y=-.01;scene.add(floor);
+const floor=new THREE.Mesh(new THREE.CircleGeometry(1,32),new THREE.MeshBasicMaterial({color:0x081817,transparent:true,opacity:.45}));floor.rotation.x=-Math.PI/2;floor.position.y=-.01;scene.add(floor);
 const mobs=new CreatureMeshes(scene);renderer.clear();renderer.setScissorTest(true);
+const params=new URLSearchParams(location.search),pose=params.get('pose')||'idle',angle=params.get('angle')||'three-quarter';
+document.querySelector('p').textContent='Actual game models and skins · '+pose+' pose · '+angle+' view';
+const bounds=new THREE.Box3(),sphere=new THREE.Sphere(),target=new THREE.Vector3();
+const stats={species:0,maxParts:0,maxDrawCalls:0,pose,angle};
 SPECIES.forEach((s,i)=>{
- const h=s.heightM/.6,w=s.halfWidthM/.6,span=Math.max(h*1.2,w*2.8);
- const c={id:i+1,species:s,body:{x:0,y:0,z:0,vx:0,vy:0,vz:0,halfWidth:w,height:h},yaw:Math.PI,mode:'idle',walk:0,cooldown:0,hurt:0};
- camera.position.set(span*1.4,h*.5+span*.7,span*2.4);camera.lookAt(0,h*.53,0);camera.updateMatrixWorld();
+ const h=s.heightM/.6,w=s.halfWidthM/.6;
+ const c={id:i+1,species:s,body:{x:0,y:0,z:0,vx:pose==='walk'?1:0,vy:0,vz:0,halfWidth:w,height:h},yaw:Math.PI,mode:pose==='sleep'?'sleep':pose==='attack'?'hunt':'idle',walk:Math.PI/3,cooldown:pose==='attack'?1:0,hurt:0};
+ mobs.update([c],()=>1,1);
+ const mesh=scene.children.find(o=>o.isInstancedMesh);mesh.computeBoundingBox();bounds.copy(mesh.boundingBox);bounds.getBoundingSphere(sphere);bounds.getCenter(target);
+ const distance=sphere.radius/Math.sin(THREE.MathUtils.degToRad(camera.fov/2))*1.08;
+ const direction=new THREE.Vector3(angle==='front'?0:angle==='side'?1: .5,.25,angle==='side'?.05:1).normalize();
+ camera.position.copy(target).addScaledVector(direction,distance);camera.lookAt(target);camera.updateMatrixWorld();
+ floor.scale.set(w*1.25,w*2,1);stats.species++;stats.maxParts=Math.max(stats.maxParts,mesh.count);
  const col=i%4,row=Math.floor(i/4);renderer.setViewport(col*400,1100-(100+row*200+185),400,185);renderer.setScissor(col*400,1100-(100+row*200+185),400,185);
- mobs.update([c],()=>1,1);renderer.render(scene,camera);
+ renderer.render(scene,camera);stats.maxDrawCalls=Math.max(stats.maxDrawCalls,renderer.info.render.calls);
  const label=document.createElement('div');label.className='label';label.textContent=s.name;label.style.left=(col*400+200)+'px';label.style.top=(100+row*200+177)+'px';document.body.append(label);
-});window.galleryReady=true;
+});window.galleryStats=stats;window.galleryReady=true;
 </script></body></html>

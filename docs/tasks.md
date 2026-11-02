@@ -373,3 +373,25 @@ Ideas for later. Pick, change or drop them; they become tasks once decided.
   effect playback, hand/glove poses; give the original 16 creatures distinct rigs; add Dune Stalker, Mire Hollow,
   Snow Prowler and Traveling Trader. Owner also requested trading, forge, signs and frames: implemented with
   recipes, interaction screens and saved data. See the 0.6.0 changelog and feature smoke script.
+
+## 16. Core playability and quality of life
+
+- [x] **16.1 Quick transfers.** Shift-click and Shift+Enter move between player/container slots and hotbar/backpack,
+  preserve equipment metadata and leave overflow at the source. Shift-click crafts whole batches into inventory.
+- [x] **16.2 Safe furnace output.** Cap cursor stacks, support withdrawing one, and prevent output-slot deposits.
+- [x] **16.3 Find building materials and recipes.** Search the creative palette by name/species and recipes by result.
+- [x] **16.4 Discoverable controls.** Visible hotbar numbers and prompts for reachable blocks, traders and animals.
+
+- [x] **16.5 Building flow.** Crouch bypasses interactive blocks for placement; depleted block stacks refill from
+  exact backpack matches; middle click selects owned survival materials and preserves creative wood species.
+- [x] **16.6 Movement and focus.** Brief jump grace and input buffering; lost focus, pointer release and pause clear
+  held controls; Escape closes screens. Target prompts show the configured crouch placement control.
+
+
+## 17. Asset and mob refinement
+
+- [x] **17.1 Readable mob materials.** Sixty authored body/face/limb replacements and four accessory textures,
+  including dedicated trader clothing. Source atlas, exact manifest, individual PNGs and reproducible runtime export.
+- [x] **17.2 Silhouettes and connected animation.** Distinct species details; shared limb, tail and head pivots;
+  actual body aspect ratios; separate hoof/paw texture regions; grounded resting rigs. One draw and 32-part budget.
+- [x] **17.3 Visual inspection.** Actual game rig gallery supports idle/walk/attack/sleep and multiple view angles.

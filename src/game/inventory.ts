@@ -86,11 +86,20 @@ export class Inventory {
     return left;
   }
 
-  /** Takes one of the held item (a block placed, food eaten). */
-  useHeld(): void {
+  /** Takes one held item; placing can refill a depleted block stack from the backpack. */
+  useHeld(refill = false): void {
     const s = this.held;
     if (!s) return;
-    if (--s.count <= 0) this.slots[this.selected] = null;
+    if (--s.count <= 0) {
+      this.slots[this.selected] = null;
+      if (refill && !BLOCKS.type(s.state).item && maxStack(s.state) > 1) {
+        const next = this.slots.findIndex((stack, i) => i >= HOTBAR_SIZE && stack !== null && sameKind(stack, s));
+        if (next >= 0) {
+          this.slots[this.selected] = this.slots[next]!;
+          this.slots[next] = null;
+        }
+      }
+    }
   }
 
   count(state: number): number {
@@ -119,4 +128,32 @@ export class Inventory {
       this.slots[i] = { state, count: Math.min(count, maxStack(state)), ...(wear ? { wear } : {}), ...(Number(e[3]) > 0 ? { upgrade: Math.min(3, Math.floor(Number(e[3]))) } : {}) };
     });
   }
+}
+
+/** Merge into a destination range, then empty slots. Returns the count that could not fit. */
+export function insertStack(slots:(ItemStack|null)[],stack:ItemStack,from=0,to=slots.length):number {
+  let left=stack.count;const cap=maxStack(stack.state);
+  for(let i=from;i<to&&left>0;i++){
+    const s=slots[i];if(!s||!sameKind(s,stack))continue;
+    const moved=Math.max(0,Math.min(left,cap-s.count));s.count+=moved;left-=moved;
+  }
+  for(let i=from;i<to&&left>0;i++)if(!slots[i]){const moved=Math.min(left,cap);slots[i]={...stack,count:moved};left-=moved;}
+  return left;
+}
+/** Transfer only what fits, preserving source remainder and equipment metadata. */
+export function moveStack(source:(ItemStack|null)[],index:number,target:(ItemStack|null)[],from=0,to=target.length):number {
+  const s=source[index];if(!s)return 0;
+  // Never transfer into the source slot when moving between hotbar and backpack.
+  if(source===target&&index>=from&&index<to)return 0;
+  const left=insertStack(target,s,from,to),moved=s.count-left;
+  if(moved){if(left)s.count=left;else source[index]=null;}
+  return moved;
+}
+/** Output slots permit withdrawal only; a full/mismatched cursor leaves output untouched. */
+export function takeOutput(source:ItemStack|null,cursor:ItemStack|null,right=false):{source:ItemStack|null;cursor:ItemStack|null} {
+  if(!source)return {source,cursor};
+  if(cursor&&!sameKind(cursor,source))return {source,cursor};
+  const room=maxStack(source.state)-(cursor?.count??0),count=Math.max(0,Math.min(room,right?1:source.count));
+  if(!count)return {source,cursor};
+  return {source:source.count>count?{...source,count:source.count-count}:null,cursor:cursor?{...cursor,count:cursor.count+count}:{...source,count}};
 }

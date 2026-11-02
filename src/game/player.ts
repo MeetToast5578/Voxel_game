@@ -1,5 +1,5 @@
 import {
-  AIR_ACCEL, EYE_HEIGHT_M, FLY_FAST_FACTOR, FLY_SPEED_M_S, GRAVITY_M_S2, GROUND_ACCEL, JUMP_SPEED_M_S, PLAYER_DENSITY,
+  AIR_ACCEL, EYE_HEIGHT_M, FLY_FAST_FACTOR, FLY_SPEED_M_S, GRAVITY_M_S2, GROUND_ACCEL, JUMP_SPEED_M_S, JUMP_GRACE_S, JUMP_BUFFER_S, PLAYER_DENSITY,
   PLAYER_HALF_WIDTH_M, PLAYER_HEIGHT_M, SPRINT_SPEED_M_S, STEP_HEIGHT_M, STEP_SMOOTH_S, SWIM_THRUST_M_S2, SWIM_UP_M_S2,
   TERMINAL_SPEED_M_S, WALK_SPEED_M_S, BOAT_SPEED_M_S, WATER_DENSITY, WATER_DRAG_PER_M, toCells, BLOCK_SIZE_M, CROUCH_FACTOR, CLIMB_SPEED_M_S, CURRENT_ACCEL_M_S2,
 } from '../config';
@@ -42,6 +42,9 @@ export class Player {
   submerged = 0;
   /** Camera offset that eases out a step, so stepping up or down is not a jolt. */
   private stepOffset = 0;
+  private jumpGrace = 0;
+  private jumpBuffer = 0;
+  private jumpWasHeld = false;
 
   constructor(x: number, y: number, z: number) {
     this.body = {
@@ -86,6 +89,10 @@ export class Player {
   update(dt: number, input: Input, boxAt: BoxAt, waterAt: WaterAt, climbAt: (x: number, y: number, z: number) => boolean = () => false,
     currentAt: (x: number, y: number, z: number) => readonly [number, number, number] | null = () => null): void {
     const b = this.body;
+    this.jumpGrace = b.onGround ? JUMP_GRACE_S : Math.max(0, this.jumpGrace - dt);
+    this.jumpBuffer = input.jump && !this.jumpWasHeld ? JUMP_BUFFER_S : Math.max(0, this.jumpBuffer - dt);
+    this.jumpWasHeld = input.jump;
+    this.crouching = false;
     if (input.consume('fly')) {
       this.flying = !this.flying;
       b.vy = 0;
@@ -96,6 +103,9 @@ export class Player {
     const len = Math.hypot(wx, wz);
     if (len > 1) { wx /= len; wz /= len; }
     this.submerged = submergedFraction(b, waterAt);
+    if (this.flying || this.boating || this.submerged > 0.05 || this.onLadder(climbAt)) {
+      this.jumpGrace = this.jumpBuffer = 0;
+    }
 
     if (this.flying) {
       const speed = toCells(FLY_SPEED_M_S) * (input.sprint ? FLY_FAST_FACTOR : 1);
@@ -156,7 +166,10 @@ export class Player {
         const climb = toCells(CLIMB_SPEED_M_S);
         b.vy = input.moveZ !== 0 || input.jump ? climb : input.descend ? -climb : 0;
       } else {
-        if (input.jump && b.onGround) b.vy = toCells(JUMP_SPEED_M_S);
+        if ((input.jump || this.jumpBuffer > 0) && this.jumpGrace > 0) {
+          b.vy = toCells(JUMP_SPEED_M_S);
+          this.jumpGrace = this.jumpBuffer = 0;
+        }
         b.vy = Math.max(-toCells(TERMINAL_SPEED_M_S), b.vy - GRAVITY * dt);
       }
       this.move(dt, boxAt, toCells(STEP_HEIGHT_M));

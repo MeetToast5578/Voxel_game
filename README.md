@@ -18,7 +18,7 @@ world is made of 16×16×16 chunks (9.6 m) with no height limit.
 - **Saves:** automatic, in the browser (IndexedDB). Worlds can be exported and imported as files from the pause menu.
 
 The Woodland & Ember texture pack supplies authored 32×32 pixel art for materials, plants and items. Creature
-skins and sounds are generated in code. All artwork is bundled for offline play. See
+skins use the authored [mob refinement pack](assets/woodland-ember/refinement/README.md); sounds are generated in code. All artwork is bundled for offline play. See
 [`assets/woodland-ember/README.md`](assets/woodland-ember/README.md) for sources and rebuilding. The [expansion library](assets/woodland-ember/expansion/README.md) adds creature skins,
 material variations, animated fluid textures and prepared artwork for trees, effects, UI and future content.
 
@@ -45,7 +45,7 @@ A production build (`npm run build`, then `npm run preview`) can be installed fr
 | Ctrl | Sprint; fly faster |
 | Left click | Break (takes time in survival) or hit a creature |
 | Right click | Place, use (doors, beds, chests, furnaces, crafting tables, campfires), eat, wear armour, fill or empty a bucket, bone meal on crops, till with a hoe, feed animals (they follow their food and breed), cast a fishing rod; hold with a bow to draw, let go to shoot |
-| Middle click | Creative: pick the block you look at |
+| Middle click | Pick the building material you look at; survival selects it from your inventory |
 | 1–9, mouse wheel | Choose a hotbar slot |
 | E | Inventory and crafting |
 | Q | Throw one of the held item |
@@ -115,3 +115,24 @@ The architecture is described in [`docs/specs/54-engine-rewrite.md`](docs/specs/
 | `src/render` | Renderer, terrain material, sky, clouds, far terrain |
 | `src/storage`, `src/ui`, `src/audio`, `src/workers` | Saves and settings, HUD and menus, sounds, the worker pool |
 | `src/tests` | Vitest unit tests |
+
+## Inventory shortcuts
+
+- Shift-click a stack (or focus it and press Shift+Enter) to move it between a chest/furnace and your inventory.
+  In the normal inventory it moves between the hotbar and backpack. Items that do not fit stay in their source slot.
+- Shift-click the crafting result to craft complete batches into your inventory while ingredients and room remain.
+- Left-click furnace output to take what fits on the cursor; right-click takes one. Deposits into output are blocked.
+- Search the creative palette by item or tree species name, and filter the recipe list by result name.
+- Hotbar numbers and reachable-target prompts show the relevant controls during play.
+
+## Smoother movement and building
+
+Jumps have a short timing allowance after walking off a ledge and before landing. Hold right click to keep placing
+blocks; an exhausted stack refills from the same material in your backpack. Other hotbar slots stay where you put them.
+
+Hold your crouch key (Shift by default) while right-clicking to place against a chest, door or workshop. The target
+prompt shows the placement control. Without crouching, right click uses the block as usual.
+
+Middle click picks a material. In survival it selects a matching hotbar slot or swaps a backpack stack into your
+selected slot; you must already own it. Creative picking preserves tree species. Returning after a pause or lost
+focus starts with released controls. Escape closes inventory and workshop screens.

@@ -80,6 +80,9 @@ export const SPRINT_SPEED_M_S = 6;
 export const GRAVITY_M_S2 = 28;
 /** Jump height is about 1.35 m. */
 export const JUMP_SPEED_M_S = 8.7;
+/** Forgiveness after leaving a ledge, and for a jump pressed just before landing. */
+export const JUMP_GRACE_S = 0.1;
+export const JUMP_BUFFER_S = 0.12;
 export const TERMINAL_SPEED_M_S = 50;
 /** How quickly velocity reaches the target speed, per second, on the ground and in the air. */
 export const GROUND_ACCEL = 20;

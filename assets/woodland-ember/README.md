@@ -51,3 +51,9 @@ large expanses. Review the in-game forest, river, cave and inventory screenshots
 Sky, clouds, precipitation, far-terrain geometry and audio remain procedural. The expansion now supplies Pixel Aero
 nine-slice menus, slots, status icons and reticle artwork within the existing responsive CSS UI. No new game mechanics or extra content items
 are introduced by the spare source cells.
+
+## Mob refinement (0.6.3)
+
+The active creature skins now come from the [refinement pack](refinement/README.md): sixty cleaner body/face/limb
+textures and four shared accessory surfaces. Species rigs retain the original collision bodies and use connected
+joint animation, per-part texture regions and one instanced draw. The original sheets above remain source history.
