@@ -10,12 +10,12 @@ import { SPECIES_BY_KEY } from '../creatures/species';
 import { biomeIndex } from '../worldgen/biomes';
 
 /** A flat grass plain (ground below y = 0) with plains biome everywhere, lit by the sky. */
-function plain() {
+function plain(biome='plains') {
   const world = new World();
   for (let cx = -8; cx <= 8; cx++) for (let cz = -8; cz <= 8; cz++) for (let cy = -1; cy <= 1; cy++) {
     const c = new Chunk(cx, cy, cz, cy < 0 ? BLOCKS.state('grass') : 0, cy < 0 ? 0 : 15);
     const col = world.add(c);
-    col.biome.fill(biomeIndex('plains'));
+    col.biome.fill(biomeIndex(biome));
     col.surface.fill(-1);
     col.water.fill(-1000);
   }
@@ -81,11 +81,24 @@ describe('creatures', () => {
     const cs = new Creatures(world, mulberry32(4), { bite: () => undefined, sound: () => undefined });
     for (let i = 0; i < 60 * 60; i++) cs.update(1 / 60, ctx(world));
     expect(cs.list.length).toBeGreaterThan(0);
-    const plainsKinds = new Set(['deer', 'rabbit', 'sheep', 'cow']);
+    const plainsKinds = new Set(['deer', 'rabbit', 'sheep', 'cow', 'trader']);
     for (const c of cs.list) expect(plainsKinds.has(c.species.key)).toBe(true);
     const back = new Creatures(world, mulberry32(5), { bite: () => undefined, sound: () => undefined });
     back.load(JSON.parse(JSON.stringify(cs.save())));
     expect(back.save()).toEqual(cs.save());
+  });
+
+  it('spawns the three new monsters only in their matching biomes and keeps peaceful mode safe',()=>{
+    const keys=['desert_stalker','swamp_hollow','snow_prowler'];
+    for(const [biome,wanted] of [['desert','desert_stalker'],['swamp','swamp_hollow'],['snowy_taiga','snow_prowler']]){
+      const world=plain(biome),cs=new Creatures(world,mulberry32(31),{bite:()=>undefined,sound:()=>undefined});
+      const seen=new Set<string>();
+      for(let i=0;i<100;i++){cs.update(1.5,ctx(world,player(),true,false));for(const c of cs.list)seen.add(c.species.key);cs.list.length=0;}
+      expect(seen.has(wanted!),biome).toBe(true);
+      for(const key of keys)if(key!==wanted)expect(seen.has(key),biome).toBe(false);
+      cs.add(SPECIES_BY_KEY.get(wanted!)!,2,0,0.5,20);cs.update(1/60,ctx(world,player(),true,false,0));
+      expect(cs.list.some(c=>c.species.hostile)).toBe(false);
+    }
   });
 
   it('hunters walk round a wall to reach the player', () => {

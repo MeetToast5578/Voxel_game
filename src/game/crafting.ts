@@ -17,6 +17,10 @@ const ARMOUR_FROM = { leather: 'leather', iron: 'iron_ingot', diamond: 'diamond'
 const TOOL_PATTERNS = { pickaxe: ['MMM', ' S ', ' S '], axe: ['MM', 'MS', ' S'], shovel: ['M', 'S', 'S'], sword: ['M', 'M', 'S'], hoe: ['MM', ' S', ' S'] } as const;
 
 export const RECIPES: readonly Recipe[] = [
+  {pattern:['PPP','PPP',' S '],key:{P:['planks'],S:['stick']},result:['sign',3]},
+  {pattern:['SSS','SLS','SSS'],key:{S:['stick'],L:['leather']},result:['item_frame',1]},
+  {pattern:['PPP','PGP','PPP'],key:{P:['planks'],G:['gold_ingot']},result:['trading_post',1]},
+  {pattern:['OIO','OEO','OIO'],key:{O:['obsidian'],I:['iron_ingot'],E:['ember_crystal']},result:['ember_forge',1]},
   { pattern: ['L'], key: { L: ['log'] }, result: ['planks', 4] },
   { pattern: ['P', 'P'], key: { P: ['planks'] }, result: ['stick', 4] },
   { pattern: ['C', 'S'], key: { C: ['coal'], S: ['stick'] }, result: ['torch', 4] },
@@ -54,7 +58,7 @@ function trim(cells: readonly (ItemStack | null)[], size: number): string[][] {
   const rows = Array.from({ length: size }, (_, y) => Array.from({ length: size }, (_, x) => {
     const s = cells[y * size + x];
     // Only fresh items count: a worn tool or a grown crop is not an ingredient.
-    return s && !s.wear && BLOCKS.variant(s.state) === 0 ? BLOCKS.type(s.state).key : s ? '?' : '';
+    return s && !s.wear && (BLOCKS.variant(s.state) === 0 || ['log','planks'].includes(BLOCKS.type(s.state).key)) ? BLOCKS.type(s.state).key : s ? '?' : '';
   }));
   const ys = rows.map((r) => r.some((c) => c !== '')), xs = Array.from({ length: size }, (_, x) => rows.some((r) => r[x] !== ''));
   const y0 = ys.indexOf(true), y1 = ys.lastIndexOf(true), x0 = xs.indexOf(true), x1 = xs.lastIndexOf(true);
@@ -67,7 +71,10 @@ export function craftResult(cells: readonly (ItemStack | null)[], size: number):
   if (grid.length === 0) return null;
   const recipe = RECIPES.find((r) => r.pattern.length === grid.length && r.pattern.every((row, y) => row.length === grid[y]!.length &&
     [...row].every((ch, x) => (ch === ' ' ? grid[y]![x] === '' : r.key[ch]!.includes(grid[y]![x]!)))));
-  return recipe ? { state: BLOCKS.state(recipe.result[0]), count: recipe.result[1] } : null;
+  if (!recipe) return null;
+  const log = cells.find(s => s && BLOCKS.type(s.state).key === 'log');
+  const variant = recipe.result[0] === 'planks' && log ? (BLOCKS.variant(log.state)<14?BLOCKS.variant(log.state):0) : 0;
+  return {state: BLOCKS.state(recipe.result[0], variant), count: recipe.result[1]};
 }
 
 /** Uses up one of each ingredient in the grid after crafting. */
@@ -95,7 +102,7 @@ export function takeIngredients(r: Recipe, size: number, slots: (ItemStack | nul
     for (let x = 0; x < r.pattern[y]!.length; x++) {
       const ch = r.pattern[y]![x]!;
       if (ch === ' ') continue;
-      const i = work.findIndex((s) => s !== null && !s.wear && BLOCKS.variant(s.state) === 0 && r.key[ch]!.includes(BLOCKS.type(s.state).key));
+      const i = work.findIndex((s) => s !== null && !s.wear && (BLOCKS.variant(s.state) === 0 || ['log','planks'].includes(BLOCKS.type(s.state).key)) && r.key[ch]!.includes(BLOCKS.type(s.state).key));
       if (i < 0) return null;
       const s = work[i]!;
       grid[y * size + x] = { state: s.state, count: 1 };

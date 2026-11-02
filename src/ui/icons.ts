@@ -1,9 +1,12 @@
+import { BLOCKS } from '../engine/blocks';
+import type { ItemStack } from '../game/inventory';
+import { artUrl } from './artAssets';
 import { TILE_NAMES, TILE_SIZE, itemTile, tilePixels } from '../render/tilePixels';
 
 let pixels: Uint8ClampedArray | null = null;
 const cache = new Map<number, string>();
 
-/** A data URL of the 16×16 picture shown for a state in slots: its front, side or own tile. */
+/** A data URL of the 32×32 picture shown for a state in slots: its front, side or own tile. */
 export function iconUrl(state: number): string {
   const hit = cache.get(state);
   if (hit) return hit;
@@ -22,4 +25,11 @@ export function iconUrl(state: number): string {
   const url = canvas.toDataURL();
   cache.set(state, url);
   return url;
+}
+
+export function stackIconUrl(s:ItemStack):string {
+  const t=BLOCKS.type(s.state);
+  if(s.upgrade&&t.tool?.kind==='pickaxe')return artUrl('future','ember_pickaxe');
+  if(s.upgrade&&t.armour?.slot===1)return artUrl('future','ember_chestplate');
+  return iconUrl(s.state);
 }

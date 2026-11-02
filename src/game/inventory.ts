@@ -5,6 +5,8 @@ export interface ItemStack {
   state: number;
   count: number;
   wear?: number;
+  /** Ember forge upgrade level, 0–3. */
+  upgrade?: number;
 }
 
 export const HOTBAR_SIZE = 9;
@@ -16,7 +18,7 @@ export function maxStack(state: number): number {
 
 /** Whether two stacks hold the same thing (and so can merge). Worn tools never merge. */
 export function sameKind(a: ItemStack, b: ItemStack): boolean {
-  return a.state === b.state && !a.wear && !b.wear && maxStack(a.state) > 1;
+  return a.state === b.state && (a.upgrade??0)===(b.upgrade??0) && !a.wear && !b.wear && maxStack(a.state) > 1;
 }
 
 /**
@@ -78,7 +80,7 @@ export class Inventory {
     for (let i = 0; i < this.slots.length && left > 0; i++) {
       if (this.slots[i]) continue;
       const move = Math.min(cap, left);
-      this.slots[i] = { state: stack.state, count: move, ...(stack.wear ? { wear: stack.wear } : {}) };
+      this.slots[i] = { ...stack, count: move };
       left -= move;
     }
     return left;
@@ -100,8 +102,8 @@ export class Inventory {
   }
 
   /** For saving: [stateName, count, wear] per slot, or null. */
-  save(): ([string, number, number] | null)[] {
-    return this.slots.map((s) => (s ? [BLOCKS.stateName(s.state), s.count, s.wear ?? 0] : null));
+  save(): ([string, number, number, number] | null)[] {
+    return this.slots.map((s) => (s ? [BLOCKS.stateName(s.state), s.count, s.wear ?? 0, s.upgrade ?? 0] : null));
   }
 
   /** Restores a saved inventory; anything unknown or malformed is dropped. */
@@ -114,7 +116,7 @@ export class Inventory {
       const count = Math.floor(Number(e[1]));
       if (state === null || !(count > 0)) return;
       const wear = Math.max(0, Math.floor(Number(e[2]) || 0));
-      this.slots[i] = { state, count: Math.min(count, maxStack(state)), ...(wear ? { wear } : {}) };
+      this.slots[i] = { state, count: Math.min(count, maxStack(state)), ...(wear ? { wear } : {}), ...(Number(e[3]) > 0 ? { upgrade: Math.min(3, Math.floor(Number(e[3]))) } : {}) };
     });
   }
 }

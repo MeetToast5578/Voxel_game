@@ -10,7 +10,11 @@ import type { Mode, Play } from '../game/play';
 import { BINDINGS, DEFAULT_KEYS, keyLabel, type Binding, type Settings } from '../storage/settings';
 import type { Difficulty } from '../config';
 import type { WorldMeta } from '../storage/store';
-import { iconUrl } from './icons';
+import { artUrl } from './artAssets';
+import { TRADE_OFFERS, upgradeCost } from '../game/workshops';
+import { WOOD_SPECIES } from '../engine/blocks';
+import './pixelAero.css';
+import { iconUrl, stackIconUrl } from './icons';
 
 /** A world to create: its seed, mode and difficulty. */
 export interface NewWorld {
@@ -52,18 +56,20 @@ export interface UiModel extends WorldsModel {
 }
 
 /** Placeable blocks and items in the creative palette. */
-const PALETTE = BLOCKS.types.filter((t) => t.layer !== 'none' && !['flowing_water', 'flowing_lava', 'lit_furnace', 'bedrock'].includes(t.key)).map((t) => t.id);
+const PALETTE = BLOCKS.types.filter((t) => t.layer !== 'none' && !['flowing_water', 'flowing_lava', 'lit_furnace', 'bedrock'].includes(t.key)).flatMap((t) => t.variantFaces ? Array.from({length:t.variants},(_,v)=>t.id+v).filter(s=>t.key!=='leaves'||(s-t.id)%2===0) : [t.id]);
 
 const TIERS = ['wooden', 'stone', 'iron', 'diamond'];
 
 /** A slot's tooltip: the item's name, then what it is good for and how worn it is. */
 export function tooltip(s: ItemStack): string {
   const t = BLOCKS.type(s.state);
-  const lines = [t.name];
+  const wood=t.variantFaces&&['log','leaves','planks'].includes(t.key)?WOOD_SPECIES[t.key==='leaves'?Math.floor(BLOCKS.variant(s.state)/2):BLOCKS.variant(s.state)]:null;
+  const lines = [wood?`${wood.replaceAll('_',' ')} ${t.name}`:t.name];
+  if(s.upgrade)lines.push(`Ember upgrade ${s.upgrade}/3 · faster, stronger and more durable`);
   if (t.food) lines.push(`Food: restores ${t.food} hunger`);
-  if (t.tool) lines.push(`${TIERS[t.tool.tier] ?? ''} ${t.tool.kind}, ${t.tool.durability - (s.wear ?? 0)} of ${t.tool.durability} uses left`);
+  if (t.tool) lines.push(`${TIERS[t.tool.tier] ?? ''} ${t.tool.kind}, ${Math.floor(t.tool.durability * (1+(s.upgrade??0)*.5)) - (s.wear ?? 0)} of ${Math.floor(t.tool.durability*(1+(s.upgrade??0)*.5))} uses left`);
   if (t.mineWith && t.needsTier !== undefined) lines.push(`Needs a ${TIERS[t.needsTier]} ${t.mineWith} or better`);
-  if (t.armour) lines.push(`Armour: stops ${t.armour.protection * 4}% of harm, ${t.armour.warmth} °C warmer, ${t.armour.durability - (s.wear ?? 0)} hits left`);
+  if (t.armour) lines.push(`Armour: stops ${(t.armour.protection+(s.upgrade??0)) * 4}% of harm, ${t.armour.warmth+(s.upgrade??0)} °C warmer, ${Math.floor(t.armour.durability*(1+(s.upgrade??0)*.5)) - (s.wear ?? 0)} hits left`);
   if (t.fuel) lines.push(`Fuel: burns ${t.fuel} s`);
   if (t.smeltsTo) lines.push(`Smelts into ${BLOCKS.type(BLOCKS.state(t.smeltsTo)).name}`);
   return lines.join('\n');
@@ -74,20 +80,21 @@ function Slot(props: { stack: ItemStack | null; onClick?: (right: boolean) => vo
   const t = s ? BLOCKS.type(s.state) : undefined;
   const tool = t?.tool ?? (t?.armour && { durability: t.armour.durability });
   return (
-    <div class={`slot${props.selected ? ' selected' : ''}${props.big ? ' big' : ''}${props.dim ? ' dim' : ''}`} title={props.title ?? (s ? tooltip(s) : '')} tabIndex={0}
+    <div class={`slot${props.selected ? ' selected' : ''}${props.big ? ' big' : ''}${props.dim ? ' dim' : ''}${s?.upgrade?' upgraded':''}`} role="button" aria-label={props.title ?? (s ? tooltip(s) : 'Empty slot')} title={props.title ?? (s ? tooltip(s) : '')} tabIndex={0}
+      onKeyDown={(e)=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();props.onClick?.(false);}}}
       onMouseDown={(e) => { e.preventDefault(); props.onClick?.(e.button === 2); }} onContextMenu={(e) => e.preventDefault()}>
-      {s && <img src={iconUrl(s.state)} draggable={false} />}
+      {s && <img src={stackIconUrl(s)} draggable={false} />}
       {s && s.count > 1 && <span class="count">{s.count}</span>}
-      {s && tool && s.wear ? <span class="wear" style={{ width: `${100 * (1 - s.wear / tool.durability)}%` }} /> : null}
+      {s && tool && s.wear ? <span class="wear" style={{ width: `${100 * (1 - s.wear / (tool.durability*(1+(s.upgrade??0)*.5)))}%` }} /> : null}
     </div>
   );
 }
 
 function Bar(props: { value: number; max: number; color: string; label: string }) {
   return (
-    <div class="bar" title={props.label}>
+    <div class="status-meter"><img class="ui-glyph" alt="" src={artUrl('ui',props.label==='Health'?'status_vitality':props.label==='Hunger'?'status_hunger':'status_breath')} /><div class="bar" title={props.label}>
       <div style={{ width: `${(100 * Math.max(0, props.value)) / props.max}%`, background: props.color }} />
-    </div>
+    </div></div>
   );
 }
 
@@ -126,6 +133,22 @@ function Grid({ slots, from, to, play, cols = 9 }: { slots: (ItemStack | null)[]
       ))}
     </div>
   );
+}
+
+function WorkshopScreen({play}:{play:Play}) {
+  const w=play.workshop;
+  const [text,setText]=useState(w?play.decorations.signs.get(w.key)??'':'');
+  if(!w)return null;
+  const title={trade:'Trading',forge:'Ember Forge',sign:'Edit sign',frame:'Item frame'}[w.kind];
+  return <div class="screen workshop">
+    <div class="workshop-head"><img alt="" src={artUrl('future',w.kind==='trade'?'map_trader':w.kind==='forge'?'ember_forge':w.kind==='sign'?'sign':'frame_empty')} /><div><h2>{title}</h2><p class="hint">{w.kind==='forge'?'Upgrade tools and armour: +20% digging speed, +50% durability per level; armour gains protection and warmth.':'Right click to interact · Esc closes'}</p></div></div>
+    {w.kind==='trade'&&<div class="trade-list">{TRADE_OFFERS.map((o,i)=><button onClick={()=>play.performTrade(i)}><img alt="" src={iconUrl(BLOCKS.state(o.cost[0]))}/>{o.cost[1]} {BLOCKS.byName(o.cost[0]).name} → <img alt="" src={iconUrl(BLOCKS.state(o.gives[0]))}/>{o.gives[1]} {BLOCKS.byName(o.gives[0]).name}</button>)}</div>}
+    {w.kind==='forge'&&<div class="equipment-list">{play.inventory.slots.map((s,i)=>s&&(BLOCKS.type(s.state).tool||BLOCKS.type(s.state).armour)&&<button title={tooltip(s)} disabled={(s.upgrade??0)>=3} onClick={()=>play.performForge(i)}><img alt="" src={stackIconUrl(s)}/>{BLOCKS.type(s.state).name}<span>Level {s.upgrade??0}/3</span><span>{upgradeCost(s)} ember + 2 iron</span></button>)}</div>}
+    {w.kind==='sign'&&<><label>Up to four lines, 24 characters per line<textarea aria-label="Sign text" maxLength={96} value={text} onInput={e=>setText(e.currentTarget.value)}/></label><button onClick={()=>{if(play.writeSign(text))play.closeScreen();}}>Save sign</button></>}
+    {w.kind==='frame'&&<><p class="help">Choose an inventory item to display. Replacing it returns the old item.</p><div class="equipment-list">{play.inventory.slots.map((s,i)=>s&&<button title={tooltip(s)} onClick={()=>play.frameItem(i)}><img alt="" src={stackIconUrl(s)}/>{BLOCKS.type(s.state).name}</button>)}</div><button onClick={()=>play.frameItem(null)}>Take displayed item</button></>}
+    {play.message&&<p role="status">{play.message}</p>}
+    <button onClick={()=>play.closeScreen()}>Close</button>
+  </div>;
 }
 
 function InventoryScreen({ play }: { play: Play }) {
@@ -436,7 +459,7 @@ function App({ m }: { m: UiModel }) {
   return (
     <>
       <Hud play={m.play} hideKey={m.settings.keys.hint} />
-      {m.play.screen !== 'none' && <InventoryScreen play={m.play} />}
+      {m.play.workshop ? <WorkshopScreen key={m.play.workshop.key} play={m.play}/> : m.play.screen !== 'none' && <InventoryScreen play={m.play} />}
       {m.dead ? <Death m={m} /> : m.ending ? <Ending m={m} /> : m.paused && m.play.screen === 'none' && <Menu m={m} />}
     </>
   );

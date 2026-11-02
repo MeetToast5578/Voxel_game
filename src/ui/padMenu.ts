@@ -27,7 +27,7 @@ export function nearestInDirection(from: Box, boxes: readonly Box[], dir: Dir): 
   return best;
 }
 
-const FOCUSABLE = 'button, input, select, summary, .slot';
+const FOCUSABLE = 'button, input, textarea, select, summary, .slot';
 const rect = (e: Element): Box => {
   const r = e.getBoundingClientRect();
   return { x: r.left, y: r.top, w: r.width, h: r.height };

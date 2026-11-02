@@ -155,7 +155,7 @@ describe('trees', () => {
         return out;
       };
       const edgeA = at(a, 15), edgeB = at(b, 0);
-      if (![...edgeA.values()].includes(leaves) || ![...edgeB.values()].includes(leaves)) continue;
+      if (![...edgeA.values()].some(s=>BLOCKS.typeIndex[s]===BLOCKS.typeIndex[leaves]) || ![...edgeB.values()].some(s=>BLOCKS.typeIndex[s]===BLOCKS.typeIndex[leaves])) continue;
       // The same anchors seen from both columns: rebuilding the left column gives the same cells.
       const again = new Generator(2).column(0, cz);
       expect(Array.from(again.features)).toEqual(Array.from(a.features));

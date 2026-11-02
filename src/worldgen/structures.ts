@@ -104,6 +104,7 @@ export function structureCells(seed: number, kind: StructureKind, x: number, z: 
     put(0, base, 0, S('campfire'));
     for (const [dx, dz] of [[2, 0], [-2, 0]] as const) for (let k = -1; k <= 1; k++) put(dx, base, dz + k, LOG);
     put(0, base, 2, S('chest', 3));
+    put(2,base,2,S('trading_post'));
     for (let dz = -1; dz <= 1; dz++) for (let dx = -1; dx <= 1; dx++) if (dx || dz) put(dx, base, dz, AIR);
   } else if (kind === 'mine') {
     // Two crossing tunnels, 3 wide and 3 high, with timber frames every 4 cells, torches, and sometimes a chest.

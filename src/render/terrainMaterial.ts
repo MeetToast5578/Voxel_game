@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { textureVariantSetup } from './textureVariants';
 import type { RenderLayer } from '../engine/blocks';
 
 const VERTEX = /* glsl */ `
@@ -18,6 +19,9 @@ out vec3 vColor;
 out vec2 vLight;
 out float vDepth;
 out vec2 vWorldXZ;
+out vec3 vWorldPosition;
+flat out float vVariationStart;
+flat out float vAnimationStart;
 
 const float SHADE[8] = float[8](0.6, 0.6, 1.0, 0.5, 0.8, 0.8, 0.85, 0.85);
 const float AO[4] = float[4](0.45, 0.65, 0.82, 1.0);
@@ -72,11 +76,14 @@ void main() {
   // Fog by horizontal distance, so looking down from high up does not fog the ground.
   vDepth = length(world.xz - cameraPosition.xz);
   vWorldXZ = world.xz;
+  vWorldPosition = world.xyz;
+  ${textureVariantSetup()}
   gl_Position = projectionMatrix * viewMatrix * world;
 }`;
 
 const FRAGMENT = /* glsl */ `
 precision highp float;
+precision highp int;
 precision highp sampler2DArray;
 uniform sampler2DArray tiles;
 uniform float daylight;
@@ -87,6 +94,9 @@ uniform float opacity;
 uniform float time;
 in vec2 vUv;
 in vec2 vWorldXZ;
+in vec3 vWorldPosition;
+flat in float vVariationStart;
+flat in float vAnimationStart;
 flat in float vTile;
 in vec3 vColor;
 in vec2 vLight;
@@ -95,7 +105,16 @@ out vec4 outColor;
 
 void main() {
   // fract() repeats the tile across merged quads; the gradients of the unwrapped UV keep mip selection smooth at seams.
-  vec4 tex = textureGrad(tiles, vec3(fract(vUv), vTile), dFdx(vUv), dFdy(vUv));
+  float tile = vTile;
+  if (vVariationStart >= 0.0) {
+    // Stable integer hash: no new block states, remeshes, or save data for decorative variants.
+    uvec3 cell = uvec3(ivec3(floor(vWorldPosition + vec3(0.001))));
+    uint hash = cell.x * 73856093u ^ cell.y * 19349663u ^ cell.z * 83492791u;
+    hash ^= hash >> 13u;
+    tile = vVariationStart + float(hash & 3u);
+  }
+  if (vAnimationStart >= 0.0) tile = vAnimationStart + mod(floor(time * 4.0), 8.0);
+  vec4 tex = textureGrad(tiles, vec3(fract(vUv), tile), dFdx(vUv), dFdy(vUv));
 #ifdef CUTOUT
   if (tex.a < 0.5) discard;
 #endif

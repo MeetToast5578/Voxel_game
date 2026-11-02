@@ -57,7 +57,7 @@ export class DropMeshes {
       tmpP.set(b.x, b.y + size / 2 + (b.onGround ? 0.08 + Math.sin(time * 2.5 + phase) * 0.06 : 0), b.z);
       tmpQ.setFromAxisAngle(UP, time + phase);
       this.mesh.setMatrixAt(n, tmpM.compose(tmpP, tmpQ, tmpS.set(size, size, size)));
-      this.tile.setX(n, tileIndex(itemTile(d.stack.state)));
+      this.tile.setX(n, tileIndex(itemTile(d.stack.state,d.stack.upgrade??0)));
       this.light.setX(n, lightAt(d));
       n++;
     }

@@ -1,6 +1,7 @@
 import * as THREE from 'three';
+import { artworkPixels } from './woodlandArt';
 
-const WOOD = new THREE.Color(0.55, 0.38, 0.22);
+const WOOD = new THREE.Color(1, 1, 1);
 
 /** The boat under a rider: a plank hull of five boxes (floor and four sides), shaded by the light where it floats. */
 export class BoatMesh {
@@ -8,6 +9,13 @@ export class BoatMesh {
   private readonly material = new THREE.MeshBasicMaterial({ color: WOOD });
 
   constructor(scene: THREE.Scene) {
+    const wood = artworkPixels('planks')!;
+    const pixels = new Uint8Array(wood.length);
+    for (let y = 0; y < 32; y++) pixels.set(wood.subarray(y * 128, (y + 1) * 128), (31 - y) * 128);
+    const texture = new THREE.DataTexture(pixels, 32, 32);
+    texture.magFilter = texture.minFilter = THREE.NearestFilter;
+    texture.needsUpdate = true;
+    this.material.map = texture;
     // Cells: 2.4 long, 1.4 wide, 0.6 deep; its floor sits just under the rider's feet.
     const parts: [number, number, number, number, number, number][] = [
       [2.4, 0.12, 1.4, 0, -0.3, 0], [2.4, 0.5, 0.12, 0, -0.05, 0.64], [2.4, 0.5, 0.12, 0, -0.05, -0.64],

@@ -220,3 +220,12 @@ describe('bone meal', () => {
     expect(sim.fertilise(2, 0, 2)).toBe(false);
   });
 });
+
+describe('species-specific leaves',()=>{
+  it('decays natural birch leaves after losing their log while keeping placed birch leaves',()=>{
+    const {world,setBlock,run}=setup();
+    setBlock(0,0,0,S('log',5));setBlock(1,0,0,S('leaves',10));setBlock(2,0,0,S('leaves',11));
+    setBlock(0,0,0,0);run(350);
+    expect(world.get(1,0,0)).toBe(0);expect(world.get(2,0,0)).toBe(S('leaves',11));
+  });
+});
