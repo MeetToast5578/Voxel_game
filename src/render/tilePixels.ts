@@ -45,6 +45,17 @@ export function tilePixels(): Uint8ClampedArray {
       cached!.set(pixels.subarray(y * TILE_SIZE * 4, (y + 1) * TILE_SIZE * 4),
         t * layer + (TILE_SIZE - 1 - y) * TILE_SIZE * 4);
     }
+    // Clear texels take the tile's average colour, so mipmaps blend cutout edges towards the art, not a black halo.
+    const sum = [0, 0, 0];
+    let count = 0;
+    for (let o = t * layer; o < (t + 1) * layer; o += 4) {
+      if (cached![o + 3]! < 128) continue;
+      for (let k = 0; k < 3; k++) sum[k] += cached![o + k]!;
+      count++;
+    }
+    for (let o = t * layer; count && o < (t + 1) * layer; o += 4) {
+      if (cached![o + 3]! < 128) for (let k = 0; k < 3; k++) cached![o + k] = sum[k]! / count;
+    }
   });
   return cached;
 }
