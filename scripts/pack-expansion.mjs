@@ -1,11 +1,13 @@
 // Reproducible mechanical export of generated atlas cells, plus runtime data and previews.
 import {chromium} from 'playwright';
 import {readFileSync,writeFileSync,mkdirSync,existsSync} from 'node:fs';
+import {dropStrays} from './art-clean.mjs';
 const root='assets/woodland-ember/expansion';
 const manifest=JSON.parse(readFileSync(`${root}/manifest.json`,'utf8'));
 const browser=await chromium.launch({executablePath:process.env.CHROMIUM_PATH||'/usr/bin/chromium',args:['--no-sandbox']});
 try{
  const page=await browser.newPage();
+ await page.addScriptTag({content:dropStrays.toString()});
  for(const [group,sheet] of Object.entries(manifest)){
   if(!existsSync(`${root}/${group}-source.png`))throw new Error(`Missing ${group} source`);
   const data=await page.evaluate(async ({sheet,group,image})=>{
@@ -50,6 +52,7 @@ try{
      p[j+3]=opaque?255:group==='ui'?p[j+3]:p[j+3]>=160?255:0;
      if(!p[j+3])p[j]=p[j+1]=p[j+2]=0;
     }
+    if(!opaque&&!repeat&&group!=='ui'&&group!=='effects')dropStrays(p,n); // Effects scatter droplets on purpose.
     if(repeat)for(let axis=0;axis<2;axis++)for(let t=0;t<n;t++){
      const a=axis===0?t*n*4:t*4,b=axis===0?(t*n+n-1)*4:((n-1)*n+t)*4;
      for(let k=0;k<4;k++){const v=Math.round((p[a+k]+p[b+k])/2);p[a+k]=p[b+k]=v;}
@@ -75,6 +78,8 @@ try{
   writeFileSync(`${root}/${group}-preview.png`,Buffer.from(data.preview,'base64'));
   console.log(`${group}: ${Object.keys(packed).length} tiles`);
  }
+ // The sheet's water and lava cells do not tile; they are repainted from periodic noise.
+ await import('./paint-fluids.mjs');
  const materials=JSON.parse(readFileSync(`${root}/materials.json`,'utf8'));
  const effects=JSON.parse(readFileSync(`${root}/effects.json`,'utf8'));
  const variations={...materials,...Object.fromEntries(Object.entries(effects).filter(([k])=>/^(water|lava)_/.test(k)))};
