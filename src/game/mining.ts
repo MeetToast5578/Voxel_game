@@ -1,4 +1,4 @@
-import { SAPLING_CHANCE, SEED_CHANCE } from '../config';
+import { MINE_SPEED, SAPLING_CHANCE, SEED_CHANCE } from '../config';
 import { BLOCKS, WOOD_SPECIES, SAPLING_SPECIES } from '../engine/blocks';
 import type { ItemStack } from './inventory';
 
@@ -20,7 +20,7 @@ export function breakSeconds(state: number, tool: ItemStack | null): number {
   const t = BLOCKS.type(state);
   const def = tool ? BLOCKS.type(tool.state).tool : undefined;
   const speed = def && def.kind === t.mineWith ? TIER_SPEED[def.tier]! : 1;
-  return (t.hardness / (speed * (1 + (tool?.upgrade ?? 0) * .2))) * (canHarvest(state, tool) ? 1 : WRONG_TOOL_SLOWDOWN);
+  return (t.hardness / (speed * MINE_SPEED * (1 + (tool?.upgrade ?? 0) * .2))) * (canHarvest(state, tool) ? 1 : WRONG_TOOL_SLOWDOWN);
 }
 
 /** What breaking `state` gives, given a random number in [0, 1) for chance drops. */
