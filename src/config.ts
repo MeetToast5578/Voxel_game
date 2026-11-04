@@ -85,8 +85,12 @@ export const JUMP_GRACE_S = 0.1;
 export const JUMP_BUFFER_S = 0.12;
 export const TERMINAL_SPEED_M_S = 50;
 /** How quickly velocity reaches the target speed, per second, on the ground and in the air. */
-export const GROUND_ACCEL = 20;
-export const AIR_ACCEL = 5;
+export const GROUND_ACCEL = 30;
+export const AIR_ACCEL = 12;
+/** Gravity is this much stronger while falling: a snappy arc instead of a floaty one. Jump height is unchanged. */
+export const FALL_GRAVITY_FACTOR = 1.4;
+/** Letting go of jump while rising keeps this share of the upward speed: tap for a hop, hold for a full jump. */
+export const JUMP_CUT = 0.45;
 /** Highest ledge the player walks up onto (and down from) without jumping. */
 export const STEP_HEIGHT_M = 0.6;
 /** Seconds the camera takes to catch up after a step. */
@@ -94,6 +98,8 @@ export const STEP_SMOOTH_S = 0.12;
 export const REACH_M = 6;
 /** Holding a mouse button repeats breaking or placing this often. */
 export const REPEAT_S = 0.25;
+/** All breaking is this many times faster than the block hardness alone gives. */
+export const MINE_SPEED = 1.6;
 export const MOUSE_SENSITIVITY = 0.0025;
 
 // ---- Swimming: buoyancy and quadratic drag ----
@@ -296,8 +302,8 @@ export const REGEN_PER_S = 0.25;
 export const REGEN_HUNGER = 18;
 /** Health lost per second while starving (hunger 0). */
 export const STARVE_PER_S = 0.25;
-/** Falls faster than this (m/s) on landing hurt, one point per m/s beyond it. */
-export const SAFE_FALL_SPEED_M_S = 10;
+/** Falls faster than this (m/s) on landing hurt, one point per m/s beyond it. About a 1.8 m drop at falling gravity. */
+export const SAFE_FALL_SPEED_M_S = 12;
 export const BREATH_S = 15;
 export const DROWN_PER_S = 2;
 export const LAVA_PER_S = 8;

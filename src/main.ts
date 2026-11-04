@@ -211,7 +211,7 @@ player.flying = usePosition ? params.get('fly') === '1' : saved.flying;
 let placed = Number.isFinite(player.body.y);
 if (!placed) player.body.y = toCells(60);
 const play = new Play(world, (x, y, z, s) => setBlock(x, y, z, s, true), {
-  sound: (name) => sounds.play(name),
+  sound: (name, volume) => sounds.play(name, volume),
   // Sleeping: only at night, and the night passes.
   sleep: () => {
     const night = env.clock.dayTime < 0.23 || env.clock.dayTime > 0.77;
@@ -314,7 +314,10 @@ function updateExposure(dt: number): void {
     heatC: heatAround(x, y, z), insulationC: play.warmth,
   });
 }
+/** The eye at the start of the latest tick: frames between ticks draw the camera part way from here, so motion is smooth at any refresh rate. */
+const prevEye = [0, 0, 0];
 function update(dt: number): void {
+  prevEye[0] = player.body.x; prevEye[1] = player.eyeY; prevEye[2] = player.body.z;
   env.tick(dt);
   if (!placed) {
     const ground = world.surfaceAt(Math.floor(player.body.x), Math.floor(player.body.z));
@@ -611,7 +614,7 @@ function updateHorizon(x: number, z: number): void {
 }
 
 const hurtFlash = document.querySelector<HTMLDivElement>('#hurt')!, burnGlow = document.querySelector<HTMLDivElement>('#burn')!;
-let bobPhase = 0;
+let bobPhase = 0, bobAmount = 0;
 /** The first-person hand: the held item's picture (or a fist), swinging with each break, place or hit. */
 const hand = document.querySelector<HTMLDivElement>('#hand')!, handImg = hand.querySelector('img')!;
 const interactionHint=document.createElement('div');interactionHint.id='interaction-hint';interactionHint.hidden=true;document.body.append(interactionHint);
@@ -660,7 +663,7 @@ const timedUpdate = (dt: number) => {
   update(dt);
   updateMs += performance.now() - t;
 };
-const loop = new FixedStepLoop(1 / 60, 0.25, timedUpdate, (_alpha, frameDt) => {
+const loop = new FixedStepLoop(1 / 60, 0.25, timedUpdate, (alpha, frameDt) => {
   const now = performance.now();
   input.poll(frameDt);
   if (!input.playing) padMenu.poll(now);
@@ -671,14 +674,17 @@ const loop = new FixedStepLoop(1 / 60, 0.25, timedUpdate, (_alpha, frameDt) => {
   streamer.update(player.body.x, player.body.y, player.body.z, now);
   // The view bobs with each step and widens a little while sprinting (unless turned off).
   const speed = Math.hypot(player.body.vx, player.body.vz), walking = player.body.onGround && !player.flying && speed > 0.5;
-  bobPhase = walking ? bobPhase + speed * frameDt * 1.1 : 0;
-  const bob = settings.viewBob ? Math.sin(bobPhase) * 0.06 : 0;
+  // The bob fades in and out with walking rather than snapping back when the player stops.
+  bobPhase += speed * frameDt * 1.1;
+  bobAmount += ((walking ? 1 : 0) - bobAmount) * Math.min(1, frameDt * 10);
+  const bob = settings.viewBob ? Math.sin(bobPhase) * 0.05 * bobAmount : 0;
   const wantFov = settings.fov * (settings.viewBob && input.sprint && walking ? 1.1 : 1);
   if (Math.abs(renderer.camera.fov - wantFov) > 0.05) {
     renderer.camera.fov += (wantFov - renderer.camera.fov) * Math.min(1, frameDt * 8);
     renderer.camera.updateProjectionMatrix();
   }
-  renderer.camera.position.set(player.body.x, player.eyeY + Math.abs(bob), player.body.z);
+  const lerp = (a: number, b: number) => a + (b - a) * alpha;
+  renderer.camera.position.set(lerp(prevEye[0]!, player.body.x), lerp(prevEye[1]!, player.eyeY) + Math.abs(bob), lerp(prevEye[2]!, player.body.z));
   // Taking damage: a red flash, a hurt sound and a kick of the view. Slow harm (burning, cold) flashes every half point.
   const health = play.survival.health, lost = lastHealth - health;
   if (lost >= 0.5 && play.mode === 'survival') {

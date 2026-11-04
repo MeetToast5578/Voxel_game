@@ -1,5 +1,5 @@
 import {
-  AIR_ACCEL, EYE_HEIGHT_M, FLY_FAST_FACTOR, FLY_SPEED_M_S, GRAVITY_M_S2, GROUND_ACCEL, JUMP_SPEED_M_S, JUMP_GRACE_S, JUMP_BUFFER_S, PLAYER_DENSITY,
+  AIR_ACCEL, EYE_HEIGHT_M, FALL_GRAVITY_FACTOR, JUMP_CUT, FLY_FAST_FACTOR, FLY_SPEED_M_S, GRAVITY_M_S2, GROUND_ACCEL, JUMP_SPEED_M_S, JUMP_GRACE_S, JUMP_BUFFER_S, PLAYER_DENSITY,
   PLAYER_HALF_WIDTH_M, PLAYER_HEIGHT_M, SPRINT_SPEED_M_S, STEP_HEIGHT_M, STEP_SMOOTH_S, SWIM_THRUST_M_S2, SWIM_UP_M_S2,
   TERMINAL_SPEED_M_S, WALK_SPEED_M_S, BOAT_SPEED_M_S, WATER_DENSITY, WATER_DRAG_PER_M, toCells, BLOCK_SIZE_M, CROUCH_FACTOR, CLIMB_SPEED_M_S, CURRENT_ACCEL_M_S2,
 } from '../config';
@@ -45,6 +45,8 @@ export class Player {
   private jumpGrace = 0;
   private jumpBuffer = 0;
   private jumpWasHeld = false;
+  /** Rising from a jump that releasing the key can still cut short. */
+  private jumping = false;
 
   constructor(x: number, y: number, z: number) {
     this.body = {
@@ -169,8 +171,15 @@ export class Player {
         if ((input.jump || this.jumpBuffer > 0) && this.jumpGrace > 0) {
           b.vy = toCells(JUMP_SPEED_M_S);
           this.jumpGrace = this.jumpBuffer = 0;
+          this.jumping = true;
         }
-        b.vy = Math.max(-toCells(TERMINAL_SPEED_M_S), b.vy - GRAVITY * dt);
+        // Releasing jump early cuts the rise short, once per jump.
+        if (this.jumping && !input.jump && b.vy > 0) {
+          b.vy *= JUMP_CUT;
+          this.jumping = false;
+        }
+        if (b.vy <= 0) this.jumping = false;
+        b.vy = Math.max(-toCells(TERMINAL_SPEED_M_S), b.vy - GRAVITY * (b.vy < 0 ? FALL_GRAVITY_FACTOR : 1) * dt);
       }
       this.move(dt, boxAt, toCells(STEP_HEIGHT_M));
     }

@@ -6,6 +6,9 @@ git history, and its `T-…` IDs still appear in `docs/history/` and older `HAND
 **Direction (owner, 2026-10-31):** turn the sandbox into a survival game with goals. The player needs progression past
 iron, real danger, places worth finding and an end point. Onboarding, sound and polish come with it.
 
+**New direction (owner, 2026-11-04):** a 3D Terraria: an adventure RPG with many creatures and their loot, gear tiers,
+bosses and NPC towns, not a Minecraft copy. Milestone 18 is the plan; feel comes first. Art requests: `docs/art-wishlist.md`.
+
 **How to use this list**
 - Milestones are in order. Inside a milestone, tasks are in order unless they say otherwise.
 - Each task ends with **Done when**. Every task also passes `npm run check`, `npm run benchmark -- --assert` and
@@ -395,3 +398,46 @@ Ideas for later. Pick, change or drop them; they become tasks once decided.
 - [x] **17.2 Silhouettes and connected animation.** Distinct species details; shared limb, tail and head pivots;
   actual body aspect ratios; separate hoof/paw texture regions; grounded resting rigs. One draw and 32-part budget.
 - [x] **17.3 Visual inspection.** Actual game rig gallery supports idle/walk/attack/sleep and multiple view angles.
+
+## 18. 3D Terraria (owner, 2026-11-04)
+
+The owner's verdict: the game feels janky and clunky to play, the menus look bad, and the creatures and their
+animations look wrong. Work in this order; each part ships on its own.
+
+### 18.A Feel (now)
+The owner named all four as bad:
+- [~] **18.A1 Movement and jumping.** First pass: quicker starts and stops, full air control, tap or hold for a short or
+  full jump, faster falls. Owner to play-test. Snappy starts and stops, a jump with a clear arc and no floatiness, smooth steps and
+  climbing. **Done when:** walking, jumping and stopping feel immediate in play, and physics tests pass.
+- [~] **18.A2 Camera and controls.** First pass: the camera is smoothed between physics ticks (judder above 60 Hz is gone),
+  raw mouse input, and a view bob that fades out instead of snapping. Owner to play-test. Smooth, responsive mouse look; restrained view bob; sensible default keys.
+- [~] **18.A3 Mining and building.** First pass: digging is 1.6× faster, and each swing chips the block with a tap
+  and fragments. Quick, readable digging with clear progress and feedback; fast, precise placing.
+- [ ] **18.A4 Frame rate and stutter.** A profile shows the main thread mostly idle; the cost is drawing. Needs the
+  owner's F3 numbers from a real machine. Find and remove hitches (meshing, lighting, garbage) on a normal laptop.
+
+### 18.B Menus and inventory
+- [ ] **18.B1 Redesign every screen**: inventory, chests, crafting, furnace, trading, pause and settings, with a clean,
+  readable layout. Not a reskin.
+- [ ] **18.B2 Terraria-style crafting (decided):** a list of everything craftable from what you carry; standing near a
+  station (workbench, anvil, forge, alchemy table) unlocks its recipes. Replaces the 3×3 grid.
+- [ ] **18.B3 Inventory flow:** always-visible hotbar, quick stacking and sorting, trash slot, accessory and armour
+  slots beside the inventory.
+
+### 18.C Creatures and loot
+- [ ] **18.C1 Shape-built creatures:** smooth primitives on a jointed skeleton (prototype exists), proper walk, run,
+  attack, hurt and death animations.
+- [ ] **18.C2 Natural rest:** only animals and village NPCs sleep, in real poses (curled, lying on the side); monsters
+  never sleep.
+- [ ] **18.C3 Bigger roster:** slimes (several colours and sizes, hopping), bats, skeletons, cave crawlers, biome
+  monsters, flying enemies; each with its own movement and attack.
+- [ ] **18.C4 Loot:** every creature drops something, with rarity; rare drops (accessories, weapon parts).
+
+### 18.D RPG systems
+- [ ] **18.D1 Combat (decided): swing arcs and knockback.** Weapons sweep a visible arc and hit everything in it;
+  damage numbers, knockback and brief invulnerability; bows and staffs fire projectiles.
+- [ ] **18.D2 Gear tiers and rarity:** the material ladder in the art wishlist; item rarity colours.
+- [ ] **18.D3 Accessories:** a row of accessory slots with movement and utility effects.
+- [ ] **18.D4 Bosses:** summoned or found, with arenas and unique drops.
+- [ ] **18.D5 NPC towns:** villagers who move into suitable houses, sell goods and sleep at night.
+
