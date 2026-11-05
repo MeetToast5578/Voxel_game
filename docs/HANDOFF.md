@@ -1,6 +1,8 @@
 # Handoff: Voxel Game (MeetToast5578/Voxel_game)
 
-Latest work is the 0.6.8 visual artifact and menu rework on `codex/fluid-seams-menu`; see the dated entries at the end.
+Latest work: 0.6.8 visual/menu rework and water/lava seam fixes, merged into `main` via
+[PR #70](https://github.com/MeetToast5578/Voxel_game/pull/70) at `47456f5` on 2026-11-05.
+See the dated entries at the end for implementation, validation and remaining work.
 
 ## Current state (2026-10-31, `main` at 463450a)
 
@@ -1318,9 +1320,24 @@ with no browser errors or chunk failures. The production river close-up, `screen
 visually checked and has none of the reported exposed brown cross-river lines. This remains part of the local,
 unpushed 0.6.8 work on `codex/gameplay-qol`.
 
-## 2026-11-05 — submit 0.6.8 for GitHub review
+## 2026-11-05 — 0.6.8 pushed and merged into main
 
-PR #69 is merged into main at `a77b824`. Prepared the completed menu/fluid batch on the fresh branch
-`codex/fluid-seams-menu`, based directly on that main commit. Includes separated fluid masters/frames, renderer and
-mesher corrections, menu/inventory/workshop presentation, regression fixtures and the visual audit. The validation
-results in the preceding entry apply unchanged; this submission adds no runtime behavior beyond that tested work.
+Pushed commit [`826ebff`](https://github.com/MeetToast5578/Voxel_game/commit/826ebff19596966b1cdd11035e1d9128ad50b373)
+on `codex/fluid-seams-menu`, based on main after PR #69 (`a77b824`). Opened
+[PR #70: Fix fluid gaps and rebuild game menus](https://github.com/MeetToast5578/Voxel_game/pull/70).
+GitHub confirms it merged into `main` at `47456f5cf2148ce4fb4da8b54adff2d46e66f574` on 2026-11-05.
+This supersedes the earlier entries describing the 0.6.8 work as local/unpushed.
+
+The merged batch includes separated water/lava masters and frames, moving seamless animation borders, corrected
+water transparency/immersion, closed fluid joins at differing heights and chunk borders, and the title/pause,
+inventory, recipe and workshop interface rework. Grass remains vegetation on all six faces.
+
+Validation before push: 247 tests in 38 files, typecheck/build, 396 rendered gallery cases, 32 additional fluid gap
+views with a deliberately broken comparison, 672 responsive layouts, inventory/workshop transactions, benchmark
+and production world/save smoke all passed. The corrected river close-up is `screenshots/river-fluid-seams.png`;
+captures are ignored by Git and can be regenerated with the review/smoke scripts.
+
+Next visual work: coarse distant-terrain triangles at short view distances; direction-aware flowing/falling fluid
+art and shore foam; mob head sides/back, hands and facial states; beacon states, held-item actions and authored
+illustrations. Full findings: `docs/visual-artifact-review.md`; production backlog: `docs/texture-asset-audit.md` and
+milestone 19 in `docs/tasks.md`. No further changes have been made to gameplay or assets in this handoff update.
