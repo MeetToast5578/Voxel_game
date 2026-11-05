@@ -1,0 +1,57 @@
+<!doctype html><html><head><meta charset="UTF-8"><link rel="icon" href="data:,"><style>body{margin:20px;background:#102b33;color:#e6eadc;font:15px system-ui}h1{font-size:26px}#gpu{display:none}.grid{display:grid;grid-template-columns:repeat(4,256px);gap:14px}.card{background:#193b43;padding:8px}.card img{display:block;width:240px;height:180px;image-rendering:pixelated}.card small{display:block;color:#b9cfca}body.faces .grid{grid-template-columns:repeat(7,146px)}body.faces .card img{width:130px;height:110px}</style></head><body><h1>Woodland &amp; Ember · core materials</h1><p id="subtitle">Actual game mesher, texture array, variation selector and terrain shader</p><canvas id="gpu"></canvas><div class="grid"></div><script type="module">
+import * as THREE from 'three';import {Renderer} from '/src/render/renderer.ts';import {BLOCKS,WOOD_SPECIES} from '/src/engine/blocks.ts';import {buildMesh,PAD_VOLUME,padIndex} from '/src/engine/mesher.ts';import {chunkKey} from '/src/core/coords.ts';import {iconUrl} from '/src/ui/icons.ts';
+const view=new URLSearchParams(location.search).get('view')||'blocks';document.body.classList.add(view);
+const game=new Renderer(document.querySelector('#gpu'),1,128),renderer=game.renderer;renderer.setPixelRatio(1);renderer.setSize(240,180,false);game.camera.aspect=4/3;game.camera.fov=35;game.camera.updateProjectionMatrix();
+for(const child of [...game.scene.children])game.scene.remove(child);game.scene.background=new THREE.Color('#193b43');game.uniforms.fogNear.value=1e4;game.uniforms.fogFar.value=2e4;
+const blocks=['stone','dirt','grass','sand','gravel','cobblestone','brick'],cases=[],key=chunkKey(0,0,0);
+const directions={front:[0,0,1],back:[0,0,-1],left:[-1,0,0],right:[1,0,0],top:[0,1,0],bottom:[0,-1,0],corner:[1,.8,1.4]};
+document.querySelector('h1').textContent='Woodland & Ember · '+view;
+if(view==='rocks')for(const block of ['farmland','clay','snow','granite','diorite','andesite','sandstone','limestone','slate','basalt','deepslate','obsidian','bedrock','glowstone','ice','glass'])cases.push({block,v:0,angle:'corner'});
+else if(view==='ores')for(const block of ['coal_ore','iron_ore','gold_ore','diamond_ore','lapis_ore','ember_ore','redstone_ore','emerald_ore'])cases.push({block,v:0,angle:'corner'});
+else if(view==='trees')for(let v=0;v<WOOD_SPECIES.length;v++){cases.push({block:'log',v,angle:'corner'});if(v<14){cases.push({block:'leaves',v:v*2,angle:'corner'});cases.push({block:'planks',v,angle:'corner'});}}
+else if(view==='stations')for(const block of ['chest','ancient_chest','crafting_table','furnace','lit_furnace','trading_post','ember_forge','door','bed','ladder','torch','lantern','campfire','beacon','sign','item_frame']){
+ const t=BLOCKS.byName(block),count=block==='door'?8:block==='bed'||t.front?4:1;for(let v=0;v<count;v++)cases.push({block,v,angle:'corner'});
+}
+else if(view==='plants'){
+ for(const block of ['tall_grass','fern','poppy','dandelion','brown_mushroom','red_mushroom','reed','lily_pad','moss','leaf_litter'])cases.push({block,v:0,angle:'corner'});
+ for(const block of ['wheat','carrots','potatoes'])for(let v=0;v<4;v++)cases.push({block,v,angle:'corner'});
+ for(let v=0;v<8;v++)cases.push({block:'sapling',v,angle:'corner'});
+}
+else if(view==='items')for(const t of BLOCKS.types.filter(t=>t.item||['wheat','carrots','potatoes','torch','lantern'].includes(t.key)))cases.push({block:t.key,v:0,angle:'icon',icon:true});
+else if(view==='animations')for(const [block,fps]of [['water',4],['lava',4],['lit_furnace',8],['ember_forge',6],['torch',8],['lantern',6]])for(let f=0;f<8;f++)cases.push({block,v:0,angle:'corner',time:(f+.1)/fps,frame:f});
+else if(view==='faces')for(const angle of ['front','back','left','right','top','bottom'])for(const block of blocks)cases.push({block,v:0,angle});
+else if(view==='shapes'){
+ for(const t of BLOCKS.types.filter(t=>t.shape==='slab'))for(const v of [0,1])cases.push({block:t.key,v,angle:'corner'});
+ for(const t of BLOCKS.types.filter(t=>t.key.endsWith('_stairs')))for(let v=0;v<4;v++)cases.push({block:t.key,v,angle:'corner'});
+}else for(const block of blocks)cases.push({block,v:0,angle:'corner',field:view==='repeats'});
+function mesh(block,v=0,field=false){
+ const states=new Uint16Array(PAD_VOLUME),s=BLOCKS.state(block,v);
+ if(field)for(let z=4;z<8;z++)for(let x=4;x<8;x++)states[padIndex(x,4,z)]=s;
+ else if(block==='door')for(let y=4;y<8;y++)states[padIndex(5,y,5)]=s;
+ else if(block==='bed'){const [dx,dz]=[[1,0],[-1,0],[0,1],[0,-1]][v];states[padIndex(5,4,5)]=s;states[padIndex(5+dx,4,5+dz)]=BLOCKS.state('bed',v+4);}
+ else states[padIndex(5,4,5)]=s;
+ const out=buildMesh({states,light:new Uint8Array(PAD_VOLUME).fill(0xf0),climate:new Uint8Array(256).fill(0x88)});game.chunks.set(key,0,0,0,out);
+ return out.reduce((n,w)=>n+w.length/8,0);
+}
+const stats=[];
+for(const c of cases){
+ if(c.icon){const card=document.createElement('div');card.className='card';card.innerHTML='<b>'+c.block+'</b><small>Actual inventory icon · 32×32</small>';const img=new Image();img.src=iconUrl(BLOCKS.state(c.block));img.style.objectFit='contain';img.style.padding='32px';img.style.boxSizing='border-box';card.append(img);document.querySelector('.grid').append(card);stats.push({...c,quads:0});continue;}
+ const quads=mesh(c.block,c.v,c.field),center=new THREE.Vector3(c.field?6:5.5,c.block.endsWith('_slab')?(c.v?4.75:4.25):4.5,c.field?6:5.5);
+ if(c.block==='door')center.y=6;if(c.block==='bed'){const [dx,dz]=[[1,0],[-1,0],[0,1],[0,-1]][c.v];center.x=5.5+dx*.5;center.z=5.5+dz*.5;}
+ const d=new THREE.Vector3(...directions[c.angle]).normalize(),distance=c.field?8:c.block==='door'?8:c.block==='bed'?4.5:3.5;
+ if(view==='stations'&&BLOCKS.byName(c.block).front)d.set(...directions[['right','left','front','back'][c.v]]).add(new THREE.Vector3(.2,.5,.2)).normalize();
+ game.camera.up.set(0,1,0);if(c.angle==='top')game.camera.up.set(0,0,-1);if(c.angle==='bottom')game.camera.up.set(0,0,1);
+ game.camera.position.copy(center).addScaledVector(d,distance);game.camera.lookAt(center);game.render(c.time||0);
+ const card=document.createElement('div');card.className='card';card.innerHTML='<b>'+c.block+(c.v?' #'+c.v:'')+'</b><small>'+c.angle+(c.frame!==undefined?' · frame '+c.frame:'')+(c.field?' · 4×4 joined field':'')+'</small>';const img=new Image();img.src=renderer.domElement.toDataURL();card.append(img);document.querySelector('.grid').append(card);stats.push({...c,quads,render:img.src});
+}
+// Actual GPU regression: vegetation on every face, including lower sides and cube/slab undersides.
+const target=new THREE.WebGLRenderTarget(128,128),buffer=new Uint8Array(128*128*4),ortho=new THREE.OrthographicCamera(-.6,.6,.6,-.6,.1,20),probes=[];
+for(const [block,v]of [['grass',0],['grass_slab',0],['grass_slab',1]])for(const angle of ['front','back','left','right','top','bottom']){
+ mesh(block,v);const slab=block==='grass_slab',center=new THREE.Vector3(5.5,slab?(v?4.75:4.25):4.5,5.5),d=new THREE.Vector3(...directions[angle]);
+ ortho.up.set(0,1,0);if(angle==='top')ortho.up.set(0,0,-1);if(angle==='bottom')ortho.up.set(0,0,1);ortho.position.copy(center).addScaledVector(d,5);ortho.lookAt(center);game.uniforms.time.value=0;
+ renderer.setRenderTarget(target);renderer.render(game.scene,ortho);renderer.readRenderTargetPixels(target,0,0,128,128,buffer);
+ const samples=[];for(const dx of [-.3,0,.3])for(const dy of [-.3,0,.3]){const x=Math.round(64+dx/1.2*128),y=Math.round(64+dy*(slab&&angle!=='top'&&angle!=='bottom'?.5:1)/1.2*128),at=(y*128+x)*4;samples.push(Array.from(buffer.subarray(at,at+3)));}
+ probes.push({shape:block+'#'+v,angle,samples,green:samples.filter(p=>p[1]>p[0]&&p[1]>p[2]).length});
+}
+renderer.setRenderTarget(null);await Promise.all([...document.images].map(i=>i.decode()));window.coreGallery={view,cases:stats,probes};window.galleryReady=true;
+</script></body></html>

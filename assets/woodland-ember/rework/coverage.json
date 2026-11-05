@@ -1,0 +1,1775 @@
+{
+  "runtimeLayers": 344,
+  "reworkedLayers": 332,
+  "preservedLayers": [
+    "crack_0",
+    "crack_1",
+    "crack_2",
+    "crack_3",
+    "crack_4",
+    "crack_5",
+    "crack_6",
+    "crack_7",
+    "crack_8",
+    "crack_9",
+    "ember_pickaxe",
+    "ember_chestplate"
+  ],
+  "expandedPack": {
+    "sourceImages": 107,
+    "baseTiles": 213,
+    "derivedExports": 83
+  },
+  "types": [
+    {
+      "key": "stone",
+      "states": 1,
+      "item": false,
+      "shape": "cube",
+      "tiles": [
+        "stone"
+      ],
+      "reworked": true
+    },
+    {
+      "key": "dirt",
+      "states": 1,
+      "item": false,
+      "shape": "cube",
+      "tiles": [
+        "dirt"
+      ],
+      "reworked": true
+    },
+    {
+      "key": "farmland",
+      "states": 1,
+      "item": false,
+      "shape": "cube",
+      "tiles": [
+        "farmland",
+        "dirt"
+      ],
+      "reworked": true
+    },
+    {
+      "key": "grass",
+      "states": 1,
+      "item": false,
+      "shape": "cube",
+      "tiles": [
+        "grass_top",
+        "grass_side"
+      ],
+      "reworked": true
+    },
+    {
+      "key": "sand",
+      "states": 1,
+      "item": false,
+      "shape": "cube",
+      "tiles": [
+        "sand"
+      ],
+      "reworked": true
+    },
+    {
+      "key": "gravel",
+      "states": 1,
+      "item": false,
+      "shape": "cube",
+      "tiles": [
+        "gravel"
+      ],
+      "reworked": true
+    },
+    {
+      "key": "clay",
+      "states": 1,
+      "item": false,
+      "shape": "cube",
+      "tiles": [
+        "clay"
+      ],
+      "reworked": true
+    },
+    {
+      "key": "water",
+      "states": 1,
+      "item": false,
+      "shape": "cube",
+      "tiles": [
+        "water"
+      ],
+      "reworked": true
+    },
+    {
+      "key": "flowing_water",
+      "states": 16,
+      "item": false,
+      "shape": "cube",
+      "tiles": [
+        "water"
+      ],
+      "reworked": true
+    },
+    {
+      "key": "lava",
+      "states": 1,
+      "item": false,
+      "shape": "cube",
+      "tiles": [
+        "lava"
+      ],
+      "reworked": true
+    },
+    {
+      "key": "flowing_lava",
+      "states": 16,
+      "item": false,
+      "shape": "cube",
+      "tiles": [
+        "lava"
+      ],
+      "reworked": true
+    },
+    {
+      "key": "ice",
+      "states": 1,
+      "item": false,
+      "shape": "cube",
+      "tiles": [
+        "ice"
+      ],
+      "reworked": true
+    },
+    {
+      "key": "log",
+      "states": 15,
+      "item": false,
+      "shape": "cube",
+      "tiles": [
+        "log_top",
+        "log_side",
+        "oak_end",
+        "oak_bark",
+        "maple_end",
+        "maple_bark",
+        "spruce_end",
+        "spruce_bark",
+        "fir_end",
+        "fir_bark",
+        "larch_end",
+        "larch_bark",
+        "birch_end",
+        "birch_bark",
+        "pine_end",
+        "pine_bark",
+        "jungle_giant_end",
+        "jungle_giant_bark",
+        "palm_end",
+        "palm_bark",
+        "baobab_end",
+        "baobab_bark",
+        "acacia_end",
+        "acacia_bark",
+        "willow_end",
+        "willow_bark",
+        "mangrove_end",
+        "mangrove_bark",
+        "bush_end",
+        "bush_bark",
+        "dead_snag_end",
+        "dead_snag_bark"
+      ],
+      "reworked": true
+    },
+    {
+      "key": "leaves",
+      "states": 28,
+      "item": false,
+      "shape": "cube",
+      "tiles": [
+        "leaves",
+        "oak_leaves",
+        "maple_leaves",
+        "spruce_leaves",
+        "fir_leaves",
+        "larch_leaves",
+        "birch_leaves",
+        "pine_leaves",
+        "jungle_giant_leaves",
+        "palm_leaves",
+        "baobab_leaves",
+        "acacia_leaves",
+        "willow_leaves",
+        "mangrove_leaves",
+        "bush_leaves"
+      ],
+      "reworked": true
+    },
+    {
+      "key": "planks",
+      "states": 14,
+      "item": false,
+      "shape": "cube",
+      "tiles": [
+        "planks",
+        "oak_planks",
+        "maple_planks",
+        "spruce_planks",
+        "fir_planks",
+        "larch_planks",
+        "birch_planks",
+        "pine_planks",
+        "jungle_giant_planks",
+        "palm_planks",
+        "baobab_planks",
+        "acacia_planks",
+        "willow_planks",
+        "mangrove_planks",
+        "bush_planks"
+      ],
+      "reworked": true
+    },
+    {
+      "key": "glass",
+      "states": 1,
+      "item": false,
+      "shape": "cube",
+      "tiles": [
+        "glass"
+      ],
+      "reworked": true
+    },
+    {
+      "key": "bedrock",
+      "states": 1,
+      "item": false,
+      "shape": "cube",
+      "tiles": [
+        "bedrock"
+      ],
+      "reworked": true
+    },
+    {
+      "key": "cobblestone",
+      "states": 1,
+      "item": false,
+      "shape": "cube",
+      "tiles": [
+        "cobblestone"
+      ],
+      "reworked": true
+    },
+    {
+      "key": "brick",
+      "states": 1,
+      "item": false,
+      "shape": "cube",
+      "tiles": [
+        "brick"
+      ],
+      "reworked": true
+    },
+    {
+      "key": "glowstone",
+      "states": 1,
+      "item": false,
+      "shape": "cube",
+      "tiles": [
+        "glowstone"
+      ],
+      "reworked": true
+    },
+    {
+      "key": "granite",
+      "states": 1,
+      "item": false,
+      "shape": "cube",
+      "tiles": [
+        "granite"
+      ],
+      "reworked": true
+    },
+    {
+      "key": "diorite",
+      "states": 1,
+      "item": false,
+      "shape": "cube",
+      "tiles": [
+        "diorite"
+      ],
+      "reworked": true
+    },
+    {
+      "key": "andesite",
+      "states": 1,
+      "item": false,
+      "shape": "cube",
+      "tiles": [
+        "andesite"
+      ],
+      "reworked": true
+    },
+    {
+      "key": "sandstone",
+      "states": 1,
+      "item": false,
+      "shape": "cube",
+      "tiles": [
+        "sandstone"
+      ],
+      "reworked": true
+    },
+    {
+      "key": "limestone",
+      "states": 1,
+      "item": false,
+      "shape": "cube",
+      "tiles": [
+        "limestone"
+      ],
+      "reworked": true
+    },
+    {
+      "key": "slate",
+      "states": 1,
+      "item": false,
+      "shape": "cube",
+      "tiles": [
+        "slate"
+      ],
+      "reworked": true
+    },
+    {
+      "key": "basalt",
+      "states": 1,
+      "item": false,
+      "shape": "cube",
+      "tiles": [
+        "basalt"
+      ],
+      "reworked": true
+    },
+    {
+      "key": "deepslate",
+      "states": 1,
+      "item": false,
+      "shape": "cube",
+      "tiles": [
+        "deepslate"
+      ],
+      "reworked": true
+    },
+    {
+      "key": "obsidian",
+      "states": 1,
+      "item": false,
+      "shape": "cube",
+      "tiles": [
+        "obsidian"
+      ],
+      "reworked": true
+    },
+    {
+      "key": "coal_ore",
+      "states": 1,
+      "item": false,
+      "shape": "cube",
+      "tiles": [
+        "coal_ore"
+      ],
+      "reworked": true
+    },
+    {
+      "key": "iron_ore",
+      "states": 1,
+      "item": false,
+      "shape": "cube",
+      "tiles": [
+        "iron_ore"
+      ],
+      "reworked": true
+    },
+    {
+      "key": "gold_ore",
+      "states": 1,
+      "item": false,
+      "shape": "cube",
+      "tiles": [
+        "gold_ore"
+      ],
+      "reworked": true
+    },
+    {
+      "key": "redstone_ore",
+      "states": 1,
+      "item": false,
+      "shape": "cube",
+      "tiles": [
+        "redstone_ore"
+      ],
+      "reworked": true
+    },
+    {
+      "key": "diamond_ore",
+      "states": 1,
+      "item": false,
+      "shape": "cube",
+      "tiles": [
+        "diamond_ore"
+      ],
+      "reworked": true
+    },
+    {
+      "key": "emerald_ore",
+      "states": 1,
+      "item": false,
+      "shape": "cube",
+      "tiles": [
+        "emerald_ore"
+      ],
+      "reworked": true
+    },
+    {
+      "key": "lapis_ore",
+      "states": 1,
+      "item": false,
+      "shape": "cube",
+      "tiles": [
+        "lapis_ore"
+      ],
+      "reworked": true
+    },
+    {
+      "key": "ember_ore",
+      "states": 1,
+      "item": false,
+      "shape": "cube",
+      "tiles": [
+        "ember_ore"
+      ],
+      "reworked": true
+    },
+    {
+      "key": "cactus",
+      "states": 1,
+      "item": false,
+      "shape": "cube",
+      "tiles": [
+        "saguaro_top",
+        "saguaro_side"
+      ],
+      "reworked": true
+    },
+    {
+      "key": "tall_grass",
+      "states": 1,
+      "item": false,
+      "shape": "cross",
+      "tiles": [
+        "tall_grass"
+      ],
+      "reworked": true
+    },
+    {
+      "key": "fern",
+      "states": 1,
+      "item": false,
+      "shape": "cross",
+      "tiles": [
+        "fern"
+      ],
+      "reworked": true
+    },
+    {
+      "key": "poppy",
+      "states": 1,
+      "item": false,
+      "shape": "cross",
+      "tiles": [
+        "poppy"
+      ],
+      "reworked": true
+    },
+    {
+      "key": "dandelion",
+      "states": 1,
+      "item": false,
+      "shape": "cross",
+      "tiles": [
+        "dandelion"
+      ],
+      "reworked": true
+    },
+    {
+      "key": "brown_mushroom",
+      "states": 1,
+      "item": false,
+      "shape": "cross",
+      "tiles": [
+        "brown_mushroom"
+      ],
+      "reworked": true
+    },
+    {
+      "key": "red_mushroom",
+      "states": 1,
+      "item": false,
+      "shape": "cross",
+      "tiles": [
+        "red_mushroom"
+      ],
+      "reworked": true
+    },
+    {
+      "key": "reed",
+      "states": 1,
+      "item": false,
+      "shape": "cross",
+      "tiles": [
+        "reed"
+      ],
+      "reworked": true
+    },
+    {
+      "key": "lily_pad",
+      "states": 1,
+      "item": false,
+      "shape": "layer",
+      "tiles": [
+        "lily_pad"
+      ],
+      "reworked": true
+    },
+    {
+      "key": "moss",
+      "states": 1,
+      "item": false,
+      "shape": "layer",
+      "tiles": [
+        "moss"
+      ],
+      "reworked": true
+    },
+    {
+      "key": "leaf_litter",
+      "states": 1,
+      "item": false,
+      "shape": "layer",
+      "tiles": [
+        "leaf_litter"
+      ],
+      "reworked": true
+    },
+    {
+      "key": "snow",
+      "states": 8,
+      "item": false,
+      "shape": "layer",
+      "tiles": [
+        "snow"
+      ],
+      "reworked": true
+    },
+    {
+      "key": "stone_slab",
+      "states": 2,
+      "item": false,
+      "shape": "slab",
+      "tiles": [
+        "stone"
+      ],
+      "reworked": true
+    },
+    {
+      "key": "dirt_slab",
+      "states": 2,
+      "item": false,
+      "shape": "slab",
+      "tiles": [
+        "dirt"
+      ],
+      "reworked": true
+    },
+    {
+      "key": "farmland_slab",
+      "states": 2,
+      "item": false,
+      "shape": "slab",
+      "tiles": [
+        "farmland",
+        "dirt"
+      ],
+      "reworked": true
+    },
+    {
+      "key": "grass_slab",
+      "states": 2,
+      "item": false,
+      "shape": "slab",
+      "tiles": [
+        "grass_top",
+        "grass_side"
+      ],
+      "reworked": true
+    },
+    {
+      "key": "clay_slab",
+      "states": 2,
+      "item": false,
+      "shape": "slab",
+      "tiles": [
+        "clay"
+      ],
+      "reworked": true
+    },
+    {
+      "key": "log_slab",
+      "states": 2,
+      "item": false,
+      "shape": "slab",
+      "tiles": [
+        "log_top",
+        "log_side"
+      ],
+      "reworked": true
+    },
+    {
+      "key": "planks_slab",
+      "states": 2,
+      "item": false,
+      "shape": "slab",
+      "tiles": [
+        "planks"
+      ],
+      "reworked": true
+    },
+    {
+      "key": "cobblestone_slab",
+      "states": 2,
+      "item": false,
+      "shape": "slab",
+      "tiles": [
+        "cobblestone"
+      ],
+      "reworked": true
+    },
+    {
+      "key": "brick_slab",
+      "states": 2,
+      "item": false,
+      "shape": "slab",
+      "tiles": [
+        "brick"
+      ],
+      "reworked": true
+    },
+    {
+      "key": "granite_slab",
+      "states": 2,
+      "item": false,
+      "shape": "slab",
+      "tiles": [
+        "granite"
+      ],
+      "reworked": true
+    },
+    {
+      "key": "diorite_slab",
+      "states": 2,
+      "item": false,
+      "shape": "slab",
+      "tiles": [
+        "diorite"
+      ],
+      "reworked": true
+    },
+    {
+      "key": "andesite_slab",
+      "states": 2,
+      "item": false,
+      "shape": "slab",
+      "tiles": [
+        "andesite"
+      ],
+      "reworked": true
+    },
+    {
+      "key": "sandstone_slab",
+      "states": 2,
+      "item": false,
+      "shape": "slab",
+      "tiles": [
+        "sandstone"
+      ],
+      "reworked": true
+    },
+    {
+      "key": "limestone_slab",
+      "states": 2,
+      "item": false,
+      "shape": "slab",
+      "tiles": [
+        "limestone"
+      ],
+      "reworked": true
+    },
+    {
+      "key": "slate_slab",
+      "states": 2,
+      "item": false,
+      "shape": "slab",
+      "tiles": [
+        "slate"
+      ],
+      "reworked": true
+    },
+    {
+      "key": "basalt_slab",
+      "states": 2,
+      "item": false,
+      "shape": "slab",
+      "tiles": [
+        "basalt"
+      ],
+      "reworked": true
+    },
+    {
+      "key": "deepslate_slab",
+      "states": 2,
+      "item": false,
+      "shape": "slab",
+      "tiles": [
+        "deepslate"
+      ],
+      "reworked": true
+    },
+    {
+      "key": "obsidian_slab",
+      "states": 2,
+      "item": false,
+      "shape": "slab",
+      "tiles": [
+        "obsidian"
+      ],
+      "reworked": true
+    },
+    {
+      "key": "coal_ore_slab",
+      "states": 2,
+      "item": false,
+      "shape": "slab",
+      "tiles": [
+        "coal_ore"
+      ],
+      "reworked": true
+    },
+    {
+      "key": "iron_ore_slab",
+      "states": 2,
+      "item": false,
+      "shape": "slab",
+      "tiles": [
+        "iron_ore"
+      ],
+      "reworked": true
+    },
+    {
+      "key": "gold_ore_slab",
+      "states": 2,
+      "item": false,
+      "shape": "slab",
+      "tiles": [
+        "gold_ore"
+      ],
+      "reworked": true
+    },
+    {
+      "key": "redstone_ore_slab",
+      "states": 2,
+      "item": false,
+      "shape": "slab",
+      "tiles": [
+        "redstone_ore"
+      ],
+      "reworked": true
+    },
+    {
+      "key": "diamond_ore_slab",
+      "states": 2,
+      "item": false,
+      "shape": "slab",
+      "tiles": [
+        "diamond_ore"
+      ],
+      "reworked": true
+    },
+    {
+      "key": "emerald_ore_slab",
+      "states": 2,
+      "item": false,
+      "shape": "slab",
+      "tiles": [
+        "emerald_ore"
+      ],
+      "reworked": true
+    },
+    {
+      "key": "lapis_ore_slab",
+      "states": 2,
+      "item": false,
+      "shape": "slab",
+      "tiles": [
+        "lapis_ore"
+      ],
+      "reworked": true
+    },
+    {
+      "key": "cactus_slab",
+      "states": 2,
+      "item": false,
+      "shape": "slab",
+      "tiles": [
+        "saguaro_top",
+        "saguaro_side"
+      ],
+      "reworked": true
+    },
+    {
+      "key": "snow_slab",
+      "states": 2,
+      "item": false,
+      "shape": "slab",
+      "tiles": [
+        "snow"
+      ],
+      "reworked": true
+    },
+    {
+      "key": "torch",
+      "states": 1,
+      "item": false,
+      "shape": "boxes",
+      "tiles": [
+        "torch"
+      ],
+      "reworked": true
+    },
+    {
+      "key": "chest",
+      "states": 4,
+      "item": false,
+      "shape": "cube",
+      "tiles": [
+        "chest_top",
+        "chest_side",
+        "chest_front"
+      ],
+      "reworked": true
+    },
+    {
+      "key": "ancient_chest",
+      "states": 4,
+      "item": false,
+      "shape": "cube",
+      "tiles": [
+        "ancient_chest_top",
+        "ancient_chest_side",
+        "ancient_chest_front"
+      ],
+      "reworked": true
+    },
+    {
+      "key": "crafting_table",
+      "states": 1,
+      "item": false,
+      "shape": "cube",
+      "tiles": [
+        "crafting_table_top",
+        "crafting_table_side",
+        "planks"
+      ],
+      "reworked": true
+    },
+    {
+      "key": "furnace",
+      "states": 4,
+      "item": false,
+      "shape": "cube",
+      "tiles": [
+        "furnace_top",
+        "furnace_side",
+        "furnace_front"
+      ],
+      "reworked": true
+    },
+    {
+      "key": "lit_furnace",
+      "states": 4,
+      "item": false,
+      "shape": "cube",
+      "tiles": [
+        "furnace_top",
+        "furnace_side",
+        "furnace_front_lit"
+      ],
+      "reworked": true
+    },
+    {
+      "key": "door",
+      "states": 8,
+      "item": false,
+      "shape": "boxes",
+      "tiles": [
+        "door"
+      ],
+      "reworked": true
+    },
+    {
+      "key": "bed",
+      "states": 8,
+      "item": false,
+      "shape": "boxes",
+      "tiles": [
+        "bed_top",
+        "bed_side",
+        "planks",
+        "bed_head_0",
+        "bed_head_1",
+        "bed_head_2",
+        "bed_head_3"
+      ],
+      "reworked": true
+    },
+    {
+      "key": "planks_stairs",
+      "states": 4,
+      "item": false,
+      "shape": "boxes",
+      "tiles": [
+        "planks"
+      ],
+      "reworked": true
+    },
+    {
+      "key": "cobblestone_stairs",
+      "states": 4,
+      "item": false,
+      "shape": "boxes",
+      "tiles": [
+        "cobblestone"
+      ],
+      "reworked": true
+    },
+    {
+      "key": "stone_stairs",
+      "states": 4,
+      "item": false,
+      "shape": "boxes",
+      "tiles": [
+        "stone"
+      ],
+      "reworked": true
+    },
+    {
+      "key": "brick_stairs",
+      "states": 4,
+      "item": false,
+      "shape": "boxes",
+      "tiles": [
+        "brick"
+      ],
+      "reworked": true
+    },
+    {
+      "key": "sandstone_stairs",
+      "states": 4,
+      "item": false,
+      "shape": "boxes",
+      "tiles": [
+        "sandstone"
+      ],
+      "reworked": true
+    },
+    {
+      "key": "campfire",
+      "states": 1,
+      "item": false,
+      "shape": "boxes",
+      "tiles": [
+        "campfire_top",
+        "campfire_side"
+      ],
+      "reworked": true
+    },
+    {
+      "key": "ladder",
+      "states": 4,
+      "item": false,
+      "shape": "boxes",
+      "tiles": [
+        "ladder"
+      ],
+      "reworked": true
+    },
+    {
+      "key": "wheat",
+      "states": 4,
+      "item": false,
+      "shape": "cross",
+      "tiles": [
+        "wheat_0",
+        "wheat_1",
+        "wheat_2",
+        "wheat_3"
+      ],
+      "reworked": true
+    },
+    {
+      "key": "carrots",
+      "states": 4,
+      "item": false,
+      "shape": "cross",
+      "tiles": [
+        "carrots_0",
+        "carrots_1",
+        "carrots_2",
+        "carrots_3"
+      ],
+      "reworked": true
+    },
+    {
+      "key": "potatoes",
+      "states": 4,
+      "item": false,
+      "shape": "cross",
+      "tiles": [
+        "potatoes_0",
+        "potatoes_1",
+        "potatoes_2",
+        "potatoes_3"
+      ],
+      "reworked": true
+    },
+    {
+      "key": "sapling",
+      "states": 8,
+      "item": false,
+      "shape": "cross",
+      "tiles": [
+        "sapling",
+        "oak_sapling",
+        "birch_sapling",
+        "spruce_sapling",
+        "maple_sapling",
+        "pine_sapling",
+        "acacia_sapling",
+        "jungle_giant_sapling",
+        "palm_sapling"
+      ],
+      "reworked": true
+    },
+    {
+      "key": "trading_post",
+      "states": 4,
+      "item": false,
+      "shape": "cube",
+      "tiles": [
+        "post_top",
+        "post_side",
+        "planks",
+        "post_front"
+      ],
+      "reworked": true
+    },
+    {
+      "key": "ember_forge",
+      "states": 4,
+      "item": false,
+      "shape": "cube",
+      "tiles": [
+        "forge_top",
+        "forge_side",
+        "obsidian",
+        "forge_front"
+      ],
+      "reworked": true
+    },
+    {
+      "key": "sign",
+      "states": 4,
+      "item": false,
+      "shape": "boxes",
+      "tiles": [
+        "sign"
+      ],
+      "reworked": true
+    },
+    {
+      "key": "item_frame",
+      "states": 4,
+      "item": false,
+      "shape": "boxes",
+      "tiles": [
+        "frame_empty"
+      ],
+      "reworked": true
+    },
+    {
+      "key": "trade_coin",
+      "states": 1,
+      "item": true,
+      "shape": "cross",
+      "tiles": [
+        "trade_coin"
+      ],
+      "reworked": true
+    },
+    {
+      "key": "stick",
+      "states": 1,
+      "item": true,
+      "shape": "cross",
+      "tiles": [
+        "stick"
+      ],
+      "reworked": true
+    },
+    {
+      "key": "coal",
+      "states": 1,
+      "item": true,
+      "shape": "cross",
+      "tiles": [
+        "coal"
+      ],
+      "reworked": true
+    },
+    {
+      "key": "iron_ingot",
+      "states": 1,
+      "item": true,
+      "shape": "cross",
+      "tiles": [
+        "iron_ingot"
+      ],
+      "reworked": true
+    },
+    {
+      "key": "gold_ingot",
+      "states": 1,
+      "item": true,
+      "shape": "cross",
+      "tiles": [
+        "gold_ingot"
+      ],
+      "reworked": true
+    },
+    {
+      "key": "diamond",
+      "states": 1,
+      "item": true,
+      "shape": "cross",
+      "tiles": [
+        "diamond"
+      ],
+      "reworked": true
+    },
+    {
+      "key": "lapis",
+      "states": 1,
+      "item": true,
+      "shape": "cross",
+      "tiles": [
+        "lapis"
+      ],
+      "reworked": true
+    },
+    {
+      "key": "ember_crystal",
+      "states": 1,
+      "item": true,
+      "shape": "cross",
+      "tiles": [
+        "ember_crystal"
+      ],
+      "reworked": true
+    },
+    {
+      "key": "beacon_shard",
+      "states": 1,
+      "item": true,
+      "shape": "cross",
+      "tiles": [
+        "beacon_shard"
+      ],
+      "reworked": true
+    },
+    {
+      "key": "beacon",
+      "states": 1,
+      "item": false,
+      "shape": "cube",
+      "tiles": [
+        "beacon_top",
+        "beacon_side",
+        "obsidian"
+      ],
+      "reworked": true
+    },
+    {
+      "key": "lit_beacon",
+      "states": 1,
+      "item": false,
+      "shape": "cube",
+      "tiles": [
+        "beacon_top",
+        "beacon_side",
+        "obsidian"
+      ],
+      "reworked": true
+    },
+    {
+      "key": "leather",
+      "states": 1,
+      "item": true,
+      "shape": "cross",
+      "tiles": [
+        "leather"
+      ],
+      "reworked": true
+    },
+    {
+      "key": "feather",
+      "states": 1,
+      "item": true,
+      "shape": "cross",
+      "tiles": [
+        "feather"
+      ],
+      "reworked": true
+    },
+    {
+      "key": "wool",
+      "states": 1,
+      "item": true,
+      "shape": "cross",
+      "tiles": [
+        "wool"
+      ],
+      "reworked": true
+    },
+    {
+      "key": "raw_fish",
+      "states": 1,
+      "item": true,
+      "shape": "cross",
+      "tiles": [
+        "raw_fish"
+      ],
+      "reworked": true
+    },
+    {
+      "key": "cooked_fish",
+      "states": 1,
+      "item": true,
+      "shape": "cross",
+      "tiles": [
+        "cooked_fish"
+      ],
+      "reworked": true
+    },
+    {
+      "key": "fishing_rod",
+      "states": 1,
+      "item": true,
+      "shape": "cross",
+      "tiles": [
+        "fishing_rod"
+      ],
+      "reworked": true
+    },
+    {
+      "key": "boat",
+      "states": 1,
+      "item": true,
+      "shape": "cross",
+      "tiles": [
+        "boat"
+      ],
+      "reworked": true
+    },
+    {
+      "key": "string",
+      "states": 1,
+      "item": true,
+      "shape": "cross",
+      "tiles": [
+        "string"
+      ],
+      "reworked": true
+    },
+    {
+      "key": "bone",
+      "states": 1,
+      "item": true,
+      "shape": "cross",
+      "tiles": [
+        "bone"
+      ],
+      "reworked": true
+    },
+    {
+      "key": "bone_meal",
+      "states": 1,
+      "item": true,
+      "shape": "cross",
+      "tiles": [
+        "bone_meal"
+      ],
+      "reworked": true
+    },
+    {
+      "key": "arrow",
+      "states": 1,
+      "item": true,
+      "shape": "cross",
+      "tiles": [
+        "arrow"
+      ],
+      "reworked": true
+    },
+    {
+      "key": "bow",
+      "states": 1,
+      "item": true,
+      "shape": "cross",
+      "tiles": [
+        "bow"
+      ],
+      "reworked": true
+    },
+    {
+      "key": "paper",
+      "states": 1,
+      "item": true,
+      "shape": "cross",
+      "tiles": [
+        "paper"
+      ],
+      "reworked": true
+    },
+    {
+      "key": "compass",
+      "states": 1,
+      "item": true,
+      "shape": "cross",
+      "tiles": [
+        "compass"
+      ],
+      "reworked": true
+    },
+    {
+      "key": "map",
+      "states": 1,
+      "item": true,
+      "shape": "cross",
+      "tiles": [
+        "map"
+      ],
+      "reworked": true
+    },
+    {
+      "key": "lantern",
+      "states": 1,
+      "item": false,
+      "shape": "boxes",
+      "tiles": [
+        "lantern"
+      ],
+      "reworked": true
+    },
+    {
+      "key": "leather_helmet",
+      "states": 1,
+      "item": true,
+      "shape": "cross",
+      "tiles": [
+        "leather_helmet"
+      ],
+      "reworked": true
+    },
+    {
+      "key": "leather_chestplate",
+      "states": 1,
+      "item": true,
+      "shape": "cross",
+      "tiles": [
+        "leather_chestplate"
+      ],
+      "reworked": true
+    },
+    {
+      "key": "leather_leggings",
+      "states": 1,
+      "item": true,
+      "shape": "cross",
+      "tiles": [
+        "leather_leggings"
+      ],
+      "reworked": true
+    },
+    {
+      "key": "leather_boots",
+      "states": 1,
+      "item": true,
+      "shape": "cross",
+      "tiles": [
+        "leather_boots"
+      ],
+      "reworked": true
+    },
+    {
+      "key": "iron_helmet",
+      "states": 1,
+      "item": true,
+      "shape": "cross",
+      "tiles": [
+        "iron_helmet"
+      ],
+      "reworked": true
+    },
+    {
+      "key": "iron_chestplate",
+      "states": 1,
+      "item": true,
+      "shape": "cross",
+      "tiles": [
+        "iron_chestplate"
+      ],
+      "reworked": true
+    },
+    {
+      "key": "iron_leggings",
+      "states": 1,
+      "item": true,
+      "shape": "cross",
+      "tiles": [
+        "iron_leggings"
+      ],
+      "reworked": true
+    },
+    {
+      "key": "iron_boots",
+      "states": 1,
+      "item": true,
+      "shape": "cross",
+      "tiles": [
+        "iron_boots"
+      ],
+      "reworked": true
+    },
+    {
+      "key": "diamond_helmet",
+      "states": 1,
+      "item": true,
+      "shape": "cross",
+      "tiles": [
+        "diamond_helmet"
+      ],
+      "reworked": true
+    },
+    {
+      "key": "diamond_chestplate",
+      "states": 1,
+      "item": true,
+      "shape": "cross",
+      "tiles": [
+        "diamond_chestplate"
+      ],
+      "reworked": true
+    },
+    {
+      "key": "diamond_leggings",
+      "states": 1,
+      "item": true,
+      "shape": "cross",
+      "tiles": [
+        "diamond_leggings"
+      ],
+      "reworked": true
+    },
+    {
+      "key": "diamond_boots",
+      "states": 1,
+      "item": true,
+      "shape": "cross",
+      "tiles": [
+        "diamond_boots"
+      ],
+      "reworked": true
+    },
+    {
+      "key": "bucket",
+      "states": 1,
+      "item": true,
+      "shape": "cross",
+      "tiles": [
+        "bucket"
+      ],
+      "reworked": true
+    },
+    {
+      "key": "water_bucket",
+      "states": 1,
+      "item": true,
+      "shape": "cross",
+      "tiles": [
+        "water_bucket"
+      ],
+      "reworked": true
+    },
+    {
+      "key": "lava_bucket",
+      "states": 1,
+      "item": true,
+      "shape": "cross",
+      "tiles": [
+        "lava_bucket"
+      ],
+      "reworked": true
+    },
+    {
+      "key": "baked_potato",
+      "states": 1,
+      "item": true,
+      "shape": "cross",
+      "tiles": [
+        "baked_potato"
+      ],
+      "reworked": true
+    },
+    {
+      "key": "raw_meat",
+      "states": 1,
+      "item": true,
+      "shape": "cross",
+      "tiles": [
+        "raw_meat"
+      ],
+      "reworked": true
+    },
+    {
+      "key": "cooked_meat",
+      "states": 1,
+      "item": true,
+      "shape": "cross",
+      "tiles": [
+        "cooked_meat"
+      ],
+      "reworked": true
+    },
+    {
+      "key": "wooden_pickaxe",
+      "states": 1,
+      "item": true,
+      "shape": "cross",
+      "tiles": [
+        "wooden_pickaxe"
+      ],
+      "reworked": true
+    },
+    {
+      "key": "wooden_axe",
+      "states": 1,
+      "item": true,
+      "shape": "cross",
+      "tiles": [
+        "wooden_axe"
+      ],
+      "reworked": true
+    },
+    {
+      "key": "wooden_shovel",
+      "states": 1,
+      "item": true,
+      "shape": "cross",
+      "tiles": [
+        "wooden_shovel"
+      ],
+      "reworked": true
+    },
+    {
+      "key": "wooden_sword",
+      "states": 1,
+      "item": true,
+      "shape": "cross",
+      "tiles": [
+        "wooden_sword"
+      ],
+      "reworked": true
+    },
+    {
+      "key": "wooden_hoe",
+      "states": 1,
+      "item": true,
+      "shape": "cross",
+      "tiles": [
+        "wooden_hoe"
+      ],
+      "reworked": true
+    },
+    {
+      "key": "stone_pickaxe",
+      "states": 1,
+      "item": true,
+      "shape": "cross",
+      "tiles": [
+        "stone_pickaxe"
+      ],
+      "reworked": true
+    },
+    {
+      "key": "stone_axe",
+      "states": 1,
+      "item": true,
+      "shape": "cross",
+      "tiles": [
+        "stone_axe"
+      ],
+      "reworked": true
+    },
+    {
+      "key": "stone_shovel",
+      "states": 1,
+      "item": true,
+      "shape": "cross",
+      "tiles": [
+        "stone_shovel"
+      ],
+      "reworked": true
+    },
+    {
+      "key": "stone_sword",
+      "states": 1,
+      "item": true,
+      "shape": "cross",
+      "tiles": [
+        "stone_sword"
+      ],
+      "reworked": true
+    },
+    {
+      "key": "stone_hoe",
+      "states": 1,
+      "item": true,
+      "shape": "cross",
+      "tiles": [
+        "stone_hoe"
+      ],
+      "reworked": true
+    },
+    {
+      "key": "iron_pickaxe",
+      "states": 1,
+      "item": true,
+      "shape": "cross",
+      "tiles": [
+        "iron_pickaxe"
+      ],
+      "reworked": true
+    },
+    {
+      "key": "iron_axe",
+      "states": 1,
+      "item": true,
+      "shape": "cross",
+      "tiles": [
+        "iron_axe"
+      ],
+      "reworked": true
+    },
+    {
+      "key": "iron_shovel",
+      "states": 1,
+      "item": true,
+      "shape": "cross",
+      "tiles": [
+        "iron_shovel"
+      ],
+      "reworked": true
+    },
+    {
+      "key": "iron_sword",
+      "states": 1,
+      "item": true,
+      "shape": "cross",
+      "tiles": [
+        "iron_sword"
+      ],
+      "reworked": true
+    },
+    {
+      "key": "iron_hoe",
+      "states": 1,
+      "item": true,
+      "shape": "cross",
+      "tiles": [
+        "iron_hoe"
+      ],
+      "reworked": true
+    },
+    {
+      "key": "diamond_pickaxe",
+      "states": 1,
+      "item": true,
+      "shape": "cross",
+      "tiles": [
+        "diamond_pickaxe"
+      ],
+      "reworked": true
+    },
+    {
+      "key": "diamond_axe",
+      "states": 1,
+      "item": true,
+      "shape": "cross",
+      "tiles": [
+        "diamond_axe"
+      ],
+      "reworked": true
+    },
+    {
+      "key": "diamond_shovel",
+      "states": 1,
+      "item": true,
+      "shape": "cross",
+      "tiles": [
+        "diamond_shovel"
+      ],
+      "reworked": true
+    },
+    {
+      "key": "diamond_sword",
+      "states": 1,
+      "item": true,
+      "shape": "cross",
+      "tiles": [
+        "diamond_sword"
+      ],
+      "reworked": true
+    },
+    {
+      "key": "diamond_hoe",
+      "states": 1,
+      "item": true,
+      "shape": "cross",
+      "tiles": [
+        "diamond_hoe"
+      ],
+      "reworked": true
+    }
+  ]
+}

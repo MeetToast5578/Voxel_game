@@ -1,0 +1,179 @@
+{
+  "schema": 1,
+  "tileSize": 32,
+  "sourceLayout": "one complete material per source image; no atlas slicing",
+  "entries": [
+    {
+      "name": "stone",
+      "source": "sources/stone.png",
+      "output": "tiles/stone.png",
+      "alpha": "opaque",
+      "repeatAxes": [
+        "x",
+        "y"
+      ],
+      "orientation": "world-aligned; preserve orientation",
+      "variations": [
+        "stone_alt_0",
+        "stone_alt_1",
+        "stone_alt_2",
+        "stone_alt_3"
+      ]
+    },
+    {
+      "name": "dirt",
+      "source": "sources/dirt.png",
+      "output": "tiles/dirt.png",
+      "alpha": "opaque",
+      "repeatAxes": [
+        "x",
+        "y"
+      ],
+      "orientation": "world-aligned; preserve orientation",
+      "variations": [
+        "dirt_alt_0",
+        "dirt_alt_1",
+        "dirt_alt_2",
+        "dirt_alt_3"
+      ]
+    },
+    {
+      "name": "grass_top",
+      "source": "sources/grass_top.png",
+      "output": "tiles/grass_top.png",
+      "alpha": "opaque",
+      "repeatAxes": [
+        "x",
+        "y"
+      ],
+      "orientation": "world-aligned; preserve orientation",
+      "variations": [
+        "grass_top_alt_0",
+        "grass_top_alt_1",
+        "grass_top_alt_2",
+        "grass_top_alt_3"
+      ]
+    },
+    {
+      "name": "grass_side",
+      "source": "sources/grass_side.png",
+      "output": "tiles/grass_side.png",
+      "alpha": "opaque",
+      "repeatAxes": [
+        "x",
+        "y"
+      ],
+      "orientation": "upright grass blades across the entire face; never rotate",
+      "variations": [
+        "grass_side_alt_0",
+        "grass_side_alt_1",
+        "grass_side_alt_2",
+        "grass_side_alt_3"
+      ]
+    },
+    {
+      "name": "sand",
+      "source": "sources/sand.png",
+      "output": "tiles/sand.png",
+      "alpha": "opaque",
+      "repeatAxes": [
+        "x",
+        "y"
+      ],
+      "orientation": "world-aligned; preserve orientation",
+      "variations": [
+        "sand_alt_0",
+        "sand_alt_1",
+        "sand_alt_2",
+        "sand_alt_3"
+      ]
+    },
+    {
+      "name": "gravel",
+      "source": "sources/gravel.png",
+      "output": "tiles/gravel.png",
+      "alpha": "opaque",
+      "repeatAxes": [
+        "x",
+        "y"
+      ],
+      "orientation": "world-aligned; preserve orientation",
+      "variations": [
+        "gravel_alt_0",
+        "gravel_alt_1",
+        "gravel_alt_2",
+        "gravel_alt_3"
+      ]
+    },
+    {
+      "name": "cobblestone",
+      "source": "sources/cobblestone.png",
+      "output": "tiles/cobblestone.png",
+      "alpha": "opaque",
+      "repeatAxes": [
+        "x",
+        "y"
+      ],
+      "orientation": "world-aligned; preserve orientation",
+      "variations": [
+        "cobblestone_alt_0",
+        "cobblestone_alt_1",
+        "cobblestone_alt_2",
+        "cobblestone_alt_3"
+      ]
+    },
+    {
+      "name": "brick",
+      "source": "sources/brick.png",
+      "output": "tiles/brick.png",
+      "alpha": "opaque",
+      "repeatAxes": [
+        "x",
+        "y"
+      ],
+      "orientation": "upright; never rotate",
+      "variations": []
+    }
+  ],
+  "bindings": {
+    "stone": {
+      "top": "stone",
+      "side": "stone",
+      "bottom": "stone"
+    },
+    "dirt": {
+      "top": "dirt",
+      "side": "dirt",
+      "bottom": "dirt"
+    },
+    "grass": {
+      "top": "grass_top",
+      "side": "grass_side",
+      "bottom": "grass_top"
+    },
+    "sand": {
+      "top": "sand",
+      "side": "sand",
+      "bottom": "sand"
+    },
+    "gravel": {
+      "top": "gravel",
+      "side": "gravel",
+      "bottom": "gravel"
+    },
+    "cobblestone": {
+      "top": "cobblestone",
+      "side": "cobblestone",
+      "bottom": "cobblestone"
+    },
+    "brick": {
+      "top": "brick",
+      "side": "brick",
+      "bottom": "brick"
+    }
+  },
+  "derivedShapes": {
+    "slabs": "reuse parent face bindings and crop in world units; grass is vegetation on every face in both slab halves",
+    "stairs": "stone, cobblestone and brick reuse parent materials without stretching, in all four facings"
+  }
+}

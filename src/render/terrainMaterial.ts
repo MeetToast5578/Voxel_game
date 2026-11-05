@@ -22,6 +22,7 @@ out vec2 vWorldXZ;
 out vec3 vWorldPosition;
 flat out float vVariationStart;
 flat out float vAnimationStart;
+flat out float vAnimationRate;
 
 const float SHADE[8] = float[8](0.6, 0.6, 1.0, 0.5, 0.8, 0.8, 0.85, 0.85);
 const float AO[4] = float[4](0.45, 0.65, 0.82, 1.0);
@@ -97,6 +98,7 @@ in vec2 vWorldXZ;
 in vec3 vWorldPosition;
 flat in float vVariationStart;
 flat in float vAnimationStart;
+flat in float vAnimationRate;
 flat in float vTile;
 in vec3 vColor;
 in vec2 vLight;
@@ -113,7 +115,7 @@ void main() {
     hash ^= hash >> 13u;
     tile = vVariationStart + float(hash & 3u);
   }
-  if (vAnimationStart >= 0.0) tile = vAnimationStart + mod(floor(time * 4.0), 8.0);
+  if (vAnimationStart >= 0.0) tile = vAnimationStart + mod(floor(time * vAnimationRate), 8.0);
   vec4 tex = textureGrad(tiles, vec3(fract(vUv), tile), dFdx(vUv), dFdy(vUv));
 #ifdef CUTOUT
   if (tex.a < 0.5) discard;

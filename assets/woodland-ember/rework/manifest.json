@@ -1,0 +1,7137 @@
+{
+  "schema": 1,
+  "tileSize": 32,
+  "sources": [
+    {
+      "id": "farmland",
+      "names": [
+        "farmland"
+      ],
+      "cols": 1,
+      "kind": "terrain",
+      "file": "sources/farmland.png",
+      "rows": 1
+    },
+    {
+      "id": "clay",
+      "names": [
+        "clay"
+      ],
+      "cols": 1,
+      "kind": "terrain",
+      "file": "sources/clay.png",
+      "rows": 1
+    },
+    {
+      "id": "snow",
+      "names": [
+        "snow"
+      ],
+      "cols": 1,
+      "kind": "terrain",
+      "file": "sources/snow.png",
+      "rows": 1
+    },
+    {
+      "id": "granite",
+      "names": [
+        "granite"
+      ],
+      "cols": 1,
+      "kind": "terrain",
+      "file": "sources/granite.png",
+      "rows": 1
+    },
+    {
+      "id": "diorite",
+      "names": [
+        "diorite"
+      ],
+      "cols": 1,
+      "kind": "terrain",
+      "file": "sources/diorite.png",
+      "rows": 1
+    },
+    {
+      "id": "andesite",
+      "names": [
+        "andesite"
+      ],
+      "cols": 1,
+      "kind": "terrain",
+      "file": "sources/andesite.png",
+      "rows": 1
+    },
+    {
+      "id": "sandstone",
+      "names": [
+        "sandstone"
+      ],
+      "cols": 1,
+      "kind": "terrain",
+      "file": "sources/sandstone.png",
+      "rows": 1
+    },
+    {
+      "id": "limestone",
+      "names": [
+        "limestone"
+      ],
+      "cols": 1,
+      "kind": "terrain",
+      "file": "sources/limestone.png",
+      "rows": 1
+    },
+    {
+      "id": "slate",
+      "names": [
+        "slate"
+      ],
+      "cols": 1,
+      "kind": "terrain",
+      "file": "sources/slate.png",
+      "rows": 1
+    },
+    {
+      "id": "basalt",
+      "names": [
+        "basalt"
+      ],
+      "cols": 1,
+      "kind": "terrain",
+      "file": "sources/basalt.png",
+      "rows": 1
+    },
+    {
+      "id": "deepslate",
+      "names": [
+        "deepslate"
+      ],
+      "cols": 1,
+      "kind": "terrain",
+      "file": "sources/deepslate.png",
+      "rows": 1
+    },
+    {
+      "id": "obsidian",
+      "names": [
+        "obsidian"
+      ],
+      "cols": 1,
+      "kind": "terrain",
+      "file": "sources/obsidian.png",
+      "rows": 1
+    },
+    {
+      "id": "bedrock",
+      "names": [
+        "bedrock"
+      ],
+      "cols": 1,
+      "kind": "terrain",
+      "file": "sources/bedrock.png",
+      "rows": 1
+    },
+    {
+      "id": "glowstone",
+      "names": [
+        "glowstone"
+      ],
+      "cols": 1,
+      "kind": "terrain",
+      "file": "sources/glowstone.png",
+      "rows": 1
+    },
+    {
+      "id": "coal_ore",
+      "names": [
+        "coal_ore"
+      ],
+      "cols": 1,
+      "kind": "terrain",
+      "file": "sources/coal_ore.png",
+      "rows": 1
+    },
+    {
+      "id": "iron_ore",
+      "names": [
+        "iron_ore"
+      ],
+      "cols": 1,
+      "kind": "terrain",
+      "file": "sources/iron_ore.png",
+      "rows": 1
+    },
+    {
+      "id": "gold_ore",
+      "names": [
+        "gold_ore"
+      ],
+      "cols": 1,
+      "kind": "terrain",
+      "file": "sources/gold_ore.png",
+      "rows": 1
+    },
+    {
+      "id": "diamond_ore",
+      "names": [
+        "diamond_ore"
+      ],
+      "cols": 1,
+      "kind": "terrain",
+      "file": "sources/diamond_ore.png",
+      "rows": 1
+    },
+    {
+      "id": "lapis_ore",
+      "names": [
+        "lapis_ore"
+      ],
+      "cols": 1,
+      "kind": "terrain",
+      "file": "sources/lapis_ore.png",
+      "rows": 1
+    },
+    {
+      "id": "ember_ore",
+      "names": [
+        "ember_ore"
+      ],
+      "cols": 1,
+      "kind": "terrain",
+      "file": "sources/ember_ore.png",
+      "rows": 1
+    },
+    {
+      "id": "redstone_ore",
+      "names": [
+        "redstone_ore"
+      ],
+      "cols": 1,
+      "kind": "terrain",
+      "file": "sources/redstone_ore.png",
+      "rows": 1
+    },
+    {
+      "id": "emerald_ore",
+      "names": [
+        "emerald_ore"
+      ],
+      "cols": 1,
+      "kind": "terrain",
+      "file": "sources/emerald_ore.png",
+      "rows": 1
+    },
+    {
+      "id": "tools_pickaxe",
+      "names": [
+        "wooden_pickaxe",
+        "stone_pickaxe",
+        "iron_pickaxe",
+        "diamond_pickaxe"
+      ],
+      "cols": 2,
+      "kind": "equipment",
+      "file": "sources/tools_pickaxe.png",
+      "rows": 2
+    },
+    {
+      "id": "tools_axe",
+      "names": [
+        "wooden_axe",
+        "stone_axe",
+        "iron_axe",
+        "diamond_axe"
+      ],
+      "cols": 2,
+      "kind": "equipment",
+      "file": "sources/tools_axe.png",
+      "rows": 2
+    },
+    {
+      "id": "tools_shovel",
+      "names": [
+        "wooden_shovel",
+        "stone_shovel",
+        "iron_shovel",
+        "diamond_shovel"
+      ],
+      "cols": 2,
+      "kind": "equipment",
+      "file": "sources/tools_shovel.png",
+      "rows": 2
+    },
+    {
+      "id": "tools_sword",
+      "names": [
+        "wooden_sword",
+        "stone_sword",
+        "iron_sword",
+        "diamond_sword"
+      ],
+      "cols": 2,
+      "kind": "equipment",
+      "file": "sources/tools_sword.png",
+      "rows": 2
+    },
+    {
+      "id": "tools_hoe",
+      "names": [
+        "wooden_hoe",
+        "stone_hoe",
+        "iron_hoe",
+        "diamond_hoe"
+      ],
+      "cols": 2,
+      "kind": "equipment",
+      "file": "sources/tools_hoe.png",
+      "rows": 2
+    },
+    {
+      "id": "armour_leather",
+      "names": [
+        "leather_helmet",
+        "leather_chestplate",
+        "leather_leggings",
+        "leather_boots"
+      ],
+      "cols": 2,
+      "kind": "equipment",
+      "file": "sources/armour_leather.png",
+      "rows": 2
+    },
+    {
+      "id": "armour_iron",
+      "names": [
+        "iron_helmet",
+        "iron_chestplate",
+        "iron_leggings",
+        "iron_boots"
+      ],
+      "cols": 2,
+      "kind": "equipment",
+      "file": "sources/armour_iron.png",
+      "rows": 2
+    },
+    {
+      "id": "armour_diamond",
+      "names": [
+        "diamond_helmet",
+        "diamond_chestplate",
+        "diamond_leggings",
+        "diamond_boots"
+      ],
+      "cols": 2,
+      "kind": "equipment",
+      "file": "sources/armour_diamond.png",
+      "rows": 2
+    },
+    {
+      "id": "chest_faces",
+      "names": [
+        "chest_top",
+        "chest_side",
+        "chest_front"
+      ],
+      "cols": 3,
+      "kind": "station",
+      "file": "sources/chest_faces.png",
+      "rows": 1
+    },
+    {
+      "id": "ancient_chest_faces",
+      "names": [
+        "ancient_chest_top",
+        "ancient_chest_side",
+        "ancient_chest_front"
+      ],
+      "cols": 3,
+      "kind": "station",
+      "file": "sources/ancient_chest_faces.png",
+      "rows": 1
+    },
+    {
+      "id": "crafting_faces",
+      "names": [
+        "crafting_table_top",
+        "crafting_table_side"
+      ],
+      "cols": 2,
+      "kind": "station",
+      "file": "sources/crafting_faces.png",
+      "rows": 1
+    },
+    {
+      "id": "furnace_faces",
+      "names": [
+        "furnace_top",
+        "furnace_side",
+        "furnace_front",
+        "furnace_front_lit"
+      ],
+      "cols": 2,
+      "kind": "station",
+      "file": "sources/furnace_faces.png",
+      "rows": 2
+    },
+    {
+      "id": "post_faces",
+      "names": [
+        "post_top",
+        "post_side",
+        "post_front"
+      ],
+      "cols": 3,
+      "kind": "station",
+      "file": "sources/post_faces.png",
+      "rows": 1
+    },
+    {
+      "id": "forge_faces",
+      "names": [
+        "forge_top",
+        "forge_side",
+        "forge_front"
+      ],
+      "cols": 3,
+      "kind": "station",
+      "file": "sources/forge_faces.png",
+      "rows": 1
+    },
+    {
+      "id": "bed_faces",
+      "names": [
+        "bed_top",
+        "bed_side"
+      ],
+      "cols": 2,
+      "kind": "station",
+      "file": "sources/bed_faces.png",
+      "rows": 1,
+      "skip": [
+        0
+      ]
+    },
+    {
+      "id": "campfire_faces",
+      "names": [
+        "campfire_top",
+        "campfire_side"
+      ],
+      "cols": 2,
+      "kind": "station",
+      "file": "sources/campfire_faces.png",
+      "rows": 1
+    },
+    {
+      "id": "tree_oak",
+      "names": [
+        "oak_bark",
+        "oak_end",
+        "oak_leaves",
+        "oak_planks"
+      ],
+      "cols": 2,
+      "kind": "tree",
+      "file": "sources/tree_oak.png",
+      "rows": 2,
+      "skip": [
+        2,
+        3
+      ]
+    },
+    {
+      "id": "tree_maple",
+      "names": [
+        "maple_bark",
+        "maple_end",
+        "maple_leaves",
+        "maple_planks"
+      ],
+      "cols": 2,
+      "kind": "tree",
+      "file": "sources/tree_maple.png",
+      "rows": 2,
+      "skip": [
+        2,
+        3
+      ]
+    },
+    {
+      "id": "tree_spruce",
+      "names": [
+        "spruce_bark",
+        "spruce_end",
+        "spruce_leaves",
+        "spruce_planks"
+      ],
+      "cols": 2,
+      "kind": "tree",
+      "file": "sources/tree_spruce.png",
+      "rows": 2,
+      "skip": [
+        2,
+        3
+      ]
+    },
+    {
+      "id": "tree_fir",
+      "names": [
+        "fir_bark",
+        "fir_end",
+        "fir_leaves",
+        "fir_planks"
+      ],
+      "cols": 2,
+      "kind": "tree",
+      "file": "sources/tree_fir.png",
+      "rows": 2,
+      "skip": [
+        2,
+        3
+      ]
+    },
+    {
+      "id": "tree_larch",
+      "names": [
+        "larch_bark",
+        "larch_end",
+        "larch_leaves",
+        "larch_planks"
+      ],
+      "cols": 2,
+      "kind": "tree",
+      "file": "sources/tree_larch.png",
+      "rows": 2,
+      "skip": [
+        2,
+        3
+      ]
+    },
+    {
+      "id": "tree_birch",
+      "names": [
+        "birch_bark",
+        "birch_end",
+        "birch_leaves",
+        "birch_planks"
+      ],
+      "cols": 2,
+      "kind": "tree",
+      "file": "sources/tree_birch.png",
+      "rows": 2,
+      "skip": [
+        2,
+        3
+      ]
+    },
+    {
+      "id": "tree_pine",
+      "names": [
+        "pine_bark",
+        "pine_end",
+        "pine_leaves",
+        "pine_planks"
+      ],
+      "cols": 2,
+      "kind": "tree",
+      "file": "sources/tree_pine.png",
+      "rows": 2,
+      "skip": [
+        2,
+        3
+      ]
+    },
+    {
+      "id": "tree_jungle_giant",
+      "names": [
+        "jungle_giant_bark",
+        "jungle_giant_end",
+        "jungle_giant_leaves",
+        "jungle_giant_planks"
+      ],
+      "cols": 2,
+      "kind": "tree",
+      "file": "sources/tree_jungle_giant.png",
+      "rows": 2,
+      "skip": [
+        2,
+        3
+      ]
+    },
+    {
+      "id": "tree_palm",
+      "names": [
+        "palm_bark",
+        "palm_end",
+        "palm_leaves",
+        "palm_planks"
+      ],
+      "cols": 2,
+      "kind": "tree",
+      "file": "sources/tree_palm.png",
+      "rows": 2,
+      "skip": [
+        2,
+        3
+      ]
+    },
+    {
+      "id": "tree_baobab",
+      "names": [
+        "baobab_bark",
+        "baobab_end",
+        "baobab_leaves",
+        "baobab_planks"
+      ],
+      "cols": 2,
+      "kind": "tree",
+      "file": "sources/tree_baobab.png",
+      "rows": 2,
+      "skip": [
+        2,
+        3
+      ]
+    },
+    {
+      "id": "tree_acacia",
+      "names": [
+        "acacia_bark",
+        "acacia_end",
+        "acacia_leaves",
+        "acacia_planks"
+      ],
+      "cols": 2,
+      "kind": "tree",
+      "file": "sources/tree_acacia.png",
+      "rows": 2,
+      "skip": [
+        2,
+        3
+      ]
+    },
+    {
+      "id": "tree_willow",
+      "names": [
+        "willow_bark",
+        "willow_end",
+        "willow_leaves",
+        "willow_planks"
+      ],
+      "cols": 2,
+      "kind": "tree",
+      "file": "sources/tree_willow.png",
+      "rows": 2,
+      "skip": [
+        2,
+        3
+      ]
+    },
+    {
+      "id": "tree_mangrove",
+      "names": [
+        "mangrove_bark",
+        "mangrove_end",
+        "mangrove_leaves",
+        "mangrove_planks"
+      ],
+      "cols": 2,
+      "kind": "tree",
+      "file": "sources/tree_mangrove.png",
+      "rows": 2,
+      "skip": [
+        2,
+        3
+      ]
+    },
+    {
+      "id": "tree_bush",
+      "names": [
+        "bush_bark",
+        "bush_end",
+        "bush_leaves",
+        "bush_planks"
+      ],
+      "cols": 2,
+      "kind": "tree",
+      "file": "sources/tree_bush.png",
+      "rows": 2,
+      "skip": [
+        2,
+        3
+      ]
+    },
+    {
+      "id": "utility_faces",
+      "names": [
+        "door",
+        "ladder",
+        "torch",
+        "lantern"
+      ],
+      "cols": 2,
+      "kind": "station",
+      "file": "sources/utility_faces.png",
+      "rows": 2
+    },
+    {
+      "id": "beacon_faces",
+      "names": [
+        "beacon_top",
+        "beacon_side"
+      ],
+      "cols": 2,
+      "kind": "station",
+      "file": "sources/beacon_faces.png",
+      "rows": 1
+    },
+    {
+      "id": "dead_cactus",
+      "names": [
+        "dead_snag_bark",
+        "dead_snag_end",
+        "saguaro_side",
+        "saguaro_top"
+      ],
+      "cols": 2,
+      "kind": "station",
+      "file": "sources/dead_cactus.png",
+      "rows": 2
+    },
+    {
+      "id": "ice_glass",
+      "names": [
+        "ice",
+        "glass"
+      ],
+      "cols": 2,
+      "kind": "station",
+      "file": "sources/ice_glass.png",
+      "rows": 1
+    },
+    {
+      "id": "station_flames",
+      "names": [
+        "station_flame_0",
+        "station_flame_1",
+        "station_flame_2",
+        "station_flame_3",
+        "station_flame_4",
+        "station_flame_5",
+        "station_flame_6",
+        "station_flame_7"
+      ],
+      "cols": 4,
+      "kind": "animation",
+      "file": "sources/station_flames.png",
+      "rows": 2
+    },
+    {
+      "id": "resources_metals",
+      "names": [
+        "stick",
+        "coal",
+        "iron_ingot",
+        "gold_ingot"
+      ],
+      "cols": 2,
+      "kind": "equipment",
+      "file": "sources/resources_metals.png",
+      "rows": 2
+    },
+    {
+      "id": "resources_crystals",
+      "names": [
+        "diamond",
+        "lapis",
+        "ember_crystal",
+        "beacon_shard"
+      ],
+      "cols": 2,
+      "kind": "equipment",
+      "file": "sources/resources_crystals.png",
+      "rows": 2
+    },
+    {
+      "id": "resources_fibres",
+      "names": [
+        "leather",
+        "feather",
+        "wool",
+        "string"
+      ],
+      "cols": 2,
+      "kind": "equipment",
+      "file": "sources/resources_fibres.png",
+      "rows": 2
+    },
+    {
+      "id": "food_proteins",
+      "names": [
+        "raw_fish",
+        "cooked_fish",
+        "raw_meat",
+        "cooked_meat"
+      ],
+      "cols": 2,
+      "kind": "equipment",
+      "file": "sources/food_proteins.png",
+      "rows": 2
+    },
+    {
+      "id": "food_crops",
+      "names": [
+        "baked_potato",
+        "harvested_wheat",
+        "harvested_carrot",
+        "harvested_potato"
+      ],
+      "cols": 2,
+      "kind": "equipment",
+      "file": "sources/food_crops.png",
+      "rows": 2
+    },
+    {
+      "id": "containers",
+      "names": [
+        "bucket",
+        "water_bucket",
+        "lava_bucket",
+        "boat"
+      ],
+      "cols": 2,
+      "kind": "equipment",
+      "file": "sources/containers.png",
+      "rows": 2
+    },
+    {
+      "id": "ranged_goods",
+      "names": [
+        "bow",
+        "arrow",
+        "fishing_rod",
+        "trade_coin"
+      ],
+      "cols": 2,
+      "kind": "equipment",
+      "file": "sources/ranged_goods.png",
+      "rows": 2
+    },
+    {
+      "id": "paper_bone",
+      "names": [
+        "bone",
+        "bone_meal",
+        "paper"
+      ],
+      "cols": 3,
+      "kind": "equipment",
+      "file": "sources/paper_bone.png",
+      "rows": 1
+    },
+    {
+      "id": "navigation",
+      "names": [
+        "compass",
+        "map"
+      ],
+      "cols": 2,
+      "kind": "equipment",
+      "file": "sources/navigation.png",
+      "rows": 1
+    },
+    {
+      "id": "ground_plants",
+      "names": [
+        "tall_grass",
+        "fern",
+        "moss",
+        "leaf_litter"
+      ],
+      "cols": 2,
+      "kind": "plant",
+      "file": "sources/ground_plants.png",
+      "rows": 2
+    },
+    {
+      "id": "flowers_fungi",
+      "names": [
+        "poppy",
+        "dandelion",
+        "brown_mushroom",
+        "red_mushroom"
+      ],
+      "cols": 2,
+      "kind": "plant",
+      "file": "sources/flowers_fungi.png",
+      "rows": 2
+    },
+    {
+      "id": "wet_plants",
+      "names": [
+        "reed",
+        "lily_pad"
+      ],
+      "cols": 2,
+      "kind": "plant",
+      "file": "sources/wet_plants.png",
+      "rows": 1
+    },
+    {
+      "id": "crop_wheat",
+      "names": [
+        "wheat_0",
+        "wheat_1",
+        "wheat_2",
+        "wheat_3"
+      ],
+      "cols": 2,
+      "kind": "crop",
+      "file": "sources/crop_wheat.png",
+      "rows": 2
+    },
+    {
+      "id": "crop_carrots",
+      "names": [
+        "carrots_0",
+        "carrots_1",
+        "carrots_2",
+        "carrots_3"
+      ],
+      "cols": 2,
+      "kind": "crop",
+      "file": "sources/crop_carrots.png",
+      "rows": 2
+    },
+    {
+      "id": "crop_potatoes",
+      "names": [
+        "potatoes_0",
+        "potatoes_1",
+        "potatoes_2",
+        "potatoes_3"
+      ],
+      "cols": 2,
+      "kind": "crop",
+      "file": "sources/crop_potatoes.png",
+      "rows": 2
+    },
+    {
+      "id": "saplings_north",
+      "names": [
+        "oak_sapling",
+        "birch_sapling",
+        "spruce_sapling",
+        "maple_sapling"
+      ],
+      "cols": 2,
+      "kind": "plant",
+      "file": "sources/saplings_north.png",
+      "rows": 2
+    },
+    {
+      "id": "saplings_south",
+      "names": [
+        "pine_sapling",
+        "acacia_sapling",
+        "jungle_giant_sapling",
+        "palm_sapling"
+      ],
+      "cols": 2,
+      "kind": "plant",
+      "file": "sources/saplings_south.png",
+      "rows": 2
+    },
+    {
+      "name": "decoration_faces",
+      "names": [
+        "sign",
+        "frame_empty",
+        "frame_backing"
+      ],
+      "cols": 3,
+      "kind": "station",
+      "id": "decoration_faces",
+      "file": "sources/decoration_faces.png",
+      "rows": 1
+    },
+    {
+      "id": "leaf_oak",
+      "names": [
+        "oak_leaves"
+      ],
+      "cols": 1,
+      "rows": 1,
+      "kind": "tree",
+      "file": "sources/leaf_oak.png"
+    },
+    {
+      "id": "leaf_maple",
+      "names": [
+        "maple_leaves"
+      ],
+      "cols": 1,
+      "rows": 1,
+      "kind": "tree",
+      "file": "sources/leaf_maple.png"
+    },
+    {
+      "id": "leaf_birch",
+      "names": [
+        "birch_leaves"
+      ],
+      "cols": 1,
+      "rows": 1,
+      "kind": "tree",
+      "file": "sources/leaf_birch.png"
+    },
+    {
+      "id": "leaf_mangrove",
+      "names": [
+        "mangrove_leaves"
+      ],
+      "cols": 1,
+      "rows": 1,
+      "kind": "tree",
+      "file": "sources/leaf_mangrove.png"
+    },
+    {
+      "id": "bed_head",
+      "names": [
+        "bed_head"
+      ],
+      "cols": 1,
+      "rows": 1,
+      "kind": "station",
+      "file": "sources/bed_head.png"
+    },
+    {
+      "id": "oak_planks",
+      "names": [
+        "oak_planks"
+      ],
+      "cols": 1,
+      "rows": 1,
+      "kind": "tree",
+      "file": "sources/oak_planks.png"
+    },
+    {
+      "id": "maple_planks",
+      "names": [
+        "maple_planks"
+      ],
+      "cols": 1,
+      "rows": 1,
+      "kind": "tree",
+      "file": "sources/maple_planks.png"
+    },
+    {
+      "id": "spruce_planks",
+      "names": [
+        "spruce_planks"
+      ],
+      "cols": 1,
+      "rows": 1,
+      "kind": "tree",
+      "file": "sources/spruce_planks.png"
+    },
+    {
+      "id": "fir_planks",
+      "names": [
+        "fir_planks"
+      ],
+      "cols": 1,
+      "rows": 1,
+      "kind": "tree",
+      "file": "sources/fir_planks.png"
+    },
+    {
+      "id": "larch_planks",
+      "names": [
+        "larch_planks"
+      ],
+      "cols": 1,
+      "rows": 1,
+      "kind": "tree",
+      "file": "sources/larch_planks.png"
+    },
+    {
+      "id": "birch_planks",
+      "names": [
+        "birch_planks"
+      ],
+      "cols": 1,
+      "rows": 1,
+      "kind": "tree",
+      "file": "sources/birch_planks.png"
+    },
+    {
+      "id": "pine_planks",
+      "names": [
+        "pine_planks"
+      ],
+      "cols": 1,
+      "rows": 1,
+      "kind": "tree",
+      "file": "sources/pine_planks.png"
+    },
+    {
+      "id": "jungle_giant_planks",
+      "names": [
+        "jungle_giant_planks"
+      ],
+      "cols": 1,
+      "rows": 1,
+      "kind": "tree",
+      "file": "sources/jungle_giant_planks.png"
+    },
+    {
+      "id": "palm_planks",
+      "names": [
+        "palm_planks"
+      ],
+      "cols": 1,
+      "rows": 1,
+      "kind": "tree",
+      "file": "sources/palm_planks.png"
+    },
+    {
+      "id": "baobab_planks",
+      "names": [
+        "baobab_planks"
+      ],
+      "cols": 1,
+      "rows": 1,
+      "kind": "tree",
+      "file": "sources/baobab_planks.png"
+    },
+    {
+      "id": "acacia_planks",
+      "names": [
+        "acacia_planks"
+      ],
+      "cols": 1,
+      "rows": 1,
+      "kind": "tree",
+      "file": "sources/acacia_planks.png"
+    },
+    {
+      "id": "willow_planks",
+      "names": [
+        "willow_planks"
+      ],
+      "cols": 1,
+      "rows": 1,
+      "kind": "tree",
+      "file": "sources/willow_planks.png"
+    },
+    {
+      "id": "mangrove_planks",
+      "names": [
+        "mangrove_planks"
+      ],
+      "cols": 1,
+      "rows": 1,
+      "kind": "tree",
+      "file": "sources/mangrove_planks.png"
+    },
+    {
+      "id": "bush_planks",
+      "names": [
+        "bush_planks"
+      ],
+      "cols": 1,
+      "rows": 1,
+      "kind": "tree",
+      "file": "sources/bush_planks.png"
+    },
+    {
+      "id": "water",
+      "names": [
+        "water"
+      ],
+      "cols": 1,
+      "rows": 1,
+      "kind": "fluid",
+      "file": "sources/water.png"
+    },
+    {
+      "id": "lava",
+      "names": [
+        "lava"
+      ],
+      "cols": 1,
+      "rows": 1,
+      "kind": "fluid",
+      "file": "sources/lava.png"
+    },
+    {
+      "id": "bed_top",
+      "names": [
+        "bed_top"
+      ],
+      "cols": 1,
+      "rows": 1,
+      "kind": "station",
+      "file": "sources/bed_top.png"
+    },
+    {
+      "id": "leaf_spruce",
+      "names": [
+        "spruce_leaves"
+      ],
+      "cols": 1,
+      "rows": 1,
+      "kind": "tree",
+      "file": "sources/leaf_spruce.png"
+    },
+    {
+      "id": "leaf_fir",
+      "names": [
+        "fir_leaves"
+      ],
+      "cols": 1,
+      "rows": 1,
+      "kind": "tree",
+      "file": "sources/leaf_fir.png"
+    },
+    {
+      "id": "leaf_larch",
+      "names": [
+        "larch_leaves"
+      ],
+      "cols": 1,
+      "rows": 1,
+      "kind": "tree",
+      "file": "sources/leaf_larch.png"
+    },
+    {
+      "id": "leaf_pine",
+      "names": [
+        "pine_leaves"
+      ],
+      "cols": 1,
+      "rows": 1,
+      "kind": "tree",
+      "file": "sources/leaf_pine.png"
+    },
+    {
+      "id": "leaf_jungle_giant",
+      "names": [
+        "jungle_giant_leaves"
+      ],
+      "cols": 1,
+      "rows": 1,
+      "kind": "tree",
+      "file": "sources/leaf_jungle_giant.png"
+    },
+    {
+      "id": "leaf_palm",
+      "names": [
+        "palm_leaves"
+      ],
+      "cols": 1,
+      "rows": 1,
+      "kind": "tree",
+      "file": "sources/leaf_palm.png"
+    },
+    {
+      "id": "leaf_baobab",
+      "names": [
+        "baobab_leaves"
+      ],
+      "cols": 1,
+      "rows": 1,
+      "kind": "tree",
+      "file": "sources/leaf_baobab.png"
+    },
+    {
+      "id": "leaf_acacia",
+      "names": [
+        "acacia_leaves"
+      ],
+      "cols": 1,
+      "rows": 1,
+      "kind": "tree",
+      "file": "sources/leaf_acacia.png"
+    },
+    {
+      "id": "leaf_willow",
+      "names": [
+        "willow_leaves"
+      ],
+      "cols": 1,
+      "rows": 1,
+      "kind": "tree",
+      "file": "sources/leaf_willow.png"
+    },
+    {
+      "id": "leaf_bush",
+      "names": [
+        "bush_leaves"
+      ],
+      "cols": 1,
+      "rows": 1,
+      "kind": "tree",
+      "file": "sources/leaf_bush.png"
+    }
+  ],
+  "crops": [
+    {
+      "name": "farmland",
+      "source": "sources/farmland.png",
+      "cell": 0,
+      "sourceRect": [
+        0,
+        0,
+        1254,
+        1254
+      ],
+      "sourceDimensions": [
+        1254,
+        1254
+      ],
+      "destination": [
+        0,
+        0,
+        32,
+        32
+      ],
+      "alpha": "opaque",
+      "repeatAxes": [
+        "x",
+        "y"
+      ],
+      "category": "terrain",
+      "derivedFrom": null
+    },
+    {
+      "name": "clay",
+      "source": "sources/clay.png",
+      "cell": 0,
+      "sourceRect": [
+        0,
+        0,
+        1254,
+        1254
+      ],
+      "sourceDimensions": [
+        1254,
+        1254
+      ],
+      "destination": [
+        0,
+        0,
+        32,
+        32
+      ],
+      "alpha": "opaque",
+      "repeatAxes": [
+        "x",
+        "y"
+      ],
+      "category": "terrain",
+      "derivedFrom": null
+    },
+    {
+      "name": "snow",
+      "source": "sources/snow.png",
+      "cell": 0,
+      "sourceRect": [
+        0,
+        0,
+        1254,
+        1254
+      ],
+      "sourceDimensions": [
+        1254,
+        1254
+      ],
+      "destination": [
+        0,
+        0,
+        32,
+        32
+      ],
+      "alpha": "opaque",
+      "repeatAxes": [
+        "x",
+        "y"
+      ],
+      "category": "terrain",
+      "derivedFrom": null
+    },
+    {
+      "name": "granite",
+      "source": "sources/granite.png",
+      "cell": 0,
+      "sourceRect": [
+        0,
+        0,
+        1254,
+        1254
+      ],
+      "sourceDimensions": [
+        1254,
+        1254
+      ],
+      "destination": [
+        0,
+        0,
+        32,
+        32
+      ],
+      "alpha": "opaque",
+      "repeatAxes": [
+        "x",
+        "y"
+      ],
+      "category": "terrain",
+      "derivedFrom": null
+    },
+    {
+      "name": "diorite",
+      "source": "sources/diorite.png",
+      "cell": 0,
+      "sourceRect": [
+        0,
+        0,
+        1254,
+        1254
+      ],
+      "sourceDimensions": [
+        1254,
+        1254
+      ],
+      "destination": [
+        0,
+        0,
+        32,
+        32
+      ],
+      "alpha": "opaque",
+      "repeatAxes": [
+        "x",
+        "y"
+      ],
+      "category": "terrain",
+      "derivedFrom": null
+    },
+    {
+      "name": "andesite",
+      "source": "sources/andesite.png",
+      "cell": 0,
+      "sourceRect": [
+        0,
+        0,
+        1254,
+        1254
+      ],
+      "sourceDimensions": [
+        1254,
+        1254
+      ],
+      "destination": [
+        0,
+        0,
+        32,
+        32
+      ],
+      "alpha": "opaque",
+      "repeatAxes": [
+        "x",
+        "y"
+      ],
+      "category": "terrain",
+      "derivedFrom": null
+    },
+    {
+      "name": "sandstone",
+      "source": "sources/sandstone.png",
+      "cell": 0,
+      "sourceRect": [
+        0,
+        0,
+        1254,
+        1254
+      ],
+      "sourceDimensions": [
+        1254,
+        1254
+      ],
+      "destination": [
+        0,
+        0,
+        32,
+        32
+      ],
+      "alpha": "opaque",
+      "repeatAxes": [
+        "x",
+        "y"
+      ],
+      "category": "terrain",
+      "derivedFrom": null
+    },
+    {
+      "name": "limestone",
+      "source": "sources/limestone.png",
+      "cell": 0,
+      "sourceRect": [
+        0,
+        0,
+        1254,
+        1254
+      ],
+      "sourceDimensions": [
+        1254,
+        1254
+      ],
+      "destination": [
+        0,
+        0,
+        32,
+        32
+      ],
+      "alpha": "opaque",
+      "repeatAxes": [
+        "x",
+        "y"
+      ],
+      "category": "terrain",
+      "derivedFrom": null
+    },
+    {
+      "name": "slate",
+      "source": "sources/slate.png",
+      "cell": 0,
+      "sourceRect": [
+        0,
+        0,
+        1254,
+        1254
+      ],
+      "sourceDimensions": [
+        1254,
+        1254
+      ],
+      "destination": [
+        0,
+        0,
+        32,
+        32
+      ],
+      "alpha": "opaque",
+      "repeatAxes": [
+        "x",
+        "y"
+      ],
+      "category": "terrain",
+      "derivedFrom": null
+    },
+    {
+      "name": "basalt",
+      "source": "sources/basalt.png",
+      "cell": 0,
+      "sourceRect": [
+        0,
+        0,
+        1254,
+        1254
+      ],
+      "sourceDimensions": [
+        1254,
+        1254
+      ],
+      "destination": [
+        0,
+        0,
+        32,
+        32
+      ],
+      "alpha": "opaque",
+      "repeatAxes": [
+        "x",
+        "y"
+      ],
+      "category": "terrain",
+      "derivedFrom": null
+    },
+    {
+      "name": "deepslate",
+      "source": "sources/deepslate.png",
+      "cell": 0,
+      "sourceRect": [
+        0,
+        0,
+        1254,
+        1254
+      ],
+      "sourceDimensions": [
+        1254,
+        1254
+      ],
+      "destination": [
+        0,
+        0,
+        32,
+        32
+      ],
+      "alpha": "opaque",
+      "repeatAxes": [
+        "x",
+        "y"
+      ],
+      "category": "terrain",
+      "derivedFrom": null
+    },
+    {
+      "name": "obsidian",
+      "source": "sources/obsidian.png",
+      "cell": 0,
+      "sourceRect": [
+        0,
+        0,
+        1254,
+        1254
+      ],
+      "sourceDimensions": [
+        1254,
+        1254
+      ],
+      "destination": [
+        0,
+        0,
+        32,
+        32
+      ],
+      "alpha": "opaque",
+      "repeatAxes": [
+        "x",
+        "y"
+      ],
+      "category": "terrain",
+      "derivedFrom": null
+    },
+    {
+      "name": "bedrock",
+      "source": "sources/bedrock.png",
+      "cell": 0,
+      "sourceRect": [
+        0,
+        0,
+        1254,
+        1254
+      ],
+      "sourceDimensions": [
+        1254,
+        1254
+      ],
+      "destination": [
+        0,
+        0,
+        32,
+        32
+      ],
+      "alpha": "opaque",
+      "repeatAxes": [
+        "x",
+        "y"
+      ],
+      "category": "terrain",
+      "derivedFrom": null
+    },
+    {
+      "name": "glowstone",
+      "source": "sources/glowstone.png",
+      "cell": 0,
+      "sourceRect": [
+        0,
+        0,
+        1254,
+        1254
+      ],
+      "sourceDimensions": [
+        1254,
+        1254
+      ],
+      "destination": [
+        0,
+        0,
+        32,
+        32
+      ],
+      "alpha": "opaque",
+      "repeatAxes": [
+        "x",
+        "y"
+      ],
+      "category": "terrain",
+      "derivedFrom": null
+    },
+    {
+      "name": "coal_ore",
+      "source": "sources/coal_ore.png",
+      "cell": 0,
+      "sourceRect": [
+        0,
+        0,
+        1254,
+        1254
+      ],
+      "sourceDimensions": [
+        1254,
+        1254
+      ],
+      "destination": [
+        0,
+        0,
+        32,
+        32
+      ],
+      "alpha": "opaque",
+      "repeatAxes": [
+        "x",
+        "y"
+      ],
+      "category": "terrain",
+      "derivedFrom": null
+    },
+    {
+      "name": "iron_ore",
+      "source": "sources/iron_ore.png",
+      "cell": 0,
+      "sourceRect": [
+        0,
+        0,
+        1254,
+        1254
+      ],
+      "sourceDimensions": [
+        1254,
+        1254
+      ],
+      "destination": [
+        0,
+        0,
+        32,
+        32
+      ],
+      "alpha": "opaque",
+      "repeatAxes": [
+        "x",
+        "y"
+      ],
+      "category": "terrain",
+      "derivedFrom": null
+    },
+    {
+      "name": "gold_ore",
+      "source": "sources/gold_ore.png",
+      "cell": 0,
+      "sourceRect": [
+        0,
+        0,
+        1254,
+        1254
+      ],
+      "sourceDimensions": [
+        1254,
+        1254
+      ],
+      "destination": [
+        0,
+        0,
+        32,
+        32
+      ],
+      "alpha": "opaque",
+      "repeatAxes": [
+        "x",
+        "y"
+      ],
+      "category": "terrain",
+      "derivedFrom": null
+    },
+    {
+      "name": "diamond_ore",
+      "source": "sources/diamond_ore.png",
+      "cell": 0,
+      "sourceRect": [
+        0,
+        0,
+        1254,
+        1254
+      ],
+      "sourceDimensions": [
+        1254,
+        1254
+      ],
+      "destination": [
+        0,
+        0,
+        32,
+        32
+      ],
+      "alpha": "opaque",
+      "repeatAxes": [
+        "x",
+        "y"
+      ],
+      "category": "terrain",
+      "derivedFrom": null
+    },
+    {
+      "name": "lapis_ore",
+      "source": "sources/lapis_ore.png",
+      "cell": 0,
+      "sourceRect": [
+        0,
+        0,
+        1254,
+        1254
+      ],
+      "sourceDimensions": [
+        1254,
+        1254
+      ],
+      "destination": [
+        0,
+        0,
+        32,
+        32
+      ],
+      "alpha": "opaque",
+      "repeatAxes": [
+        "x",
+        "y"
+      ],
+      "category": "terrain",
+      "derivedFrom": null
+    },
+    {
+      "name": "ember_ore",
+      "source": "sources/ember_ore.png",
+      "cell": 0,
+      "sourceRect": [
+        0,
+        0,
+        1254,
+        1254
+      ],
+      "sourceDimensions": [
+        1254,
+        1254
+      ],
+      "destination": [
+        0,
+        0,
+        32,
+        32
+      ],
+      "alpha": "opaque",
+      "repeatAxes": [
+        "x",
+        "y"
+      ],
+      "category": "terrain",
+      "derivedFrom": null
+    },
+    {
+      "name": "redstone_ore",
+      "source": "sources/redstone_ore.png",
+      "cell": 0,
+      "sourceRect": [
+        0,
+        0,
+        1254,
+        1254
+      ],
+      "sourceDimensions": [
+        1254,
+        1254
+      ],
+      "destination": [
+        0,
+        0,
+        32,
+        32
+      ],
+      "alpha": "opaque",
+      "repeatAxes": [
+        "x",
+        "y"
+      ],
+      "category": "terrain",
+      "derivedFrom": null
+    },
+    {
+      "name": "emerald_ore",
+      "source": "sources/emerald_ore.png",
+      "cell": 0,
+      "sourceRect": [
+        0,
+        0,
+        1254,
+        1254
+      ],
+      "sourceDimensions": [
+        1254,
+        1254
+      ],
+      "destination": [
+        0,
+        0,
+        32,
+        32
+      ],
+      "alpha": "opaque",
+      "repeatAxes": [
+        "x",
+        "y"
+      ],
+      "category": "terrain",
+      "derivedFrom": null
+    },
+    {
+      "name": "wooden_pickaxe",
+      "source": "sources/tools_pickaxe.png",
+      "cell": 0,
+      "sourceRect": [
+        135,
+        89,
+        400,
+        435
+      ],
+      "sourceDimensions": [
+        1293,
+        1217
+      ],
+      "destination": [
+        3,
+        2,
+        26,
+        28
+      ],
+      "alpha": "cutout",
+      "repeatAxes": [],
+      "category": "equipment",
+      "derivedFrom": null
+    },
+    {
+      "name": "stone_pickaxe",
+      "source": "sources/tools_pickaxe.png",
+      "cell": 1,
+      "sourceRect": [
+        764,
+        87,
+        415,
+        439
+      ],
+      "sourceDimensions": [
+        1293,
+        1217
+      ],
+      "destination": [
+        3,
+        2,
+        26,
+        28
+      ],
+      "alpha": "cutout",
+      "repeatAxes": [],
+      "category": "equipment",
+      "derivedFrom": null
+    },
+    {
+      "name": "iron_pickaxe",
+      "source": "sources/tools_pickaxe.png",
+      "cell": 2,
+      "sourceRect": [
+        131,
+        694,
+        411,
+        440
+      ],
+      "sourceDimensions": [
+        1293,
+        1217
+      ],
+      "destination": [
+        3,
+        2,
+        26,
+        28
+      ],
+      "alpha": "cutout",
+      "repeatAxes": [],
+      "category": "equipment",
+      "derivedFrom": null
+    },
+    {
+      "name": "diamond_pickaxe",
+      "source": "sources/tools_pickaxe.png",
+      "cell": 3,
+      "sourceRect": [
+        770,
+        691,
+        418,
+        450
+      ],
+      "sourceDimensions": [
+        1293,
+        1217
+      ],
+      "destination": [
+        3,
+        2,
+        26,
+        28
+      ],
+      "alpha": "cutout",
+      "repeatAxes": [],
+      "category": "equipment",
+      "derivedFrom": null
+    },
+    {
+      "name": "wooden_axe",
+      "source": "sources/tools_axe.png",
+      "cell": 0,
+      "sourceRect": [
+        107,
+        66,
+        444,
+        480
+      ],
+      "sourceDimensions": [
+        1272,
+        1236
+      ],
+      "destination": [
+        3,
+        2,
+        26,
+        28
+      ],
+      "alpha": "cutout",
+      "repeatAxes": [],
+      "category": "equipment",
+      "derivedFrom": null
+    },
+    {
+      "name": "stone_axe",
+      "source": "sources/tools_axe.png",
+      "cell": 1,
+      "sourceRect": [
+        743,
+        66,
+        436,
+        480
+      ],
+      "sourceDimensions": [
+        1272,
+        1236
+      ],
+      "destination": [
+        3,
+        2,
+        25,
+        28
+      ],
+      "alpha": "cutout",
+      "repeatAxes": [],
+      "category": "equipment",
+      "derivedFrom": null
+    },
+    {
+      "name": "iron_axe",
+      "source": "sources/tools_axe.png",
+      "cell": 2,
+      "sourceRect": [
+        107,
+        670,
+        444,
+        482
+      ],
+      "sourceDimensions": [
+        1272,
+        1236
+      ],
+      "destination": [
+        3,
+        2,
+        26,
+        28
+      ],
+      "alpha": "cutout",
+      "repeatAxes": [],
+      "category": "equipment",
+      "derivedFrom": null
+    },
+    {
+      "name": "diamond_axe",
+      "source": "sources/tools_axe.png",
+      "cell": 3,
+      "sourceRect": [
+        743,
+        670,
+        446,
+        485
+      ],
+      "sourceDimensions": [
+        1272,
+        1236
+      ],
+      "destination": [
+        3,
+        2,
+        26,
+        28
+      ],
+      "alpha": "cutout",
+      "repeatAxes": [],
+      "category": "equipment",
+      "derivedFrom": null
+    },
+    {
+      "name": "wooden_shovel",
+      "source": "sources/tools_shovel.png",
+      "cell": 0,
+      "sourceRect": [
+        105,
+        79,
+        468,
+        497
+      ],
+      "sourceDimensions": [
+        1261,
+        1247
+      ],
+      "destination": [
+        3,
+        2,
+        26,
+        28
+      ],
+      "alpha": "cutout",
+      "repeatAxes": [],
+      "category": "equipment",
+      "derivedFrom": null
+    },
+    {
+      "name": "stone_shovel",
+      "source": "sources/tools_shovel.png",
+      "cell": 1,
+      "sourceRect": [
+        722,
+        79,
+        466,
+        498
+      ],
+      "sourceDimensions": [
+        1261,
+        1247
+      ],
+      "destination": [
+        3,
+        2,
+        26,
+        28
+      ],
+      "alpha": "cutout",
+      "repeatAxes": [],
+      "category": "equipment",
+      "derivedFrom": null
+    },
+    {
+      "name": "iron_shovel",
+      "source": "sources/tools_shovel.png",
+      "cell": 2,
+      "sourceRect": [
+        105,
+        662,
+        467,
+        501
+      ],
+      "sourceDimensions": [
+        1261,
+        1247
+      ],
+      "destination": [
+        3,
+        2,
+        26,
+        28
+      ],
+      "alpha": "cutout",
+      "repeatAxes": [],
+      "category": "equipment",
+      "derivedFrom": null
+    },
+    {
+      "name": "diamond_shovel",
+      "source": "sources/tools_shovel.png",
+      "cell": 3,
+      "sourceRect": [
+        718,
+        662,
+        475,
+        502
+      ],
+      "sourceDimensions": [
+        1261,
+        1247
+      ],
+      "destination": [
+        3,
+        2,
+        26,
+        28
+      ],
+      "alpha": "cutout",
+      "repeatAxes": [],
+      "category": "equipment",
+      "derivedFrom": null
+    },
+    {
+      "name": "wooden_sword",
+      "source": "sources/tools_sword.png",
+      "cell": 0,
+      "sourceRect": [
+        97,
+        82,
+        447,
+        467
+      ],
+      "sourceDimensions": [
+        1263,
+        1246
+      ],
+      "destination": [
+        2,
+        2,
+        27,
+        28
+      ],
+      "alpha": "cutout",
+      "repeatAxes": [],
+      "category": "equipment",
+      "derivedFrom": null
+    },
+    {
+      "name": "stone_sword",
+      "source": "sources/tools_sword.png",
+      "cell": 1,
+      "sourceRect": [
+        727,
+        82,
+        449,
+        467
+      ],
+      "sourceDimensions": [
+        1263,
+        1246
+      ],
+      "destination": [
+        2,
+        2,
+        27,
+        28
+      ],
+      "alpha": "cutout",
+      "repeatAxes": [],
+      "category": "equipment",
+      "derivedFrom": null
+    },
+    {
+      "name": "iron_sword",
+      "source": "sources/tools_sword.png",
+      "cell": 2,
+      "sourceRect": [
+        97,
+        692,
+        449,
+        466
+      ],
+      "sourceDimensions": [
+        1263,
+        1246
+      ],
+      "destination": [
+        2,
+        2,
+        27,
+        28
+      ],
+      "alpha": "cutout",
+      "repeatAxes": [],
+      "category": "equipment",
+      "derivedFrom": null
+    },
+    {
+      "name": "diamond_sword",
+      "source": "sources/tools_sword.png",
+      "cell": 3,
+      "sourceRect": [
+        730,
+        692,
+        450,
+        465
+      ],
+      "sourceDimensions": [
+        1263,
+        1246
+      ],
+      "destination": [
+        2,
+        2,
+        27,
+        28
+      ],
+      "alpha": "cutout",
+      "repeatAxes": [],
+      "category": "equipment",
+      "derivedFrom": null
+    },
+    {
+      "name": "wooden_hoe",
+      "source": "sources/tools_hoe.png",
+      "cell": 0,
+      "sourceRect": [
+        93,
+        91,
+        434,
+        460
+      ],
+      "sourceDimensions": [
+        1263,
+        1246
+      ],
+      "destination": [
+        3,
+        2,
+        26,
+        28
+      ],
+      "alpha": "cutout",
+      "repeatAxes": [],
+      "category": "equipment",
+      "derivedFrom": null
+    },
+    {
+      "name": "stone_hoe",
+      "source": "sources/tools_hoe.png",
+      "cell": 1,
+      "sourceRect": [
+        724,
+        92,
+        452,
+        459
+      ],
+      "sourceDimensions": [
+        1263,
+        1246
+      ],
+      "destination": [
+        2,
+        2,
+        28,
+        28
+      ],
+      "alpha": "cutout",
+      "repeatAxes": [],
+      "category": "equipment",
+      "derivedFrom": null
+    },
+    {
+      "name": "iron_hoe",
+      "source": "sources/tools_hoe.png",
+      "cell": 2,
+      "sourceRect": [
+        93,
+        713,
+        442,
+        465
+      ],
+      "sourceDimensions": [
+        1263,
+        1246
+      ],
+      "destination": [
+        2,
+        2,
+        27,
+        28
+      ],
+      "alpha": "cutout",
+      "repeatAxes": [],
+      "category": "equipment",
+      "derivedFrom": null
+    },
+    {
+      "name": "diamond_hoe",
+      "source": "sources/tools_hoe.png",
+      "cell": 3,
+      "sourceRect": [
+        724,
+        711,
+        445,
+        467
+      ],
+      "sourceDimensions": [
+        1263,
+        1246
+      ],
+      "destination": [
+        2,
+        2,
+        27,
+        28
+      ],
+      "alpha": "cutout",
+      "repeatAxes": [],
+      "category": "equipment",
+      "derivedFrom": null
+    },
+    {
+      "name": "leather_helmet",
+      "source": "sources/armour_leather.png",
+      "cell": 0,
+      "sourceRect": [
+        129,
+        106,
+        361,
+        402
+      ],
+      "sourceDimensions": [
+        1261,
+        1247
+      ],
+      "destination": [
+        3,
+        2,
+        25,
+        28
+      ],
+      "alpha": "cutout",
+      "repeatAxes": [],
+      "category": "equipment",
+      "derivedFrom": null
+    },
+    {
+      "name": "leather_chestplate",
+      "source": "sources/armour_leather.png",
+      "cell": 1,
+      "sourceRect": [
+        699,
+        108,
+        470,
+        437
+      ],
+      "sourceDimensions": [
+        1261,
+        1247
+      ],
+      "destination": [
+        2,
+        3,
+        28,
+        26
+      ],
+      "alpha": "cutout",
+      "repeatAxes": [],
+      "category": "equipment",
+      "derivedFrom": null
+    },
+    {
+      "name": "leather_leggings",
+      "source": "sources/armour_leather.png",
+      "cell": 2,
+      "sourceRect": [
+        149,
+        717,
+        330,
+        460
+      ],
+      "sourceDimensions": [
+        1261,
+        1247
+      ],
+      "destination": [
+        6,
+        2,
+        20,
+        28
+      ],
+      "alpha": "cutout",
+      "repeatAxes": [],
+      "category": "equipment",
+      "derivedFrom": null
+    },
+    {
+      "name": "leather_boots",
+      "source": "sources/armour_leather.png",
+      "cell": 3,
+      "sourceRect": [
+        722,
+        772,
+        427,
+        382
+      ],
+      "sourceDimensions": [
+        1261,
+        1247
+      ],
+      "destination": [
+        2,
+        3,
+        28,
+        25
+      ],
+      "alpha": "cutout",
+      "repeatAxes": [],
+      "category": "equipment",
+      "derivedFrom": null
+    },
+    {
+      "name": "iron_helmet",
+      "source": "sources/armour_iron.png",
+      "cell": 0,
+      "sourceRect": [
+        163,
+        123,
+        329,
+        409
+      ],
+      "sourceDimensions": [
+        1263,
+        1246
+      ],
+      "destination": [
+        4,
+        2,
+        23,
+        28
+      ],
+      "alpha": "cutout",
+      "repeatAxes": [],
+      "category": "equipment",
+      "derivedFrom": null
+    },
+    {
+      "name": "iron_chestplate",
+      "source": "sources/armour_iron.png",
+      "cell": 1,
+      "sourceRect": [
+        690,
+        140,
+        464,
+        406
+      ],
+      "sourceDimensions": [
+        1263,
+        1246
+      ],
+      "destination": [
+        2,
+        3,
+        28,
+        25
+      ],
+      "alpha": "cutout",
+      "repeatAxes": [],
+      "category": "equipment",
+      "derivedFrom": null
+    },
+    {
+      "name": "iron_leggings",
+      "source": "sources/armour_iron.png",
+      "cell": 2,
+      "sourceRect": [
+        175,
+        722,
+        315,
+        427
+      ],
+      "sourceDimensions": [
+        1263,
+        1246
+      ],
+      "destination": [
+        5,
+        2,
+        21,
+        28
+      ],
+      "alpha": "cutout",
+      "repeatAxes": [],
+      "category": "equipment",
+      "derivedFrom": null
+    },
+    {
+      "name": "iron_boots",
+      "source": "sources/armour_iron.png",
+      "cell": 3,
+      "sourceRect": [
+        725,
+        790,
+        392,
+        331
+      ],
+      "sourceDimensions": [
+        1263,
+        1246
+      ],
+      "destination": [
+        2,
+        4,
+        28,
+        24
+      ],
+      "alpha": "cutout",
+      "repeatAxes": [],
+      "category": "equipment",
+      "derivedFrom": null
+    },
+    {
+      "name": "diamond_helmet",
+      "source": "sources/armour_diamond.png",
+      "cell": 0,
+      "sourceRect": [
+        140,
+        135,
+        363,
+        382
+      ],
+      "sourceDimensions": [
+        1269,
+        1240
+      ],
+      "destination": [
+        2,
+        2,
+        27,
+        28
+      ],
+      "alpha": "cutout",
+      "repeatAxes": [],
+      "category": "equipment",
+      "derivedFrom": null
+    },
+    {
+      "name": "diamond_chestplate",
+      "source": "sources/armour_diamond.png",
+      "cell": 1,
+      "sourceRect": [
+        706,
+        118,
+        469,
+        419
+      ],
+      "sourceDimensions": [
+        1269,
+        1240
+      ],
+      "destination": [
+        2,
+        3,
+        28,
+        25
+      ],
+      "alpha": "cutout",
+      "repeatAxes": [],
+      "category": "equipment",
+      "derivedFrom": null
+    },
+    {
+      "name": "diamond_leggings",
+      "source": "sources/armour_diamond.png",
+      "cell": 2,
+      "sourceRect": [
+        160,
+        699,
+        326,
+        442
+      ],
+      "sourceDimensions": [
+        1269,
+        1240
+      ],
+      "destination": [
+        5,
+        2,
+        21,
+        28
+      ],
+      "alpha": "cutout",
+      "repeatAxes": [],
+      "category": "equipment",
+      "derivedFrom": null
+    },
+    {
+      "name": "diamond_boots",
+      "source": "sources/armour_diamond.png",
+      "cell": 3,
+      "sourceRect": [
+        714,
+        790,
+        454,
+        326
+      ],
+      "sourceDimensions": [
+        1269,
+        1240
+      ],
+      "destination": [
+        2,
+        6,
+        28,
+        20
+      ],
+      "alpha": "cutout",
+      "repeatAxes": [],
+      "category": "equipment",
+      "derivedFrom": null
+    },
+    {
+      "name": "chest_top",
+      "source": "sources/chest_faces.png",
+      "cell": 0,
+      "sourceRect": [
+        98,
+        97,
+        528,
+        529
+      ],
+      "sourceDimensions": [
+        2172,
+        724
+      ],
+      "destination": [
+        0,
+        0,
+        32,
+        32
+      ],
+      "alpha": "opaque",
+      "repeatAxes": [],
+      "category": "station",
+      "derivedFrom": null
+    },
+    {
+      "name": "chest_side",
+      "source": "sources/chest_faces.png",
+      "cell": 1,
+      "sourceRect": [
+        822,
+        97,
+        528,
+        529
+      ],
+      "sourceDimensions": [
+        2172,
+        724
+      ],
+      "destination": [
+        0,
+        0,
+        32,
+        32
+      ],
+      "alpha": "opaque",
+      "repeatAxes": [],
+      "category": "station",
+      "derivedFrom": null
+    },
+    {
+      "name": "chest_front",
+      "source": "sources/chest_faces.png",
+      "cell": 2,
+      "sourceRect": [
+        1546,
+        97,
+        528,
+        529
+      ],
+      "sourceDimensions": [
+        2172,
+        724
+      ],
+      "destination": [
+        0,
+        0,
+        32,
+        32
+      ],
+      "alpha": "opaque",
+      "repeatAxes": [],
+      "category": "station",
+      "derivedFrom": null
+    },
+    {
+      "name": "ancient_chest_top",
+      "source": "sources/ancient_chest_faces.png",
+      "cell": 0,
+      "sourceRect": [
+        127,
+        127,
+        470,
+        470
+      ],
+      "sourceDimensions": [
+        2172,
+        724
+      ],
+      "destination": [
+        0,
+        0,
+        32,
+        32
+      ],
+      "alpha": "opaque",
+      "repeatAxes": [],
+      "category": "station",
+      "derivedFrom": null
+    },
+    {
+      "name": "ancient_chest_side",
+      "source": "sources/ancient_chest_faces.png",
+      "cell": 1,
+      "sourceRect": [
+        851,
+        127,
+        471,
+        470
+      ],
+      "sourceDimensions": [
+        2172,
+        724
+      ],
+      "destination": [
+        0,
+        0,
+        32,
+        32
+      ],
+      "alpha": "opaque",
+      "repeatAxes": [],
+      "category": "station",
+      "derivedFrom": null
+    },
+    {
+      "name": "ancient_chest_front",
+      "source": "sources/ancient_chest_faces.png",
+      "cell": 2,
+      "sourceRect": [
+        1575,
+        127,
+        470,
+        470
+      ],
+      "sourceDimensions": [
+        2172,
+        724
+      ],
+      "destination": [
+        0,
+        0,
+        32,
+        32
+      ],
+      "alpha": "opaque",
+      "repeatAxes": [],
+      "category": "station",
+      "derivedFrom": null
+    },
+    {
+      "name": "crafting_table_top",
+      "source": "sources/crafting_faces.png",
+      "cell": 0,
+      "sourceRect": [
+        111,
+        111,
+        665,
+        665
+      ],
+      "sourceDimensions": [
+        1774,
+        887
+      ],
+      "destination": [
+        0,
+        0,
+        32,
+        32
+      ],
+      "alpha": "opaque",
+      "repeatAxes": [],
+      "category": "station",
+      "derivedFrom": null
+    },
+    {
+      "name": "crafting_table_side",
+      "source": "sources/crafting_faces.png",
+      "cell": 1,
+      "sourceRect": [
+        998,
+        111,
+        665,
+        665
+      ],
+      "sourceDimensions": [
+        1774,
+        887
+      ],
+      "destination": [
+        0,
+        0,
+        32,
+        32
+      ],
+      "alpha": "opaque",
+      "repeatAxes": [],
+      "category": "station",
+      "derivedFrom": null
+    },
+    {
+      "name": "furnace_top",
+      "source": "sources/furnace_faces.png",
+      "cell": 0,
+      "sourceRect": [
+        82,
+        74,
+        480,
+        479
+      ],
+      "sourceDimensions": [
+        1269,
+        1240
+      ],
+      "destination": [
+        0,
+        0,
+        32,
+        32
+      ],
+      "alpha": "opaque",
+      "repeatAxes": [],
+      "category": "station",
+      "derivedFrom": null
+    },
+    {
+      "name": "furnace_side",
+      "source": "sources/furnace_faces.png",
+      "cell": 1,
+      "sourceRect": [
+        707,
+        74,
+        480,
+        479
+      ],
+      "sourceDimensions": [
+        1269,
+        1240
+      ],
+      "destination": [
+        0,
+        0,
+        32,
+        32
+      ],
+      "alpha": "opaque",
+      "repeatAxes": [],
+      "category": "station",
+      "derivedFrom": null
+    },
+    {
+      "name": "furnace_front",
+      "source": "sources/furnace_faces.png",
+      "cell": 2,
+      "sourceRect": [
+        82,
+        685,
+        480,
+        479
+      ],
+      "sourceDimensions": [
+        1269,
+        1240
+      ],
+      "destination": [
+        0,
+        0,
+        32,
+        32
+      ],
+      "alpha": "opaque",
+      "repeatAxes": [],
+      "category": "station",
+      "derivedFrom": null
+    },
+    {
+      "name": "furnace_front_lit",
+      "source": "sources/furnace_faces.png",
+      "cell": 3,
+      "sourceRect": [
+        707,
+        685,
+        480,
+        479
+      ],
+      "sourceDimensions": [
+        1269,
+        1240
+      ],
+      "destination": [
+        0,
+        0,
+        32,
+        32
+      ],
+      "alpha": "opaque",
+      "repeatAxes": [],
+      "category": "station",
+      "derivedFrom": null
+    },
+    {
+      "name": "post_top",
+      "source": "sources/post_faces.png",
+      "cell": 0,
+      "sourceRect": [
+        97,
+        95,
+        523,
+        530
+      ],
+      "sourceDimensions": [
+        2172,
+        724
+      ],
+      "destination": [
+        0,
+        0,
+        32,
+        32
+      ],
+      "alpha": "opaque",
+      "repeatAxes": [],
+      "category": "station",
+      "derivedFrom": null
+    },
+    {
+      "name": "post_side",
+      "source": "sources/post_faces.png",
+      "cell": 1,
+      "sourceRect": [
+        821,
+        95,
+        523,
+        530
+      ],
+      "sourceDimensions": [
+        2172,
+        724
+      ],
+      "destination": [
+        0,
+        0,
+        32,
+        32
+      ],
+      "alpha": "opaque",
+      "repeatAxes": [],
+      "category": "station",
+      "derivedFrom": null
+    },
+    {
+      "name": "post_front",
+      "source": "sources/post_faces.png",
+      "cell": 2,
+      "sourceRect": [
+        1545,
+        95,
+        523,
+        530
+      ],
+      "sourceDimensions": [
+        2172,
+        724
+      ],
+      "destination": [
+        0,
+        0,
+        32,
+        32
+      ],
+      "alpha": "opaque",
+      "repeatAxes": [],
+      "category": "station",
+      "derivedFrom": null
+    },
+    {
+      "name": "forge_top",
+      "source": "sources/forge_faces.png",
+      "cell": 0,
+      "sourceRect": [
+        104,
+        101,
+        513,
+        505
+      ],
+      "sourceDimensions": [
+        2172,
+        724
+      ],
+      "destination": [
+        0,
+        0,
+        32,
+        32
+      ],
+      "alpha": "opaque",
+      "repeatAxes": [],
+      "category": "station",
+      "derivedFrom": null
+    },
+    {
+      "name": "forge_side",
+      "source": "sources/forge_faces.png",
+      "cell": 1,
+      "sourceRect": [
+        829,
+        101,
+        514,
+        507
+      ],
+      "sourceDimensions": [
+        2172,
+        724
+      ],
+      "destination": [
+        0,
+        0,
+        32,
+        32
+      ],
+      "alpha": "opaque",
+      "repeatAxes": [],
+      "category": "station",
+      "derivedFrom": null
+    },
+    {
+      "name": "forge_front",
+      "source": "sources/forge_faces.png",
+      "cell": 2,
+      "sourceRect": [
+        1556,
+        101,
+        514,
+        507
+      ],
+      "sourceDimensions": [
+        2172,
+        724
+      ],
+      "destination": [
+        0,
+        0,
+        32,
+        32
+      ],
+      "alpha": "opaque",
+      "repeatAxes": [],
+      "category": "station",
+      "derivedFrom": null
+    },
+    {
+      "name": "bed_side",
+      "source": "sources/bed_faces.png",
+      "cell": 1,
+      "sourceRect": [
+        1023,
+        137,
+        615,
+        613
+      ],
+      "sourceDimensions": [
+        1774,
+        887
+      ],
+      "destination": [
+        0,
+        0,
+        32,
+        32
+      ],
+      "alpha": "opaque",
+      "repeatAxes": [],
+      "category": "station",
+      "derivedFrom": null
+    },
+    {
+      "name": "campfire_top",
+      "source": "sources/campfire_faces.png",
+      "cell": 0,
+      "sourceRect": [
+        163,
+        162,
+        562,
+        562
+      ],
+      "sourceDimensions": [
+        1774,
+        887
+      ],
+      "destination": [
+        0,
+        0,
+        32,
+        32
+      ],
+      "alpha": "opaque",
+      "repeatAxes": [],
+      "category": "station",
+      "derivedFrom": null
+    },
+    {
+      "name": "campfire_side",
+      "source": "sources/campfire_faces.png",
+      "cell": 1,
+      "sourceRect": [
+        1049,
+        524,
+        563,
+        200
+      ],
+      "sourceDimensions": [
+        1774,
+        887
+      ],
+      "destination": [
+        0,
+        20,
+        32,
+        12
+      ],
+      "alpha": "cutout",
+      "repeatAxes": [],
+      "category": "station",
+      "derivedFrom": null
+    },
+    {
+      "name": "oak_bark",
+      "source": "sources/tree_oak.png",
+      "cell": 0,
+      "sourceRect": [
+        58,
+        56,
+        522,
+        522
+      ],
+      "sourceDimensions": [
+        1254,
+        1254
+      ],
+      "destination": [
+        0,
+        0,
+        32,
+        32
+      ],
+      "alpha": "opaque",
+      "repeatAxes": [
+        "x",
+        "y"
+      ],
+      "category": "tree",
+      "derivedFrom": null
+    },
+    {
+      "name": "oak_end",
+      "source": "sources/tree_oak.png",
+      "cell": 1,
+      "sourceRect": [
+        675,
+        56,
+        521,
+        523
+      ],
+      "sourceDimensions": [
+        1254,
+        1254
+      ],
+      "destination": [
+        0,
+        0,
+        32,
+        32
+      ],
+      "alpha": "opaque",
+      "repeatAxes": [],
+      "category": "tree",
+      "derivedFrom": null
+    },
+    {
+      "name": "maple_bark",
+      "source": "sources/tree_maple.png",
+      "cell": 0,
+      "sourceRect": [
+        105,
+        55,
+        494,
+        491
+      ],
+      "sourceDimensions": [
+        1312,
+        1199
+      ],
+      "destination": [
+        0,
+        0,
+        32,
+        32
+      ],
+      "alpha": "opaque",
+      "repeatAxes": [
+        "x",
+        "y"
+      ],
+      "category": "tree",
+      "derivedFrom": null
+    },
+    {
+      "name": "maple_end",
+      "source": "sources/tree_maple.png",
+      "cell": 1,
+      "sourceRect": [
+        714,
+        55,
+        493,
+        492
+      ],
+      "sourceDimensions": [
+        1312,
+        1199
+      ],
+      "destination": [
+        0,
+        0,
+        32,
+        32
+      ],
+      "alpha": "opaque",
+      "repeatAxes": [],
+      "category": "tree",
+      "derivedFrom": null
+    },
+    {
+      "name": "spruce_bark",
+      "source": "sources/tree_spruce.png",
+      "cell": 0,
+      "sourceRect": [
+        90,
+        47,
+        506,
+        505
+      ],
+      "sourceDimensions": [
+        1290,
+        1219
+      ],
+      "destination": [
+        0,
+        0,
+        32,
+        32
+      ],
+      "alpha": "opaque",
+      "repeatAxes": [
+        "x",
+        "y"
+      ],
+      "category": "tree",
+      "derivedFrom": null
+    },
+    {
+      "name": "spruce_end",
+      "source": "sources/tree_spruce.png",
+      "cell": 1,
+      "sourceRect": [
+        694,
+        47,
+        506,
+        505
+      ],
+      "sourceDimensions": [
+        1290,
+        1219
+      ],
+      "destination": [
+        0,
+        0,
+        32,
+        32
+      ],
+      "alpha": "opaque",
+      "repeatAxes": [],
+      "category": "tree",
+      "derivedFrom": null
+    },
+    {
+      "name": "fir_bark",
+      "source": "sources/tree_fir.png",
+      "cell": 0,
+      "sourceRect": [
+        86,
+        40,
+        508,
+        505
+      ],
+      "sourceDimensions": [
+        1310,
+        1200
+      ],
+      "destination": [
+        0,
+        0,
+        32,
+        32
+      ],
+      "alpha": "opaque",
+      "repeatAxes": [
+        "x",
+        "y"
+      ],
+      "category": "tree",
+      "derivedFrom": null
+    },
+    {
+      "name": "fir_end",
+      "source": "sources/tree_fir.png",
+      "cell": 1,
+      "sourceRect": [
+        716,
+        41,
+        509,
+        504
+      ],
+      "sourceDimensions": [
+        1310,
+        1200
+      ],
+      "destination": [
+        0,
+        0,
+        32,
+        32
+      ],
+      "alpha": "opaque",
+      "repeatAxes": [],
+      "category": "tree",
+      "derivedFrom": null
+    },
+    {
+      "name": "larch_bark",
+      "source": "sources/tree_larch.png",
+      "cell": 0,
+      "sourceRect": [
+        97,
+        52,
+        502,
+        500
+      ],
+      "sourceDimensions": [
+        1312,
+        1199
+      ],
+      "destination": [
+        0,
+        0,
+        32,
+        32
+      ],
+      "alpha": "opaque",
+      "repeatAxes": [
+        "x",
+        "y"
+      ],
+      "category": "tree",
+      "derivedFrom": null
+    },
+    {
+      "name": "larch_end",
+      "source": "sources/tree_larch.png",
+      "cell": 1,
+      "sourceRect": [
+        713,
+        52,
+        502,
+        500
+      ],
+      "sourceDimensions": [
+        1312,
+        1199
+      ],
+      "destination": [
+        0,
+        0,
+        32,
+        32
+      ],
+      "alpha": "opaque",
+      "repeatAxes": [],
+      "category": "tree",
+      "derivedFrom": null
+    },
+    {
+      "name": "birch_bark",
+      "source": "sources/tree_birch.png",
+      "cell": 0,
+      "sourceRect": [
+        74,
+        36,
+        502,
+        507
+      ],
+      "sourceDimensions": [
+        1292,
+        1218
+      ],
+      "destination": [
+        0,
+        0,
+        32,
+        32
+      ],
+      "alpha": "opaque",
+      "repeatAxes": [
+        "x",
+        "y"
+      ],
+      "category": "tree",
+      "derivedFrom": null
+    },
+    {
+      "name": "birch_end",
+      "source": "sources/tree_birch.png",
+      "cell": 1,
+      "sourceRect": [
+        716,
+        36,
+        501,
+        507
+      ],
+      "sourceDimensions": [
+        1292,
+        1218
+      ],
+      "destination": [
+        0,
+        0,
+        32,
+        32
+      ],
+      "alpha": "opaque",
+      "repeatAxes": [],
+      "category": "tree",
+      "derivedFrom": null
+    },
+    {
+      "name": "pine_bark",
+      "source": "sources/tree_pine.png",
+      "cell": 0,
+      "sourceRect": [
+        87,
+        43,
+        513,
+        511
+      ],
+      "sourceDimensions": [
+        1312,
+        1199
+      ],
+      "destination": [
+        0,
+        0,
+        32,
+        32
+      ],
+      "alpha": "opaque",
+      "repeatAxes": [
+        "x",
+        "y"
+      ],
+      "category": "tree",
+      "derivedFrom": null
+    },
+    {
+      "name": "pine_end",
+      "source": "sources/tree_pine.png",
+      "cell": 1,
+      "sourceRect": [
+        712,
+        43,
+        513,
+        511
+      ],
+      "sourceDimensions": [
+        1312,
+        1199
+      ],
+      "destination": [
+        0,
+        0,
+        32,
+        32
+      ],
+      "alpha": "opaque",
+      "repeatAxes": [],
+      "category": "tree",
+      "derivedFrom": null
+    },
+    {
+      "name": "jungle_giant_bark",
+      "source": "sources/tree_jungle_giant.png",
+      "cell": 0,
+      "sourceRect": [
+        75,
+        47,
+        524,
+        523
+      ],
+      "sourceDimensions": [
+        1293,
+        1217
+      ],
+      "destination": [
+        0,
+        0,
+        32,
+        32
+      ],
+      "alpha": "opaque",
+      "repeatAxes": [
+        "x",
+        "y"
+      ],
+      "category": "tree",
+      "derivedFrom": null
+    },
+    {
+      "name": "jungle_giant_end",
+      "source": "sources/tree_jungle_giant.png",
+      "cell": 1,
+      "sourceRect": [
+        694,
+        47,
+        524,
+        523
+      ],
+      "sourceDimensions": [
+        1293,
+        1217
+      ],
+      "destination": [
+        0,
+        0,
+        32,
+        32
+      ],
+      "alpha": "opaque",
+      "repeatAxes": [],
+      "category": "tree",
+      "derivedFrom": null
+    },
+    {
+      "name": "palm_bark",
+      "source": "sources/tree_palm.png",
+      "cell": 0,
+      "sourceRect": [
+        75,
+        30,
+        508,
+        507
+      ],
+      "sourceDimensions": [
+        1312,
+        1199
+      ],
+      "destination": [
+        0,
+        0,
+        32,
+        32
+      ],
+      "alpha": "opaque",
+      "repeatAxes": [
+        "x",
+        "y"
+      ],
+      "category": "tree",
+      "derivedFrom": null
+    },
+    {
+      "name": "palm_end",
+      "source": "sources/tree_palm.png",
+      "cell": 1,
+      "sourceRect": [
+        729,
+        30,
+        510,
+        507
+      ],
+      "sourceDimensions": [
+        1312,
+        1199
+      ],
+      "destination": [
+        0,
+        0,
+        32,
+        32
+      ],
+      "alpha": "opaque",
+      "repeatAxes": [],
+      "category": "tree",
+      "derivedFrom": null
+    },
+    {
+      "name": "baobab_bark",
+      "source": "sources/tree_baobab.png",
+      "cell": 0,
+      "sourceRect": [
+        64,
+        73,
+        517,
+        509
+      ],
+      "sourceDimensions": [
+        1264,
+        1244
+      ],
+      "destination": [
+        0,
+        0,
+        32,
+        32
+      ],
+      "alpha": "opaque",
+      "repeatAxes": [
+        "x",
+        "y"
+      ],
+      "category": "tree",
+      "derivedFrom": null
+    },
+    {
+      "name": "baobab_end",
+      "source": "sources/tree_baobab.png",
+      "cell": 1,
+      "sourceRect": [
+        682,
+        73,
+        518,
+        509
+      ],
+      "sourceDimensions": [
+        1264,
+        1244
+      ],
+      "destination": [
+        0,
+        0,
+        32,
+        32
+      ],
+      "alpha": "opaque",
+      "repeatAxes": [],
+      "category": "tree",
+      "derivedFrom": null
+    },
+    {
+      "name": "acacia_bark",
+      "source": "sources/tree_acacia.png",
+      "cell": 0,
+      "sourceRect": [
+        84,
+        47,
+        512,
+        514
+      ],
+      "sourceDimensions": [
+        1312,
+        1199
+      ],
+      "destination": [
+        0,
+        0,
+        32,
+        32
+      ],
+      "alpha": "opaque",
+      "repeatAxes": [
+        "x",
+        "y"
+      ],
+      "category": "tree",
+      "derivedFrom": null
+    },
+    {
+      "name": "acacia_end",
+      "source": "sources/tree_acacia.png",
+      "cell": 1,
+      "sourceRect": [
+        717,
+        47,
+        511,
+        514
+      ],
+      "sourceDimensions": [
+        1312,
+        1199
+      ],
+      "destination": [
+        0,
+        0,
+        32,
+        32
+      ],
+      "alpha": "opaque",
+      "repeatAxes": [],
+      "category": "tree",
+      "derivedFrom": null
+    },
+    {
+      "name": "willow_bark",
+      "source": "sources/tree_willow.png",
+      "cell": 0,
+      "sourceRect": [
+        98,
+        36,
+        509,
+        507
+      ],
+      "sourceDimensions": [
+        1312,
+        1199
+      ],
+      "destination": [
+        0,
+        0,
+        32,
+        32
+      ],
+      "alpha": "opaque",
+      "repeatAxes": [
+        "x",
+        "y"
+      ],
+      "category": "tree",
+      "derivedFrom": null
+    },
+    {
+      "name": "willow_end",
+      "source": "sources/tree_willow.png",
+      "cell": 1,
+      "sourceRect": [
+        704,
+        36,
+        509,
+        507
+      ],
+      "sourceDimensions": [
+        1312,
+        1199
+      ],
+      "destination": [
+        0,
+        0,
+        32,
+        32
+      ],
+      "alpha": "opaque",
+      "repeatAxes": [],
+      "category": "tree",
+      "derivedFrom": null
+    },
+    {
+      "name": "mangrove_bark",
+      "source": "sources/tree_mangrove.png",
+      "cell": 0,
+      "sourceRect": [
+        57,
+        54,
+        526,
+        525
+      ],
+      "sourceDimensions": [
+        1254,
+        1254
+      ],
+      "destination": [
+        0,
+        0,
+        32,
+        32
+      ],
+      "alpha": "opaque",
+      "repeatAxes": [
+        "x",
+        "y"
+      ],
+      "category": "tree",
+      "derivedFrom": null
+    },
+    {
+      "name": "mangrove_end",
+      "source": "sources/tree_mangrove.png",
+      "cell": 1,
+      "sourceRect": [
+        671,
+        54,
+        526,
+        525
+      ],
+      "sourceDimensions": [
+        1254,
+        1254
+      ],
+      "destination": [
+        0,
+        0,
+        32,
+        32
+      ],
+      "alpha": "opaque",
+      "repeatAxes": [],
+      "category": "tree",
+      "derivedFrom": null
+    },
+    {
+      "name": "bush_bark",
+      "source": "sources/tree_bush.png",
+      "cell": 0,
+      "sourceRect": [
+        96,
+        45,
+        499,
+        497
+      ],
+      "sourceDimensions": [
+        1312,
+        1199
+      ],
+      "destination": [
+        0,
+        0,
+        32,
+        32
+      ],
+      "alpha": "opaque",
+      "repeatAxes": [
+        "x",
+        "y"
+      ],
+      "category": "tree",
+      "derivedFrom": null
+    },
+    {
+      "name": "bush_end",
+      "source": "sources/tree_bush.png",
+      "cell": 1,
+      "sourceRect": [
+        715,
+        45,
+        501,
+        497
+      ],
+      "sourceDimensions": [
+        1312,
+        1199
+      ],
+      "destination": [
+        0,
+        0,
+        32,
+        32
+      ],
+      "alpha": "opaque",
+      "repeatAxes": [],
+      "category": "tree",
+      "derivedFrom": null
+    },
+    {
+      "name": "door",
+      "source": "sources/utility_faces.png",
+      "cell": 0,
+      "sourceRect": [
+        100,
+        88,
+        433,
+        472
+      ],
+      "sourceDimensions": [
+        1254,
+        1254
+      ],
+      "destination": [
+        0,
+        0,
+        32,
+        32
+      ],
+      "alpha": "opaque",
+      "repeatAxes": [],
+      "category": "station",
+      "derivedFrom": null
+    },
+    {
+      "name": "ladder",
+      "source": "sources/utility_faces.png",
+      "cell": 1,
+      "sourceRect": [
+        784,
+        75,
+        310,
+        510
+      ],
+      "sourceDimensions": [
+        1254,
+        1254
+      ],
+      "destination": [
+        7,
+        2,
+        17,
+        28
+      ],
+      "alpha": "cutout",
+      "repeatAxes": [],
+      "category": "station",
+      "derivedFrom": null
+    },
+    {
+      "name": "torch",
+      "source": "sources/utility_faces.png",
+      "cell": 2,
+      "sourceRect": [
+        232,
+        692,
+        173,
+        505
+      ],
+      "sourceDimensions": [
+        1254,
+        1254
+      ],
+      "destination": [
+        0,
+        12,
+        32,
+        20
+      ],
+      "alpha": "cutout",
+      "repeatAxes": [],
+      "category": "station",
+      "derivedFrom": null
+    },
+    {
+      "name": "lantern",
+      "source": "sources/utility_faces.png",
+      "cell": 3,
+      "sourceRect": [
+        806,
+        703,
+        272,
+        484
+      ],
+      "sourceDimensions": [
+        1254,
+        1254
+      ],
+      "destination": [
+        10,
+        16,
+        12,
+        16
+      ],
+      "alpha": "cutout",
+      "repeatAxes": [],
+      "category": "station",
+      "derivedFrom": null
+    },
+    {
+      "name": "beacon_top",
+      "source": "sources/beacon_faces.png",
+      "cell": 0,
+      "sourceRect": [
+        217,
+        217,
+        453,
+        451
+      ],
+      "sourceDimensions": [
+        1774,
+        887
+      ],
+      "destination": [
+        0,
+        0,
+        32,
+        32
+      ],
+      "alpha": "opaque",
+      "repeatAxes": [],
+      "category": "station",
+      "derivedFrom": null
+    },
+    {
+      "name": "beacon_side",
+      "source": "sources/beacon_faces.png",
+      "cell": 1,
+      "sourceRect": [
+        1105,
+        207,
+        451,
+        461
+      ],
+      "sourceDimensions": [
+        1774,
+        887
+      ],
+      "destination": [
+        0,
+        0,
+        32,
+        32
+      ],
+      "alpha": "cutout",
+      "repeatAxes": [],
+      "category": "station",
+      "derivedFrom": null
+    },
+    {
+      "name": "dead_snag_bark",
+      "source": "sources/dead_cactus.png",
+      "cell": 0,
+      "sourceRect": [
+        95,
+        81,
+        486,
+        482
+      ],
+      "sourceDimensions": [
+        1267,
+        1241
+      ],
+      "destination": [
+        0,
+        0,
+        32,
+        32
+      ],
+      "alpha": "opaque",
+      "repeatAxes": [
+        "x",
+        "y"
+      ],
+      "category": "station",
+      "derivedFrom": null
+    },
+    {
+      "name": "dead_snag_end",
+      "source": "sources/dead_cactus.png",
+      "cell": 1,
+      "sourceRect": [
+        687,
+        81,
+        486,
+        482
+      ],
+      "sourceDimensions": [
+        1267,
+        1241
+      ],
+      "destination": [
+        0,
+        0,
+        32,
+        32
+      ],
+      "alpha": "opaque",
+      "repeatAxes": [],
+      "category": "station",
+      "derivedFrom": null
+    },
+    {
+      "name": "saguaro_side",
+      "source": "sources/dead_cactus.png",
+      "cell": 2,
+      "sourceRect": [
+        95,
+        671,
+        485,
+        486
+      ],
+      "sourceDimensions": [
+        1267,
+        1241
+      ],
+      "destination": [
+        0,
+        0,
+        32,
+        32
+      ],
+      "alpha": "opaque",
+      "repeatAxes": [
+        "x",
+        "y"
+      ],
+      "category": "station",
+      "derivedFrom": null
+    },
+    {
+      "name": "saguaro_top",
+      "source": "sources/dead_cactus.png",
+      "cell": 3,
+      "sourceRect": [
+        687,
+        671,
+        486,
+        486
+      ],
+      "sourceDimensions": [
+        1267,
+        1241
+      ],
+      "destination": [
+        0,
+        0,
+        32,
+        32
+      ],
+      "alpha": "opaque",
+      "repeatAxes": [
+        "x",
+        "y"
+      ],
+      "category": "station",
+      "derivedFrom": null
+    },
+    {
+      "name": "ice",
+      "source": "sources/ice_glass.png",
+      "cell": 0,
+      "sourceRect": [
+        130,
+        140,
+        627,
+        605
+      ],
+      "sourceDimensions": [
+        1774,
+        887
+      ],
+      "destination": [
+        0,
+        0,
+        32,
+        32
+      ],
+      "alpha": "opaque",
+      "repeatAxes": [],
+      "category": "station",
+      "derivedFrom": null
+    },
+    {
+      "name": "glass",
+      "source": "sources/ice_glass.png",
+      "cell": 1,
+      "sourceRect": [
+        1017,
+        144,
+        627,
+        598
+      ],
+      "sourceDimensions": [
+        1774,
+        887
+      ],
+      "destination": [
+        0,
+        0,
+        32,
+        32
+      ],
+      "alpha": "cutout",
+      "repeatAxes": [],
+      "category": "station",
+      "derivedFrom": null
+    },
+    {
+      "name": "station_flame_0",
+      "source": "sources/station_flames.png",
+      "cell": 0,
+      "sourceRect": [
+        97,
+        124,
+        249,
+        265
+      ],
+      "sourceDimensions": [
+        1774,
+        887
+      ],
+      "destination": [
+        3,
+        2,
+        26,
+        28
+      ],
+      "alpha": "cutout",
+      "repeatAxes": [],
+      "category": "animation",
+      "derivedFrom": null
+    },
+    {
+      "name": "station_flame_1",
+      "source": "sources/station_flames.png",
+      "cell": 1,
+      "sourceRect": [
+        543,
+        90,
+        248,
+        299
+      ],
+      "sourceDimensions": [
+        1774,
+        887
+      ],
+      "destination": [
+        4,
+        2,
+        23,
+        28
+      ],
+      "alpha": "cutout",
+      "repeatAxes": [],
+      "category": "animation",
+      "derivedFrom": null
+    },
+    {
+      "name": "station_flame_2",
+      "source": "sources/station_flames.png",
+      "cell": 2,
+      "sourceRect": [
+        988,
+        45,
+        245,
+        344
+      ],
+      "sourceDimensions": [
+        1774,
+        887
+      ],
+      "destination": [
+        6,
+        2,
+        20,
+        28
+      ],
+      "alpha": "cutout",
+      "repeatAxes": [],
+      "category": "animation",
+      "derivedFrom": null
+    },
+    {
+      "name": "station_flame_3",
+      "source": "sources/station_flames.png",
+      "cell": 3,
+      "sourceRect": [
+        1430,
+        58,
+        248,
+        331
+      ],
+      "sourceDimensions": [
+        1774,
+        887
+      ],
+      "destination": [
+        5,
+        2,
+        21,
+        28
+      ],
+      "alpha": "cutout",
+      "repeatAxes": [],
+      "category": "animation",
+      "derivedFrom": null
+    },
+    {
+      "name": "station_flame_4",
+      "source": "sources/station_flames.png",
+      "cell": 4,
+      "sourceRect": [
+        94,
+        518,
+        253,
+        315
+      ],
+      "sourceDimensions": [
+        1774,
+        887
+      ],
+      "destination": [
+        5,
+        2,
+        22,
+        28
+      ],
+      "alpha": "cutout",
+      "repeatAxes": [],
+      "category": "animation",
+      "derivedFrom": null
+    },
+    {
+      "name": "station_flame_5",
+      "source": "sources/station_flames.png",
+      "cell": 5,
+      "sourceRect": [
+        541,
+        554,
+        250,
+        278
+      ],
+      "sourceDimensions": [
+        1774,
+        887
+      ],
+      "destination": [
+        3,
+        2,
+        25,
+        28
+      ],
+      "alpha": "cutout",
+      "repeatAxes": [],
+      "category": "animation",
+      "derivedFrom": null
+    },
+    {
+      "name": "station_flame_6",
+      "source": "sources/station_flames.png",
+      "cell": 6,
+      "sourceRect": [
+        984,
+        576,
+        249,
+        256
+      ],
+      "sourceDimensions": [
+        1774,
+        887
+      ],
+      "destination": [
+        2,
+        2,
+        27,
+        28
+      ],
+      "alpha": "cutout",
+      "repeatAxes": [],
+      "category": "animation",
+      "derivedFrom": null
+    },
+    {
+      "name": "station_flame_7",
+      "source": "sources/station_flames.png",
+      "cell": 7,
+      "sourceRect": [
+        1428,
+        577,
+        250,
+        255
+      ],
+      "sourceDimensions": [
+        1774,
+        887
+      ],
+      "destination": [
+        2,
+        2,
+        27,
+        28
+      ],
+      "alpha": "cutout",
+      "repeatAxes": [],
+      "category": "animation",
+      "derivedFrom": null
+    },
+    {
+      "name": "stick",
+      "source": "sources/resources_metals.png",
+      "cell": 0,
+      "sourceRect": [
+        242,
+        89,
+        359,
+        379
+      ],
+      "sourceDimensions": [
+        1536,
+        1024
+      ],
+      "destination": [
+        2,
+        2,
+        27,
+        28
+      ],
+      "alpha": "cutout",
+      "repeatAxes": [],
+      "category": "equipment",
+      "derivedFrom": null
+    },
+    {
+      "name": "coal",
+      "source": "sources/resources_metals.png",
+      "cell": 1,
+      "sourceRect": [
+        951,
+        129,
+        373,
+        335
+      ],
+      "sourceDimensions": [
+        1536,
+        1024
+      ],
+      "destination": [
+        2,
+        3,
+        28,
+        25
+      ],
+      "alpha": "cutout",
+      "repeatAxes": [],
+      "category": "equipment",
+      "derivedFrom": null
+    },
+    {
+      "name": "iron_ingot",
+      "source": "sources/resources_metals.png",
+      "cell": 2,
+      "sourceRect": [
+        177,
+        627,
+        436,
+        316
+      ],
+      "sourceDimensions": [
+        1536,
+        1024
+      ],
+      "destination": [
+        2,
+        6,
+        28,
+        20
+      ],
+      "alpha": "cutout",
+      "repeatAxes": [],
+      "category": "equipment",
+      "derivedFrom": null
+    },
+    {
+      "name": "gold_ingot",
+      "source": "sources/resources_metals.png",
+      "cell": 3,
+      "sourceRect": [
+        934,
+        624,
+        446,
+        326
+      ],
+      "sourceDimensions": [
+        1536,
+        1024
+      ],
+      "destination": [
+        2,
+        6,
+        28,
+        20
+      ],
+      "alpha": "cutout",
+      "repeatAxes": [],
+      "category": "equipment",
+      "derivedFrom": null
+    },
+    {
+      "name": "diamond",
+      "source": "sources/resources_crystals.png",
+      "cell": 0,
+      "sourceRect": [
+        218,
+        120,
+        363,
+        295
+      ],
+      "sourceDimensions": [
+        1536,
+        1024
+      ],
+      "destination": [
+        2,
+        4,
+        28,
+        23
+      ],
+      "alpha": "cutout",
+      "repeatAxes": [],
+      "category": "equipment",
+      "derivedFrom": null
+    },
+    {
+      "name": "lapis",
+      "source": "sources/resources_crystals.png",
+      "cell": 1,
+      "sourceRect": [
+        955,
+        101,
+        377,
+        324
+      ],
+      "sourceDimensions": [
+        1536,
+        1024
+      ],
+      "destination": [
+        2,
+        4,
+        28,
+        24
+      ],
+      "alpha": "cutout",
+      "repeatAxes": [],
+      "category": "equipment",
+      "derivedFrom": null
+    },
+    {
+      "name": "ember_crystal",
+      "source": "sources/resources_crystals.png",
+      "cell": 2,
+      "sourceRect": [
+        227,
+        577,
+        316,
+        378
+      ],
+      "sourceDimensions": [
+        1536,
+        1024
+      ],
+      "destination": [
+        4,
+        2,
+        23,
+        28
+      ],
+      "alpha": "cutout",
+      "repeatAxes": [],
+      "category": "equipment",
+      "derivedFrom": null
+    },
+    {
+      "name": "beacon_shard",
+      "source": "sources/resources_crystals.png",
+      "cell": 3,
+      "sourceRect": [
+        1055,
+        566,
+        168,
+        396
+      ],
+      "sourceDimensions": [
+        1536,
+        1024
+      ],
+      "destination": [
+        10,
+        2,
+        12,
+        28
+      ],
+      "alpha": "cutout",
+      "repeatAxes": [],
+      "category": "equipment",
+      "derivedFrom": null
+    },
+    {
+      "name": "leather",
+      "source": "sources/resources_fibres.png",
+      "cell": 0,
+      "sourceRect": [
+        186,
+        87,
+        480,
+        400
+      ],
+      "sourceDimensions": [
+        1536,
+        1024
+      ],
+      "destination": [
+        2,
+        4,
+        28,
+        23
+      ],
+      "alpha": "cutout",
+      "repeatAxes": [],
+      "category": "equipment",
+      "derivedFrom": null
+    },
+    {
+      "name": "feather",
+      "source": "sources/resources_fibres.png",
+      "cell": 1,
+      "sourceRect": [
+        932,
+        44,
+        386,
+        455
+      ],
+      "sourceDimensions": [
+        1536,
+        1024
+      ],
+      "destination": [
+        4,
+        2,
+        24,
+        28
+      ],
+      "alpha": "cutout",
+      "repeatAxes": [],
+      "category": "equipment",
+      "derivedFrom": null
+    },
+    {
+      "name": "wool",
+      "source": "sources/resources_fibres.png",
+      "cell": 2,
+      "sourceRect": [
+        193,
+        563,
+        453,
+        407
+      ],
+      "sourceDimensions": [
+        1536,
+        1024
+      ],
+      "destination": [
+        2,
+        3,
+        28,
+        25
+      ],
+      "alpha": "cutout",
+      "repeatAxes": [],
+      "category": "equipment",
+      "derivedFrom": null
+    },
+    {
+      "name": "string",
+      "source": "sources/resources_fibres.png",
+      "cell": 3,
+      "sourceRect": [
+        898,
+        595,
+        435,
+        384
+      ],
+      "sourceDimensions": [
+        1536,
+        1024
+      ],
+      "destination": [
+        2,
+        3,
+        28,
+        25
+      ],
+      "alpha": "cutout",
+      "repeatAxes": [],
+      "category": "equipment",
+      "derivedFrom": null
+    },
+    {
+      "name": "raw_fish",
+      "source": "sources/food_proteins.png",
+      "cell": 0,
+      "sourceRect": [
+        159,
+        136,
+        505,
+        277
+      ],
+      "sourceDimensions": [
+        1536,
+        1024
+      ],
+      "destination": [
+        2,
+        8,
+        28,
+        15
+      ],
+      "alpha": "cutout",
+      "repeatAxes": [],
+      "category": "equipment",
+      "derivedFrom": null
+    },
+    {
+      "name": "cooked_fish",
+      "source": "sources/food_proteins.png",
+      "cell": 1,
+      "sourceRect": [
+        865,
+        138,
+        511,
+        275
+      ],
+      "sourceDimensions": [
+        1536,
+        1024
+      ],
+      "destination": [
+        2,
+        8,
+        28,
+        15
+      ],
+      "alpha": "cutout",
+      "repeatAxes": [],
+      "category": "equipment",
+      "derivedFrom": null
+    },
+    {
+      "name": "raw_meat",
+      "source": "sources/food_proteins.png",
+      "cell": 2,
+      "sourceRect": [
+        181,
+        611,
+        451,
+        320
+      ],
+      "sourceDimensions": [
+        1536,
+        1024
+      ],
+      "destination": [
+        2,
+        6,
+        28,
+        20
+      ],
+      "alpha": "cutout",
+      "repeatAxes": [],
+      "category": "equipment",
+      "derivedFrom": null
+    },
+    {
+      "name": "cooked_meat",
+      "source": "sources/food_proteins.png",
+      "cell": 3,
+      "sourceRect": [
+        891,
+        612,
+        459,
+        316
+      ],
+      "sourceDimensions": [
+        1536,
+        1024
+      ],
+      "destination": [
+        2,
+        6,
+        28,
+        19
+      ],
+      "alpha": "cutout",
+      "repeatAxes": [],
+      "category": "equipment",
+      "derivedFrom": null
+    },
+    {
+      "name": "baked_potato",
+      "source": "sources/food_crops.png",
+      "cell": 0,
+      "sourceRect": [
+        280,
+        75,
+        375,
+        302
+      ],
+      "sourceDimensions": [
+        1774,
+        887
+      ],
+      "destination": [
+        2,
+        4,
+        28,
+        23
+      ],
+      "alpha": "cutout",
+      "repeatAxes": [],
+      "category": "equipment",
+      "derivedFrom": null
+    },
+    {
+      "name": "harvested_wheat",
+      "source": "sources/food_crops.png",
+      "cell": 1,
+      "sourceRect": [
+        1123,
+        19,
+        342,
+        409
+      ],
+      "sourceDimensions": [
+        1774,
+        887
+      ],
+      "destination": [
+        4,
+        2,
+        23,
+        28
+      ],
+      "alpha": "cutout",
+      "repeatAxes": [],
+      "category": "equipment",
+      "derivedFrom": null
+    },
+    {
+      "name": "harvested_carrot",
+      "source": "sources/food_crops.png",
+      "cell": 2,
+      "sourceRect": [
+        273,
+        474,
+        384,
+        388
+      ],
+      "sourceDimensions": [
+        1774,
+        887
+      ],
+      "destination": [
+        2,
+        2,
+        28,
+        28
+      ],
+      "alpha": "cutout",
+      "repeatAxes": [],
+      "category": "equipment",
+      "derivedFrom": null
+    },
+    {
+      "name": "harvested_potato",
+      "source": "sources/food_crops.png",
+      "cell": 3,
+      "sourceRect": [
+        1105,
+        524,
+        402,
+        302
+      ],
+      "sourceDimensions": [
+        1774,
+        887
+      ],
+      "destination": [
+        2,
+        5,
+        28,
+        21
+      ],
+      "alpha": "cutout",
+      "repeatAxes": [],
+      "category": "equipment",
+      "derivedFrom": null
+    },
+    {
+      "name": "bucket",
+      "source": "sources/containers.png",
+      "cell": 0,
+      "sourceRect": [
+        291,
+        43,
+        305,
+        359
+      ],
+      "sourceDimensions": [
+        1774,
+        887
+      ],
+      "destination": [
+        4,
+        2,
+        24,
+        28
+      ],
+      "alpha": "cutout",
+      "repeatAxes": [],
+      "category": "equipment",
+      "derivedFrom": null
+    },
+    {
+      "name": "water_bucket",
+      "source": "sources/containers.png",
+      "cell": 1,
+      "sourceRect": [
+        1179,
+        43,
+        304,
+        359
+      ],
+      "sourceDimensions": [
+        1774,
+        887
+      ],
+      "destination": [
+        4,
+        2,
+        24,
+        28
+      ],
+      "alpha": "cutout",
+      "repeatAxes": [],
+      "category": "equipment",
+      "derivedFrom": null
+    },
+    {
+      "name": "lava_bucket",
+      "source": "sources/containers.png",
+      "cell": 2,
+      "sourceRect": [
+        291,
+        486,
+        305,
+        358
+      ],
+      "sourceDimensions": [
+        1774,
+        887
+      ],
+      "destination": [
+        4,
+        2,
+        24,
+        28
+      ],
+      "alpha": "cutout",
+      "repeatAxes": [],
+      "category": "equipment",
+      "derivedFrom": null
+    },
+    {
+      "name": "boat",
+      "source": "sources/containers.png",
+      "cell": 3,
+      "sourceRect": [
+        1112,
+        507,
+        432,
+        337
+      ],
+      "sourceDimensions": [
+        1774,
+        887
+      ],
+      "destination": [
+        2,
+        5,
+        28,
+        22
+      ],
+      "alpha": "cutout",
+      "repeatAxes": [],
+      "category": "equipment",
+      "derivedFrom": null
+    },
+    {
+      "name": "bow",
+      "source": "sources/ranged_goods.png",
+      "cell": 0,
+      "sourceRect": [
+        177,
+        60,
+        316,
+        524
+      ],
+      "sourceDimensions": [
+        1272,
+        1236
+      ],
+      "destination": [
+        7,
+        2,
+        17,
+        28
+      ],
+      "alpha": "cutout",
+      "repeatAxes": [],
+      "category": "equipment",
+      "derivedFrom": null
+    },
+    {
+      "name": "arrow",
+      "source": "sources/ranged_goods.png",
+      "cell": 1,
+      "sourceRect": [
+        703,
+        100,
+        432,
+        461
+      ],
+      "sourceDimensions": [
+        1272,
+        1236
+      ],
+      "destination": [
+        3,
+        2,
+        26,
+        28
+      ],
+      "alpha": "cutout",
+      "repeatAxes": [],
+      "category": "equipment",
+      "derivedFrom": null
+    },
+    {
+      "name": "fishing_rod",
+      "source": "sources/ranged_goods.png",
+      "cell": 2,
+      "sourceRect": [
+        121,
+        685,
+        402,
+        462
+      ],
+      "sourceDimensions": [
+        1272,
+        1236
+      ],
+      "destination": [
+        4,
+        2,
+        24,
+        28
+      ],
+      "alpha": "cutout",
+      "repeatAxes": [],
+      "category": "equipment",
+      "derivedFrom": null
+    },
+    {
+      "name": "trade_coin",
+      "source": "sources/ranged_goods.png",
+      "cell": 3,
+      "sourceRect": [
+        715,
+        697,
+        421,
+        426
+      ],
+      "sourceDimensions": [
+        1272,
+        1236
+      ],
+      "destination": [
+        2,
+        2,
+        28,
+        28
+      ],
+      "alpha": "cutout",
+      "repeatAxes": [],
+      "category": "equipment",
+      "derivedFrom": null
+    },
+    {
+      "name": "bone",
+      "source": "sources/paper_bone.png",
+      "cell": 0,
+      "sourceRect": [
+        140,
+        130,
+        475,
+        470
+      ],
+      "sourceDimensions": [
+        2172,
+        724
+      ],
+      "destination": [
+        2,
+        2,
+        28,
+        28
+      ],
+      "alpha": "cutout",
+      "repeatAxes": [],
+      "category": "equipment",
+      "derivedFrom": null
+    },
+    {
+      "name": "bone_meal",
+      "source": "sources/paper_bone.png",
+      "cell": 1,
+      "sourceRect": [
+        853,
+        236,
+        470,
+        320
+      ],
+      "sourceDimensions": [
+        2172,
+        724
+      ],
+      "destination": [
+        2,
+        6,
+        28,
+        19
+      ],
+      "alpha": "cutout",
+      "repeatAxes": [],
+      "category": "equipment",
+      "derivedFrom": null
+    },
+    {
+      "name": "paper",
+      "source": "sources/paper_bone.png",
+      "cell": 2,
+      "sourceRect": [
+        1569,
+        164,
+        475,
+        428
+      ],
+      "sourceDimensions": [
+        2172,
+        724
+      ],
+      "destination": [
+        2,
+        3,
+        28,
+        25
+      ],
+      "alpha": "cutout",
+      "repeatAxes": [],
+      "category": "equipment",
+      "derivedFrom": null
+    },
+    {
+      "name": "compass",
+      "source": "sources/navigation.png",
+      "cell": 0,
+      "sourceRect": [
+        213,
+        135,
+        462,
+        615
+      ],
+      "sourceDimensions": [
+        1774,
+        887
+      ],
+      "destination": [
+        5,
+        2,
+        21,
+        28
+      ],
+      "alpha": "cutout",
+      "repeatAxes": [],
+      "category": "equipment",
+      "derivedFrom": null
+    },
+    {
+      "name": "map",
+      "source": "sources/navigation.png",
+      "cell": 1,
+      "sourceRect": [
+        1016,
+        243,
+        619,
+        456
+      ],
+      "sourceDimensions": [
+        1774,
+        887
+      ],
+      "destination": [
+        2,
+        5,
+        28,
+        21
+      ],
+      "alpha": "cutout",
+      "repeatAxes": [],
+      "category": "equipment",
+      "derivedFrom": null
+    },
+    {
+      "name": "tall_grass",
+      "source": "sources/ground_plants.png",
+      "cell": 0,
+      "sourceRect": [
+        211,
+        49,
+        423,
+        408
+      ],
+      "sourceDimensions": [
+        1536,
+        1024
+      ],
+      "destination": [
+        2,
+        5,
+        28,
+        27
+      ],
+      "alpha": "cutout",
+      "repeatAxes": [],
+      "category": "plant",
+      "derivedFrom": null
+    },
+    {
+      "name": "fern",
+      "source": "sources/ground_plants.png",
+      "cell": 1,
+      "sourceRect": [
+        875,
+        20,
+        470,
+        458
+      ],
+      "sourceDimensions": [
+        1536,
+        1024
+      ],
+      "destination": [
+        2,
+        5,
+        28,
+        27
+      ],
+      "alpha": "cutout",
+      "repeatAxes": [],
+      "category": "plant",
+      "derivedFrom": null
+    },
+    {
+      "name": "moss",
+      "source": "sources/ground_plants.png",
+      "cell": 2,
+      "sourceRect": [
+        211,
+        561,
+        439,
+        425
+      ],
+      "sourceDimensions": [
+        1536,
+        1024
+      ],
+      "destination": [
+        0,
+        0,
+        32,
+        32
+      ],
+      "alpha": "cutout",
+      "repeatAxes": [
+        "x",
+        "y"
+      ],
+      "category": "plant",
+      "derivedFrom": null
+    },
+    {
+      "name": "leaf_litter",
+      "source": "sources/ground_plants.png",
+      "cell": 3,
+      "sourceRect": [
+        875,
+        566,
+        449,
+        421
+      ],
+      "sourceDimensions": [
+        1536,
+        1024
+      ],
+      "destination": [
+        0,
+        0,
+        32,
+        32
+      ],
+      "alpha": "cutout",
+      "repeatAxes": [
+        "x",
+        "y"
+      ],
+      "category": "plant",
+      "derivedFrom": null
+    },
+    {
+      "name": "poppy",
+      "source": "sources/flowers_fungi.png",
+      "cell": 0,
+      "sourceRect": [
+        149,
+        69,
+        349,
+        520
+      ],
+      "sourceDimensions": [
+        1264,
+        1244
+      ],
+      "destination": [
+        6,
+        4,
+        19,
+        28
+      ],
+      "alpha": "cutout",
+      "repeatAxes": [],
+      "category": "plant",
+      "derivedFrom": null
+    },
+    {
+      "name": "dandelion",
+      "source": "sources/flowers_fungi.png",
+      "cell": 1,
+      "sourceRect": [
+        731,
+        79,
+        400,
+        510
+      ],
+      "sourceDimensions": [
+        1264,
+        1244
+      ],
+      "destination": [
+        5,
+        4,
+        22,
+        28
+      ],
+      "alpha": "cutout",
+      "repeatAxes": [],
+      "category": "plant",
+      "derivedFrom": null
+    },
+    {
+      "name": "brown_mushroom",
+      "source": "sources/flowers_fungi.png",
+      "cell": 2,
+      "sourceRect": [
+        97,
+        738,
+        449,
+        442
+      ],
+      "sourceDimensions": [
+        1264,
+        1244
+      ],
+      "destination": [
+        2,
+        4,
+        28,
+        28
+      ],
+      "alpha": "cutout",
+      "repeatAxes": [],
+      "category": "plant",
+      "derivedFrom": null
+    },
+    {
+      "name": "red_mushroom",
+      "source": "sources/flowers_fungi.png",
+      "cell": 3,
+      "sourceRect": [
+        726,
+        719,
+        438,
+        463
+      ],
+      "sourceDimensions": [
+        1264,
+        1244
+      ],
+      "destination": [
+        3,
+        4,
+        26,
+        28
+      ],
+      "alpha": "cutout",
+      "repeatAxes": [],
+      "category": "plant",
+      "derivedFrom": null
+    },
+    {
+      "name": "reed",
+      "source": "sources/wet_plants.png",
+      "cell": 0,
+      "sourceRect": [
+        187,
+        97,
+        489,
+        715
+      ],
+      "sourceDimensions": [
+        1774,
+        887
+      ],
+      "destination": [
+        6,
+        4,
+        19,
+        28
+      ],
+      "alpha": "cutout",
+      "repeatAxes": [],
+      "category": "plant",
+      "derivedFrom": null
+    },
+    {
+      "name": "lily_pad",
+      "source": "sources/wet_plants.png",
+      "cell": 1,
+      "sourceRect": [
+        982,
+        189,
+        699,
+        592
+      ],
+      "sourceDimensions": [
+        1774,
+        887
+      ],
+      "destination": [
+        2,
+        4,
+        28,
+        24
+      ],
+      "alpha": "cutout",
+      "repeatAxes": [],
+      "category": "plant",
+      "derivedFrom": null
+    },
+    {
+      "name": "wheat_0",
+      "source": "sources/crop_wheat.png",
+      "cell": 0,
+      "sourceRect": [
+        242,
+        461,
+        148,
+        105
+      ],
+      "sourceDimensions": [
+        1263,
+        1246
+      ],
+      "destination": [
+        12,
+        26,
+        8,
+        6
+      ],
+      "alpha": "cutout",
+      "repeatAxes": [],
+      "category": "crop",
+      "derivedFrom": null
+    },
+    {
+      "name": "wheat_1",
+      "source": "sources/crop_wheat.png",
+      "cell": 1,
+      "sourceRect": [
+        818,
+        299,
+        247,
+        268
+      ],
+      "sourceDimensions": [
+        1263,
+        1246
+      ],
+      "destination": [
+        9,
+        17,
+        14,
+        15
+      ],
+      "alpha": "cutout",
+      "repeatAxes": [],
+      "category": "crop",
+      "derivedFrom": null
+    },
+    {
+      "name": "wheat_2",
+      "source": "sources/crop_wheat.png",
+      "cell": 2,
+      "sourceRect": [
+        156,
+        758,
+        330,
+        417
+      ],
+      "sourceDimensions": [
+        1263,
+        1246
+      ],
+      "destination": [
+        6,
+        9,
+        19,
+        23
+      ],
+      "alpha": "cutout",
+      "repeatAxes": [],
+      "category": "crop",
+      "derivedFrom": null
+    },
+    {
+      "name": "wheat_3",
+      "source": "sources/crop_wheat.png",
+      "cell": 3,
+      "sourceRect": [
+        749,
+        647,
+        372,
+        528
+      ],
+      "sourceDimensions": [
+        1263,
+        1246
+      ],
+      "destination": [
+        5,
+        4,
+        21,
+        28
+      ],
+      "alpha": "cutout",
+      "repeatAxes": [],
+      "category": "crop",
+      "derivedFrom": null
+    },
+    {
+      "name": "carrots_0",
+      "source": "sources/crop_carrots.png",
+      "cell": 0,
+      "sourceRect": [
+        274,
+        419,
+        99,
+        63
+      ],
+      "sourceDimensions": [
+        1265,
+        1243
+      ],
+      "destination": [
+        13,
+        28,
+        6,
+        4
+      ],
+      "alpha": "cutout",
+      "repeatAxes": [],
+      "category": "crop",
+      "derivedFrom": null
+    },
+    {
+      "name": "carrots_1",
+      "source": "sources/crop_carrots.png",
+      "cell": 1,
+      "sourceRect": [
+        857,
+        344,
+        137,
+        138
+      ],
+      "sourceDimensions": [
+        1265,
+        1243
+      ],
+      "destination": [
+        12,
+        24,
+        8,
+        8
+      ],
+      "alpha": "cutout",
+      "repeatAxes": [],
+      "category": "crop",
+      "derivedFrom": null
+    },
+    {
+      "name": "carrots_2",
+      "source": "sources/crop_carrots.png",
+      "cell": 2,
+      "sourceRect": [
+        219,
+        960,
+        200,
+        187
+      ],
+      "sourceDimensions": [
+        1265,
+        1243
+      ],
+      "destination": [
+        10,
+        21,
+        11,
+        11
+      ],
+      "alpha": "cutout",
+      "repeatAxes": [],
+      "category": "crop",
+      "derivedFrom": null
+    },
+    {
+      "name": "carrots_3",
+      "source": "sources/crop_carrots.png",
+      "cell": 3,
+      "sourceRect": [
+        809,
+        910,
+        256,
+        237
+      ],
+      "sourceDimensions": [
+        1265,
+        1243
+      ],
+      "destination": [
+        9,
+        19,
+        14,
+        13
+      ],
+      "alpha": "cutout",
+      "repeatAxes": [],
+      "category": "crop",
+      "derivedFrom": null
+    },
+    {
+      "name": "potatoes_0",
+      "source": "sources/crop_potatoes.png",
+      "cell": 0,
+      "sourceRect": [
+        224,
+        454,
+        183,
+        128
+      ],
+      "sourceDimensions": [
+        1247,
+        1261
+      ],
+      "destination": [
+        11,
+        25,
+        10,
+        7
+      ],
+      "alpha": "cutout",
+      "repeatAxes": [],
+      "category": "crop",
+      "derivedFrom": null
+    },
+    {
+      "name": "potatoes_1",
+      "source": "sources/crop_potatoes.png",
+      "cell": 1,
+      "sourceRect": [
+        770,
+        299,
+        293,
+        283
+      ],
+      "sourceDimensions": [
+        1247,
+        1261
+      ],
+      "destination": [
+        8,
+        16,
+        16,
+        16
+      ],
+      "alpha": "cutout",
+      "repeatAxes": [],
+      "category": "crop",
+      "derivedFrom": null
+    },
+    {
+      "name": "potatoes_2",
+      "source": "sources/crop_potatoes.png",
+      "cell": 2,
+      "sourceRect": [
+        104,
+        776,
+        434,
+        438
+      ],
+      "sourceDimensions": [
+        1247,
+        1261
+      ],
+      "destination": [
+        4,
+        7,
+        24,
+        25
+      ],
+      "alpha": "cutout",
+      "repeatAxes": [],
+      "category": "crop",
+      "derivedFrom": null
+    },
+    {
+      "name": "potatoes_3",
+      "source": "sources/crop_potatoes.png",
+      "cell": 3,
+      "sourceRect": [
+        652,
+        671,
+        528,
+        543
+      ],
+      "sourceDimensions": [
+        1247,
+        1261
+      ],
+      "destination": [
+        2,
+        4,
+        28,
+        28
+      ],
+      "alpha": "cutout",
+      "repeatAxes": [],
+      "category": "crop",
+      "derivedFrom": null
+    },
+    {
+      "name": "oak_sapling",
+      "source": "sources/saplings_north.png",
+      "cell": 0,
+      "sourceRect": [
+        117,
+        27,
+        422,
+        463
+      ],
+      "sourceDimensions": [
+        1278,
+        1230
+      ],
+      "destination": [
+        3,
+        4,
+        26,
+        28
+      ],
+      "alpha": "cutout",
+      "repeatAxes": [],
+      "category": "plant",
+      "derivedFrom": null
+    },
+    {
+      "name": "birch_sapling",
+      "source": "sources/saplings_north.png",
+      "cell": 1,
+      "sourceRect": [
+        746,
+        32,
+        365,
+        458
+      ],
+      "sourceDimensions": [
+        1278,
+        1230
+      ],
+      "destination": [
+        5,
+        4,
+        22,
+        28
+      ],
+      "alpha": "cutout",
+      "repeatAxes": [],
+      "category": "plant",
+      "derivedFrom": null
+    },
+    {
+      "name": "spruce_sapling",
+      "source": "sources/saplings_north.png",
+      "cell": 2,
+      "sourceRect": [
+        132,
+        644,
+        382,
+        517
+      ],
+      "sourceDimensions": [
+        1278,
+        1230
+      ],
+      "destination": [
+        5,
+        4,
+        21,
+        28
+      ],
+      "alpha": "cutout",
+      "repeatAxes": [],
+      "category": "plant",
+      "derivedFrom": null
+    },
+    {
+      "name": "maple_sapling",
+      "source": "sources/saplings_north.png",
+      "cell": 3,
+      "sourceRect": [
+        711,
+        644,
+        447,
+        517
+      ],
+      "sourceDimensions": [
+        1278,
+        1230
+      ],
+      "destination": [
+        4,
+        4,
+        24,
+        28
+      ],
+      "alpha": "cutout",
+      "repeatAxes": [],
+      "category": "plant",
+      "derivedFrom": null
+    },
+    {
+      "name": "pine_sapling",
+      "source": "sources/saplings_south.png",
+      "cell": 0,
+      "sourceRect": [
+        133,
+        31,
+        389,
+        529
+      ],
+      "sourceDimensions": [
+        1263,
+        1246
+      ],
+      "destination": [
+        5,
+        4,
+        21,
+        28
+      ],
+      "alpha": "cutout",
+      "repeatAxes": [],
+      "category": "plant",
+      "derivedFrom": null
+    },
+    {
+      "name": "acacia_sapling",
+      "source": "sources/saplings_south.png",
+      "cell": 1,
+      "sourceRect": [
+        662,
+        131,
+        559,
+        424
+      ],
+      "sourceDimensions": [
+        1263,
+        1246
+      ],
+      "destination": [
+        2,
+        11,
+        28,
+        21
+      ],
+      "alpha": "cutout",
+      "repeatAxes": [],
+      "category": "plant",
+      "derivedFrom": null
+    },
+    {
+      "name": "jungle_giant_sapling",
+      "source": "sources/saplings_south.png",
+      "cell": 2,
+      "sourceRect": [
+        74,
+        675,
+        497,
+        525
+      ],
+      "sourceDimensions": [
+        1263,
+        1246
+      ],
+      "destination": [
+        2,
+        4,
+        27,
+        28
+      ],
+      "alpha": "cutout",
+      "repeatAxes": [],
+      "category": "plant",
+      "derivedFrom": null
+    },
+    {
+      "name": "palm_sapling",
+      "source": "sources/saplings_south.png",
+      "cell": 3,
+      "sourceRect": [
+        664,
+        680,
+        548,
+        519
+      ],
+      "sourceDimensions": [
+        1263,
+        1246
+      ],
+      "destination": [
+        2,
+        5,
+        28,
+        27
+      ],
+      "alpha": "cutout",
+      "repeatAxes": [],
+      "category": "plant",
+      "derivedFrom": null
+    },
+    {
+      "name": "sign",
+      "source": "sources/decoration_faces.png",
+      "cell": 0,
+      "sourceRect": [
+        65,
+        64,
+        596,
+        595
+      ],
+      "sourceDimensions": [
+        2172,
+        724
+      ],
+      "destination": [
+        0,
+        0,
+        32,
+        32
+      ],
+      "alpha": "opaque",
+      "repeatAxes": [],
+      "category": "station",
+      "derivedFrom": null
+    },
+    {
+      "name": "frame_empty",
+      "source": "sources/decoration_faces.png",
+      "cell": 1,
+      "sourceRect": [
+        789,
+        64,
+        595,
+        595
+      ],
+      "sourceDimensions": [
+        2172,
+        724
+      ],
+      "destination": [
+        0,
+        0,
+        32,
+        32
+      ],
+      "alpha": "cutout",
+      "repeatAxes": [],
+      "category": "station",
+      "derivedFrom": null
+    },
+    {
+      "name": "frame_backing",
+      "source": "sources/decoration_faces.png",
+      "cell": 2,
+      "sourceRect": [
+        1512,
+        64,
+        596,
+        595
+      ],
+      "sourceDimensions": [
+        2172,
+        724
+      ],
+      "destination": [
+        0,
+        0,
+        32,
+        32
+      ],
+      "alpha": "opaque",
+      "repeatAxes": [],
+      "category": "station",
+      "derivedFrom": null
+    },
+    {
+      "name": "oak_leaves",
+      "source": "sources/leaf_oak.png",
+      "cell": 0,
+      "sourceRect": [
+        0,
+        0,
+        1254,
+        1254
+      ],
+      "sourceDimensions": [
+        1254,
+        1254
+      ],
+      "destination": [
+        0,
+        0,
+        32,
+        32
+      ],
+      "alpha": "cutout",
+      "repeatAxes": [
+        "x",
+        "y"
+      ],
+      "category": "tree",
+      "derivedFrom": null
+    },
+    {
+      "name": "maple_leaves",
+      "source": "sources/leaf_maple.png",
+      "cell": 0,
+      "sourceRect": [
+        0,
+        0,
+        1254,
+        1254
+      ],
+      "sourceDimensions": [
+        1254,
+        1254
+      ],
+      "destination": [
+        0,
+        0,
+        32,
+        32
+      ],
+      "alpha": "cutout",
+      "repeatAxes": [
+        "x",
+        "y"
+      ],
+      "category": "tree",
+      "derivedFrom": null
+    },
+    {
+      "name": "birch_leaves",
+      "source": "sources/leaf_birch.png",
+      "cell": 0,
+      "sourceRect": [
+        0,
+        0,
+        1254,
+        1254
+      ],
+      "sourceDimensions": [
+        1254,
+        1254
+      ],
+      "destination": [
+        0,
+        0,
+        32,
+        32
+      ],
+      "alpha": "cutout",
+      "repeatAxes": [
+        "x",
+        "y"
+      ],
+      "category": "tree",
+      "derivedFrom": null
+    },
+    {
+      "name": "mangrove_leaves",
+      "source": "sources/leaf_mangrove.png",
+      "cell": 0,
+      "sourceRect": [
+        0,
+        0,
+        1254,
+        1254
+      ],
+      "sourceDimensions": [
+        1254,
+        1254
+      ],
+      "destination": [
+        0,
+        0,
+        32,
+        32
+      ],
+      "alpha": "cutout",
+      "repeatAxes": [
+        "x",
+        "y"
+      ],
+      "category": "tree",
+      "derivedFrom": null
+    },
+    {
+      "name": "bed_head",
+      "source": "sources/bed_head.png",
+      "cell": 0,
+      "sourceRect": [
+        0,
+        0,
+        1254,
+        1254
+      ],
+      "sourceDimensions": [
+        1254,
+        1254
+      ],
+      "destination": [
+        0,
+        0,
+        32,
+        32
+      ],
+      "alpha": "opaque",
+      "repeatAxes": [],
+      "category": "station",
+      "derivedFrom": null
+    },
+    {
+      "name": "oak_planks",
+      "source": "sources/oak_planks.png",
+      "cell": 0,
+      "sourceRect": [
+        0,
+        0,
+        1254,
+        1254
+      ],
+      "sourceDimensions": [
+        1254,
+        1254
+      ],
+      "destination": [
+        0,
+        0,
+        32,
+        32
+      ],
+      "alpha": "opaque",
+      "repeatAxes": [
+        "x",
+        "y"
+      ],
+      "category": "tree",
+      "derivedFrom": null
+    },
+    {
+      "name": "maple_planks",
+      "source": "sources/maple_planks.png",
+      "cell": 0,
+      "sourceRect": [
+        0,
+        0,
+        1254,
+        1254
+      ],
+      "sourceDimensions": [
+        1254,
+        1254
+      ],
+      "destination": [
+        0,
+        0,
+        32,
+        32
+      ],
+      "alpha": "opaque",
+      "repeatAxes": [
+        "x",
+        "y"
+      ],
+      "category": "tree",
+      "derivedFrom": null
+    },
+    {
+      "name": "spruce_planks",
+      "source": "sources/spruce_planks.png",
+      "cell": 0,
+      "sourceRect": [
+        0,
+        0,
+        1254,
+        1254
+      ],
+      "sourceDimensions": [
+        1254,
+        1254
+      ],
+      "destination": [
+        0,
+        0,
+        32,
+        32
+      ],
+      "alpha": "opaque",
+      "repeatAxes": [
+        "x",
+        "y"
+      ],
+      "category": "tree",
+      "derivedFrom": null
+    },
+    {
+      "name": "fir_planks",
+      "source": "sources/fir_planks.png",
+      "cell": 0,
+      "sourceRect": [
+        0,
+        0,
+        1254,
+        1254
+      ],
+      "sourceDimensions": [
+        1254,
+        1254
+      ],
+      "destination": [
+        0,
+        0,
+        32,
+        32
+      ],
+      "alpha": "opaque",
+      "repeatAxes": [
+        "x",
+        "y"
+      ],
+      "category": "tree",
+      "derivedFrom": null
+    },
+    {
+      "name": "larch_planks",
+      "source": "sources/larch_planks.png",
+      "cell": 0,
+      "sourceRect": [
+        0,
+        0,
+        1254,
+        1254
+      ],
+      "sourceDimensions": [
+        1254,
+        1254
+      ],
+      "destination": [
+        0,
+        0,
+        32,
+        32
+      ],
+      "alpha": "opaque",
+      "repeatAxes": [
+        "x",
+        "y"
+      ],
+      "category": "tree",
+      "derivedFrom": null
+    },
+    {
+      "name": "birch_planks",
+      "source": "sources/birch_planks.png",
+      "cell": 0,
+      "sourceRect": [
+        0,
+        0,
+        1254,
+        1254
+      ],
+      "sourceDimensions": [
+        1254,
+        1254
+      ],
+      "destination": [
+        0,
+        0,
+        32,
+        32
+      ],
+      "alpha": "opaque",
+      "repeatAxes": [
+        "x",
+        "y"
+      ],
+      "category": "tree",
+      "derivedFrom": null
+    },
+    {
+      "name": "pine_planks",
+      "source": "sources/pine_planks.png",
+      "cell": 0,
+      "sourceRect": [
+        0,
+        0,
+        1254,
+        1254
+      ],
+      "sourceDimensions": [
+        1254,
+        1254
+      ],
+      "destination": [
+        0,
+        0,
+        32,
+        32
+      ],
+      "alpha": "opaque",
+      "repeatAxes": [
+        "x",
+        "y"
+      ],
+      "category": "tree",
+      "derivedFrom": null
+    },
+    {
+      "name": "jungle_giant_planks",
+      "source": "sources/jungle_giant_planks.png",
+      "cell": 0,
+      "sourceRect": [
+        0,
+        0,
+        1254,
+        1254
+      ],
+      "sourceDimensions": [
+        1254,
+        1254
+      ],
+      "destination": [
+        0,
+        0,
+        32,
+        32
+      ],
+      "alpha": "opaque",
+      "repeatAxes": [
+        "x",
+        "y"
+      ],
+      "category": "tree",
+      "derivedFrom": null
+    },
+    {
+      "name": "palm_planks",
+      "source": "sources/palm_planks.png",
+      "cell": 0,
+      "sourceRect": [
+        0,
+        0,
+        1254,
+        1254
+      ],
+      "sourceDimensions": [
+        1254,
+        1254
+      ],
+      "destination": [
+        0,
+        0,
+        32,
+        32
+      ],
+      "alpha": "opaque",
+      "repeatAxes": [
+        "x",
+        "y"
+      ],
+      "category": "tree",
+      "derivedFrom": null
+    },
+    {
+      "name": "baobab_planks",
+      "source": "sources/baobab_planks.png",
+      "cell": 0,
+      "sourceRect": [
+        0,
+        0,
+        1254,
+        1254
+      ],
+      "sourceDimensions": [
+        1254,
+        1254
+      ],
+      "destination": [
+        0,
+        0,
+        32,
+        32
+      ],
+      "alpha": "opaque",
+      "repeatAxes": [
+        "x",
+        "y"
+      ],
+      "category": "tree",
+      "derivedFrom": null
+    },
+    {
+      "name": "acacia_planks",
+      "source": "sources/acacia_planks.png",
+      "cell": 0,
+      "sourceRect": [
+        0,
+        0,
+        1254,
+        1254
+      ],
+      "sourceDimensions": [
+        1254,
+        1254
+      ],
+      "destination": [
+        0,
+        0,
+        32,
+        32
+      ],
+      "alpha": "opaque",
+      "repeatAxes": [
+        "x",
+        "y"
+      ],
+      "category": "tree",
+      "derivedFrom": null
+    },
+    {
+      "name": "willow_planks",
+      "source": "sources/willow_planks.png",
+      "cell": 0,
+      "sourceRect": [
+        0,
+        0,
+        1254,
+        1254
+      ],
+      "sourceDimensions": [
+        1254,
+        1254
+      ],
+      "destination": [
+        0,
+        0,
+        32,
+        32
+      ],
+      "alpha": "opaque",
+      "repeatAxes": [
+        "x",
+        "y"
+      ],
+      "category": "tree",
+      "derivedFrom": null
+    },
+    {
+      "name": "mangrove_planks",
+      "source": "sources/mangrove_planks.png",
+      "cell": 0,
+      "sourceRect": [
+        0,
+        0,
+        1254,
+        1254
+      ],
+      "sourceDimensions": [
+        1254,
+        1254
+      ],
+      "destination": [
+        0,
+        0,
+        32,
+        32
+      ],
+      "alpha": "opaque",
+      "repeatAxes": [
+        "x",
+        "y"
+      ],
+      "category": "tree",
+      "derivedFrom": null
+    },
+    {
+      "name": "bush_planks",
+      "source": "sources/bush_planks.png",
+      "cell": 0,
+      "sourceRect": [
+        0,
+        0,
+        1254,
+        1254
+      ],
+      "sourceDimensions": [
+        1254,
+        1254
+      ],
+      "destination": [
+        0,
+        0,
+        32,
+        32
+      ],
+      "alpha": "opaque",
+      "repeatAxes": [
+        "x",
+        "y"
+      ],
+      "category": "tree",
+      "derivedFrom": null
+    },
+    {
+      "name": "water",
+      "source": "sources/water.png",
+      "cell": 0,
+      "sourceRect": [
+        0,
+        0,
+        1254,
+        1254
+      ],
+      "sourceDimensions": [
+        1254,
+        1254
+      ],
+      "destination": [
+        0,
+        0,
+        32,
+        32
+      ],
+      "alpha": "opaque",
+      "repeatAxes": [
+        "x",
+        "y"
+      ],
+      "category": "fluid",
+      "derivedFrom": null
+    },
+    {
+      "name": "lava",
+      "source": "sources/lava.png",
+      "cell": 0,
+      "sourceRect": [
+        0,
+        0,
+        1254,
+        1254
+      ],
+      "sourceDimensions": [
+        1254,
+        1254
+      ],
+      "destination": [
+        0,
+        0,
+        32,
+        32
+      ],
+      "alpha": "opaque",
+      "repeatAxes": [
+        "x",
+        "y"
+      ],
+      "category": "fluid",
+      "derivedFrom": null
+    },
+    {
+      "name": "bed_top",
+      "source": "sources/bed_top.png",
+      "cell": 0,
+      "sourceRect": [
+        0,
+        0,
+        1254,
+        1254
+      ],
+      "sourceDimensions": [
+        1254,
+        1254
+      ],
+      "destination": [
+        0,
+        0,
+        32,
+        32
+      ],
+      "alpha": "opaque",
+      "repeatAxes": [],
+      "category": "station",
+      "derivedFrom": null
+    },
+    {
+      "name": "spruce_leaves",
+      "source": "sources/leaf_spruce.png",
+      "cell": 0,
+      "sourceRect": [
+        0,
+        0,
+        1254,
+        1254
+      ],
+      "sourceDimensions": [
+        1254,
+        1254
+      ],
+      "destination": [
+        0,
+        0,
+        32,
+        32
+      ],
+      "alpha": "cutout",
+      "repeatAxes": [
+        "x",
+        "y"
+      ],
+      "category": "tree",
+      "derivedFrom": null
+    },
+    {
+      "name": "fir_leaves",
+      "source": "sources/leaf_fir.png",
+      "cell": 0,
+      "sourceRect": [
+        0,
+        0,
+        1254,
+        1254
+      ],
+      "sourceDimensions": [
+        1254,
+        1254
+      ],
+      "destination": [
+        0,
+        0,
+        32,
+        32
+      ],
+      "alpha": "cutout",
+      "repeatAxes": [
+        "x",
+        "y"
+      ],
+      "category": "tree",
+      "derivedFrom": null
+    },
+    {
+      "name": "larch_leaves",
+      "source": "sources/leaf_larch.png",
+      "cell": 0,
+      "sourceRect": [
+        0,
+        0,
+        1254,
+        1254
+      ],
+      "sourceDimensions": [
+        1254,
+        1254
+      ],
+      "destination": [
+        0,
+        0,
+        32,
+        32
+      ],
+      "alpha": "cutout",
+      "repeatAxes": [
+        "x",
+        "y"
+      ],
+      "category": "tree",
+      "derivedFrom": null
+    },
+    {
+      "name": "pine_leaves",
+      "source": "sources/leaf_pine.png",
+      "cell": 0,
+      "sourceRect": [
+        0,
+        0,
+        1254,
+        1254
+      ],
+      "sourceDimensions": [
+        1254,
+        1254
+      ],
+      "destination": [
+        0,
+        0,
+        32,
+        32
+      ],
+      "alpha": "cutout",
+      "repeatAxes": [
+        "x",
+        "y"
+      ],
+      "category": "tree",
+      "derivedFrom": null
+    },
+    {
+      "name": "jungle_giant_leaves",
+      "source": "sources/leaf_jungle_giant.png",
+      "cell": 0,
+      "sourceRect": [
+        0,
+        0,
+        1254,
+        1254
+      ],
+      "sourceDimensions": [
+        1254,
+        1254
+      ],
+      "destination": [
+        0,
+        0,
+        32,
+        32
+      ],
+      "alpha": "cutout",
+      "repeatAxes": [
+        "x",
+        "y"
+      ],
+      "category": "tree",
+      "derivedFrom": null
+    },
+    {
+      "name": "palm_leaves",
+      "source": "sources/leaf_palm.png",
+      "cell": 0,
+      "sourceRect": [
+        0,
+        0,
+        1254,
+        1254
+      ],
+      "sourceDimensions": [
+        1254,
+        1254
+      ],
+      "destination": [
+        0,
+        0,
+        32,
+        32
+      ],
+      "alpha": "cutout",
+      "repeatAxes": [
+        "x",
+        "y"
+      ],
+      "category": "tree",
+      "derivedFrom": null
+    },
+    {
+      "name": "baobab_leaves",
+      "source": "sources/leaf_baobab.png",
+      "cell": 0,
+      "sourceRect": [
+        0,
+        0,
+        1254,
+        1254
+      ],
+      "sourceDimensions": [
+        1254,
+        1254
+      ],
+      "destination": [
+        0,
+        0,
+        32,
+        32
+      ],
+      "alpha": "cutout",
+      "repeatAxes": [
+        "x",
+        "y"
+      ],
+      "category": "tree",
+      "derivedFrom": null
+    },
+    {
+      "name": "acacia_leaves",
+      "source": "sources/leaf_acacia.png",
+      "cell": 0,
+      "sourceRect": [
+        0,
+        0,
+        1254,
+        1254
+      ],
+      "sourceDimensions": [
+        1254,
+        1254
+      ],
+      "destination": [
+        0,
+        0,
+        32,
+        32
+      ],
+      "alpha": "cutout",
+      "repeatAxes": [
+        "x",
+        "y"
+      ],
+      "category": "tree",
+      "derivedFrom": null
+    },
+    {
+      "name": "willow_leaves",
+      "source": "sources/leaf_willow.png",
+      "cell": 0,
+      "sourceRect": [
+        0,
+        0,
+        1254,
+        1254
+      ],
+      "sourceDimensions": [
+        1254,
+        1254
+      ],
+      "destination": [
+        0,
+        0,
+        32,
+        32
+      ],
+      "alpha": "cutout",
+      "repeatAxes": [
+        "x",
+        "y"
+      ],
+      "category": "tree",
+      "derivedFrom": null
+    },
+    {
+      "name": "bush_leaves",
+      "source": "sources/leaf_bush.png",
+      "cell": 0,
+      "sourceRect": [
+        0,
+        0,
+        1254,
+        1254
+      ],
+      "sourceDimensions": [
+        1254,
+        1254
+      ],
+      "destination": [
+        0,
+        0,
+        32,
+        32
+      ],
+      "alpha": "cutout",
+      "repeatAxes": [
+        "x",
+        "y"
+      ],
+      "category": "tree",
+      "derivedFrom": null
+    }
+  ],
+  "animations": [
+    {
+      "tile": "water",
+      "frames": [
+        "water_0",
+        "water_1",
+        "water_2",
+        "water_3",
+        "water_4",
+        "water_5",
+        "water_6",
+        "water_7"
+      ],
+      "fps": 4,
+      "loop": true,
+      "opening": null
+    },
+    {
+      "tile": "lava",
+      "frames": [
+        "lava_0",
+        "lava_1",
+        "lava_2",
+        "lava_3",
+        "lava_4",
+        "lava_5",
+        "lava_6",
+        "lava_7"
+      ],
+      "fps": 4,
+      "loop": true,
+      "opening": null
+    },
+    {
+      "tile": "furnace_front_lit",
+      "frames": [
+        "furnace_front_lit_0",
+        "furnace_front_lit_1",
+        "furnace_front_lit_2",
+        "furnace_front_lit_3",
+        "furnace_front_lit_4",
+        "furnace_front_lit_5",
+        "furnace_front_lit_6",
+        "furnace_front_lit_7"
+      ],
+      "fps": 8,
+      "loop": true,
+      "opening": [
+        8,
+        19,
+        16,
+        9
+      ]
+    },
+    {
+      "tile": "forge_front",
+      "frames": [
+        "forge_front_0",
+        "forge_front_1",
+        "forge_front_2",
+        "forge_front_3",
+        "forge_front_4",
+        "forge_front_5",
+        "forge_front_6",
+        "forge_front_7"
+      ],
+      "fps": 6,
+      "loop": true,
+      "opening": [
+        9,
+        18,
+        14,
+        10
+      ]
+    },
+    {
+      "tile": "torch",
+      "frames": [
+        "torch_0",
+        "torch_1",
+        "torch_2",
+        "torch_3",
+        "torch_4",
+        "torch_5",
+        "torch_6",
+        "torch_7"
+      ],
+      "fps": 8,
+      "loop": true,
+      "opening": [
+        12,
+        12,
+        8,
+        7
+      ]
+    },
+    {
+      "tile": "lantern",
+      "frames": [
+        "lantern_0",
+        "lantern_1",
+        "lantern_2",
+        "lantern_3",
+        "lantern_4",
+        "lantern_5",
+        "lantern_6",
+        "lantern_7"
+      ],
+      "fps": 6,
+      "loop": true,
+      "opening": [
+        14,
+        22,
+        5,
+        6
+      ]
+    }
+  ]
+}

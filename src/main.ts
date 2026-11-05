@@ -67,6 +67,7 @@ const uiRoot = document.querySelector<HTMLDivElement>('#ui')!;
 if (location.search === '') {
   document.body.classList.add('title');
   uiRoot.style.setProperty('zoom', String(settings.guiScale));
+  uiRoot.style.setProperty('--gui-scale', String(settings.guiScale));
   const refresh = () => void store.listWorlds().then((list) => {
     title.worlds = list.sort((a, b) => b.lastPlayed - a.lastPlayed);
     drawTitle(uiRoot, title);
@@ -77,6 +78,7 @@ if (location.search === '') {
       Object.assign(settings, s);
       saveSettings(settings);
       uiRoot.style.setProperty('zoom', String(settings.guiScale));
+      uiRoot.style.setProperty('--gui-scale', String(settings.guiScale));
       drawTitle(uiRoot, title);
     },
     ...worldActions(store, { beforeLeave: async () => undefined, changed: refresh }),
@@ -104,6 +106,8 @@ const canvas = document.querySelector<HTMLCanvasElement>('#game')!;
 const overlay = document.querySelector<HTMLDivElement>('#overlay')!;
 const frameGraph = new FrameGraph();
 document.body.append(frameGraph.canvas);
+let debugText = params.get('debug') === '1';
+overlay.style.display = frameGraph.canvas.style.display = debugText ? '' : 'none';
 const renderer = new Renderer(canvas, seed, viewChunks * CHUNK_SIZE);
 const sounds = new Sounds();
 const ambience = new Ambience(sounds);
@@ -128,6 +132,7 @@ function applySettings(): void {
   sounds.volume = settings.effectsVolume;
   ambience.musicVolume = settings.musicVolume;
   uiRoot.style.setProperty('zoom', String(settings.guiScale));
+  uiRoot.style.setProperty('--gui-scale', String(settings.guiScale));
 }
 applySettings();
 const highlight = new Highlight(renderer.scene);
@@ -240,13 +245,13 @@ const creatures = new Creatures(world, mulberry32(seed ^ 0xc0ffee), {
 });
 creatures.load(saver.worldMeta.creatures);
 play.creatures = creatures;
-const creatureMeshes = new CreatureMeshes(renderer.scene);
-const effects = new WorldEffects(renderer.scene);
-const decorationMeshes = new DecorationMeshes(renderer.scene);
-const boatMesh = new BoatMesh(renderer.scene);
+const creatureMeshes = new CreatureMeshes(renderer.scene, renderer.uniforms);
+const effects = new WorldEffects(renderer.scene, renderer.uniforms);
+const decorationMeshes = new DecorationMeshes(renderer.scene, renderer.uniforms);
+const boatMesh = new BoatMesh(renderer.scene, renderer.uniforms);
 /** The boat turns to where it is going, not where the rider looks. */
 let boatYaw = 0;
-const dropMeshes = new DropMeshes(renderer.scene, renderer.uniforms.tiles!.value as ConstructorParameters<typeof DropMeshes>[1]);
+const dropMeshes = new DropMeshes(renderer.scene, renderer.uniforms.tiles!.value as ConstructorParameters<typeof DropMeshes>[1], renderer.uniforms);
 play.seed = seed;
 if (saver.worldMeta.play) play.load(saver.worldMeta.play);
 else if (play.mode === 'creative') play.creativeHotbar();
@@ -426,7 +431,6 @@ function respawn(): void {
   input.start();
 }
 
-let debugText = true;
 function handleActions(): void {
   if (input.consume('inventory')) {
     if (play.screen !== 'none') {
@@ -637,11 +641,12 @@ let mapClock = 0;
 /** Held compass: a needle to the bed (or where the world began). Held map: the land around, redrawn a few times a second. */
 function updateHeldTools(now: number): void {
   const key = play.held ? BLOCKS.type(play.held.state).key : '';
+  const visible = input.playing && play.screen === 'none' && !play.survival.dead;
   const target = play.spawn ?? worldSpawn;
-  compass.style.display = key === 'compass' && target ? '' : 'none';
+  compass.style.display = visible && key === 'compass' && target ? '' : 'none';
   if (key === 'compass' && target) compass.style.transform = `rotate(${bearing(player.body.x, player.body.z, player.yaw, target[0], target[2])}rad)`;
-  minimap.canvas.style.display = key === 'map' ? 'block' : 'none';
-  if (key === 'map' && now - mapClock > 300) {
+  minimap.canvas.style.display = visible && key === 'map' ? 'block' : 'none';
+  if (visible && key === 'map' && now - mapClock > 300) {
     mapClock = now;
     minimap.draw(world, player.body.x, player.body.z, player.yaw);
   } else if (now - mapClock > 3000) {
@@ -701,7 +706,7 @@ const loop = new FixedStepLoop(1 / 60, 0.25, timedUpdate, (_alpha, frameDt) => {
   }
   milestones = play.journal.done.size;
   renderer.camera.rotation.set(player.pitch + kick, player.yaw, 0, 'YXZ');
-  highlight.set(play.target, play.breaking);
+  highlight.set(play.target, play.breaking, play.target ? world.get(play.target.x, play.target.y, play.target.z) : 0);
   let hint='';
   if(input.playing&&play.screen==='none'&&!play.survival.dead){
     const heldBlock=play.held&&!BLOCKS.type(play.held.state).item;
@@ -716,6 +721,9 @@ const loop = new FixedStepLoop(1 / 60, 0.25, timedUpdate, (_alpha, frameDt) => {
   interactionHint.hidden=!hint;
   if(interactionHint.textContent!==hint)interactionHint.textContent=hint;
   document.querySelector<HTMLElement>('#crosshair')!.style.background=`url("${artUrl('ui',play.target?'prompt_target':'prompt_idle')}") center/contain no-repeat`;
+  document.querySelector<HTMLElement>('#crosshair')!.hidden = !input.playing || play.screen !== 'none' || play.survival.dead;
+  const atmosphereCamera = renderer.camera.position;
+  renderer.setAtmosphere(env.frame(frameDt, atmosphereCamera.x, atmosphereCamera.y, atmosphereCamera.z, world));
   const daylight = renderer.uniforms.daylight!.value as number;
   /** Brightness (0..1) of a cell for things drawn outside the terrain. */
   const lightAt = (cx: number, cy: number, cz: number) => {
@@ -756,7 +764,6 @@ const loop = new FixedStepLoop(1 / 60, 0.25, timedUpdate, (_alpha, frameDt) => {
   dropMeshes.update(drawn, now / 1000, (d) => lightAt(d.body.x, d.body.y + d.body.height / 2, d.body.z));
   cull();
   const cam = renderer.camera.position;
-  renderer.setAtmosphere(env.frame(frameDt, cam.x, cam.y, cam.z, world));
   const sample = env.sample;
   simulation.weather = sample && { precipitation: sample.precipitation, seasonC: sample.seasonC };
   renderer.clouds.update(cam.x, cam.z, frameDt, sample?.windSpeed ?? 3, env.atmosphere.cloudCover,

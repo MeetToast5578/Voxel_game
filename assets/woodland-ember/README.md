@@ -1,5 +1,10 @@
 # Woodland & Ember
 
+The active [world and equipment rework](rework/README.md) replaces terrain, tree species, plants, furniture and
+inventory art, alongside the [core pack](core-rework/README.md). Individual PNGs have measured source bounds,
+alpha/repeat contracts and model bindings. Grass is vegetation on every face; the gallery checks real game geometry,
+icons and station/fluid animation. The original atlases below remain source history.
+
 The game's 0.4.0 art pack. Direction: warm woodland greens and oak, cool layered rock, plum-black ancient masonry,
 amber ember crystals and icy cyan beacon shards. Created for this game with image generation; the separate
 presentation concept is not used as a texture atlas.

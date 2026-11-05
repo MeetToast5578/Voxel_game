@@ -1,0 +1,470 @@
+[
+  {
+    "name": "stone",
+    "file": "tiles/stone.png",
+    "width": 32,
+    "height": 32,
+    "source": "sources/stone.png",
+    "variant": null,
+    "repeatAxes": [
+      "x",
+      "y"
+    ],
+    "pixelSha256": "01978aa53b3d3a41a04b099763b0f52be87f44844ad398b2a22ed20ff1935238"
+  },
+  {
+    "name": "stone_alt_0",
+    "file": "tiles/stone_alt_0.png",
+    "width": 32,
+    "height": 32,
+    "source": "sources/stone.png",
+    "variant": 0,
+    "repeatAxes": [
+      "x",
+      "y"
+    ],
+    "pixelSha256": "01978aa53b3d3a41a04b099763b0f52be87f44844ad398b2a22ed20ff1935238"
+  },
+  {
+    "name": "stone_alt_1",
+    "file": "tiles/stone_alt_1.png",
+    "width": 32,
+    "height": 32,
+    "source": "sources/stone.png",
+    "variant": 1,
+    "repeatAxes": [
+      "x",
+      "y"
+    ],
+    "pixelSha256": "dbf45bb6c3ecaafa019bd302ef8491648d9e5a9bb9762540eab9dd44131026ac"
+  },
+  {
+    "name": "stone_alt_2",
+    "file": "tiles/stone_alt_2.png",
+    "width": 32,
+    "height": 32,
+    "source": "sources/stone.png",
+    "variant": 2,
+    "repeatAxes": [
+      "x",
+      "y"
+    ],
+    "pixelSha256": "d5fc41772382d1a00fbc7410463dd06ab0ee7ac8320ad2a7d889c1305035adcf"
+  },
+  {
+    "name": "stone_alt_3",
+    "file": "tiles/stone_alt_3.png",
+    "width": 32,
+    "height": 32,
+    "source": "sources/stone.png",
+    "variant": 3,
+    "repeatAxes": [
+      "x",
+      "y"
+    ],
+    "pixelSha256": "ac7bbd93493a2ed01a446db69d879eb6dae4e0e7c6327d14223c19c88b6be64e"
+  },
+  {
+    "name": "dirt",
+    "file": "tiles/dirt.png",
+    "width": 32,
+    "height": 32,
+    "source": "sources/dirt.png",
+    "variant": null,
+    "repeatAxes": [
+      "x",
+      "y"
+    ],
+    "pixelSha256": "86598fb1df449b6aa493d0d31b43ea9cb2759bbcd16ba101611237165db458e7"
+  },
+  {
+    "name": "dirt_alt_0",
+    "file": "tiles/dirt_alt_0.png",
+    "width": 32,
+    "height": 32,
+    "source": "sources/dirt.png",
+    "variant": 0,
+    "repeatAxes": [
+      "x",
+      "y"
+    ],
+    "pixelSha256": "86598fb1df449b6aa493d0d31b43ea9cb2759bbcd16ba101611237165db458e7"
+  },
+  {
+    "name": "dirt_alt_1",
+    "file": "tiles/dirt_alt_1.png",
+    "width": 32,
+    "height": 32,
+    "source": "sources/dirt.png",
+    "variant": 1,
+    "repeatAxes": [
+      "x",
+      "y"
+    ],
+    "pixelSha256": "df484f0847c7dfbe22c426c87250c204848eb3f137d257595aba1935376f4ab1"
+  },
+  {
+    "name": "dirt_alt_2",
+    "file": "tiles/dirt_alt_2.png",
+    "width": 32,
+    "height": 32,
+    "source": "sources/dirt.png",
+    "variant": 2,
+    "repeatAxes": [
+      "x",
+      "y"
+    ],
+    "pixelSha256": "aeea38a65904384496d8c4c0960b31ea63d74d570e57a38b4fac801063a562e8"
+  },
+  {
+    "name": "dirt_alt_3",
+    "file": "tiles/dirt_alt_3.png",
+    "width": 32,
+    "height": 32,
+    "source": "sources/dirt.png",
+    "variant": 3,
+    "repeatAxes": [
+      "x",
+      "y"
+    ],
+    "pixelSha256": "d03ce8f54b1816f64d5340df2f406df3640666b570402d41bf509052a06dc197"
+  },
+  {
+    "name": "grass_top",
+    "file": "tiles/grass_top.png",
+    "width": 32,
+    "height": 32,
+    "source": "sources/grass_top.png",
+    "variant": null,
+    "repeatAxes": [
+      "x",
+      "y"
+    ],
+    "pixelSha256": "9e40d4f7274f67bd37e057dc42f7dd3afc188897bfc68c19239f141995e6be5d"
+  },
+  {
+    "name": "grass_top_alt_0",
+    "file": "tiles/grass_top_alt_0.png",
+    "width": 32,
+    "height": 32,
+    "source": "sources/grass_top.png",
+    "variant": 0,
+    "repeatAxes": [
+      "x",
+      "y"
+    ],
+    "pixelSha256": "9e40d4f7274f67bd37e057dc42f7dd3afc188897bfc68c19239f141995e6be5d"
+  },
+  {
+    "name": "grass_top_alt_1",
+    "file": "tiles/grass_top_alt_1.png",
+    "width": 32,
+    "height": 32,
+    "source": "sources/grass_top.png",
+    "variant": 1,
+    "repeatAxes": [
+      "x",
+      "y"
+    ],
+    "pixelSha256": "64b73d3e5ade2d822d881d652db00923ff710a7ffebd2a094096f661453046ad"
+  },
+  {
+    "name": "grass_top_alt_2",
+    "file": "tiles/grass_top_alt_2.png",
+    "width": 32,
+    "height": 32,
+    "source": "sources/grass_top.png",
+    "variant": 2,
+    "repeatAxes": [
+      "x",
+      "y"
+    ],
+    "pixelSha256": "5ce1e9d35e4cf96919a11209b06024e2d0805f4696f9c7a32d0422162177d58a"
+  },
+  {
+    "name": "grass_top_alt_3",
+    "file": "tiles/grass_top_alt_3.png",
+    "width": 32,
+    "height": 32,
+    "source": "sources/grass_top.png",
+    "variant": 3,
+    "repeatAxes": [
+      "x",
+      "y"
+    ],
+    "pixelSha256": "64d009007e1201e3a5dd07f9a084e74e8eb7ab7de0c05f90f3787ad10c02028c"
+  },
+  {
+    "name": "grass_side",
+    "file": "tiles/grass_side.png",
+    "width": 32,
+    "height": 32,
+    "source": "sources/grass_side.png",
+    "variant": null,
+    "repeatAxes": [
+      "x",
+      "y"
+    ],
+    "pixelSha256": "760f5c04ad0acb890e3b480e2b5918de80e8bc9ec83e0e8a4cebc1a4e7144775"
+  },
+  {
+    "name": "grass_side_alt_0",
+    "file": "tiles/grass_side_alt_0.png",
+    "width": 32,
+    "height": 32,
+    "source": "sources/grass_side.png",
+    "variant": 0,
+    "repeatAxes": [
+      "x",
+      "y"
+    ],
+    "pixelSha256": "760f5c04ad0acb890e3b480e2b5918de80e8bc9ec83e0e8a4cebc1a4e7144775"
+  },
+  {
+    "name": "grass_side_alt_1",
+    "file": "tiles/grass_side_alt_1.png",
+    "width": 32,
+    "height": 32,
+    "source": "sources/grass_side.png",
+    "variant": 1,
+    "repeatAxes": [
+      "x",
+      "y"
+    ],
+    "pixelSha256": "1c942c9440f12fb61d3c91079d493daf11197e33b5f6898affbcbc185fe0f020"
+  },
+  {
+    "name": "grass_side_alt_2",
+    "file": "tiles/grass_side_alt_2.png",
+    "width": 32,
+    "height": 32,
+    "source": "sources/grass_side.png",
+    "variant": 2,
+    "repeatAxes": [
+      "x",
+      "y"
+    ],
+    "pixelSha256": "7f5f5ab08880c01788608f952ebf3067e501f6dc2e5fc505fb856d17de40a02c"
+  },
+  {
+    "name": "grass_side_alt_3",
+    "file": "tiles/grass_side_alt_3.png",
+    "width": 32,
+    "height": 32,
+    "source": "sources/grass_side.png",
+    "variant": 3,
+    "repeatAxes": [
+      "x",
+      "y"
+    ],
+    "pixelSha256": "f6ce82887e77582f2782c0b78dbe1f6eee48e3be66c04e870f265166eedaf705"
+  },
+  {
+    "name": "sand",
+    "file": "tiles/sand.png",
+    "width": 32,
+    "height": 32,
+    "source": "sources/sand.png",
+    "variant": null,
+    "repeatAxes": [
+      "x",
+      "y"
+    ],
+    "pixelSha256": "0a9098cfd9e265fb21596f9af61a4faf6e7163af9f733217e4b26e5494c3130e"
+  },
+  {
+    "name": "sand_alt_0",
+    "file": "tiles/sand_alt_0.png",
+    "width": 32,
+    "height": 32,
+    "source": "sources/sand.png",
+    "variant": 0,
+    "repeatAxes": [
+      "x",
+      "y"
+    ],
+    "pixelSha256": "0a9098cfd9e265fb21596f9af61a4faf6e7163af9f733217e4b26e5494c3130e"
+  },
+  {
+    "name": "sand_alt_1",
+    "file": "tiles/sand_alt_1.png",
+    "width": 32,
+    "height": 32,
+    "source": "sources/sand.png",
+    "variant": 1,
+    "repeatAxes": [
+      "x",
+      "y"
+    ],
+    "pixelSha256": "8e8a5b292ca7ff13d007b4f0a94c441207d82d5f95812111896d605243fb8b73"
+  },
+  {
+    "name": "sand_alt_2",
+    "file": "tiles/sand_alt_2.png",
+    "width": 32,
+    "height": 32,
+    "source": "sources/sand.png",
+    "variant": 2,
+    "repeatAxes": [
+      "x",
+      "y"
+    ],
+    "pixelSha256": "a5b2413ee067d4e60f1486572bfcb444d3b1df521ceeecbb24a2134ba3e38297"
+  },
+  {
+    "name": "sand_alt_3",
+    "file": "tiles/sand_alt_3.png",
+    "width": 32,
+    "height": 32,
+    "source": "sources/sand.png",
+    "variant": 3,
+    "repeatAxes": [
+      "x",
+      "y"
+    ],
+    "pixelSha256": "19b2a05b904a4e8756cca6c5fdff9309d7a38c982a61ab054c8caea869578084"
+  },
+  {
+    "name": "gravel",
+    "file": "tiles/gravel.png",
+    "width": 32,
+    "height": 32,
+    "source": "sources/gravel.png",
+    "variant": null,
+    "repeatAxes": [
+      "x",
+      "y"
+    ],
+    "pixelSha256": "ef58d3229ae3274ccfc1c1895723a7a236b846589c725b14537504ea93f3be22"
+  },
+  {
+    "name": "gravel_alt_0",
+    "file": "tiles/gravel_alt_0.png",
+    "width": 32,
+    "height": 32,
+    "source": "sources/gravel.png",
+    "variant": 0,
+    "repeatAxes": [
+      "x",
+      "y"
+    ],
+    "pixelSha256": "ef58d3229ae3274ccfc1c1895723a7a236b846589c725b14537504ea93f3be22"
+  },
+  {
+    "name": "gravel_alt_1",
+    "file": "tiles/gravel_alt_1.png",
+    "width": 32,
+    "height": 32,
+    "source": "sources/gravel.png",
+    "variant": 1,
+    "repeatAxes": [
+      "x",
+      "y"
+    ],
+    "pixelSha256": "a54bce4371f2a43ba1113d30d705ad0d6e5b7c668a12725889d341283cd75240"
+  },
+  {
+    "name": "gravel_alt_2",
+    "file": "tiles/gravel_alt_2.png",
+    "width": 32,
+    "height": 32,
+    "source": "sources/gravel.png",
+    "variant": 2,
+    "repeatAxes": [
+      "x",
+      "y"
+    ],
+    "pixelSha256": "ceb925bf99ccc5390eed770461a89c96c852e33c41fa877167e4396502510c13"
+  },
+  {
+    "name": "gravel_alt_3",
+    "file": "tiles/gravel_alt_3.png",
+    "width": 32,
+    "height": 32,
+    "source": "sources/gravel.png",
+    "variant": 3,
+    "repeatAxes": [
+      "x",
+      "y"
+    ],
+    "pixelSha256": "cea8a43d5fd9f549b359eeff8b5ca1601ee16b052a57bc5ecd41f288ac58bc56"
+  },
+  {
+    "name": "cobblestone",
+    "file": "tiles/cobblestone.png",
+    "width": 32,
+    "height": 32,
+    "source": "sources/cobblestone.png",
+    "variant": null,
+    "repeatAxes": [
+      "x",
+      "y"
+    ],
+    "pixelSha256": "a26b20d58caa2151cf27d2e9840ac9b3fcd472ade597dc829d4d6c75ef3dd722"
+  },
+  {
+    "name": "cobblestone_alt_0",
+    "file": "tiles/cobblestone_alt_0.png",
+    "width": 32,
+    "height": 32,
+    "source": "sources/cobblestone.png",
+    "variant": 0,
+    "repeatAxes": [
+      "x",
+      "y"
+    ],
+    "pixelSha256": "a26b20d58caa2151cf27d2e9840ac9b3fcd472ade597dc829d4d6c75ef3dd722"
+  },
+  {
+    "name": "cobblestone_alt_1",
+    "file": "tiles/cobblestone_alt_1.png",
+    "width": 32,
+    "height": 32,
+    "source": "sources/cobblestone.png",
+    "variant": 1,
+    "repeatAxes": [
+      "x",
+      "y"
+    ],
+    "pixelSha256": "ffe2b2ed0aa4c6d3418acd64fa45e25341dafcb1713139a49577a20f48768e4f"
+  },
+  {
+    "name": "cobblestone_alt_2",
+    "file": "tiles/cobblestone_alt_2.png",
+    "width": 32,
+    "height": 32,
+    "source": "sources/cobblestone.png",
+    "variant": 2,
+    "repeatAxes": [
+      "x",
+      "y"
+    ],
+    "pixelSha256": "20fb28d3c1699cb4144a2697c2f33917ab2a93b7920aa75aec3aaced3d3b21f6"
+  },
+  {
+    "name": "cobblestone_alt_3",
+    "file": "tiles/cobblestone_alt_3.png",
+    "width": 32,
+    "height": 32,
+    "source": "sources/cobblestone.png",
+    "variant": 3,
+    "repeatAxes": [
+      "x",
+      "y"
+    ],
+    "pixelSha256": "38d0f3e6da34546be23e6af74f34b4a1b9bb45c5a7955e0c6a61dfba8f3266e8"
+  },
+  {
+    "name": "brick",
+    "file": "tiles/brick.png",
+    "width": 32,
+    "height": 32,
+    "source": "sources/brick.png",
+    "variant": null,
+    "repeatAxes": [
+      "x",
+      "y"
+    ],
+    "pixelSha256": "65356e858269f2e0f4a29628b5ee9f7889c5cd50e76d4e1ee2b6f2ac8bdaf15f"
+  }
+]

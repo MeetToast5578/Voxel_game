@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { artworkPixels } from './woodlandArt';
+import { attachWorldFog, type WorldFogUniforms } from './worldFog';
 
 const WOOD = new THREE.Color(1, 1, 1);
 
@@ -8,7 +9,8 @@ export class BoatMesh {
   private readonly group = new THREE.Group();
   private readonly material = new THREE.MeshBasicMaterial({ color: WOOD });
 
-  constructor(scene: THREE.Scene) {
+  constructor(scene: THREE.Scene, fog?: WorldFogUniforms) {
+    attachWorldFog(this.material, fog);
     const wood = artworkPixels('planks')!;
     const pixels = new Uint8Array(wood.length);
     for (let y = 0; y < 32; y++) pixels.set(wood.subarray(y * 128, (y + 1) * 128), (31 - y) * 128);

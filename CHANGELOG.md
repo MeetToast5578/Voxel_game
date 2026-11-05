@@ -3,6 +3,50 @@
 The newest version comes first. `npm run check` fails if the version at the top here is not the one in
 `package.json`, so the two are changed together.
 
+## 0.6.7 — 2026-11-04
+
+- Restored defined grass blades: separate overhead tufts and upright side blades with restrained painted edge
+  highlights and overlap shadows. Grass remains vegetation on all six faces, including the underside.
+- Repainted the flatter ground/rock, ore, species-plank and foliage materials with fewer, larger primary forms;
+  softened detail density in water/lava and bedding while preserving their material character.
+- Rebuilt affected alternatives and animation frames from the revised art. Existing equipment, machinery frames
+  and other already-readable surfaces retain their shading. Added a native-pixel grass comparison and depth style brief.
+
+## 0.6.6 — 2026-11-04
+
+- Grass blocks and slabs now show vegetation on all six faces, including undersides, as requested by the owner.
+- Expanded the rework across ground and rock materials, all ore types, every living wood species, plants, crop
+  growth stages, saplings, equipment tiers, resources, food, containers, navigation icons and station faces.
+  Every runtime image is a separate named PNG with measured source bounds and explicit transparency/repeat rules.
+- Furnace and forge openings, torches and lanterns now play eight-frame loops with fixed surrounding surfaces;
+  water and lava have coherent replacement materials and looping frames.
+- Harvested crops use dedicated inventory icons. Item frames gain linen backing. Tall doors use four continuous
+  texture segments across all facings/open states, including chunk boundaries, instead of repeating a whole door.
+- Bed pillows select the correct head end in all four facings. Torch/lantern world textures fill their model UVs,
+  while separate inventory sprites retain readable proportions and padding.
+- Expanded the actual-game gallery to terrain, ores, trees, all slab/stair materials, stations, plants, icons and
+  animation playback; added source separation, active coverage, alpha, growth-scale and door continuity checks.
+
+## 0.6.5 — 2026-11-04
+
+- Replaced stone, dirt, grass top/side, sand, gravel, cobblestone and brick with eight independently authored masters.
+  Exported 36 separate, named 32×32 PNGs including coherent generated alternatives; active variants use the new art.
+- Grass sides show a green sod edge over brown soil. Biome tint preserves soil colour, and lower grass slabs keep
+  the grass edge at their actual top through UV cropping. Slabs and stairs retain the parent material's scale.
+- Added explicit source/face bindings and an actual-game mesh gallery for all cube faces, slab halves, stair facings
+  and repeated surfaces, with GPU grass-colour checks. The full texture/image/animation audit tracks later batches.
+
+## 0.6.4 — 2026-11-03
+
+- Normal play starts with the debug text and graph hidden; F3 toggles both. Menus hide the gameplay HUD and reticle.
+- Larger item artwork, clearer selected slots and responsive inventory/title layouts, including phone widths and
+  every supported GUI scale. The authored reticle is larger and outlined for contrast.
+- Mobs, dropped items, boats, signs/frames and effects now share the terrain's horizontal fog and haze curve,
+  including cave and underwater conditions. World-object lighting uses the current frame's atmosphere.
+- Target outlines and breaking overlays follow slabs, stairs, snow and thin fittings instead of a full cube.
+- Framed items retain their square proportions; cream sign lettering with dark outlines improves readability.
+- Added actual-GPU fog checks and desktop/phone visual regression coverage.
+
 ## 0.6.3 — 2026-11-02
 
 - Refined all twenty mob skins with clearer pixel clusters, readable faces and single-limb textures. Dedicated trader

@@ -36,3 +36,37 @@
 .screen input[type=search] {background:#102e3c;border:1px solid #86cfd7;color:#fff;padding:6px;font:inherit;}
 #interaction-hint {position:fixed;left:50%;top:calc(50% + 28px);transform:translateX(-50%);padding:5px 10px;background:#102e3ce8;color:#eff8f6;border:1px solid #76adb4;font:13px system-ui;text-align:center;pointer-events:none;max-width:80vw;}
 .slot.upgraded::after {left:auto;right:0;}
+#crosshair { width:24px;height:24px;margin:-12px 0 0 -12px;image-rendering:pixelated;mix-blend-mode:normal;filter:drop-shadow(1px 1px 0 #000) drop-shadow(-1px -1px 0 #000); }
+
+/* Slot art has its own frame: leave enough inner space for the 32px item artwork. */
+#ui { --gui-scale:1; --slot-size:clamp(16px,calc((100vw / var(--gui-scale) - 64px) / 9),44px); }
+.slot { width:var(--slot-size);height:var(--slot-size);border-width:3px;border-image-width:3px;flex:none; }
+.slot img { inset:2px;width:calc(100% - 4px);height:calc(100% - 4px);object-fit:contain; }
+.slot.big { width:calc(var(--slot-size) + 10px);height:calc(var(--slot-size) + 10px); }
+.slot.selected { outline:2px solid #f5d78b;outline-offset:0;z-index:1; }
+.slot .wear { max-width:calc(100% - 6px); }
+.hotbar,.grid { gap:2px; }
+.screen,.menu { box-sizing:border-box;border-width:8px;border-image-width:8px;padding:12px;max-width:calc(100vw / var(--gui-scale) - 16px);max-height:calc(100dvh / var(--gui-scale) - 24px); }
+.menu,.menu.title { min-width:0;width:min(520px,calc(100vw / var(--gui-scale) - 24px)); }
+.screen { width:min(620px,calc(100vw / var(--gui-scale) - 16px)); }
+.workshop { min-width:0; }
+.palette { grid-template-columns:repeat(auto-fill,minmax(var(--slot-size),1fr)); }
+.screen input[type=search] { box-sizing:border-box;max-width:100%;min-width:0; }
+.screen .row { flex-wrap:wrap; }
+.menu input,.menu select { min-width:0;max-width:100%;box-sizing:border-box; }
+.worlds b,.worlds small { overflow-wrap:anywhere; }
+.screen textarea { box-sizing:border-box;display:block;width:100%;max-width:100%;min-width:0; }
+.trade-list button { flex-wrap:wrap; }
+.equipment-list button { min-width:0;padding:3px 4px;overflow-wrap:anywhere; }
+.workshop-head>div { min-width:0; }
+.hintbox,.toast { box-sizing:border-box;max-width:calc(100vw / var(--gui-scale) - 24px); }
+@media(max-width:650px) {
+  .palette { grid-template-columns:repeat(8,var(--slot-size)); }
+  .slot { border-width:2px;border-image-width:2px; }
+  .slot img { inset:1px;width:calc(100% - 2px);height:calc(100% - 2px); }
+  .slot .count { font-size:10px; }
+  .menu { width:min(520px,calc(100vw / var(--gui-scale) - 24px)); }
+  .workshop { min-width:0; }
+  .equipment-list { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .workshop-head img { width:48px;height:48px; }
+}

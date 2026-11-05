@@ -1,0 +1,9216 @@
+[
+  {
+    "source": "sources/farmland.png",
+    "cell": 0,
+    "sourceRect": [
+      0,
+      0,
+      1254,
+      1254
+    ],
+    "sourceDimensions": [
+      1254,
+      1254
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "opaque",
+    "repeatAxes": [
+      "x",
+      "y"
+    ],
+    "category": "terrain",
+    "derivedFrom": null,
+    "name": "farmland",
+    "file": "tiles/farmland.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "ec20500daf49685adcb22bfc3094a95acf54d3007268c1a968f8995e4cce355a"
+  },
+  {
+    "source": "sources/clay.png",
+    "cell": 0,
+    "sourceRect": [
+      0,
+      0,
+      1254,
+      1254
+    ],
+    "sourceDimensions": [
+      1254,
+      1254
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "opaque",
+    "repeatAxes": [
+      "x",
+      "y"
+    ],
+    "category": "terrain",
+    "derivedFrom": null,
+    "name": "clay",
+    "file": "tiles/clay.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "c8de97cd8ae3bce886e19b85abefe6e5cdcd104337570a1e7961a034cc38c1e5"
+  },
+  {
+    "source": "sources/snow.png",
+    "cell": 0,
+    "sourceRect": [
+      0,
+      0,
+      1254,
+      1254
+    ],
+    "sourceDimensions": [
+      1254,
+      1254
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "opaque",
+    "repeatAxes": [
+      "x",
+      "y"
+    ],
+    "category": "terrain",
+    "derivedFrom": null,
+    "name": "snow",
+    "file": "tiles/snow.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "245376de21e3d65c5306cedc8e2e81cbfc84f7d07b61a4a6ff80f9e44a8acc83"
+  },
+  {
+    "source": "sources/snow.png",
+    "cell": 0,
+    "sourceRect": [
+      0,
+      0,
+      1254,
+      1254
+    ],
+    "sourceDimensions": [
+      1254,
+      1254
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "opaque",
+    "repeatAxes": [
+      "x",
+      "y"
+    ],
+    "category": "terrain",
+    "derivedFrom": "snow",
+    "variant": 0,
+    "name": "snow_alt_0",
+    "file": "tiles/snow_alt_0.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "245376de21e3d65c5306cedc8e2e81cbfc84f7d07b61a4a6ff80f9e44a8acc83"
+  },
+  {
+    "source": "sources/snow.png",
+    "cell": 0,
+    "sourceRect": [
+      0,
+      0,
+      1254,
+      1254
+    ],
+    "sourceDimensions": [
+      1254,
+      1254
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "opaque",
+    "repeatAxes": [
+      "x",
+      "y"
+    ],
+    "category": "terrain",
+    "derivedFrom": "snow",
+    "variant": 1,
+    "name": "snow_alt_1",
+    "file": "tiles/snow_alt_1.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "947c7690de45b9e1f5a69c29fb29eaa9610802192dc5c3d8a42f990e922eeda7"
+  },
+  {
+    "source": "sources/snow.png",
+    "cell": 0,
+    "sourceRect": [
+      0,
+      0,
+      1254,
+      1254
+    ],
+    "sourceDimensions": [
+      1254,
+      1254
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "opaque",
+    "repeatAxes": [
+      "x",
+      "y"
+    ],
+    "category": "terrain",
+    "derivedFrom": "snow",
+    "variant": 2,
+    "name": "snow_alt_2",
+    "file": "tiles/snow_alt_2.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "cda40fa0f49cbe4b2a2669dcac5b7208c45ac604c16b7e9024d78bcec075f784"
+  },
+  {
+    "source": "sources/snow.png",
+    "cell": 0,
+    "sourceRect": [
+      0,
+      0,
+      1254,
+      1254
+    ],
+    "sourceDimensions": [
+      1254,
+      1254
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "opaque",
+    "repeatAxes": [
+      "x",
+      "y"
+    ],
+    "category": "terrain",
+    "derivedFrom": "snow",
+    "variant": 3,
+    "name": "snow_alt_3",
+    "file": "tiles/snow_alt_3.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "94590c622b511791334f66f3363e82db8232338edeaea0273e055ae4360473b8"
+  },
+  {
+    "source": "sources/granite.png",
+    "cell": 0,
+    "sourceRect": [
+      0,
+      0,
+      1254,
+      1254
+    ],
+    "sourceDimensions": [
+      1254,
+      1254
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "opaque",
+    "repeatAxes": [
+      "x",
+      "y"
+    ],
+    "category": "terrain",
+    "derivedFrom": null,
+    "name": "granite",
+    "file": "tiles/granite.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "0bf532f5f644a01f39493208763d49ba915d363d7d1292863999300a17f1331a"
+  },
+  {
+    "source": "sources/diorite.png",
+    "cell": 0,
+    "sourceRect": [
+      0,
+      0,
+      1254,
+      1254
+    ],
+    "sourceDimensions": [
+      1254,
+      1254
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "opaque",
+    "repeatAxes": [
+      "x",
+      "y"
+    ],
+    "category": "terrain",
+    "derivedFrom": null,
+    "name": "diorite",
+    "file": "tiles/diorite.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "840bdc14d192970d2e83d4e557202ff2fa4012490b9218ef8fd4ef18f6a47396"
+  },
+  {
+    "source": "sources/andesite.png",
+    "cell": 0,
+    "sourceRect": [
+      0,
+      0,
+      1254,
+      1254
+    ],
+    "sourceDimensions": [
+      1254,
+      1254
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "opaque",
+    "repeatAxes": [
+      "x",
+      "y"
+    ],
+    "category": "terrain",
+    "derivedFrom": null,
+    "name": "andesite",
+    "file": "tiles/andesite.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "ebd193647653b61303e1c38ce2b7674228463b1eadc3e6a33ecf83ad5980f895"
+  },
+  {
+    "source": "sources/sandstone.png",
+    "cell": 0,
+    "sourceRect": [
+      0,
+      0,
+      1254,
+      1254
+    ],
+    "sourceDimensions": [
+      1254,
+      1254
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "opaque",
+    "repeatAxes": [
+      "x",
+      "y"
+    ],
+    "category": "terrain",
+    "derivedFrom": null,
+    "name": "sandstone",
+    "file": "tiles/sandstone.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "99ead7ae6e50dfd5d6c694448116b207b9e0ea0ca0212e424976232b62996545"
+  },
+  {
+    "source": "sources/limestone.png",
+    "cell": 0,
+    "sourceRect": [
+      0,
+      0,
+      1254,
+      1254
+    ],
+    "sourceDimensions": [
+      1254,
+      1254
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "opaque",
+    "repeatAxes": [
+      "x",
+      "y"
+    ],
+    "category": "terrain",
+    "derivedFrom": null,
+    "name": "limestone",
+    "file": "tiles/limestone.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "2c44c171ed511eaed1d1261dec06fc4a25bdd7a99d45cfba02d862669bdee213"
+  },
+  {
+    "source": "sources/slate.png",
+    "cell": 0,
+    "sourceRect": [
+      0,
+      0,
+      1254,
+      1254
+    ],
+    "sourceDimensions": [
+      1254,
+      1254
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "opaque",
+    "repeatAxes": [
+      "x",
+      "y"
+    ],
+    "category": "terrain",
+    "derivedFrom": null,
+    "name": "slate",
+    "file": "tiles/slate.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "def162ec5cd074e2a8fe3ff91fd77db42f7153e98c39e3a24ea8e589714ce00d"
+  },
+  {
+    "source": "sources/slate.png",
+    "cell": 0,
+    "sourceRect": [
+      0,
+      0,
+      1254,
+      1254
+    ],
+    "sourceDimensions": [
+      1254,
+      1254
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "opaque",
+    "repeatAxes": [
+      "x",
+      "y"
+    ],
+    "category": "terrain",
+    "derivedFrom": "slate",
+    "variant": 0,
+    "name": "slate_alt_0",
+    "file": "tiles/slate_alt_0.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "def162ec5cd074e2a8fe3ff91fd77db42f7153e98c39e3a24ea8e589714ce00d"
+  },
+  {
+    "source": "sources/slate.png",
+    "cell": 0,
+    "sourceRect": [
+      0,
+      0,
+      1254,
+      1254
+    ],
+    "sourceDimensions": [
+      1254,
+      1254
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "opaque",
+    "repeatAxes": [
+      "x",
+      "y"
+    ],
+    "category": "terrain",
+    "derivedFrom": "slate",
+    "variant": 1,
+    "name": "slate_alt_1",
+    "file": "tiles/slate_alt_1.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "d3b3ab04f628b4bba892d969c223a0fa38b4c29e86bf12a299d11331768bc1d3"
+  },
+  {
+    "source": "sources/slate.png",
+    "cell": 0,
+    "sourceRect": [
+      0,
+      0,
+      1254,
+      1254
+    ],
+    "sourceDimensions": [
+      1254,
+      1254
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "opaque",
+    "repeatAxes": [
+      "x",
+      "y"
+    ],
+    "category": "terrain",
+    "derivedFrom": "slate",
+    "variant": 2,
+    "name": "slate_alt_2",
+    "file": "tiles/slate_alt_2.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "d060ad7d272252adffe234965ac1eb9386f1305e7da05094ff66c6342aacb0a7"
+  },
+  {
+    "source": "sources/slate.png",
+    "cell": 0,
+    "sourceRect": [
+      0,
+      0,
+      1254,
+      1254
+    ],
+    "sourceDimensions": [
+      1254,
+      1254
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "opaque",
+    "repeatAxes": [
+      "x",
+      "y"
+    ],
+    "category": "terrain",
+    "derivedFrom": "slate",
+    "variant": 3,
+    "name": "slate_alt_3",
+    "file": "tiles/slate_alt_3.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "c51e3515821c030916bd794374a5878120f79e90ec553fe1f26b46832b61bfe2"
+  },
+  {
+    "source": "sources/basalt.png",
+    "cell": 0,
+    "sourceRect": [
+      0,
+      0,
+      1254,
+      1254
+    ],
+    "sourceDimensions": [
+      1254,
+      1254
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "opaque",
+    "repeatAxes": [
+      "x",
+      "y"
+    ],
+    "category": "terrain",
+    "derivedFrom": null,
+    "name": "basalt",
+    "file": "tiles/basalt.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "a6311200ee708b519d0f2b4e53b1f25db184a69310d1bfc65fb85c53ee51db3d"
+  },
+  {
+    "source": "sources/basalt.png",
+    "cell": 0,
+    "sourceRect": [
+      0,
+      0,
+      1254,
+      1254
+    ],
+    "sourceDimensions": [
+      1254,
+      1254
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "opaque",
+    "repeatAxes": [
+      "x",
+      "y"
+    ],
+    "category": "terrain",
+    "derivedFrom": "basalt",
+    "variant": 0,
+    "name": "basalt_alt_0",
+    "file": "tiles/basalt_alt_0.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "a6311200ee708b519d0f2b4e53b1f25db184a69310d1bfc65fb85c53ee51db3d"
+  },
+  {
+    "source": "sources/basalt.png",
+    "cell": 0,
+    "sourceRect": [
+      0,
+      0,
+      1254,
+      1254
+    ],
+    "sourceDimensions": [
+      1254,
+      1254
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "opaque",
+    "repeatAxes": [
+      "x",
+      "y"
+    ],
+    "category": "terrain",
+    "derivedFrom": "basalt",
+    "variant": 1,
+    "name": "basalt_alt_1",
+    "file": "tiles/basalt_alt_1.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "c49589dbdd5069354111cfacd738212cc131ddf75bf45558ad580937d653a056"
+  },
+  {
+    "source": "sources/basalt.png",
+    "cell": 0,
+    "sourceRect": [
+      0,
+      0,
+      1254,
+      1254
+    ],
+    "sourceDimensions": [
+      1254,
+      1254
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "opaque",
+    "repeatAxes": [
+      "x",
+      "y"
+    ],
+    "category": "terrain",
+    "derivedFrom": "basalt",
+    "variant": 2,
+    "name": "basalt_alt_2",
+    "file": "tiles/basalt_alt_2.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "e7d5ac47761b37ad5e70dc9d590f66e549ef12c7c52d4def6bde55639020cd8b"
+  },
+  {
+    "source": "sources/basalt.png",
+    "cell": 0,
+    "sourceRect": [
+      0,
+      0,
+      1254,
+      1254
+    ],
+    "sourceDimensions": [
+      1254,
+      1254
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "opaque",
+    "repeatAxes": [
+      "x",
+      "y"
+    ],
+    "category": "terrain",
+    "derivedFrom": "basalt",
+    "variant": 3,
+    "name": "basalt_alt_3",
+    "file": "tiles/basalt_alt_3.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "31ba5423a4ab2ff736c497814d39b354988305530d8f5483d748cf6ae0b1f8a6"
+  },
+  {
+    "source": "sources/deepslate.png",
+    "cell": 0,
+    "sourceRect": [
+      0,
+      0,
+      1254,
+      1254
+    ],
+    "sourceDimensions": [
+      1254,
+      1254
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "opaque",
+    "repeatAxes": [
+      "x",
+      "y"
+    ],
+    "category": "terrain",
+    "derivedFrom": null,
+    "name": "deepslate",
+    "file": "tiles/deepslate.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "a4ab20de03f80c2e02a2440ccc1ab5469a48a7af3bea7f7f592bf1d8a0bd055c"
+  },
+  {
+    "source": "sources/deepslate.png",
+    "cell": 0,
+    "sourceRect": [
+      0,
+      0,
+      1254,
+      1254
+    ],
+    "sourceDimensions": [
+      1254,
+      1254
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "opaque",
+    "repeatAxes": [
+      "x",
+      "y"
+    ],
+    "category": "terrain",
+    "derivedFrom": "deepslate",
+    "variant": 0,
+    "name": "deepslate_alt_0",
+    "file": "tiles/deepslate_alt_0.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "a4ab20de03f80c2e02a2440ccc1ab5469a48a7af3bea7f7f592bf1d8a0bd055c"
+  },
+  {
+    "source": "sources/deepslate.png",
+    "cell": 0,
+    "sourceRect": [
+      0,
+      0,
+      1254,
+      1254
+    ],
+    "sourceDimensions": [
+      1254,
+      1254
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "opaque",
+    "repeatAxes": [
+      "x",
+      "y"
+    ],
+    "category": "terrain",
+    "derivedFrom": "deepslate",
+    "variant": 1,
+    "name": "deepslate_alt_1",
+    "file": "tiles/deepslate_alt_1.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "34e09233443bd037fa29468b3fa0c1d560bd4f0e6be90cc8096f25c62f86ddbf"
+  },
+  {
+    "source": "sources/deepslate.png",
+    "cell": 0,
+    "sourceRect": [
+      0,
+      0,
+      1254,
+      1254
+    ],
+    "sourceDimensions": [
+      1254,
+      1254
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "opaque",
+    "repeatAxes": [
+      "x",
+      "y"
+    ],
+    "category": "terrain",
+    "derivedFrom": "deepslate",
+    "variant": 2,
+    "name": "deepslate_alt_2",
+    "file": "tiles/deepslate_alt_2.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "2ac52067cc376cb36306e589c36cd0ea5ea500c615c76fe9f0b892c0c7049390"
+  },
+  {
+    "source": "sources/deepslate.png",
+    "cell": 0,
+    "sourceRect": [
+      0,
+      0,
+      1254,
+      1254
+    ],
+    "sourceDimensions": [
+      1254,
+      1254
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "opaque",
+    "repeatAxes": [
+      "x",
+      "y"
+    ],
+    "category": "terrain",
+    "derivedFrom": "deepslate",
+    "variant": 3,
+    "name": "deepslate_alt_3",
+    "file": "tiles/deepslate_alt_3.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "0251239fd06db6b0180068704593334dc39a45b05edfc97eb489f82205a62896"
+  },
+  {
+    "source": "sources/obsidian.png",
+    "cell": 0,
+    "sourceRect": [
+      0,
+      0,
+      1254,
+      1254
+    ],
+    "sourceDimensions": [
+      1254,
+      1254
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "opaque",
+    "repeatAxes": [
+      "x",
+      "y"
+    ],
+    "category": "terrain",
+    "derivedFrom": null,
+    "name": "obsidian",
+    "file": "tiles/obsidian.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "bfe8245f39290b9d57ebff94bdc8a77c37ae8d5d55eca50b8e277b73cd7aaa61"
+  },
+  {
+    "source": "sources/bedrock.png",
+    "cell": 0,
+    "sourceRect": [
+      0,
+      0,
+      1254,
+      1254
+    ],
+    "sourceDimensions": [
+      1254,
+      1254
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "opaque",
+    "repeatAxes": [
+      "x",
+      "y"
+    ],
+    "category": "terrain",
+    "derivedFrom": null,
+    "name": "bedrock",
+    "file": "tiles/bedrock.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "4efc9ad39b8f7fd22e3796c6bb88d55ef9abe2ea8ba0351f246601194f866b86"
+  },
+  {
+    "source": "sources/glowstone.png",
+    "cell": 0,
+    "sourceRect": [
+      0,
+      0,
+      1254,
+      1254
+    ],
+    "sourceDimensions": [
+      1254,
+      1254
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "opaque",
+    "repeatAxes": [
+      "x",
+      "y"
+    ],
+    "category": "terrain",
+    "derivedFrom": null,
+    "name": "glowstone",
+    "file": "tiles/glowstone.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "311f2a8a53616014c4fcad9bb14b2872c10121379729cb776e67d3bb2df54923"
+  },
+  {
+    "source": "sources/coal_ore.png",
+    "cell": 0,
+    "sourceRect": [
+      0,
+      0,
+      1254,
+      1254
+    ],
+    "sourceDimensions": [
+      1254,
+      1254
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "opaque",
+    "repeatAxes": [
+      "x",
+      "y"
+    ],
+    "category": "terrain",
+    "derivedFrom": null,
+    "name": "coal_ore",
+    "file": "tiles/coal_ore.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "75c583610616c1933e9c286bc8329ad9a0173c98a37627e62125e6cb41b4fe0f"
+  },
+  {
+    "source": "sources/iron_ore.png",
+    "cell": 0,
+    "sourceRect": [
+      0,
+      0,
+      1254,
+      1254
+    ],
+    "sourceDimensions": [
+      1254,
+      1254
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "opaque",
+    "repeatAxes": [
+      "x",
+      "y"
+    ],
+    "category": "terrain",
+    "derivedFrom": null,
+    "name": "iron_ore",
+    "file": "tiles/iron_ore.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "6aa192096e5d7bce2d0185f71c752770e2ecf93ba3e14c46372701148d31847e"
+  },
+  {
+    "source": "sources/gold_ore.png",
+    "cell": 0,
+    "sourceRect": [
+      0,
+      0,
+      1254,
+      1254
+    ],
+    "sourceDimensions": [
+      1254,
+      1254
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "opaque",
+    "repeatAxes": [
+      "x",
+      "y"
+    ],
+    "category": "terrain",
+    "derivedFrom": null,
+    "name": "gold_ore",
+    "file": "tiles/gold_ore.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "a1123c0e01f1495f5f6f40938ac3175a81789f64af39cb413660edcd06b8efab"
+  },
+  {
+    "source": "sources/diamond_ore.png",
+    "cell": 0,
+    "sourceRect": [
+      0,
+      0,
+      1254,
+      1254
+    ],
+    "sourceDimensions": [
+      1254,
+      1254
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "opaque",
+    "repeatAxes": [
+      "x",
+      "y"
+    ],
+    "category": "terrain",
+    "derivedFrom": null,
+    "name": "diamond_ore",
+    "file": "tiles/diamond_ore.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "4b4e22cf189cfad38b48f3c5aa48ca7cf0a4b8159ce88adacf67b87f198b44f2"
+  },
+  {
+    "source": "sources/lapis_ore.png",
+    "cell": 0,
+    "sourceRect": [
+      0,
+      0,
+      1254,
+      1254
+    ],
+    "sourceDimensions": [
+      1254,
+      1254
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "opaque",
+    "repeatAxes": [
+      "x",
+      "y"
+    ],
+    "category": "terrain",
+    "derivedFrom": null,
+    "name": "lapis_ore",
+    "file": "tiles/lapis_ore.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "d55795327f7e84acae638c39853782436844bc26ec05674bacddf02af56a3dfd"
+  },
+  {
+    "source": "sources/ember_ore.png",
+    "cell": 0,
+    "sourceRect": [
+      0,
+      0,
+      1254,
+      1254
+    ],
+    "sourceDimensions": [
+      1254,
+      1254
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "opaque",
+    "repeatAxes": [
+      "x",
+      "y"
+    ],
+    "category": "terrain",
+    "derivedFrom": null,
+    "name": "ember_ore",
+    "file": "tiles/ember_ore.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "d2dc4fcf083d2f387b921ecc610dbce6a05aee1fd752a6cdc610a072c0045361"
+  },
+  {
+    "source": "sources/redstone_ore.png",
+    "cell": 0,
+    "sourceRect": [
+      0,
+      0,
+      1254,
+      1254
+    ],
+    "sourceDimensions": [
+      1254,
+      1254
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "opaque",
+    "repeatAxes": [
+      "x",
+      "y"
+    ],
+    "category": "terrain",
+    "derivedFrom": null,
+    "name": "redstone_ore",
+    "file": "tiles/redstone_ore.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "7274603301f94a802b1b9e144228ce626c6ba36d9842eb2bed343775853ddc9e"
+  },
+  {
+    "source": "sources/emerald_ore.png",
+    "cell": 0,
+    "sourceRect": [
+      0,
+      0,
+      1254,
+      1254
+    ],
+    "sourceDimensions": [
+      1254,
+      1254
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "opaque",
+    "repeatAxes": [
+      "x",
+      "y"
+    ],
+    "category": "terrain",
+    "derivedFrom": null,
+    "name": "emerald_ore",
+    "file": "tiles/emerald_ore.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "ef17c7170b2463a22ff42d62eddfc11d447e5847d6a75a64dbf23107ee816ae2"
+  },
+  {
+    "source": "sources/tools_pickaxe.png",
+    "cell": 0,
+    "sourceRect": [
+      135,
+      89,
+      400,
+      435
+    ],
+    "sourceDimensions": [
+      1293,
+      1217
+    ],
+    "destination": [
+      3,
+      2,
+      26,
+      28
+    ],
+    "alpha": "cutout",
+    "repeatAxes": [],
+    "category": "equipment",
+    "derivedFrom": null,
+    "name": "wooden_pickaxe",
+    "file": "tiles/wooden_pickaxe.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "56f732be31f6301a9764be4f4804c58511f47cb29053df2aa3de16458e0a49bd"
+  },
+  {
+    "source": "sources/tools_pickaxe.png",
+    "cell": 1,
+    "sourceRect": [
+      764,
+      87,
+      415,
+      439
+    ],
+    "sourceDimensions": [
+      1293,
+      1217
+    ],
+    "destination": [
+      3,
+      2,
+      26,
+      28
+    ],
+    "alpha": "cutout",
+    "repeatAxes": [],
+    "category": "equipment",
+    "derivedFrom": null,
+    "name": "stone_pickaxe",
+    "file": "tiles/stone_pickaxe.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "b13e3451cec862f755a7b6b072907184a739d1fbbf53572f278b391fd7361a50"
+  },
+  {
+    "source": "sources/tools_pickaxe.png",
+    "cell": 2,
+    "sourceRect": [
+      131,
+      694,
+      411,
+      440
+    ],
+    "sourceDimensions": [
+      1293,
+      1217
+    ],
+    "destination": [
+      3,
+      2,
+      26,
+      28
+    ],
+    "alpha": "cutout",
+    "repeatAxes": [],
+    "category": "equipment",
+    "derivedFrom": null,
+    "name": "iron_pickaxe",
+    "file": "tiles/iron_pickaxe.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "9d84bf72b873dbbe0ac84325163677788c26c32d276294c231db861101c86e71"
+  },
+  {
+    "source": "sources/tools_pickaxe.png",
+    "cell": 3,
+    "sourceRect": [
+      770,
+      691,
+      418,
+      450
+    ],
+    "sourceDimensions": [
+      1293,
+      1217
+    ],
+    "destination": [
+      3,
+      2,
+      26,
+      28
+    ],
+    "alpha": "cutout",
+    "repeatAxes": [],
+    "category": "equipment",
+    "derivedFrom": null,
+    "name": "diamond_pickaxe",
+    "file": "tiles/diamond_pickaxe.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "59b0259eeccbff27c2c654f432606dc76d6a0f76bb0aa2e42cbe2446b9eab604"
+  },
+  {
+    "source": "sources/tools_axe.png",
+    "cell": 0,
+    "sourceRect": [
+      107,
+      66,
+      444,
+      480
+    ],
+    "sourceDimensions": [
+      1272,
+      1236
+    ],
+    "destination": [
+      3,
+      2,
+      26,
+      28
+    ],
+    "alpha": "cutout",
+    "repeatAxes": [],
+    "category": "equipment",
+    "derivedFrom": null,
+    "name": "wooden_axe",
+    "file": "tiles/wooden_axe.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "6208d74fe9e587b1c033a040b3117b4bc6ae98cb69e47788d961d86992c729b6"
+  },
+  {
+    "source": "sources/tools_axe.png",
+    "cell": 1,
+    "sourceRect": [
+      743,
+      66,
+      436,
+      480
+    ],
+    "sourceDimensions": [
+      1272,
+      1236
+    ],
+    "destination": [
+      3,
+      2,
+      25,
+      28
+    ],
+    "alpha": "cutout",
+    "repeatAxes": [],
+    "category": "equipment",
+    "derivedFrom": null,
+    "name": "stone_axe",
+    "file": "tiles/stone_axe.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "745a805761e1a50115d7b5e5a1c6871c003b9cce0621b40183956bdf077ed7c2"
+  },
+  {
+    "source": "sources/tools_axe.png",
+    "cell": 2,
+    "sourceRect": [
+      107,
+      670,
+      444,
+      482
+    ],
+    "sourceDimensions": [
+      1272,
+      1236
+    ],
+    "destination": [
+      3,
+      2,
+      26,
+      28
+    ],
+    "alpha": "cutout",
+    "repeatAxes": [],
+    "category": "equipment",
+    "derivedFrom": null,
+    "name": "iron_axe",
+    "file": "tiles/iron_axe.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "62ef1d80abdc68d48b46bacf62813bda305638f078e2072b1b4a103827b0566d"
+  },
+  {
+    "source": "sources/tools_axe.png",
+    "cell": 3,
+    "sourceRect": [
+      743,
+      670,
+      446,
+      485
+    ],
+    "sourceDimensions": [
+      1272,
+      1236
+    ],
+    "destination": [
+      3,
+      2,
+      26,
+      28
+    ],
+    "alpha": "cutout",
+    "repeatAxes": [],
+    "category": "equipment",
+    "derivedFrom": null,
+    "name": "diamond_axe",
+    "file": "tiles/diamond_axe.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "5b9cd9850e4141d8a291286ccaf2dcf9afc6b071b5620c2b45adba3d09977a69"
+  },
+  {
+    "source": "sources/tools_shovel.png",
+    "cell": 0,
+    "sourceRect": [
+      105,
+      79,
+      468,
+      497
+    ],
+    "sourceDimensions": [
+      1261,
+      1247
+    ],
+    "destination": [
+      3,
+      2,
+      26,
+      28
+    ],
+    "alpha": "cutout",
+    "repeatAxes": [],
+    "category": "equipment",
+    "derivedFrom": null,
+    "name": "wooden_shovel",
+    "file": "tiles/wooden_shovel.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "8707b7efdbf221c62b0bb7a48681e2cd7a7f8202578c76e9b4223942026d511e"
+  },
+  {
+    "source": "sources/tools_shovel.png",
+    "cell": 1,
+    "sourceRect": [
+      722,
+      79,
+      466,
+      498
+    ],
+    "sourceDimensions": [
+      1261,
+      1247
+    ],
+    "destination": [
+      3,
+      2,
+      26,
+      28
+    ],
+    "alpha": "cutout",
+    "repeatAxes": [],
+    "category": "equipment",
+    "derivedFrom": null,
+    "name": "stone_shovel",
+    "file": "tiles/stone_shovel.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "a3f5e546bff807bdd3fedc1181baebc06a858b40d80a1093778a269a2e343af9"
+  },
+  {
+    "source": "sources/tools_shovel.png",
+    "cell": 2,
+    "sourceRect": [
+      105,
+      662,
+      467,
+      501
+    ],
+    "sourceDimensions": [
+      1261,
+      1247
+    ],
+    "destination": [
+      3,
+      2,
+      26,
+      28
+    ],
+    "alpha": "cutout",
+    "repeatAxes": [],
+    "category": "equipment",
+    "derivedFrom": null,
+    "name": "iron_shovel",
+    "file": "tiles/iron_shovel.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "69d369d4e0ccbff7c5804e5464a241dfe731af20b70bf5d2742f963df16c957c"
+  },
+  {
+    "source": "sources/tools_shovel.png",
+    "cell": 3,
+    "sourceRect": [
+      718,
+      662,
+      475,
+      502
+    ],
+    "sourceDimensions": [
+      1261,
+      1247
+    ],
+    "destination": [
+      3,
+      2,
+      26,
+      28
+    ],
+    "alpha": "cutout",
+    "repeatAxes": [],
+    "category": "equipment",
+    "derivedFrom": null,
+    "name": "diamond_shovel",
+    "file": "tiles/diamond_shovel.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "fe20709dc46fb3ed24885fbdabfde0a31a0af317fdfcebba9957bba99dcacec4"
+  },
+  {
+    "source": "sources/tools_sword.png",
+    "cell": 0,
+    "sourceRect": [
+      97,
+      82,
+      447,
+      467
+    ],
+    "sourceDimensions": [
+      1263,
+      1246
+    ],
+    "destination": [
+      2,
+      2,
+      27,
+      28
+    ],
+    "alpha": "cutout",
+    "repeatAxes": [],
+    "category": "equipment",
+    "derivedFrom": null,
+    "name": "wooden_sword",
+    "file": "tiles/wooden_sword.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "6a93ab736ade5372d0954b831a35e6a4fd83d9fe4c94ad81b388448465ebe36d"
+  },
+  {
+    "source": "sources/tools_sword.png",
+    "cell": 1,
+    "sourceRect": [
+      727,
+      82,
+      449,
+      467
+    ],
+    "sourceDimensions": [
+      1263,
+      1246
+    ],
+    "destination": [
+      2,
+      2,
+      27,
+      28
+    ],
+    "alpha": "cutout",
+    "repeatAxes": [],
+    "category": "equipment",
+    "derivedFrom": null,
+    "name": "stone_sword",
+    "file": "tiles/stone_sword.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "9eceda02a311138c6925c0ffcdf2d01439467ac120682184d4d63006f3b78905"
+  },
+  {
+    "source": "sources/tools_sword.png",
+    "cell": 2,
+    "sourceRect": [
+      97,
+      692,
+      449,
+      466
+    ],
+    "sourceDimensions": [
+      1263,
+      1246
+    ],
+    "destination": [
+      2,
+      2,
+      27,
+      28
+    ],
+    "alpha": "cutout",
+    "repeatAxes": [],
+    "category": "equipment",
+    "derivedFrom": null,
+    "name": "iron_sword",
+    "file": "tiles/iron_sword.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "9d820876fce89485517610e869a8608d8e25cafe4b77dea2c9a824221292f194"
+  },
+  {
+    "source": "sources/tools_sword.png",
+    "cell": 3,
+    "sourceRect": [
+      730,
+      692,
+      450,
+      465
+    ],
+    "sourceDimensions": [
+      1263,
+      1246
+    ],
+    "destination": [
+      2,
+      2,
+      27,
+      28
+    ],
+    "alpha": "cutout",
+    "repeatAxes": [],
+    "category": "equipment",
+    "derivedFrom": null,
+    "name": "diamond_sword",
+    "file": "tiles/diamond_sword.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "3329459cf5805ec8bb64a0c000a858b2f8c0ab03adae7e7ce7862227c2d7b4d4"
+  },
+  {
+    "source": "sources/tools_hoe.png",
+    "cell": 0,
+    "sourceRect": [
+      93,
+      91,
+      434,
+      460
+    ],
+    "sourceDimensions": [
+      1263,
+      1246
+    ],
+    "destination": [
+      3,
+      2,
+      26,
+      28
+    ],
+    "alpha": "cutout",
+    "repeatAxes": [],
+    "category": "equipment",
+    "derivedFrom": null,
+    "name": "wooden_hoe",
+    "file": "tiles/wooden_hoe.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "e534609f718771ecdf7508dc9a79898c848be0f539597e0a94d7cec574c8e9ce"
+  },
+  {
+    "source": "sources/tools_hoe.png",
+    "cell": 1,
+    "sourceRect": [
+      724,
+      92,
+      452,
+      459
+    ],
+    "sourceDimensions": [
+      1263,
+      1246
+    ],
+    "destination": [
+      2,
+      2,
+      28,
+      28
+    ],
+    "alpha": "cutout",
+    "repeatAxes": [],
+    "category": "equipment",
+    "derivedFrom": null,
+    "name": "stone_hoe",
+    "file": "tiles/stone_hoe.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "68264c8d1c0774daf09cb93402f1b31cd82e99c53ce34fc63069fc9cebbd673b"
+  },
+  {
+    "source": "sources/tools_hoe.png",
+    "cell": 2,
+    "sourceRect": [
+      93,
+      713,
+      442,
+      465
+    ],
+    "sourceDimensions": [
+      1263,
+      1246
+    ],
+    "destination": [
+      2,
+      2,
+      27,
+      28
+    ],
+    "alpha": "cutout",
+    "repeatAxes": [],
+    "category": "equipment",
+    "derivedFrom": null,
+    "name": "iron_hoe",
+    "file": "tiles/iron_hoe.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "47b4e0460c263a906a9bb31962ed4970ca9fac0844d02bff2b79c78e14e3d0c4"
+  },
+  {
+    "source": "sources/tools_hoe.png",
+    "cell": 3,
+    "sourceRect": [
+      724,
+      711,
+      445,
+      467
+    ],
+    "sourceDimensions": [
+      1263,
+      1246
+    ],
+    "destination": [
+      2,
+      2,
+      27,
+      28
+    ],
+    "alpha": "cutout",
+    "repeatAxes": [],
+    "category": "equipment",
+    "derivedFrom": null,
+    "name": "diamond_hoe",
+    "file": "tiles/diamond_hoe.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "876915f0f8ec6f8e5371e66e50ee2c2a54314d10e42a7fde24740075d21c0844"
+  },
+  {
+    "source": "sources/armour_leather.png",
+    "cell": 0,
+    "sourceRect": [
+      129,
+      106,
+      361,
+      402
+    ],
+    "sourceDimensions": [
+      1261,
+      1247
+    ],
+    "destination": [
+      3,
+      2,
+      25,
+      28
+    ],
+    "alpha": "cutout",
+    "repeatAxes": [],
+    "category": "equipment",
+    "derivedFrom": null,
+    "name": "leather_helmet",
+    "file": "tiles/leather_helmet.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "dfe4ae7e8dfaa06cebceaf7b7329cb68b303f7a641ab0b729b1c777e21099669"
+  },
+  {
+    "source": "sources/armour_leather.png",
+    "cell": 1,
+    "sourceRect": [
+      699,
+      108,
+      470,
+      437
+    ],
+    "sourceDimensions": [
+      1261,
+      1247
+    ],
+    "destination": [
+      2,
+      3,
+      28,
+      26
+    ],
+    "alpha": "cutout",
+    "repeatAxes": [],
+    "category": "equipment",
+    "derivedFrom": null,
+    "name": "leather_chestplate",
+    "file": "tiles/leather_chestplate.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "8e60588f09ecb28c59c0f3f8dfc81b9f308f058354a25fe5c13c3a3b4fd20193"
+  },
+  {
+    "source": "sources/armour_leather.png",
+    "cell": 2,
+    "sourceRect": [
+      149,
+      717,
+      330,
+      460
+    ],
+    "sourceDimensions": [
+      1261,
+      1247
+    ],
+    "destination": [
+      6,
+      2,
+      20,
+      28
+    ],
+    "alpha": "cutout",
+    "repeatAxes": [],
+    "category": "equipment",
+    "derivedFrom": null,
+    "name": "leather_leggings",
+    "file": "tiles/leather_leggings.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "becddc6c8e44f4d46d2ca6b69e83c34663de0bf3220c81cf38868c5ae61da46c"
+  },
+  {
+    "source": "sources/armour_leather.png",
+    "cell": 3,
+    "sourceRect": [
+      722,
+      772,
+      427,
+      382
+    ],
+    "sourceDimensions": [
+      1261,
+      1247
+    ],
+    "destination": [
+      2,
+      3,
+      28,
+      25
+    ],
+    "alpha": "cutout",
+    "repeatAxes": [],
+    "category": "equipment",
+    "derivedFrom": null,
+    "name": "leather_boots",
+    "file": "tiles/leather_boots.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "1214e273229421dba15f1e4b56f13688c7f96cd6ad5515e25ead3b905fc25808"
+  },
+  {
+    "source": "sources/armour_iron.png",
+    "cell": 0,
+    "sourceRect": [
+      163,
+      123,
+      329,
+      409
+    ],
+    "sourceDimensions": [
+      1263,
+      1246
+    ],
+    "destination": [
+      4,
+      2,
+      23,
+      28
+    ],
+    "alpha": "cutout",
+    "repeatAxes": [],
+    "category": "equipment",
+    "derivedFrom": null,
+    "name": "iron_helmet",
+    "file": "tiles/iron_helmet.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "beed40b78501e3c6a952c68722fc9972ec108379cdf7ac730ef65e751c7f62d6"
+  },
+  {
+    "source": "sources/armour_iron.png",
+    "cell": 1,
+    "sourceRect": [
+      690,
+      140,
+      464,
+      406
+    ],
+    "sourceDimensions": [
+      1263,
+      1246
+    ],
+    "destination": [
+      2,
+      3,
+      28,
+      25
+    ],
+    "alpha": "cutout",
+    "repeatAxes": [],
+    "category": "equipment",
+    "derivedFrom": null,
+    "name": "iron_chestplate",
+    "file": "tiles/iron_chestplate.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "7ace0ffacd94693c81cc735704cfab2430bcc8e446eabfe51deb519a54827b12"
+  },
+  {
+    "source": "sources/armour_iron.png",
+    "cell": 2,
+    "sourceRect": [
+      175,
+      722,
+      315,
+      427
+    ],
+    "sourceDimensions": [
+      1263,
+      1246
+    ],
+    "destination": [
+      5,
+      2,
+      21,
+      28
+    ],
+    "alpha": "cutout",
+    "repeatAxes": [],
+    "category": "equipment",
+    "derivedFrom": null,
+    "name": "iron_leggings",
+    "file": "tiles/iron_leggings.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "b02c4365655003fbeb23e585501ba3a2bce73e6fd297d4c1453607fda3fcf180"
+  },
+  {
+    "source": "sources/armour_iron.png",
+    "cell": 3,
+    "sourceRect": [
+      725,
+      790,
+      392,
+      331
+    ],
+    "sourceDimensions": [
+      1263,
+      1246
+    ],
+    "destination": [
+      2,
+      4,
+      28,
+      24
+    ],
+    "alpha": "cutout",
+    "repeatAxes": [],
+    "category": "equipment",
+    "derivedFrom": null,
+    "name": "iron_boots",
+    "file": "tiles/iron_boots.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "dd8cabd753ab193200ecd3003742d05fc0b43bef2384f221add90d69fa005662"
+  },
+  {
+    "source": "sources/armour_diamond.png",
+    "cell": 0,
+    "sourceRect": [
+      140,
+      135,
+      363,
+      382
+    ],
+    "sourceDimensions": [
+      1269,
+      1240
+    ],
+    "destination": [
+      2,
+      2,
+      27,
+      28
+    ],
+    "alpha": "cutout",
+    "repeatAxes": [],
+    "category": "equipment",
+    "derivedFrom": null,
+    "name": "diamond_helmet",
+    "file": "tiles/diamond_helmet.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "ebca88dbf395b3dd3d0158d68ecdda6ef575b54ebbef001f0e9e1ff912780b3c"
+  },
+  {
+    "source": "sources/armour_diamond.png",
+    "cell": 1,
+    "sourceRect": [
+      706,
+      118,
+      469,
+      419
+    ],
+    "sourceDimensions": [
+      1269,
+      1240
+    ],
+    "destination": [
+      2,
+      3,
+      28,
+      25
+    ],
+    "alpha": "cutout",
+    "repeatAxes": [],
+    "category": "equipment",
+    "derivedFrom": null,
+    "name": "diamond_chestplate",
+    "file": "tiles/diamond_chestplate.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "bf857e08be1a2681d7a870ad7426cf87952c0cf5baf3845ba9e55b9e4a7ab002"
+  },
+  {
+    "source": "sources/armour_diamond.png",
+    "cell": 2,
+    "sourceRect": [
+      160,
+      699,
+      326,
+      442
+    ],
+    "sourceDimensions": [
+      1269,
+      1240
+    ],
+    "destination": [
+      5,
+      2,
+      21,
+      28
+    ],
+    "alpha": "cutout",
+    "repeatAxes": [],
+    "category": "equipment",
+    "derivedFrom": null,
+    "name": "diamond_leggings",
+    "file": "tiles/diamond_leggings.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "613cb8b3e74bb3383a456910b1dee79ae3fe45dd3fba0e4d563623230b203dbb"
+  },
+  {
+    "source": "sources/armour_diamond.png",
+    "cell": 3,
+    "sourceRect": [
+      714,
+      790,
+      454,
+      326
+    ],
+    "sourceDimensions": [
+      1269,
+      1240
+    ],
+    "destination": [
+      2,
+      6,
+      28,
+      20
+    ],
+    "alpha": "cutout",
+    "repeatAxes": [],
+    "category": "equipment",
+    "derivedFrom": null,
+    "name": "diamond_boots",
+    "file": "tiles/diamond_boots.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "4d7f41c899822b3ce22ca72edf8d2616d84d984a691caf1af33c08ea6dc952ad"
+  },
+  {
+    "source": "sources/chest_faces.png",
+    "cell": 0,
+    "sourceRect": [
+      98,
+      97,
+      528,
+      529
+    ],
+    "sourceDimensions": [
+      2172,
+      724
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "opaque",
+    "repeatAxes": [],
+    "category": "station",
+    "derivedFrom": null,
+    "name": "chest_top",
+    "file": "tiles/chest_top.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "33da547735d9f3bfc94b4363498712fed75b011a666282a104c2fd2082eee9c5"
+  },
+  {
+    "source": "sources/chest_faces.png",
+    "cell": 1,
+    "sourceRect": [
+      822,
+      97,
+      528,
+      529
+    ],
+    "sourceDimensions": [
+      2172,
+      724
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "opaque",
+    "repeatAxes": [],
+    "category": "station",
+    "derivedFrom": null,
+    "name": "chest_side",
+    "file": "tiles/chest_side.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "414c682597937bf2aa221285314d50ad1ca5754aee036bc2bd2c823cb9715d74"
+  },
+  {
+    "source": "sources/chest_faces.png",
+    "cell": 2,
+    "sourceRect": [
+      1546,
+      97,
+      528,
+      529
+    ],
+    "sourceDimensions": [
+      2172,
+      724
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "opaque",
+    "repeatAxes": [],
+    "category": "station",
+    "derivedFrom": null,
+    "name": "chest_front",
+    "file": "tiles/chest_front.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "f58437a7c25deb8d34faf26147df72722f397b07a8906cee170ed3f9ab6ffd54"
+  },
+  {
+    "source": "sources/ancient_chest_faces.png",
+    "cell": 0,
+    "sourceRect": [
+      127,
+      127,
+      470,
+      470
+    ],
+    "sourceDimensions": [
+      2172,
+      724
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "opaque",
+    "repeatAxes": [],
+    "category": "station",
+    "derivedFrom": null,
+    "name": "ancient_chest_top",
+    "file": "tiles/ancient_chest_top.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "c6e0a9cd12089b31e12017b7c233ce228922781e99e10eabe79ef175c9855d83"
+  },
+  {
+    "source": "sources/ancient_chest_faces.png",
+    "cell": 1,
+    "sourceRect": [
+      851,
+      127,
+      471,
+      470
+    ],
+    "sourceDimensions": [
+      2172,
+      724
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "opaque",
+    "repeatAxes": [],
+    "category": "station",
+    "derivedFrom": null,
+    "name": "ancient_chest_side",
+    "file": "tiles/ancient_chest_side.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "387f6c5cd1574caff0046e441d595577aca9b83d6ec573987737bbe4223d0784"
+  },
+  {
+    "source": "sources/ancient_chest_faces.png",
+    "cell": 2,
+    "sourceRect": [
+      1575,
+      127,
+      470,
+      470
+    ],
+    "sourceDimensions": [
+      2172,
+      724
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "opaque",
+    "repeatAxes": [],
+    "category": "station",
+    "derivedFrom": null,
+    "name": "ancient_chest_front",
+    "file": "tiles/ancient_chest_front.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "c649eb478c11d0aec495fc49563524fea452b933f6903fd2981ef31e4c169b89"
+  },
+  {
+    "source": "sources/crafting_faces.png",
+    "cell": 0,
+    "sourceRect": [
+      111,
+      111,
+      665,
+      665
+    ],
+    "sourceDimensions": [
+      1774,
+      887
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "opaque",
+    "repeatAxes": [],
+    "category": "station",
+    "derivedFrom": null,
+    "name": "crafting_table_top",
+    "file": "tiles/crafting_table_top.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "bc7f72edb6182917a5eb22a0eab0372c538858022c575bfd744921513b92341d"
+  },
+  {
+    "source": "sources/crafting_faces.png",
+    "cell": 1,
+    "sourceRect": [
+      998,
+      111,
+      665,
+      665
+    ],
+    "sourceDimensions": [
+      1774,
+      887
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "opaque",
+    "repeatAxes": [],
+    "category": "station",
+    "derivedFrom": null,
+    "name": "crafting_table_side",
+    "file": "tiles/crafting_table_side.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "9d1fca2e87a0b575e7f1bfb52558eead2c125cebde59ac25243711b5d7571d6c"
+  },
+  {
+    "source": "sources/furnace_faces.png",
+    "cell": 0,
+    "sourceRect": [
+      82,
+      74,
+      480,
+      479
+    ],
+    "sourceDimensions": [
+      1269,
+      1240
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "opaque",
+    "repeatAxes": [],
+    "category": "station",
+    "derivedFrom": null,
+    "name": "furnace_top",
+    "file": "tiles/furnace_top.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "2097e3cdd08058cada3cb49346eeef20c270386d22065fe80da9dc67e608ec98"
+  },
+  {
+    "source": "sources/furnace_faces.png",
+    "cell": 1,
+    "sourceRect": [
+      707,
+      74,
+      480,
+      479
+    ],
+    "sourceDimensions": [
+      1269,
+      1240
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "opaque",
+    "repeatAxes": [],
+    "category": "station",
+    "derivedFrom": null,
+    "name": "furnace_side",
+    "file": "tiles/furnace_side.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "3d4e0b7647f50408943d2922ea963737eaaee3f404bd763e446f79bf50959bf5"
+  },
+  {
+    "source": "sources/furnace_faces.png",
+    "cell": 2,
+    "sourceRect": [
+      82,
+      685,
+      480,
+      479
+    ],
+    "sourceDimensions": [
+      1269,
+      1240
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "opaque",
+    "repeatAxes": [],
+    "category": "station",
+    "derivedFrom": null,
+    "name": "furnace_front",
+    "file": "tiles/furnace_front.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "096fb03283accec24329d9148eefa2f5ca7534243c6e0387b36e525fe53e2877"
+  },
+  {
+    "source": "sources/furnace_faces.png",
+    "cell": 3,
+    "sourceRect": [
+      707,
+      685,
+      480,
+      479
+    ],
+    "sourceDimensions": [
+      1269,
+      1240
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "opaque",
+    "repeatAxes": [],
+    "category": "station",
+    "derivedFrom": null,
+    "name": "furnace_front_lit",
+    "file": "tiles/furnace_front_lit.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "aadd6c943e54598633d6bce471011c06a4cdd48efe31beee7c639eb004037ad2"
+  },
+  {
+    "source": "sources/post_faces.png",
+    "cell": 0,
+    "sourceRect": [
+      97,
+      95,
+      523,
+      530
+    ],
+    "sourceDimensions": [
+      2172,
+      724
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "opaque",
+    "repeatAxes": [],
+    "category": "station",
+    "derivedFrom": null,
+    "name": "post_top",
+    "file": "tiles/post_top.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "90d477771bb4d87fe281da4c4bb506d68493bc142f2e4d590d60a5778fc94a8d"
+  },
+  {
+    "source": "sources/post_faces.png",
+    "cell": 1,
+    "sourceRect": [
+      821,
+      95,
+      523,
+      530
+    ],
+    "sourceDimensions": [
+      2172,
+      724
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "opaque",
+    "repeatAxes": [],
+    "category": "station",
+    "derivedFrom": null,
+    "name": "post_side",
+    "file": "tiles/post_side.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "43d54d5a8b53aaee6cc1c58e1a547513e54b4567b3be08e29df2e2dbc1b04d81"
+  },
+  {
+    "source": "sources/post_faces.png",
+    "cell": 2,
+    "sourceRect": [
+      1545,
+      95,
+      523,
+      530
+    ],
+    "sourceDimensions": [
+      2172,
+      724
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "opaque",
+    "repeatAxes": [],
+    "category": "station",
+    "derivedFrom": null,
+    "name": "post_front",
+    "file": "tiles/post_front.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "4fbd27afbc5adac592003a7cf03c1203d6b294e30f5e0b0f993fe5464d001019"
+  },
+  {
+    "source": "sources/forge_faces.png",
+    "cell": 0,
+    "sourceRect": [
+      104,
+      101,
+      513,
+      505
+    ],
+    "sourceDimensions": [
+      2172,
+      724
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "opaque",
+    "repeatAxes": [],
+    "category": "station",
+    "derivedFrom": null,
+    "name": "forge_top",
+    "file": "tiles/forge_top.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "7822f384ebdcd2cb87c1d53200afe0f47997b65f3c246cb5f5cf2d8df2d602cd"
+  },
+  {
+    "source": "sources/forge_faces.png",
+    "cell": 1,
+    "sourceRect": [
+      829,
+      101,
+      514,
+      507
+    ],
+    "sourceDimensions": [
+      2172,
+      724
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "opaque",
+    "repeatAxes": [],
+    "category": "station",
+    "derivedFrom": null,
+    "name": "forge_side",
+    "file": "tiles/forge_side.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "4bcf3eb644d27b3fedff89e89618f8bbe522b903b749dcbb2851e7efdc4be164"
+  },
+  {
+    "source": "sources/forge_faces.png",
+    "cell": 2,
+    "sourceRect": [
+      1556,
+      101,
+      514,
+      507
+    ],
+    "sourceDimensions": [
+      2172,
+      724
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "opaque",
+    "repeatAxes": [],
+    "category": "station",
+    "derivedFrom": null,
+    "name": "forge_front",
+    "file": "tiles/forge_front.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "44c10ebcf491f70f3272325391ee7c47a08e1e80246f8dd63bc5877865d9a2d4"
+  },
+  {
+    "source": "sources/bed_faces.png",
+    "cell": 1,
+    "sourceRect": [
+      1023,
+      137,
+      615,
+      613
+    ],
+    "sourceDimensions": [
+      1774,
+      887
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "opaque",
+    "repeatAxes": [],
+    "category": "station",
+    "derivedFrom": null,
+    "name": "bed_side",
+    "file": "tiles/bed_side.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "a8143028cbd517c8ac6990298c2394a171a62ecc2545378f6bdf5c2a23b5f5db"
+  },
+  {
+    "source": "sources/campfire_faces.png",
+    "cell": 0,
+    "sourceRect": [
+      163,
+      162,
+      562,
+      562
+    ],
+    "sourceDimensions": [
+      1774,
+      887
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "opaque",
+    "repeatAxes": [],
+    "category": "station",
+    "derivedFrom": null,
+    "name": "campfire_top",
+    "file": "tiles/campfire_top.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "eb1a1e294c74392ea7030018d03b18d719d240e116acf14abf5434391e70b969"
+  },
+  {
+    "source": "sources/campfire_faces.png",
+    "cell": 1,
+    "sourceRect": [
+      1049,
+      524,
+      563,
+      200
+    ],
+    "sourceDimensions": [
+      1774,
+      887
+    ],
+    "destination": [
+      0,
+      20,
+      32,
+      12
+    ],
+    "alpha": "cutout",
+    "repeatAxes": [],
+    "category": "station",
+    "derivedFrom": null,
+    "name": "campfire_side",
+    "file": "tiles/campfire_side.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "af7dd548fd966a0fa4bc0a2d45dc7791d304749d871f01258dbdf8981c927d17"
+  },
+  {
+    "source": "sources/tree_oak.png",
+    "cell": 0,
+    "sourceRect": [
+      58,
+      56,
+      522,
+      522
+    ],
+    "sourceDimensions": [
+      1254,
+      1254
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "opaque",
+    "repeatAxes": [
+      "x",
+      "y"
+    ],
+    "category": "tree",
+    "derivedFrom": null,
+    "name": "oak_bark",
+    "file": "tiles/oak_bark.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "f6f1560b89b327c1d8b3e040dc83af2bccf251cb6bbd601f65ab15cbd8ec6f7f"
+  },
+  {
+    "source": "sources/tree_oak.png",
+    "cell": 1,
+    "sourceRect": [
+      675,
+      56,
+      521,
+      523
+    ],
+    "sourceDimensions": [
+      1254,
+      1254
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "opaque",
+    "repeatAxes": [],
+    "category": "tree",
+    "derivedFrom": null,
+    "name": "oak_end",
+    "file": "tiles/oak_end.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "e87cb02d1b4ba9f10cbd6e498c5c7e1f0f8bbdd476c124a958ad9b90f7c3282a"
+  },
+  {
+    "source": "sources/tree_maple.png",
+    "cell": 0,
+    "sourceRect": [
+      105,
+      55,
+      494,
+      491
+    ],
+    "sourceDimensions": [
+      1312,
+      1199
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "opaque",
+    "repeatAxes": [
+      "x",
+      "y"
+    ],
+    "category": "tree",
+    "derivedFrom": null,
+    "name": "maple_bark",
+    "file": "tiles/maple_bark.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "5b3c98ed4466161110d4107cf0826621f7bed739a75d8cf9c355e1d5c7de3fe7"
+  },
+  {
+    "source": "sources/tree_maple.png",
+    "cell": 1,
+    "sourceRect": [
+      714,
+      55,
+      493,
+      492
+    ],
+    "sourceDimensions": [
+      1312,
+      1199
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "opaque",
+    "repeatAxes": [],
+    "category": "tree",
+    "derivedFrom": null,
+    "name": "maple_end",
+    "file": "tiles/maple_end.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "e94f588c8538f1c0dc82f1f3ed328ad4e80579f972f403bedbd6f4376d92bce7"
+  },
+  {
+    "source": "sources/tree_spruce.png",
+    "cell": 0,
+    "sourceRect": [
+      90,
+      47,
+      506,
+      505
+    ],
+    "sourceDimensions": [
+      1290,
+      1219
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "opaque",
+    "repeatAxes": [
+      "x",
+      "y"
+    ],
+    "category": "tree",
+    "derivedFrom": null,
+    "name": "spruce_bark",
+    "file": "tiles/spruce_bark.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "d6ae75cb70adc0a2703c40048275bcec5c8a92659d5977b5cec5e9b5b77ee328"
+  },
+  {
+    "source": "sources/tree_spruce.png",
+    "cell": 1,
+    "sourceRect": [
+      694,
+      47,
+      506,
+      505
+    ],
+    "sourceDimensions": [
+      1290,
+      1219
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "opaque",
+    "repeatAxes": [],
+    "category": "tree",
+    "derivedFrom": null,
+    "name": "spruce_end",
+    "file": "tiles/spruce_end.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "b0fb93ef3a7f3cce3c3f6c7c8710c61b919dcdb1a31613f64f871b0b1f22e594"
+  },
+  {
+    "source": "sources/tree_fir.png",
+    "cell": 0,
+    "sourceRect": [
+      86,
+      40,
+      508,
+      505
+    ],
+    "sourceDimensions": [
+      1310,
+      1200
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "opaque",
+    "repeatAxes": [
+      "x",
+      "y"
+    ],
+    "category": "tree",
+    "derivedFrom": null,
+    "name": "fir_bark",
+    "file": "tiles/fir_bark.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "73bba96023da3db1c30700d45a9201d49c48187e5ee765df937e9149c29bedce"
+  },
+  {
+    "source": "sources/tree_fir.png",
+    "cell": 1,
+    "sourceRect": [
+      716,
+      41,
+      509,
+      504
+    ],
+    "sourceDimensions": [
+      1310,
+      1200
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "opaque",
+    "repeatAxes": [],
+    "category": "tree",
+    "derivedFrom": null,
+    "name": "fir_end",
+    "file": "tiles/fir_end.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "c5ede0c18a0619a016badf79ff0325308aa055f3351256228c903d74f79ab339"
+  },
+  {
+    "source": "sources/tree_larch.png",
+    "cell": 0,
+    "sourceRect": [
+      97,
+      52,
+      502,
+      500
+    ],
+    "sourceDimensions": [
+      1312,
+      1199
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "opaque",
+    "repeatAxes": [
+      "x",
+      "y"
+    ],
+    "category": "tree",
+    "derivedFrom": null,
+    "name": "larch_bark",
+    "file": "tiles/larch_bark.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "1259a91294563c046e7a2cb8b8ddf2a753f67662eb9d6984e57a2416afa5e4a3"
+  },
+  {
+    "source": "sources/tree_larch.png",
+    "cell": 1,
+    "sourceRect": [
+      713,
+      52,
+      502,
+      500
+    ],
+    "sourceDimensions": [
+      1312,
+      1199
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "opaque",
+    "repeatAxes": [],
+    "category": "tree",
+    "derivedFrom": null,
+    "name": "larch_end",
+    "file": "tiles/larch_end.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "a903e29a1ce51805c6af4cb506a81a109df2b7a9d8aedeeeb3e12d1cca758129"
+  },
+  {
+    "source": "sources/tree_birch.png",
+    "cell": 0,
+    "sourceRect": [
+      74,
+      36,
+      502,
+      507
+    ],
+    "sourceDimensions": [
+      1292,
+      1218
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "opaque",
+    "repeatAxes": [
+      "x",
+      "y"
+    ],
+    "category": "tree",
+    "derivedFrom": null,
+    "name": "birch_bark",
+    "file": "tiles/birch_bark.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "9a3db8df91922141617aabbec3f172e4083b38c17e7264ae72c592763dd9d443"
+  },
+  {
+    "source": "sources/tree_birch.png",
+    "cell": 1,
+    "sourceRect": [
+      716,
+      36,
+      501,
+      507
+    ],
+    "sourceDimensions": [
+      1292,
+      1218
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "opaque",
+    "repeatAxes": [],
+    "category": "tree",
+    "derivedFrom": null,
+    "name": "birch_end",
+    "file": "tiles/birch_end.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "16e1e23c0b2547902b083d7790824d4fa2ade6e39f383d962a08c3b4b122590d"
+  },
+  {
+    "source": "sources/tree_pine.png",
+    "cell": 0,
+    "sourceRect": [
+      87,
+      43,
+      513,
+      511
+    ],
+    "sourceDimensions": [
+      1312,
+      1199
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "opaque",
+    "repeatAxes": [
+      "x",
+      "y"
+    ],
+    "category": "tree",
+    "derivedFrom": null,
+    "name": "pine_bark",
+    "file": "tiles/pine_bark.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "28acb0187de874059ce9b4822100c3db3b57cb0acd33d2c11d0fb3735dee9ca2"
+  },
+  {
+    "source": "sources/tree_pine.png",
+    "cell": 1,
+    "sourceRect": [
+      712,
+      43,
+      513,
+      511
+    ],
+    "sourceDimensions": [
+      1312,
+      1199
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "opaque",
+    "repeatAxes": [],
+    "category": "tree",
+    "derivedFrom": null,
+    "name": "pine_end",
+    "file": "tiles/pine_end.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "ccc4a9cced06107f0fa10f1c502e859598989dab9fbf7eefc9d9c06644d8b109"
+  },
+  {
+    "source": "sources/tree_jungle_giant.png",
+    "cell": 0,
+    "sourceRect": [
+      75,
+      47,
+      524,
+      523
+    ],
+    "sourceDimensions": [
+      1293,
+      1217
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "opaque",
+    "repeatAxes": [
+      "x",
+      "y"
+    ],
+    "category": "tree",
+    "derivedFrom": null,
+    "name": "jungle_giant_bark",
+    "file": "tiles/jungle_giant_bark.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "e20aee06aa4152c2d11067a64d655bc94852ef53b4b71bf382b49c8ce223f316"
+  },
+  {
+    "source": "sources/tree_jungle_giant.png",
+    "cell": 1,
+    "sourceRect": [
+      694,
+      47,
+      524,
+      523
+    ],
+    "sourceDimensions": [
+      1293,
+      1217
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "opaque",
+    "repeatAxes": [],
+    "category": "tree",
+    "derivedFrom": null,
+    "name": "jungle_giant_end",
+    "file": "tiles/jungle_giant_end.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "5ced3f2eefc043ed36408ca8c08f98ad0747008b8d1db694d0e57685921d2a26"
+  },
+  {
+    "source": "sources/tree_palm.png",
+    "cell": 0,
+    "sourceRect": [
+      75,
+      30,
+      508,
+      507
+    ],
+    "sourceDimensions": [
+      1312,
+      1199
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "opaque",
+    "repeatAxes": [
+      "x",
+      "y"
+    ],
+    "category": "tree",
+    "derivedFrom": null,
+    "name": "palm_bark",
+    "file": "tiles/palm_bark.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "e9812811be93cd85a980b9fd5ce3b435b302019e09b5b70b4d7273b3110b6154"
+  },
+  {
+    "source": "sources/tree_palm.png",
+    "cell": 1,
+    "sourceRect": [
+      729,
+      30,
+      510,
+      507
+    ],
+    "sourceDimensions": [
+      1312,
+      1199
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "opaque",
+    "repeatAxes": [],
+    "category": "tree",
+    "derivedFrom": null,
+    "name": "palm_end",
+    "file": "tiles/palm_end.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "fc30069b7b7ff80f45965cc8eec100743865a92c9fb30c463d41a18d713e026f"
+  },
+  {
+    "source": "sources/tree_baobab.png",
+    "cell": 0,
+    "sourceRect": [
+      64,
+      73,
+      517,
+      509
+    ],
+    "sourceDimensions": [
+      1264,
+      1244
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "opaque",
+    "repeatAxes": [
+      "x",
+      "y"
+    ],
+    "category": "tree",
+    "derivedFrom": null,
+    "name": "baobab_bark",
+    "file": "tiles/baobab_bark.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "02696292efacd55e189320496fc172a57bd3078af728c2db21f8e4cc3106c9e5"
+  },
+  {
+    "source": "sources/tree_baobab.png",
+    "cell": 1,
+    "sourceRect": [
+      682,
+      73,
+      518,
+      509
+    ],
+    "sourceDimensions": [
+      1264,
+      1244
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "opaque",
+    "repeatAxes": [],
+    "category": "tree",
+    "derivedFrom": null,
+    "name": "baobab_end",
+    "file": "tiles/baobab_end.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "436103f813f897fdf5585a8d7b85d301f8ebb3ca2c9f613bd71adc74947651bb"
+  },
+  {
+    "source": "sources/tree_acacia.png",
+    "cell": 0,
+    "sourceRect": [
+      84,
+      47,
+      512,
+      514
+    ],
+    "sourceDimensions": [
+      1312,
+      1199
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "opaque",
+    "repeatAxes": [
+      "x",
+      "y"
+    ],
+    "category": "tree",
+    "derivedFrom": null,
+    "name": "acacia_bark",
+    "file": "tiles/acacia_bark.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "ae4ebcc8c6aa92824c86e25670e259208b9025963a451acb40c5283d161f62cd"
+  },
+  {
+    "source": "sources/tree_acacia.png",
+    "cell": 1,
+    "sourceRect": [
+      717,
+      47,
+      511,
+      514
+    ],
+    "sourceDimensions": [
+      1312,
+      1199
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "opaque",
+    "repeatAxes": [],
+    "category": "tree",
+    "derivedFrom": null,
+    "name": "acacia_end",
+    "file": "tiles/acacia_end.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "4560122553260443e43092a0cb6f40e8f4629cebf9ff4d752a56777dc7dbf0bd"
+  },
+  {
+    "source": "sources/tree_willow.png",
+    "cell": 0,
+    "sourceRect": [
+      98,
+      36,
+      509,
+      507
+    ],
+    "sourceDimensions": [
+      1312,
+      1199
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "opaque",
+    "repeatAxes": [
+      "x",
+      "y"
+    ],
+    "category": "tree",
+    "derivedFrom": null,
+    "name": "willow_bark",
+    "file": "tiles/willow_bark.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "9f180bf9810f71376574fa2071fbf0eb387689e89678d149e5ee22f0c4ad60fc"
+  },
+  {
+    "source": "sources/tree_willow.png",
+    "cell": 1,
+    "sourceRect": [
+      704,
+      36,
+      509,
+      507
+    ],
+    "sourceDimensions": [
+      1312,
+      1199
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "opaque",
+    "repeatAxes": [],
+    "category": "tree",
+    "derivedFrom": null,
+    "name": "willow_end",
+    "file": "tiles/willow_end.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "88c27c0f4d2fb798e491097c383cd98615d3850cb579471e2d5612f57a18288c"
+  },
+  {
+    "source": "sources/tree_mangrove.png",
+    "cell": 0,
+    "sourceRect": [
+      57,
+      54,
+      526,
+      525
+    ],
+    "sourceDimensions": [
+      1254,
+      1254
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "opaque",
+    "repeatAxes": [
+      "x",
+      "y"
+    ],
+    "category": "tree",
+    "derivedFrom": null,
+    "name": "mangrove_bark",
+    "file": "tiles/mangrove_bark.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "989d6fd0e924f8a64082deef815d4ddc1568490a4d5780b6915a8a43b6595fd6"
+  },
+  {
+    "source": "sources/tree_mangrove.png",
+    "cell": 1,
+    "sourceRect": [
+      671,
+      54,
+      526,
+      525
+    ],
+    "sourceDimensions": [
+      1254,
+      1254
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "opaque",
+    "repeatAxes": [],
+    "category": "tree",
+    "derivedFrom": null,
+    "name": "mangrove_end",
+    "file": "tiles/mangrove_end.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "19c089b124482a5bffd3714321b0cd9291463da5e773be9f4327c87b0fd714be"
+  },
+  {
+    "source": "sources/tree_bush.png",
+    "cell": 0,
+    "sourceRect": [
+      96,
+      45,
+      499,
+      497
+    ],
+    "sourceDimensions": [
+      1312,
+      1199
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "opaque",
+    "repeatAxes": [
+      "x",
+      "y"
+    ],
+    "category": "tree",
+    "derivedFrom": null,
+    "name": "bush_bark",
+    "file": "tiles/bush_bark.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "6da09dbcbd4c7b3c0be91dad6616ca887af333b24e30b29176589ce11044d972"
+  },
+  {
+    "source": "sources/tree_bush.png",
+    "cell": 1,
+    "sourceRect": [
+      715,
+      45,
+      501,
+      497
+    ],
+    "sourceDimensions": [
+      1312,
+      1199
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "opaque",
+    "repeatAxes": [],
+    "category": "tree",
+    "derivedFrom": null,
+    "name": "bush_end",
+    "file": "tiles/bush_end.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "36e0b546d6945a9ca0080f965598d57deb9f91d01bdbad61433172bfa3214112"
+  },
+  {
+    "source": "sources/utility_faces.png",
+    "cell": 0,
+    "sourceRect": [
+      100,
+      88,
+      433,
+      472
+    ],
+    "sourceDimensions": [
+      1254,
+      1254
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "opaque",
+    "repeatAxes": [],
+    "category": "station",
+    "derivedFrom": null,
+    "name": "door",
+    "file": "tiles/door.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "348c8644cc735ca3da762c3c869a9365192faa779e1989b5bde07d0234608231"
+  },
+  {
+    "source": "sources/utility_faces.png",
+    "cell": 1,
+    "sourceRect": [
+      784,
+      75,
+      310,
+      510
+    ],
+    "sourceDimensions": [
+      1254,
+      1254
+    ],
+    "destination": [
+      7,
+      2,
+      17,
+      28
+    ],
+    "alpha": "cutout",
+    "repeatAxes": [],
+    "category": "station",
+    "derivedFrom": null,
+    "name": "ladder",
+    "file": "tiles/ladder.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "1a13ca5ae4c12c95d3213063e138b61e8ddce6abb22605e0d6e10f078ce693a9"
+  },
+  {
+    "source": "sources/utility_faces.png",
+    "cell": 2,
+    "sourceRect": [
+      232,
+      692,
+      173,
+      505
+    ],
+    "sourceDimensions": [
+      1254,
+      1254
+    ],
+    "destination": [
+      0,
+      12,
+      32,
+      20
+    ],
+    "alpha": "cutout",
+    "repeatAxes": [],
+    "category": "station",
+    "derivedFrom": null,
+    "name": "torch",
+    "file": "tiles/torch.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "4b4cf2938adf664b6d81655d4263034d483a67d14ca83a68d2dadcebf67d0bcc"
+  },
+  {
+    "source": "sources/utility_faces.png",
+    "cell": 2,
+    "sourceRect": [
+      232,
+      692,
+      173,
+      505
+    ],
+    "sourceDimensions": [
+      1254,
+      1254
+    ],
+    "destination": [
+      11,
+      2,
+      10,
+      28
+    ],
+    "alpha": "cutout",
+    "repeatAxes": [],
+    "category": "equipment",
+    "derivedFrom": "torch",
+    "name": "torch_item",
+    "file": "tiles/torch_item.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "3304b015f2234600d3856a12e7c7f8f93d9496d3ed84f797d706c7d8ee184e2c"
+  },
+  {
+    "source": "sources/utility_faces.png",
+    "cell": 3,
+    "sourceRect": [
+      806,
+      703,
+      272,
+      484
+    ],
+    "sourceDimensions": [
+      1254,
+      1254
+    ],
+    "destination": [
+      10,
+      16,
+      12,
+      16
+    ],
+    "alpha": "cutout",
+    "repeatAxes": [],
+    "category": "station",
+    "derivedFrom": null,
+    "name": "lantern",
+    "file": "tiles/lantern.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "49ef2cf843efb482fbca2471c32d971443dfa703818163b7f696c6d483f3db5a"
+  },
+  {
+    "source": "sources/utility_faces.png",
+    "cell": 3,
+    "sourceRect": [
+      806,
+      703,
+      272,
+      484
+    ],
+    "sourceDimensions": [
+      1254,
+      1254
+    ],
+    "destination": [
+      8,
+      2,
+      16,
+      28
+    ],
+    "alpha": "cutout",
+    "repeatAxes": [],
+    "category": "equipment",
+    "derivedFrom": "lantern",
+    "name": "lantern_item",
+    "file": "tiles/lantern_item.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "0620b78b8d590f6aab3198ec15140e5626dff1ad998d74f58af7e31393daf22f"
+  },
+  {
+    "source": "sources/beacon_faces.png",
+    "cell": 0,
+    "sourceRect": [
+      217,
+      217,
+      453,
+      451
+    ],
+    "sourceDimensions": [
+      1774,
+      887
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "opaque",
+    "repeatAxes": [],
+    "category": "station",
+    "derivedFrom": null,
+    "name": "beacon_top",
+    "file": "tiles/beacon_top.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "91807a89d8587015b948d66ff2120fa1775af00aa6327feb37f0018a8e95f2e2"
+  },
+  {
+    "source": "sources/beacon_faces.png",
+    "cell": 1,
+    "sourceRect": [
+      1105,
+      207,
+      451,
+      461
+    ],
+    "sourceDimensions": [
+      1774,
+      887
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "cutout",
+    "repeatAxes": [],
+    "category": "station",
+    "derivedFrom": null,
+    "name": "beacon_side",
+    "file": "tiles/beacon_side.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "17c25f65f594c48121df1f343d56673a6104fdd93bea9dd0c58dc07dc226f3eb"
+  },
+  {
+    "source": "sources/dead_cactus.png",
+    "cell": 0,
+    "sourceRect": [
+      95,
+      81,
+      486,
+      482
+    ],
+    "sourceDimensions": [
+      1267,
+      1241
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "opaque",
+    "repeatAxes": [
+      "x",
+      "y"
+    ],
+    "category": "station",
+    "derivedFrom": null,
+    "name": "dead_snag_bark",
+    "file": "tiles/dead_snag_bark.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "ff838d74941d168b1c1826c029522e018c0f62ca5dc28ad78e79e2896ebb14ab"
+  },
+  {
+    "source": "sources/dead_cactus.png",
+    "cell": 1,
+    "sourceRect": [
+      687,
+      81,
+      486,
+      482
+    ],
+    "sourceDimensions": [
+      1267,
+      1241
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "opaque",
+    "repeatAxes": [],
+    "category": "station",
+    "derivedFrom": null,
+    "name": "dead_snag_end",
+    "file": "tiles/dead_snag_end.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "dfc998fd60f15af59c032f1d78999440448a4ff81b9a2cdb611280d4cada754e"
+  },
+  {
+    "source": "sources/dead_cactus.png",
+    "cell": 2,
+    "sourceRect": [
+      95,
+      671,
+      485,
+      486
+    ],
+    "sourceDimensions": [
+      1267,
+      1241
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "opaque",
+    "repeatAxes": [
+      "x",
+      "y"
+    ],
+    "category": "station",
+    "derivedFrom": null,
+    "name": "saguaro_side",
+    "file": "tiles/saguaro_side.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "47ee49e5a777311652766c58514b89da7aa3ab2d5b0dfb57c3b7899968e47210"
+  },
+  {
+    "source": "sources/dead_cactus.png",
+    "cell": 3,
+    "sourceRect": [
+      687,
+      671,
+      486,
+      486
+    ],
+    "sourceDimensions": [
+      1267,
+      1241
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "opaque",
+    "repeatAxes": [
+      "x",
+      "y"
+    ],
+    "category": "station",
+    "derivedFrom": null,
+    "name": "saguaro_top",
+    "file": "tiles/saguaro_top.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "dd446f2d9152fb1dd300daef967e3ca657cf550d0200fa2164ff7f924993e345"
+  },
+  {
+    "source": "sources/ice_glass.png",
+    "cell": 0,
+    "sourceRect": [
+      130,
+      140,
+      627,
+      605
+    ],
+    "sourceDimensions": [
+      1774,
+      887
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "opaque",
+    "repeatAxes": [],
+    "category": "station",
+    "derivedFrom": null,
+    "name": "ice",
+    "file": "tiles/ice.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "8a0cc8e3a42831834c57a98a65931ebab0a7d7b38fd0862c8850341c3a49a3f6"
+  },
+  {
+    "source": "sources/ice_glass.png",
+    "cell": 1,
+    "sourceRect": [
+      1017,
+      144,
+      627,
+      598
+    ],
+    "sourceDimensions": [
+      1774,
+      887
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "cutout",
+    "repeatAxes": [],
+    "category": "station",
+    "derivedFrom": null,
+    "name": "glass",
+    "file": "tiles/glass.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "15b67027947a4e56b248de92cb42cc135e28d0c737d81e1737a832160cb1477f"
+  },
+  {
+    "source": "sources/resources_metals.png",
+    "cell": 0,
+    "sourceRect": [
+      242,
+      89,
+      359,
+      379
+    ],
+    "sourceDimensions": [
+      1536,
+      1024
+    ],
+    "destination": [
+      2,
+      2,
+      27,
+      28
+    ],
+    "alpha": "cutout",
+    "repeatAxes": [],
+    "category": "equipment",
+    "derivedFrom": null,
+    "name": "stick",
+    "file": "tiles/stick.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "faa87eb0c041ab8921227e2d09ef2630d4afe3dfa7875710017cc1ebdf16a83d"
+  },
+  {
+    "source": "sources/resources_metals.png",
+    "cell": 1,
+    "sourceRect": [
+      951,
+      129,
+      373,
+      335
+    ],
+    "sourceDimensions": [
+      1536,
+      1024
+    ],
+    "destination": [
+      2,
+      3,
+      28,
+      25
+    ],
+    "alpha": "cutout",
+    "repeatAxes": [],
+    "category": "equipment",
+    "derivedFrom": null,
+    "name": "coal",
+    "file": "tiles/coal.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "dc504abaccd75eead64bb43ec7b6f00a33acf15680b0e8906c3cafbebfdee0ec"
+  },
+  {
+    "source": "sources/resources_metals.png",
+    "cell": 2,
+    "sourceRect": [
+      177,
+      627,
+      436,
+      316
+    ],
+    "sourceDimensions": [
+      1536,
+      1024
+    ],
+    "destination": [
+      2,
+      6,
+      28,
+      20
+    ],
+    "alpha": "cutout",
+    "repeatAxes": [],
+    "category": "equipment",
+    "derivedFrom": null,
+    "name": "iron_ingot",
+    "file": "tiles/iron_ingot.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "0e58b2ef601c924784870faacbc107517c3ad2f4babe036a4232a6eda5ff942a"
+  },
+  {
+    "source": "sources/resources_metals.png",
+    "cell": 3,
+    "sourceRect": [
+      934,
+      624,
+      446,
+      326
+    ],
+    "sourceDimensions": [
+      1536,
+      1024
+    ],
+    "destination": [
+      2,
+      6,
+      28,
+      20
+    ],
+    "alpha": "cutout",
+    "repeatAxes": [],
+    "category": "equipment",
+    "derivedFrom": null,
+    "name": "gold_ingot",
+    "file": "tiles/gold_ingot.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "80f7efa8d232d0845d931ac6d62fdb69583dabf80003b95bfad37a6782db7b0f"
+  },
+  {
+    "source": "sources/resources_crystals.png",
+    "cell": 0,
+    "sourceRect": [
+      218,
+      120,
+      363,
+      295
+    ],
+    "sourceDimensions": [
+      1536,
+      1024
+    ],
+    "destination": [
+      2,
+      4,
+      28,
+      23
+    ],
+    "alpha": "cutout",
+    "repeatAxes": [],
+    "category": "equipment",
+    "derivedFrom": null,
+    "name": "diamond",
+    "file": "tiles/diamond.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "88e6b4b5cbaa1e5314ec5190c4f6754bc7a56262bbaa54cba5f5b7d8c51b4ac6"
+  },
+  {
+    "source": "sources/resources_crystals.png",
+    "cell": 1,
+    "sourceRect": [
+      955,
+      101,
+      377,
+      324
+    ],
+    "sourceDimensions": [
+      1536,
+      1024
+    ],
+    "destination": [
+      2,
+      4,
+      28,
+      24
+    ],
+    "alpha": "cutout",
+    "repeatAxes": [],
+    "category": "equipment",
+    "derivedFrom": null,
+    "name": "lapis",
+    "file": "tiles/lapis.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "444484b870fd5b7062ed0a260a6e8ede4c9e8c81f324742636ab561d60fd499c"
+  },
+  {
+    "source": "sources/resources_crystals.png",
+    "cell": 2,
+    "sourceRect": [
+      227,
+      577,
+      316,
+      378
+    ],
+    "sourceDimensions": [
+      1536,
+      1024
+    ],
+    "destination": [
+      4,
+      2,
+      23,
+      28
+    ],
+    "alpha": "cutout",
+    "repeatAxes": [],
+    "category": "equipment",
+    "derivedFrom": null,
+    "name": "ember_crystal",
+    "file": "tiles/ember_crystal.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "933f2fe0bd7bb59f13cfa26574266cb758e46b2357d79f25408281bae32b8516"
+  },
+  {
+    "source": "sources/resources_crystals.png",
+    "cell": 3,
+    "sourceRect": [
+      1055,
+      566,
+      168,
+      396
+    ],
+    "sourceDimensions": [
+      1536,
+      1024
+    ],
+    "destination": [
+      10,
+      2,
+      12,
+      28
+    ],
+    "alpha": "cutout",
+    "repeatAxes": [],
+    "category": "equipment",
+    "derivedFrom": null,
+    "name": "beacon_shard",
+    "file": "tiles/beacon_shard.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "71e27e34a80510a558661a419e5da5c85c2ebde9ea8c4343920cacb434def639"
+  },
+  {
+    "source": "sources/resources_fibres.png",
+    "cell": 0,
+    "sourceRect": [
+      186,
+      87,
+      480,
+      400
+    ],
+    "sourceDimensions": [
+      1536,
+      1024
+    ],
+    "destination": [
+      2,
+      4,
+      28,
+      23
+    ],
+    "alpha": "cutout",
+    "repeatAxes": [],
+    "category": "equipment",
+    "derivedFrom": null,
+    "name": "leather",
+    "file": "tiles/leather.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "d2ac1a7f6ebd9eeea5ae6bc1840c628db555866a8274a24d0aa0469c34a4c4e3"
+  },
+  {
+    "source": "sources/resources_fibres.png",
+    "cell": 1,
+    "sourceRect": [
+      932,
+      44,
+      386,
+      455
+    ],
+    "sourceDimensions": [
+      1536,
+      1024
+    ],
+    "destination": [
+      4,
+      2,
+      24,
+      28
+    ],
+    "alpha": "cutout",
+    "repeatAxes": [],
+    "category": "equipment",
+    "derivedFrom": null,
+    "name": "feather",
+    "file": "tiles/feather.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "198abf19609fd68fb180cd607661bf799f0752f97c72d5598d366012a6950e53"
+  },
+  {
+    "source": "sources/resources_fibres.png",
+    "cell": 2,
+    "sourceRect": [
+      193,
+      563,
+      453,
+      407
+    ],
+    "sourceDimensions": [
+      1536,
+      1024
+    ],
+    "destination": [
+      2,
+      3,
+      28,
+      25
+    ],
+    "alpha": "cutout",
+    "repeatAxes": [],
+    "category": "equipment",
+    "derivedFrom": null,
+    "name": "wool",
+    "file": "tiles/wool.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "a53dde5d114b59926adeacd17b8972072a9982148b18935bf06e9f7d7c7368b3"
+  },
+  {
+    "source": "sources/resources_fibres.png",
+    "cell": 3,
+    "sourceRect": [
+      898,
+      595,
+      435,
+      384
+    ],
+    "sourceDimensions": [
+      1536,
+      1024
+    ],
+    "destination": [
+      2,
+      3,
+      28,
+      25
+    ],
+    "alpha": "cutout",
+    "repeatAxes": [],
+    "category": "equipment",
+    "derivedFrom": null,
+    "name": "string",
+    "file": "tiles/string.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "486decc41aab2d70cc68655a784452c970439c85015019d359d7b1dca4a55127"
+  },
+  {
+    "source": "sources/food_proteins.png",
+    "cell": 0,
+    "sourceRect": [
+      159,
+      136,
+      505,
+      277
+    ],
+    "sourceDimensions": [
+      1536,
+      1024
+    ],
+    "destination": [
+      2,
+      8,
+      28,
+      15
+    ],
+    "alpha": "cutout",
+    "repeatAxes": [],
+    "category": "equipment",
+    "derivedFrom": null,
+    "name": "raw_fish",
+    "file": "tiles/raw_fish.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "da009f4774004185d27861cce1f6d47cc2637922676c2edaef0d514486796a07"
+  },
+  {
+    "source": "sources/food_proteins.png",
+    "cell": 1,
+    "sourceRect": [
+      865,
+      138,
+      511,
+      275
+    ],
+    "sourceDimensions": [
+      1536,
+      1024
+    ],
+    "destination": [
+      2,
+      8,
+      28,
+      15
+    ],
+    "alpha": "cutout",
+    "repeatAxes": [],
+    "category": "equipment",
+    "derivedFrom": null,
+    "name": "cooked_fish",
+    "file": "tiles/cooked_fish.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "038e45db40214fba7df4432e4e4843cb79e8d79d9d9c865b00059a000af8c6b0"
+  },
+  {
+    "source": "sources/food_proteins.png",
+    "cell": 2,
+    "sourceRect": [
+      181,
+      611,
+      451,
+      320
+    ],
+    "sourceDimensions": [
+      1536,
+      1024
+    ],
+    "destination": [
+      2,
+      6,
+      28,
+      20
+    ],
+    "alpha": "cutout",
+    "repeatAxes": [],
+    "category": "equipment",
+    "derivedFrom": null,
+    "name": "raw_meat",
+    "file": "tiles/raw_meat.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "031bf09591e72e0aa7fc6422af70c0b27050171bb3c632c880b32fd528bff033"
+  },
+  {
+    "source": "sources/food_proteins.png",
+    "cell": 3,
+    "sourceRect": [
+      891,
+      612,
+      459,
+      316
+    ],
+    "sourceDimensions": [
+      1536,
+      1024
+    ],
+    "destination": [
+      2,
+      6,
+      28,
+      19
+    ],
+    "alpha": "cutout",
+    "repeatAxes": [],
+    "category": "equipment",
+    "derivedFrom": null,
+    "name": "cooked_meat",
+    "file": "tiles/cooked_meat.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "cf249749f2e365ddec6e4e7daba0d4e7d7077cd6a4234fd589e4663f8fd7163b"
+  },
+  {
+    "source": "sources/food_crops.png",
+    "cell": 0,
+    "sourceRect": [
+      280,
+      75,
+      375,
+      302
+    ],
+    "sourceDimensions": [
+      1774,
+      887
+    ],
+    "destination": [
+      2,
+      4,
+      28,
+      23
+    ],
+    "alpha": "cutout",
+    "repeatAxes": [],
+    "category": "equipment",
+    "derivedFrom": null,
+    "name": "baked_potato",
+    "file": "tiles/baked_potato.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "51ff52b96f161253b6a9196a79bfba7f4c1b5074ad68a0e7b7709021935b6972"
+  },
+  {
+    "source": "sources/food_crops.png",
+    "cell": 1,
+    "sourceRect": [
+      1123,
+      19,
+      342,
+      409
+    ],
+    "sourceDimensions": [
+      1774,
+      887
+    ],
+    "destination": [
+      4,
+      2,
+      23,
+      28
+    ],
+    "alpha": "cutout",
+    "repeatAxes": [],
+    "category": "equipment",
+    "derivedFrom": null,
+    "name": "harvested_wheat",
+    "file": "tiles/harvested_wheat.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "4079e52af3e43bc6f5050d1090a13b53bb65c7d56d237a652a7875d36999ef7e"
+  },
+  {
+    "source": "sources/food_crops.png",
+    "cell": 2,
+    "sourceRect": [
+      273,
+      474,
+      384,
+      388
+    ],
+    "sourceDimensions": [
+      1774,
+      887
+    ],
+    "destination": [
+      2,
+      2,
+      28,
+      28
+    ],
+    "alpha": "cutout",
+    "repeatAxes": [],
+    "category": "equipment",
+    "derivedFrom": null,
+    "name": "harvested_carrot",
+    "file": "tiles/harvested_carrot.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "21e7dd00c88883102723bcb5fdf70c050946071d1c44ed4c8961094ce4499056"
+  },
+  {
+    "source": "sources/food_crops.png",
+    "cell": 3,
+    "sourceRect": [
+      1105,
+      524,
+      402,
+      302
+    ],
+    "sourceDimensions": [
+      1774,
+      887
+    ],
+    "destination": [
+      2,
+      5,
+      28,
+      21
+    ],
+    "alpha": "cutout",
+    "repeatAxes": [],
+    "category": "equipment",
+    "derivedFrom": null,
+    "name": "harvested_potato",
+    "file": "tiles/harvested_potato.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "2bafc6e2f9c2ed1efc98c94499dabcfbef58b16d8f2775e1b0e8f664c5400d8c"
+  },
+  {
+    "source": "sources/containers.png",
+    "cell": 0,
+    "sourceRect": [
+      291,
+      43,
+      305,
+      359
+    ],
+    "sourceDimensions": [
+      1774,
+      887
+    ],
+    "destination": [
+      4,
+      2,
+      24,
+      28
+    ],
+    "alpha": "cutout",
+    "repeatAxes": [],
+    "category": "equipment",
+    "derivedFrom": null,
+    "name": "bucket",
+    "file": "tiles/bucket.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "7691f28d56b7c67d22af2c286463eefca80a63cb744d135a4f1d2fb616665d40"
+  },
+  {
+    "source": "sources/containers.png",
+    "cell": 1,
+    "sourceRect": [
+      1179,
+      43,
+      304,
+      359
+    ],
+    "sourceDimensions": [
+      1774,
+      887
+    ],
+    "destination": [
+      4,
+      2,
+      24,
+      28
+    ],
+    "alpha": "cutout",
+    "repeatAxes": [],
+    "category": "equipment",
+    "derivedFrom": null,
+    "name": "water_bucket",
+    "file": "tiles/water_bucket.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "f9cbc7d7397f28f491829f670bb27ecad0df3027d9af84ed022f626c821fac00"
+  },
+  {
+    "source": "sources/containers.png",
+    "cell": 2,
+    "sourceRect": [
+      291,
+      486,
+      305,
+      358
+    ],
+    "sourceDimensions": [
+      1774,
+      887
+    ],
+    "destination": [
+      4,
+      2,
+      24,
+      28
+    ],
+    "alpha": "cutout",
+    "repeatAxes": [],
+    "category": "equipment",
+    "derivedFrom": null,
+    "name": "lava_bucket",
+    "file": "tiles/lava_bucket.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "3dfb3539fc830c27e94b99ac0f9a214d86320242fd12d971f43481852462d926"
+  },
+  {
+    "source": "sources/containers.png",
+    "cell": 3,
+    "sourceRect": [
+      1112,
+      507,
+      432,
+      337
+    ],
+    "sourceDimensions": [
+      1774,
+      887
+    ],
+    "destination": [
+      2,
+      5,
+      28,
+      22
+    ],
+    "alpha": "cutout",
+    "repeatAxes": [],
+    "category": "equipment",
+    "derivedFrom": null,
+    "name": "boat",
+    "file": "tiles/boat.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "6ac53a7629dbceb0e6f5a2b1d29ed049f0ee70551d6e16223ce8692e3628ced3"
+  },
+  {
+    "source": "sources/ranged_goods.png",
+    "cell": 0,
+    "sourceRect": [
+      177,
+      60,
+      316,
+      524
+    ],
+    "sourceDimensions": [
+      1272,
+      1236
+    ],
+    "destination": [
+      7,
+      2,
+      17,
+      28
+    ],
+    "alpha": "cutout",
+    "repeatAxes": [],
+    "category": "equipment",
+    "derivedFrom": null,
+    "name": "bow",
+    "file": "tiles/bow.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "a89fd6ed0dac10f87f7fb65a642a0add7251d2378e323f412c3aba3de3c14bf9"
+  },
+  {
+    "source": "sources/ranged_goods.png",
+    "cell": 1,
+    "sourceRect": [
+      703,
+      100,
+      432,
+      461
+    ],
+    "sourceDimensions": [
+      1272,
+      1236
+    ],
+    "destination": [
+      3,
+      2,
+      26,
+      28
+    ],
+    "alpha": "cutout",
+    "repeatAxes": [],
+    "category": "equipment",
+    "derivedFrom": null,
+    "name": "arrow",
+    "file": "tiles/arrow.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "c74989ef86fc8fca0e2781905cc84c338c2671de1222b495dadb82169e78c339"
+  },
+  {
+    "source": "sources/ranged_goods.png",
+    "cell": 2,
+    "sourceRect": [
+      121,
+      685,
+      402,
+      462
+    ],
+    "sourceDimensions": [
+      1272,
+      1236
+    ],
+    "destination": [
+      4,
+      2,
+      24,
+      28
+    ],
+    "alpha": "cutout",
+    "repeatAxes": [],
+    "category": "equipment",
+    "derivedFrom": null,
+    "name": "fishing_rod",
+    "file": "tiles/fishing_rod.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "893c18ed8f265318445d25a895f7b178f39c24dc927466cd5b64c1b154bd19c0"
+  },
+  {
+    "source": "sources/ranged_goods.png",
+    "cell": 3,
+    "sourceRect": [
+      715,
+      697,
+      421,
+      426
+    ],
+    "sourceDimensions": [
+      1272,
+      1236
+    ],
+    "destination": [
+      2,
+      2,
+      28,
+      28
+    ],
+    "alpha": "cutout",
+    "repeatAxes": [],
+    "category": "equipment",
+    "derivedFrom": null,
+    "name": "trade_coin",
+    "file": "tiles/trade_coin.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "299163bec0344585588837376a54189c2cb4a88a96c899e82530e3ac6a3d00bf"
+  },
+  {
+    "source": "sources/paper_bone.png",
+    "cell": 0,
+    "sourceRect": [
+      140,
+      130,
+      475,
+      470
+    ],
+    "sourceDimensions": [
+      2172,
+      724
+    ],
+    "destination": [
+      2,
+      2,
+      28,
+      28
+    ],
+    "alpha": "cutout",
+    "repeatAxes": [],
+    "category": "equipment",
+    "derivedFrom": null,
+    "name": "bone",
+    "file": "tiles/bone.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "a15358e29aa0e1ad5df1833b5c01d93ce5e0f272b95c3e655d1642ff12666745"
+  },
+  {
+    "source": "sources/paper_bone.png",
+    "cell": 1,
+    "sourceRect": [
+      853,
+      236,
+      470,
+      320
+    ],
+    "sourceDimensions": [
+      2172,
+      724
+    ],
+    "destination": [
+      2,
+      6,
+      28,
+      19
+    ],
+    "alpha": "cutout",
+    "repeatAxes": [],
+    "category": "equipment",
+    "derivedFrom": null,
+    "name": "bone_meal",
+    "file": "tiles/bone_meal.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "b56c8ae743f953cb16ad8214b65756757c5e9d3620457a6a2fac65dcc6a08840"
+  },
+  {
+    "source": "sources/paper_bone.png",
+    "cell": 2,
+    "sourceRect": [
+      1569,
+      164,
+      475,
+      428
+    ],
+    "sourceDimensions": [
+      2172,
+      724
+    ],
+    "destination": [
+      2,
+      3,
+      28,
+      25
+    ],
+    "alpha": "cutout",
+    "repeatAxes": [],
+    "category": "equipment",
+    "derivedFrom": null,
+    "name": "paper",
+    "file": "tiles/paper.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "ba7718e516142a130ecc53391761503e367e89af073db5f075197ee133c3ce9e"
+  },
+  {
+    "source": "sources/navigation.png",
+    "cell": 0,
+    "sourceRect": [
+      213,
+      135,
+      462,
+      615
+    ],
+    "sourceDimensions": [
+      1774,
+      887
+    ],
+    "destination": [
+      5,
+      2,
+      21,
+      28
+    ],
+    "alpha": "cutout",
+    "repeatAxes": [],
+    "category": "equipment",
+    "derivedFrom": null,
+    "name": "compass",
+    "file": "tiles/compass.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "63a6f37e04cb76dcf84298e6aef96c8ea5336625c528ac7056e3115c46c888eb"
+  },
+  {
+    "source": "sources/navigation.png",
+    "cell": 1,
+    "sourceRect": [
+      1016,
+      243,
+      619,
+      456
+    ],
+    "sourceDimensions": [
+      1774,
+      887
+    ],
+    "destination": [
+      2,
+      5,
+      28,
+      21
+    ],
+    "alpha": "cutout",
+    "repeatAxes": [],
+    "category": "equipment",
+    "derivedFrom": null,
+    "name": "map",
+    "file": "tiles/map.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "2ac3d83c746e8073220952f074a4c87b984acf27f18706c95ab0dccac28996d0"
+  },
+  {
+    "source": "sources/ground_plants.png",
+    "cell": 0,
+    "sourceRect": [
+      211,
+      49,
+      423,
+      408
+    ],
+    "sourceDimensions": [
+      1536,
+      1024
+    ],
+    "destination": [
+      2,
+      5,
+      28,
+      27
+    ],
+    "alpha": "cutout",
+    "repeatAxes": [],
+    "category": "plant",
+    "derivedFrom": null,
+    "name": "tall_grass",
+    "file": "tiles/tall_grass.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "f07253832e81fab6655281d9cd6b490922ab7ffc85ae2f41330e96a0a5f0450b"
+  },
+  {
+    "source": "sources/ground_plants.png",
+    "cell": 1,
+    "sourceRect": [
+      875,
+      20,
+      470,
+      458
+    ],
+    "sourceDimensions": [
+      1536,
+      1024
+    ],
+    "destination": [
+      2,
+      5,
+      28,
+      27
+    ],
+    "alpha": "cutout",
+    "repeatAxes": [],
+    "category": "plant",
+    "derivedFrom": null,
+    "name": "fern",
+    "file": "tiles/fern.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "0255d1bfa5f7f7b03cd93d303bd6d9ccb356e8f66af6a05a7490fbc81bd5f920"
+  },
+  {
+    "source": "sources/ground_plants.png",
+    "cell": 2,
+    "sourceRect": [
+      211,
+      561,
+      439,
+      425
+    ],
+    "sourceDimensions": [
+      1536,
+      1024
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "cutout",
+    "repeatAxes": [
+      "x",
+      "y"
+    ],
+    "category": "plant",
+    "derivedFrom": null,
+    "name": "moss",
+    "file": "tiles/moss.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "e0b11e00ae412a71e0381ebaf2f5218b2a3d32f1328021545bd8723dc6659815"
+  },
+  {
+    "source": "sources/ground_plants.png",
+    "cell": 3,
+    "sourceRect": [
+      875,
+      566,
+      449,
+      421
+    ],
+    "sourceDimensions": [
+      1536,
+      1024
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "cutout",
+    "repeatAxes": [
+      "x",
+      "y"
+    ],
+    "category": "plant",
+    "derivedFrom": null,
+    "name": "leaf_litter",
+    "file": "tiles/leaf_litter.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "dfb2c32a264e2895dc1b5e39b83279671b811864e16bc90568cfa22085f6fbb2"
+  },
+  {
+    "source": "sources/flowers_fungi.png",
+    "cell": 0,
+    "sourceRect": [
+      149,
+      69,
+      349,
+      520
+    ],
+    "sourceDimensions": [
+      1264,
+      1244
+    ],
+    "destination": [
+      6,
+      4,
+      19,
+      28
+    ],
+    "alpha": "cutout",
+    "repeatAxes": [],
+    "category": "plant",
+    "derivedFrom": null,
+    "name": "poppy",
+    "file": "tiles/poppy.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "d42db4f455ec57d20af0980078e7eef95111516fbd630f541ae79d66eda9673b"
+  },
+  {
+    "source": "sources/flowers_fungi.png",
+    "cell": 1,
+    "sourceRect": [
+      731,
+      79,
+      400,
+      510
+    ],
+    "sourceDimensions": [
+      1264,
+      1244
+    ],
+    "destination": [
+      5,
+      4,
+      22,
+      28
+    ],
+    "alpha": "cutout",
+    "repeatAxes": [],
+    "category": "plant",
+    "derivedFrom": null,
+    "name": "dandelion",
+    "file": "tiles/dandelion.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "549e774aec045dcb13f6eb74c8ce755bb832d9690e65dfee3fb3f6f824e13493"
+  },
+  {
+    "source": "sources/flowers_fungi.png",
+    "cell": 2,
+    "sourceRect": [
+      97,
+      738,
+      449,
+      442
+    ],
+    "sourceDimensions": [
+      1264,
+      1244
+    ],
+    "destination": [
+      2,
+      4,
+      28,
+      28
+    ],
+    "alpha": "cutout",
+    "repeatAxes": [],
+    "category": "plant",
+    "derivedFrom": null,
+    "name": "brown_mushroom",
+    "file": "tiles/brown_mushroom.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "4e2aa732227e873f7d749744123905160f6d47ebf967577e2a7eaaa1280d9920"
+  },
+  {
+    "source": "sources/flowers_fungi.png",
+    "cell": 3,
+    "sourceRect": [
+      726,
+      719,
+      438,
+      463
+    ],
+    "sourceDimensions": [
+      1264,
+      1244
+    ],
+    "destination": [
+      3,
+      4,
+      26,
+      28
+    ],
+    "alpha": "cutout",
+    "repeatAxes": [],
+    "category": "plant",
+    "derivedFrom": null,
+    "name": "red_mushroom",
+    "file": "tiles/red_mushroom.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "f12773894e19ace6b83e6bf97d06bf1e4c244aabd1b46912d505feb51bce8a47"
+  },
+  {
+    "source": "sources/wet_plants.png",
+    "cell": 0,
+    "sourceRect": [
+      187,
+      97,
+      489,
+      715
+    ],
+    "sourceDimensions": [
+      1774,
+      887
+    ],
+    "destination": [
+      6,
+      4,
+      19,
+      28
+    ],
+    "alpha": "cutout",
+    "repeatAxes": [],
+    "category": "plant",
+    "derivedFrom": null,
+    "name": "reed",
+    "file": "tiles/reed.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "1cd1c1e57ab8ee23e12ae60dfc120870a4ea8daec873164fc58bbb1c1558ddd6"
+  },
+  {
+    "source": "sources/wet_plants.png",
+    "cell": 1,
+    "sourceRect": [
+      982,
+      189,
+      699,
+      592
+    ],
+    "sourceDimensions": [
+      1774,
+      887
+    ],
+    "destination": [
+      2,
+      4,
+      28,
+      24
+    ],
+    "alpha": "cutout",
+    "repeatAxes": [],
+    "category": "plant",
+    "derivedFrom": null,
+    "name": "lily_pad",
+    "file": "tiles/lily_pad.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "04485773b927a5c5460e902e20d88e5f7c40635126e7ab8d9138bb7978a78ddb"
+  },
+  {
+    "source": "sources/crop_wheat.png",
+    "cell": 0,
+    "sourceRect": [
+      242,
+      461,
+      148,
+      105
+    ],
+    "sourceDimensions": [
+      1263,
+      1246
+    ],
+    "destination": [
+      12,
+      26,
+      8,
+      6
+    ],
+    "alpha": "cutout",
+    "repeatAxes": [],
+    "category": "crop",
+    "derivedFrom": null,
+    "name": "wheat_0",
+    "file": "tiles/wheat_0.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "b8678be58446279a7b73849cb0e9b51573aec47a9560815ef041c600c90288f0"
+  },
+  {
+    "source": "sources/crop_wheat.png",
+    "cell": 1,
+    "sourceRect": [
+      818,
+      299,
+      247,
+      268
+    ],
+    "sourceDimensions": [
+      1263,
+      1246
+    ],
+    "destination": [
+      9,
+      17,
+      14,
+      15
+    ],
+    "alpha": "cutout",
+    "repeatAxes": [],
+    "category": "crop",
+    "derivedFrom": null,
+    "name": "wheat_1",
+    "file": "tiles/wheat_1.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "54ff95214bea3d9e192464e36fa3890d261573b8fb810278f69d75dbc3c65bf2"
+  },
+  {
+    "source": "sources/crop_wheat.png",
+    "cell": 2,
+    "sourceRect": [
+      156,
+      758,
+      330,
+      417
+    ],
+    "sourceDimensions": [
+      1263,
+      1246
+    ],
+    "destination": [
+      6,
+      9,
+      19,
+      23
+    ],
+    "alpha": "cutout",
+    "repeatAxes": [],
+    "category": "crop",
+    "derivedFrom": null,
+    "name": "wheat_2",
+    "file": "tiles/wheat_2.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "dd6b39d7acafae5041d43543cdf71347c4e6749ff1a84ada76531785a6e7cd20"
+  },
+  {
+    "source": "sources/crop_wheat.png",
+    "cell": 3,
+    "sourceRect": [
+      749,
+      647,
+      372,
+      528
+    ],
+    "sourceDimensions": [
+      1263,
+      1246
+    ],
+    "destination": [
+      5,
+      4,
+      21,
+      28
+    ],
+    "alpha": "cutout",
+    "repeatAxes": [],
+    "category": "crop",
+    "derivedFrom": null,
+    "name": "wheat_3",
+    "file": "tiles/wheat_3.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "8abdf1d8260a84f858ceb4cce4a43e4314ded2a17aab9210cd73780686106f3a"
+  },
+  {
+    "source": "sources/crop_carrots.png",
+    "cell": 0,
+    "sourceRect": [
+      274,
+      419,
+      99,
+      63
+    ],
+    "sourceDimensions": [
+      1265,
+      1243
+    ],
+    "destination": [
+      13,
+      28,
+      6,
+      4
+    ],
+    "alpha": "cutout",
+    "repeatAxes": [],
+    "category": "crop",
+    "derivedFrom": null,
+    "name": "carrots_0",
+    "file": "tiles/carrots_0.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "4bc01899c2dd334c432cc4d85e521c2b63c267376865438d3fed7bee0a996e07"
+  },
+  {
+    "source": "sources/crop_carrots.png",
+    "cell": 1,
+    "sourceRect": [
+      857,
+      344,
+      137,
+      138
+    ],
+    "sourceDimensions": [
+      1265,
+      1243
+    ],
+    "destination": [
+      12,
+      24,
+      8,
+      8
+    ],
+    "alpha": "cutout",
+    "repeatAxes": [],
+    "category": "crop",
+    "derivedFrom": null,
+    "name": "carrots_1",
+    "file": "tiles/carrots_1.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "e15c71482e2c6dbb87c3677d405b2ebdffe41cc2f046c639026e09ebe1338b25"
+  },
+  {
+    "source": "sources/crop_carrots.png",
+    "cell": 2,
+    "sourceRect": [
+      219,
+      960,
+      200,
+      187
+    ],
+    "sourceDimensions": [
+      1265,
+      1243
+    ],
+    "destination": [
+      10,
+      21,
+      11,
+      11
+    ],
+    "alpha": "cutout",
+    "repeatAxes": [],
+    "category": "crop",
+    "derivedFrom": null,
+    "name": "carrots_2",
+    "file": "tiles/carrots_2.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "149cff1fb9ebf539f49e655cd474a4264c6a6b6db2c924cfd289cea08e9e3215"
+  },
+  {
+    "source": "sources/crop_carrots.png",
+    "cell": 3,
+    "sourceRect": [
+      809,
+      910,
+      256,
+      237
+    ],
+    "sourceDimensions": [
+      1265,
+      1243
+    ],
+    "destination": [
+      9,
+      19,
+      14,
+      13
+    ],
+    "alpha": "cutout",
+    "repeatAxes": [],
+    "category": "crop",
+    "derivedFrom": null,
+    "name": "carrots_3",
+    "file": "tiles/carrots_3.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "0edd71853f62df25c2f8a261a7e342db057ce7565c5f1b661545ddf297a6af43"
+  },
+  {
+    "source": "sources/crop_potatoes.png",
+    "cell": 0,
+    "sourceRect": [
+      224,
+      454,
+      183,
+      128
+    ],
+    "sourceDimensions": [
+      1247,
+      1261
+    ],
+    "destination": [
+      11,
+      25,
+      10,
+      7
+    ],
+    "alpha": "cutout",
+    "repeatAxes": [],
+    "category": "crop",
+    "derivedFrom": null,
+    "name": "potatoes_0",
+    "file": "tiles/potatoes_0.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "80b9308fcc1a923c9c89063abc961e1fb649d298c0654534b3df7077c5db88a4"
+  },
+  {
+    "source": "sources/crop_potatoes.png",
+    "cell": 1,
+    "sourceRect": [
+      770,
+      299,
+      293,
+      283
+    ],
+    "sourceDimensions": [
+      1247,
+      1261
+    ],
+    "destination": [
+      8,
+      16,
+      16,
+      16
+    ],
+    "alpha": "cutout",
+    "repeatAxes": [],
+    "category": "crop",
+    "derivedFrom": null,
+    "name": "potatoes_1",
+    "file": "tiles/potatoes_1.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "09682b81858fd5f9523b77187a19b3624f8d9957531e332cdfec04ac8e88f1be"
+  },
+  {
+    "source": "sources/crop_potatoes.png",
+    "cell": 2,
+    "sourceRect": [
+      104,
+      776,
+      434,
+      438
+    ],
+    "sourceDimensions": [
+      1247,
+      1261
+    ],
+    "destination": [
+      4,
+      7,
+      24,
+      25
+    ],
+    "alpha": "cutout",
+    "repeatAxes": [],
+    "category": "crop",
+    "derivedFrom": null,
+    "name": "potatoes_2",
+    "file": "tiles/potatoes_2.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "918fda4ea55c20cef3799fdebb5faa5006f2a928558efee03ba17920103418c9"
+  },
+  {
+    "source": "sources/crop_potatoes.png",
+    "cell": 3,
+    "sourceRect": [
+      652,
+      671,
+      528,
+      543
+    ],
+    "sourceDimensions": [
+      1247,
+      1261
+    ],
+    "destination": [
+      2,
+      4,
+      28,
+      28
+    ],
+    "alpha": "cutout",
+    "repeatAxes": [],
+    "category": "crop",
+    "derivedFrom": null,
+    "name": "potatoes_3",
+    "file": "tiles/potatoes_3.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "bda2cf74f0d2cdef7b0fd88d5d7bee312e174a732ca9d3df0aa3cba158f6fcf8"
+  },
+  {
+    "source": "sources/saplings_north.png",
+    "cell": 0,
+    "sourceRect": [
+      117,
+      27,
+      422,
+      463
+    ],
+    "sourceDimensions": [
+      1278,
+      1230
+    ],
+    "destination": [
+      3,
+      4,
+      26,
+      28
+    ],
+    "alpha": "cutout",
+    "repeatAxes": [],
+    "category": "plant",
+    "derivedFrom": null,
+    "name": "oak_sapling",
+    "file": "tiles/oak_sapling.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "3c699d67d5e10d34699435dd52b13606a0795335632fd8fe7296c2f40392cafe"
+  },
+  {
+    "source": "sources/saplings_north.png",
+    "cell": 1,
+    "sourceRect": [
+      746,
+      32,
+      365,
+      458
+    ],
+    "sourceDimensions": [
+      1278,
+      1230
+    ],
+    "destination": [
+      5,
+      4,
+      22,
+      28
+    ],
+    "alpha": "cutout",
+    "repeatAxes": [],
+    "category": "plant",
+    "derivedFrom": null,
+    "name": "birch_sapling",
+    "file": "tiles/birch_sapling.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "cfd3e893b5d08abdf5da092a5ab3f0cec8d6644e32212189b672e00d78486aad"
+  },
+  {
+    "source": "sources/saplings_north.png",
+    "cell": 2,
+    "sourceRect": [
+      132,
+      644,
+      382,
+      517
+    ],
+    "sourceDimensions": [
+      1278,
+      1230
+    ],
+    "destination": [
+      5,
+      4,
+      21,
+      28
+    ],
+    "alpha": "cutout",
+    "repeatAxes": [],
+    "category": "plant",
+    "derivedFrom": null,
+    "name": "spruce_sapling",
+    "file": "tiles/spruce_sapling.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "0fd398ce62e61f80ffe336c9b8f93d82d61f7fb1c110a6b18c4d32e0cbc74b8a"
+  },
+  {
+    "source": "sources/saplings_north.png",
+    "cell": 3,
+    "sourceRect": [
+      711,
+      644,
+      447,
+      517
+    ],
+    "sourceDimensions": [
+      1278,
+      1230
+    ],
+    "destination": [
+      4,
+      4,
+      24,
+      28
+    ],
+    "alpha": "cutout",
+    "repeatAxes": [],
+    "category": "plant",
+    "derivedFrom": null,
+    "name": "maple_sapling",
+    "file": "tiles/maple_sapling.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "ff858ee7134afd4d1c2ae26dbc218a0b02d8b51a3acbe4b82ba47f029b93e718"
+  },
+  {
+    "source": "sources/saplings_south.png",
+    "cell": 0,
+    "sourceRect": [
+      133,
+      31,
+      389,
+      529
+    ],
+    "sourceDimensions": [
+      1263,
+      1246
+    ],
+    "destination": [
+      5,
+      4,
+      21,
+      28
+    ],
+    "alpha": "cutout",
+    "repeatAxes": [],
+    "category": "plant",
+    "derivedFrom": null,
+    "name": "pine_sapling",
+    "file": "tiles/pine_sapling.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "46adbe8e2589632447a6831e7bf69eb14ac0a6a8116fe7b524066009d32bf040"
+  },
+  {
+    "source": "sources/saplings_south.png",
+    "cell": 1,
+    "sourceRect": [
+      662,
+      131,
+      559,
+      424
+    ],
+    "sourceDimensions": [
+      1263,
+      1246
+    ],
+    "destination": [
+      2,
+      11,
+      28,
+      21
+    ],
+    "alpha": "cutout",
+    "repeatAxes": [],
+    "category": "plant",
+    "derivedFrom": null,
+    "name": "acacia_sapling",
+    "file": "tiles/acacia_sapling.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "6d488db642eb2f6c9a0a3fd8ce56fa859f9ecf5ec664b1fe28630e1a3db7bec6"
+  },
+  {
+    "source": "sources/saplings_south.png",
+    "cell": 2,
+    "sourceRect": [
+      74,
+      675,
+      497,
+      525
+    ],
+    "sourceDimensions": [
+      1263,
+      1246
+    ],
+    "destination": [
+      2,
+      4,
+      27,
+      28
+    ],
+    "alpha": "cutout",
+    "repeatAxes": [],
+    "category": "plant",
+    "derivedFrom": null,
+    "name": "jungle_giant_sapling",
+    "file": "tiles/jungle_giant_sapling.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "adcc17bc3545526ec37b8e1399f313ac072ff808c8146d1683850408dcf94a2c"
+  },
+  {
+    "source": "sources/saplings_south.png",
+    "cell": 3,
+    "sourceRect": [
+      664,
+      680,
+      548,
+      519
+    ],
+    "sourceDimensions": [
+      1263,
+      1246
+    ],
+    "destination": [
+      2,
+      5,
+      28,
+      27
+    ],
+    "alpha": "cutout",
+    "repeatAxes": [],
+    "category": "plant",
+    "derivedFrom": null,
+    "name": "palm_sapling",
+    "file": "tiles/palm_sapling.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "cbfa9e2530fc31a4432612ec327ddddf72ee076552fafe421cdbdaf04aae3911"
+  },
+  {
+    "source": "sources/decoration_faces.png",
+    "cell": 0,
+    "sourceRect": [
+      65,
+      64,
+      596,
+      595
+    ],
+    "sourceDimensions": [
+      2172,
+      724
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "opaque",
+    "repeatAxes": [],
+    "category": "station",
+    "derivedFrom": null,
+    "name": "sign",
+    "file": "tiles/sign.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "7a59af3a56f7e41dee40659b7447ac0cc2941830a2e3ba5539d214b7387bb190"
+  },
+  {
+    "source": "sources/decoration_faces.png",
+    "cell": 1,
+    "sourceRect": [
+      789,
+      64,
+      595,
+      595
+    ],
+    "sourceDimensions": [
+      2172,
+      724
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "cutout",
+    "repeatAxes": [],
+    "category": "station",
+    "derivedFrom": null,
+    "name": "frame_empty",
+    "file": "tiles/frame_empty.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "c799baf0a0de10aeabaf71f4476f3ed98abf578d28e38f39736b1bab41e74500"
+  },
+  {
+    "source": "sources/decoration_faces.png",
+    "cell": 2,
+    "sourceRect": [
+      1512,
+      64,
+      596,
+      595
+    ],
+    "sourceDimensions": [
+      2172,
+      724
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "opaque",
+    "repeatAxes": [],
+    "category": "station",
+    "derivedFrom": null,
+    "name": "frame_backing",
+    "file": "tiles/frame_backing.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "94a39b43e1ce71f52db30d57a2a5b1fa98bf50c8726bcf0016235bb1ed4f8b16"
+  },
+  {
+    "source": "sources/leaf_oak.png",
+    "cell": 0,
+    "sourceRect": [
+      0,
+      0,
+      1254,
+      1254
+    ],
+    "sourceDimensions": [
+      1254,
+      1254
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "cutout",
+    "repeatAxes": [
+      "x",
+      "y"
+    ],
+    "category": "tree",
+    "derivedFrom": null,
+    "name": "oak_leaves",
+    "file": "tiles/oak_leaves.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "dc5325f75572be5baa35a26b92d38db0538b1b6dd6623bd48ec471c9873a339f"
+  },
+  {
+    "source": "sources/leaf_maple.png",
+    "cell": 0,
+    "sourceRect": [
+      0,
+      0,
+      1254,
+      1254
+    ],
+    "sourceDimensions": [
+      1254,
+      1254
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "cutout",
+    "repeatAxes": [
+      "x",
+      "y"
+    ],
+    "category": "tree",
+    "derivedFrom": null,
+    "name": "maple_leaves",
+    "file": "tiles/maple_leaves.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "3fd3ebd9dec765902465b2592d4de88d5fdb46c06b7f94d5894de046eae8b393"
+  },
+  {
+    "source": "sources/leaf_birch.png",
+    "cell": 0,
+    "sourceRect": [
+      0,
+      0,
+      1254,
+      1254
+    ],
+    "sourceDimensions": [
+      1254,
+      1254
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "cutout",
+    "repeatAxes": [
+      "x",
+      "y"
+    ],
+    "category": "tree",
+    "derivedFrom": null,
+    "name": "birch_leaves",
+    "file": "tiles/birch_leaves.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "6ef8c7b32413554e2c562a5d71c39d68ce5db032d43274226a4ee53efa8c80e6"
+  },
+  {
+    "source": "sources/leaf_mangrove.png",
+    "cell": 0,
+    "sourceRect": [
+      0,
+      0,
+      1254,
+      1254
+    ],
+    "sourceDimensions": [
+      1254,
+      1254
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "cutout",
+    "repeatAxes": [
+      "x",
+      "y"
+    ],
+    "category": "tree",
+    "derivedFrom": null,
+    "name": "mangrove_leaves",
+    "file": "tiles/mangrove_leaves.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "c628089da214f13a80ab803d17e40efd47f32b477558346ffe9713acd59f30d3"
+  },
+  {
+    "source": "sources/bed_head.png",
+    "cell": 0,
+    "sourceRect": [
+      0,
+      0,
+      1254,
+      1254
+    ],
+    "sourceDimensions": [
+      1254,
+      1254
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "opaque",
+    "repeatAxes": [],
+    "category": "station",
+    "derivedFrom": null,
+    "name": "bed_head",
+    "file": "tiles/bed_head.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "71701e6d1e24be6fb0f8174eb69c1542ec34f37c08c60e0552644cdabd3a9e77"
+  },
+  {
+    "source": "sources/oak_planks.png",
+    "cell": 0,
+    "sourceRect": [
+      0,
+      0,
+      1254,
+      1254
+    ],
+    "sourceDimensions": [
+      1254,
+      1254
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "opaque",
+    "repeatAxes": [
+      "x",
+      "y"
+    ],
+    "category": "tree",
+    "derivedFrom": null,
+    "name": "oak_planks",
+    "file": "tiles/oak_planks.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "11981d0dc40f88a5d6fb9d96ee12a4a036f4b24259abdedf3643231957834d5a"
+  },
+  {
+    "source": "sources/maple_planks.png",
+    "cell": 0,
+    "sourceRect": [
+      0,
+      0,
+      1254,
+      1254
+    ],
+    "sourceDimensions": [
+      1254,
+      1254
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "opaque",
+    "repeatAxes": [
+      "x",
+      "y"
+    ],
+    "category": "tree",
+    "derivedFrom": null,
+    "name": "maple_planks",
+    "file": "tiles/maple_planks.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "6f090af181833023773bb5462b1355682e0886ac98a1de7c79e9096ede3ae5e6"
+  },
+  {
+    "source": "sources/spruce_planks.png",
+    "cell": 0,
+    "sourceRect": [
+      0,
+      0,
+      1254,
+      1254
+    ],
+    "sourceDimensions": [
+      1254,
+      1254
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "opaque",
+    "repeatAxes": [
+      "x",
+      "y"
+    ],
+    "category": "tree",
+    "derivedFrom": null,
+    "name": "spruce_planks",
+    "file": "tiles/spruce_planks.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "a371e9ec3f5d2822ce86d56572d17b0568436d3ad94737b72ed7b404e266720b"
+  },
+  {
+    "source": "sources/fir_planks.png",
+    "cell": 0,
+    "sourceRect": [
+      0,
+      0,
+      1254,
+      1254
+    ],
+    "sourceDimensions": [
+      1254,
+      1254
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "opaque",
+    "repeatAxes": [
+      "x",
+      "y"
+    ],
+    "category": "tree",
+    "derivedFrom": null,
+    "name": "fir_planks",
+    "file": "tiles/fir_planks.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "918a969396d9b4df5070e9a58808501966dd4bd6d41aab580d26b261ea72ba2c"
+  },
+  {
+    "source": "sources/larch_planks.png",
+    "cell": 0,
+    "sourceRect": [
+      0,
+      0,
+      1254,
+      1254
+    ],
+    "sourceDimensions": [
+      1254,
+      1254
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "opaque",
+    "repeatAxes": [
+      "x",
+      "y"
+    ],
+    "category": "tree",
+    "derivedFrom": null,
+    "name": "larch_planks",
+    "file": "tiles/larch_planks.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "d4aae8ac4e02179db1847581a91ea7c0a2a305fd794fd884a3ca41b2c2f58a01"
+  },
+  {
+    "source": "sources/birch_planks.png",
+    "cell": 0,
+    "sourceRect": [
+      0,
+      0,
+      1254,
+      1254
+    ],
+    "sourceDimensions": [
+      1254,
+      1254
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "opaque",
+    "repeatAxes": [
+      "x",
+      "y"
+    ],
+    "category": "tree",
+    "derivedFrom": null,
+    "name": "birch_planks",
+    "file": "tiles/birch_planks.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "ff832d280011fafb3229d7c69894520dbed5f857864a8f134926eb9bb98c0683"
+  },
+  {
+    "source": "sources/pine_planks.png",
+    "cell": 0,
+    "sourceRect": [
+      0,
+      0,
+      1254,
+      1254
+    ],
+    "sourceDimensions": [
+      1254,
+      1254
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "opaque",
+    "repeatAxes": [
+      "x",
+      "y"
+    ],
+    "category": "tree",
+    "derivedFrom": null,
+    "name": "pine_planks",
+    "file": "tiles/pine_planks.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "c3c20eacca7d897cfa3ec407e32383fae35e69ef0f7434761610ace1587be4a2"
+  },
+  {
+    "source": "sources/jungle_giant_planks.png",
+    "cell": 0,
+    "sourceRect": [
+      0,
+      0,
+      1254,
+      1254
+    ],
+    "sourceDimensions": [
+      1254,
+      1254
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "opaque",
+    "repeatAxes": [
+      "x",
+      "y"
+    ],
+    "category": "tree",
+    "derivedFrom": null,
+    "name": "jungle_giant_planks",
+    "file": "tiles/jungle_giant_planks.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "901d79acaed5c5f0a35a72d46fe260ad2d45823b4ad3863814edc9fa7e3d8ee2"
+  },
+  {
+    "source": "sources/palm_planks.png",
+    "cell": 0,
+    "sourceRect": [
+      0,
+      0,
+      1254,
+      1254
+    ],
+    "sourceDimensions": [
+      1254,
+      1254
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "opaque",
+    "repeatAxes": [
+      "x",
+      "y"
+    ],
+    "category": "tree",
+    "derivedFrom": null,
+    "name": "palm_planks",
+    "file": "tiles/palm_planks.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "4695d4d3066980b45928591b2e9ce478ba191ccd54ca5791d3d40dfb701edf67"
+  },
+  {
+    "source": "sources/baobab_planks.png",
+    "cell": 0,
+    "sourceRect": [
+      0,
+      0,
+      1254,
+      1254
+    ],
+    "sourceDimensions": [
+      1254,
+      1254
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "opaque",
+    "repeatAxes": [
+      "x",
+      "y"
+    ],
+    "category": "tree",
+    "derivedFrom": null,
+    "name": "baobab_planks",
+    "file": "tiles/baobab_planks.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "ec1318cba580253bb6d06e1f7f3da2809b6c33e21295df17536f81a2c1305bc7"
+  },
+  {
+    "source": "sources/acacia_planks.png",
+    "cell": 0,
+    "sourceRect": [
+      0,
+      0,
+      1254,
+      1254
+    ],
+    "sourceDimensions": [
+      1254,
+      1254
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "opaque",
+    "repeatAxes": [
+      "x",
+      "y"
+    ],
+    "category": "tree",
+    "derivedFrom": null,
+    "name": "acacia_planks",
+    "file": "tiles/acacia_planks.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "9a687d7ab2acb5db1a6fcffb98c37fb5ed8818393f781df8b7cb31f1611f08a2"
+  },
+  {
+    "source": "sources/willow_planks.png",
+    "cell": 0,
+    "sourceRect": [
+      0,
+      0,
+      1254,
+      1254
+    ],
+    "sourceDimensions": [
+      1254,
+      1254
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "opaque",
+    "repeatAxes": [
+      "x",
+      "y"
+    ],
+    "category": "tree",
+    "derivedFrom": null,
+    "name": "willow_planks",
+    "file": "tiles/willow_planks.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "21a8521ab6c988c02951852c7ce7510243c647d1db042d83a8306a25a7ffffb8"
+  },
+  {
+    "source": "sources/mangrove_planks.png",
+    "cell": 0,
+    "sourceRect": [
+      0,
+      0,
+      1254,
+      1254
+    ],
+    "sourceDimensions": [
+      1254,
+      1254
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "opaque",
+    "repeatAxes": [
+      "x",
+      "y"
+    ],
+    "category": "tree",
+    "derivedFrom": null,
+    "name": "mangrove_planks",
+    "file": "tiles/mangrove_planks.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "295c4c497ce994186099c53eaf47a90ecb1bef161e5169eea83bde2a80fdbf6a"
+  },
+  {
+    "source": "sources/bush_planks.png",
+    "cell": 0,
+    "sourceRect": [
+      0,
+      0,
+      1254,
+      1254
+    ],
+    "sourceDimensions": [
+      1254,
+      1254
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "opaque",
+    "repeatAxes": [
+      "x",
+      "y"
+    ],
+    "category": "tree",
+    "derivedFrom": null,
+    "name": "bush_planks",
+    "file": "tiles/bush_planks.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "f4f326d4bcebf8152ac3d9e6e65638216c7770f4bed93f1d215fe45c617774e3"
+  },
+  {
+    "source": "sources/water.png",
+    "cell": 0,
+    "sourceRect": [
+      0,
+      0,
+      1254,
+      1254
+    ],
+    "sourceDimensions": [
+      1254,
+      1254
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "opaque",
+    "repeatAxes": [
+      "x",
+      "y"
+    ],
+    "category": "fluid",
+    "derivedFrom": null,
+    "name": "water",
+    "file": "tiles/water.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "45bfec334a36c3ca2d85e054b2fa749a5f3e9df08cc8dff889f899972794058e"
+  },
+  {
+    "source": "sources/lava.png",
+    "cell": 0,
+    "sourceRect": [
+      0,
+      0,
+      1254,
+      1254
+    ],
+    "sourceDimensions": [
+      1254,
+      1254
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "opaque",
+    "repeatAxes": [
+      "x",
+      "y"
+    ],
+    "category": "fluid",
+    "derivedFrom": null,
+    "name": "lava",
+    "file": "tiles/lava.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "402e3c28b079a2f3061be5c1a7551e510f787cba4eb34ab18df0949c05fa414c"
+  },
+  {
+    "source": "sources/bed_top.png",
+    "cell": 0,
+    "sourceRect": [
+      0,
+      0,
+      1254,
+      1254
+    ],
+    "sourceDimensions": [
+      1254,
+      1254
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "opaque",
+    "repeatAxes": [],
+    "category": "station",
+    "derivedFrom": null,
+    "name": "bed_top",
+    "file": "tiles/bed_top.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "8d30455159f4de401310b411f6ebe98f4e363276c77a28e45ad8dd377a5f533b"
+  },
+  {
+    "source": "sources/leaf_spruce.png",
+    "cell": 0,
+    "sourceRect": [
+      0,
+      0,
+      1254,
+      1254
+    ],
+    "sourceDimensions": [
+      1254,
+      1254
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "cutout",
+    "repeatAxes": [
+      "x",
+      "y"
+    ],
+    "category": "tree",
+    "derivedFrom": null,
+    "name": "spruce_leaves",
+    "file": "tiles/spruce_leaves.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "f73d9a60c5606b9334cb5472e0e8d8787881198836da68c398ba8690756042e5"
+  },
+  {
+    "source": "sources/leaf_fir.png",
+    "cell": 0,
+    "sourceRect": [
+      0,
+      0,
+      1254,
+      1254
+    ],
+    "sourceDimensions": [
+      1254,
+      1254
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "cutout",
+    "repeatAxes": [
+      "x",
+      "y"
+    ],
+    "category": "tree",
+    "derivedFrom": null,
+    "name": "fir_leaves",
+    "file": "tiles/fir_leaves.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "a238b7dd84001a919cce50e7fa4ad540e5848f615fc91b1e4009b545fa090323"
+  },
+  {
+    "source": "sources/leaf_larch.png",
+    "cell": 0,
+    "sourceRect": [
+      0,
+      0,
+      1254,
+      1254
+    ],
+    "sourceDimensions": [
+      1254,
+      1254
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "cutout",
+    "repeatAxes": [
+      "x",
+      "y"
+    ],
+    "category": "tree",
+    "derivedFrom": null,
+    "name": "larch_leaves",
+    "file": "tiles/larch_leaves.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "7bb665ab8f204a73c94f9f04155145078cf9a996134733d321820c98ccb4b129"
+  },
+  {
+    "source": "sources/leaf_pine.png",
+    "cell": 0,
+    "sourceRect": [
+      0,
+      0,
+      1254,
+      1254
+    ],
+    "sourceDimensions": [
+      1254,
+      1254
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "cutout",
+    "repeatAxes": [
+      "x",
+      "y"
+    ],
+    "category": "tree",
+    "derivedFrom": null,
+    "name": "pine_leaves",
+    "file": "tiles/pine_leaves.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "3f1e852ed4ab6cb81bdc9ced0b0666910b9dcfba78e05d89a45b5f80b5a24c31"
+  },
+  {
+    "source": "sources/leaf_jungle_giant.png",
+    "cell": 0,
+    "sourceRect": [
+      0,
+      0,
+      1254,
+      1254
+    ],
+    "sourceDimensions": [
+      1254,
+      1254
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "cutout",
+    "repeatAxes": [
+      "x",
+      "y"
+    ],
+    "category": "tree",
+    "derivedFrom": null,
+    "name": "jungle_giant_leaves",
+    "file": "tiles/jungle_giant_leaves.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "ecb86e2d4ea31fa2af336852bd1390179957c4bcf91123ac8fed4276672ca335"
+  },
+  {
+    "source": "sources/leaf_palm.png",
+    "cell": 0,
+    "sourceRect": [
+      0,
+      0,
+      1254,
+      1254
+    ],
+    "sourceDimensions": [
+      1254,
+      1254
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "cutout",
+    "repeatAxes": [
+      "x",
+      "y"
+    ],
+    "category": "tree",
+    "derivedFrom": null,
+    "name": "palm_leaves",
+    "file": "tiles/palm_leaves.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "07656f02b9e3147787d681c8fb9c174a9ef3719a7a1d351bd8cb731ee711613f"
+  },
+  {
+    "source": "sources/leaf_baobab.png",
+    "cell": 0,
+    "sourceRect": [
+      0,
+      0,
+      1254,
+      1254
+    ],
+    "sourceDimensions": [
+      1254,
+      1254
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "cutout",
+    "repeatAxes": [
+      "x",
+      "y"
+    ],
+    "category": "tree",
+    "derivedFrom": null,
+    "name": "baobab_leaves",
+    "file": "tiles/baobab_leaves.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "0350acbb8a9ccba0ac051e7672b74da67155d1710054443331340bea356d9f2c"
+  },
+  {
+    "source": "sources/leaf_acacia.png",
+    "cell": 0,
+    "sourceRect": [
+      0,
+      0,
+      1254,
+      1254
+    ],
+    "sourceDimensions": [
+      1254,
+      1254
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "cutout",
+    "repeatAxes": [
+      "x",
+      "y"
+    ],
+    "category": "tree",
+    "derivedFrom": null,
+    "name": "acacia_leaves",
+    "file": "tiles/acacia_leaves.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "1160debbb225f42ee7960d92bd83f998bafbb9217558cd71a254694f5cec9e90"
+  },
+  {
+    "source": "sources/leaf_willow.png",
+    "cell": 0,
+    "sourceRect": [
+      0,
+      0,
+      1254,
+      1254
+    ],
+    "sourceDimensions": [
+      1254,
+      1254
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "cutout",
+    "repeatAxes": [
+      "x",
+      "y"
+    ],
+    "category": "tree",
+    "derivedFrom": null,
+    "name": "willow_leaves",
+    "file": "tiles/willow_leaves.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "82ed325820cb62293c0e3eb45e3e2f6c11b93710684a49636635386e22b978df"
+  },
+  {
+    "source": "sources/leaf_bush.png",
+    "cell": 0,
+    "sourceRect": [
+      0,
+      0,
+      1254,
+      1254
+    ],
+    "sourceDimensions": [
+      1254,
+      1254
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "cutout",
+    "repeatAxes": [
+      "x",
+      "y"
+    ],
+    "category": "tree",
+    "derivedFrom": null,
+    "name": "bush_leaves",
+    "file": "tiles/bush_leaves.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "c13fd63b66a74b05275d2be5ed4148dd4bfd195ae6a22ac10f5c25d65192e127"
+  },
+  {
+    "source": "sources/oak_planks.png",
+    "cell": 0,
+    "sourceRect": [
+      0,
+      0,
+      1254,
+      1254
+    ],
+    "sourceDimensions": [
+      1254,
+      1254
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "opaque",
+    "repeatAxes": [
+      "x",
+      "y"
+    ],
+    "category": "tree",
+    "derivedFrom": "oak_planks",
+    "name": "planks",
+    "file": "tiles/planks.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "11981d0dc40f88a5d6fb9d96ee12a4a036f4b24259abdedf3643231957834d5a"
+  },
+  {
+    "source": "sources/oak_planks.png",
+    "cell": 0,
+    "sourceRect": [
+      0,
+      0,
+      1254,
+      1254
+    ],
+    "sourceDimensions": [
+      1254,
+      1254
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "opaque",
+    "repeatAxes": [
+      "x",
+      "y"
+    ],
+    "category": "tree",
+    "derivedFrom": "planks",
+    "name": "planks_alt_0",
+    "variant": 0,
+    "file": "tiles/planks_alt_0.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "11981d0dc40f88a5d6fb9d96ee12a4a036f4b24259abdedf3643231957834d5a"
+  },
+  {
+    "source": "sources/oak_planks.png",
+    "cell": 0,
+    "sourceRect": [
+      0,
+      0,
+      1254,
+      1254
+    ],
+    "sourceDimensions": [
+      1254,
+      1254
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "opaque",
+    "repeatAxes": [
+      "x",
+      "y"
+    ],
+    "category": "tree",
+    "derivedFrom": "planks",
+    "name": "planks_alt_1",
+    "variant": 1,
+    "file": "tiles/planks_alt_1.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "ebb1c2cd4efef432a3ce18909f27ee259de420d81558f631c629f639c07d916a"
+  },
+  {
+    "source": "sources/oak_planks.png",
+    "cell": 0,
+    "sourceRect": [
+      0,
+      0,
+      1254,
+      1254
+    ],
+    "sourceDimensions": [
+      1254,
+      1254
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "opaque",
+    "repeatAxes": [
+      "x",
+      "y"
+    ],
+    "category": "tree",
+    "derivedFrom": "planks",
+    "name": "planks_alt_2",
+    "variant": 2,
+    "file": "tiles/planks_alt_2.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "ac73a0bd3023bc221ead5a053576dd68fede02a987d9f54b5a47b65ae1b25e44"
+  },
+  {
+    "source": "sources/oak_planks.png",
+    "cell": 0,
+    "sourceRect": [
+      0,
+      0,
+      1254,
+      1254
+    ],
+    "sourceDimensions": [
+      1254,
+      1254
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "opaque",
+    "repeatAxes": [
+      "x",
+      "y"
+    ],
+    "category": "tree",
+    "derivedFrom": "planks",
+    "name": "planks_alt_3",
+    "variant": 3,
+    "file": "tiles/planks_alt_3.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "f9dcadcc5c7dd37f9b32b796cabeec85d60f47582fc0962d8eb709136b6cbd37"
+  },
+  {
+    "source": "sources/tree_oak.png",
+    "cell": 1,
+    "sourceRect": [
+      675,
+      56,
+      521,
+      523
+    ],
+    "sourceDimensions": [
+      1254,
+      1254
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "opaque",
+    "repeatAxes": [],
+    "category": "tree",
+    "derivedFrom": "oak_end",
+    "name": "log_top",
+    "file": "tiles/log_top.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "e87cb02d1b4ba9f10cbd6e498c5c7e1f0f8bbdd476c124a958ad9b90f7c3282a"
+  },
+  {
+    "source": "sources/tree_oak.png",
+    "cell": 0,
+    "sourceRect": [
+      58,
+      56,
+      522,
+      522
+    ],
+    "sourceDimensions": [
+      1254,
+      1254
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "opaque",
+    "repeatAxes": [
+      "x",
+      "y"
+    ],
+    "category": "tree",
+    "derivedFrom": "oak_bark",
+    "name": "log_side",
+    "file": "tiles/log_side.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "f6f1560b89b327c1d8b3e040dc83af2bccf251cb6bbd601f65ab15cbd8ec6f7f"
+  },
+  {
+    "source": "sources/leaf_oak.png",
+    "cell": 0,
+    "sourceRect": [
+      0,
+      0,
+      1254,
+      1254
+    ],
+    "sourceDimensions": [
+      1254,
+      1254
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "cutout",
+    "repeatAxes": [
+      "x",
+      "y"
+    ],
+    "category": "tree",
+    "derivedFrom": "oak_leaves",
+    "name": "leaves",
+    "file": "tiles/leaves.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "dc5325f75572be5baa35a26b92d38db0538b1b6dd6623bd48ec471c9873a339f"
+  },
+  {
+    "source": "sources/saplings_north.png",
+    "cell": 0,
+    "sourceRect": [
+      117,
+      27,
+      422,
+      463
+    ],
+    "sourceDimensions": [
+      1278,
+      1230
+    ],
+    "destination": [
+      3,
+      4,
+      26,
+      28
+    ],
+    "alpha": "cutout",
+    "repeatAxes": [],
+    "category": "plant",
+    "derivedFrom": "oak_sapling",
+    "name": "sapling",
+    "file": "tiles/sapling.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "3c699d67d5e10d34699435dd52b13606a0795335632fd8fe7296c2f40392cafe"
+  },
+  {
+    "source": "sources/bed_head.png",
+    "cell": 0,
+    "sourceRect": [
+      0,
+      0,
+      1254,
+      1254
+    ],
+    "sourceDimensions": [
+      1254,
+      1254
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "opaque",
+    "repeatAxes": [],
+    "category": "station",
+    "derivedFrom": "bed_head",
+    "name": "bed_head_0",
+    "facing": 0,
+    "file": "tiles/bed_head_0.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "ca5825d9182f21ed3d86eb33115ec85dcbd381afc2279ab7142d6299c80c64ee"
+  },
+  {
+    "source": "sources/bed_head.png",
+    "cell": 0,
+    "sourceRect": [
+      0,
+      0,
+      1254,
+      1254
+    ],
+    "sourceDimensions": [
+      1254,
+      1254
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "opaque",
+    "repeatAxes": [],
+    "category": "station",
+    "derivedFrom": "bed_head",
+    "name": "bed_head_1",
+    "facing": 1,
+    "file": "tiles/bed_head_1.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "04247d0d5107e5dce2f082c8b2389796031fda2cc530d53d9a1328f8e71bbd58"
+  },
+  {
+    "source": "sources/bed_head.png",
+    "cell": 0,
+    "sourceRect": [
+      0,
+      0,
+      1254,
+      1254
+    ],
+    "sourceDimensions": [
+      1254,
+      1254
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "opaque",
+    "repeatAxes": [],
+    "category": "station",
+    "derivedFrom": "bed_head",
+    "name": "bed_head_2",
+    "facing": 2,
+    "file": "tiles/bed_head_2.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "71701e6d1e24be6fb0f8174eb69c1542ec34f37c08c60e0552644cdabd3a9e77"
+  },
+  {
+    "source": "sources/bed_head.png",
+    "cell": 0,
+    "sourceRect": [
+      0,
+      0,
+      1254,
+      1254
+    ],
+    "sourceDimensions": [
+      1254,
+      1254
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "opaque",
+    "repeatAxes": [],
+    "category": "station",
+    "derivedFrom": "bed_head",
+    "name": "bed_head_3",
+    "facing": 3,
+    "file": "tiles/bed_head_3.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "2a55fb9c36d76426a04a8c6a857ec7b06f1937d0e0d23bedf8fcb51ea19cd673"
+  },
+  {
+    "source": "sources/utility_faces.png",
+    "cell": 0,
+    "sourceRect": [
+      100,
+      88,
+      433,
+      472
+    ],
+    "sourceDimensions": [
+      1254,
+      1254
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "opaque",
+    "repeatAxes": [],
+    "category": "station",
+    "derivedFrom": "door",
+    "name": "door_segment_0",
+    "segment": 0,
+    "file": "tiles/door_segment_0.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "803febfc50ff8bc7550b88214dd67859bd10ec38aaa2f3f0641d904fef56631b"
+  },
+  {
+    "source": "sources/utility_faces.png",
+    "cell": 0,
+    "sourceRect": [
+      100,
+      88,
+      433,
+      472
+    ],
+    "sourceDimensions": [
+      1254,
+      1254
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "opaque",
+    "repeatAxes": [],
+    "category": "station",
+    "derivedFrom": "door",
+    "name": "door_segment_1",
+    "segment": 1,
+    "file": "tiles/door_segment_1.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "a2aedb6edcd586d66942030d0d961c473fcb7f6ba1a280fa9ef3a5762dbc12a9"
+  },
+  {
+    "source": "sources/utility_faces.png",
+    "cell": 0,
+    "sourceRect": [
+      100,
+      88,
+      433,
+      472
+    ],
+    "sourceDimensions": [
+      1254,
+      1254
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "opaque",
+    "repeatAxes": [],
+    "category": "station",
+    "derivedFrom": "door",
+    "name": "door_segment_2",
+    "segment": 2,
+    "file": "tiles/door_segment_2.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "79067a488292317694eed2ec474ee5c812639a2e44f2663d9b1a8d406038a17d"
+  },
+  {
+    "source": "sources/utility_faces.png",
+    "cell": 0,
+    "sourceRect": [
+      100,
+      88,
+      433,
+      472
+    ],
+    "sourceDimensions": [
+      1254,
+      1254
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "opaque",
+    "repeatAxes": [],
+    "category": "station",
+    "derivedFrom": "door",
+    "name": "door_segment_3",
+    "segment": 3,
+    "file": "tiles/door_segment_3.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "bbfa2845dd14a11ef9cb674b7855bb96e1f4d2c13096475db3caf91f9e5600ec"
+  },
+  {
+    "source": "sources/water.png",
+    "cell": 0,
+    "sourceRect": [
+      0,
+      0,
+      1254,
+      1254
+    ],
+    "sourceDimensions": [
+      1254,
+      1254
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "opaque",
+    "repeatAxes": [
+      "x",
+      "y"
+    ],
+    "category": "fluid-animation",
+    "derivedFrom": "water",
+    "name": "water_0",
+    "frame": 0,
+    "file": "tiles/water_0.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "45bfec334a36c3ca2d85e054b2fa749a5f3e9df08cc8dff889f899972794058e"
+  },
+  {
+    "source": "sources/water.png",
+    "cell": 0,
+    "sourceRect": [
+      0,
+      0,
+      1254,
+      1254
+    ],
+    "sourceDimensions": [
+      1254,
+      1254
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "opaque",
+    "repeatAxes": [
+      "x",
+      "y"
+    ],
+    "category": "fluid-animation",
+    "derivedFrom": "water",
+    "name": "water_1",
+    "frame": 1,
+    "file": "tiles/water_1.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "3bd390417c5b0c2d3afa429f148e3a88a7e37e0c279e41aac11a53c746c58126"
+  },
+  {
+    "source": "sources/water.png",
+    "cell": 0,
+    "sourceRect": [
+      0,
+      0,
+      1254,
+      1254
+    ],
+    "sourceDimensions": [
+      1254,
+      1254
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "opaque",
+    "repeatAxes": [
+      "x",
+      "y"
+    ],
+    "category": "fluid-animation",
+    "derivedFrom": "water",
+    "name": "water_2",
+    "frame": 2,
+    "file": "tiles/water_2.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "ced044368bd250b7af41debfd1eea9f0b96b997f4c2eb045c4d19eda043f57e8"
+  },
+  {
+    "source": "sources/water.png",
+    "cell": 0,
+    "sourceRect": [
+      0,
+      0,
+      1254,
+      1254
+    ],
+    "sourceDimensions": [
+      1254,
+      1254
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "opaque",
+    "repeatAxes": [
+      "x",
+      "y"
+    ],
+    "category": "fluid-animation",
+    "derivedFrom": "water",
+    "name": "water_3",
+    "frame": 3,
+    "file": "tiles/water_3.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "178af4049b6a757c1e4c4ea8fa6952bd077dc11fc993654751f2707f3341e5e8"
+  },
+  {
+    "source": "sources/water.png",
+    "cell": 0,
+    "sourceRect": [
+      0,
+      0,
+      1254,
+      1254
+    ],
+    "sourceDimensions": [
+      1254,
+      1254
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "opaque",
+    "repeatAxes": [
+      "x",
+      "y"
+    ],
+    "category": "fluid-animation",
+    "derivedFrom": "water",
+    "name": "water_4",
+    "frame": 4,
+    "file": "tiles/water_4.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "15c7da5fb23c5bf81f36f7aa9ebc515fcee91b3fe61f6cb2dcef393e655a1625"
+  },
+  {
+    "source": "sources/water.png",
+    "cell": 0,
+    "sourceRect": [
+      0,
+      0,
+      1254,
+      1254
+    ],
+    "sourceDimensions": [
+      1254,
+      1254
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "opaque",
+    "repeatAxes": [
+      "x",
+      "y"
+    ],
+    "category": "fluid-animation",
+    "derivedFrom": "water",
+    "name": "water_5",
+    "frame": 5,
+    "file": "tiles/water_5.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "178af4049b6a757c1e4c4ea8fa6952bd077dc11fc993654751f2707f3341e5e8"
+  },
+  {
+    "source": "sources/water.png",
+    "cell": 0,
+    "sourceRect": [
+      0,
+      0,
+      1254,
+      1254
+    ],
+    "sourceDimensions": [
+      1254,
+      1254
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "opaque",
+    "repeatAxes": [
+      "x",
+      "y"
+    ],
+    "category": "fluid-animation",
+    "derivedFrom": "water",
+    "name": "water_6",
+    "frame": 6,
+    "file": "tiles/water_6.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "ced044368bd250b7af41debfd1eea9f0b96b997f4c2eb045c4d19eda043f57e8"
+  },
+  {
+    "source": "sources/water.png",
+    "cell": 0,
+    "sourceRect": [
+      0,
+      0,
+      1254,
+      1254
+    ],
+    "sourceDimensions": [
+      1254,
+      1254
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "opaque",
+    "repeatAxes": [
+      "x",
+      "y"
+    ],
+    "category": "fluid-animation",
+    "derivedFrom": "water",
+    "name": "water_7",
+    "frame": 7,
+    "file": "tiles/water_7.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "3bd390417c5b0c2d3afa429f148e3a88a7e37e0c279e41aac11a53c746c58126"
+  },
+  {
+    "source": "sources/lava.png",
+    "cell": 0,
+    "sourceRect": [
+      0,
+      0,
+      1254,
+      1254
+    ],
+    "sourceDimensions": [
+      1254,
+      1254
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "opaque",
+    "repeatAxes": [
+      "x",
+      "y"
+    ],
+    "category": "fluid-animation",
+    "derivedFrom": "lava",
+    "name": "lava_0",
+    "frame": 0,
+    "file": "tiles/lava_0.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "402e3c28b079a2f3061be5c1a7551e510f787cba4eb34ab18df0949c05fa414c"
+  },
+  {
+    "source": "sources/lava.png",
+    "cell": 0,
+    "sourceRect": [
+      0,
+      0,
+      1254,
+      1254
+    ],
+    "sourceDimensions": [
+      1254,
+      1254
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "opaque",
+    "repeatAxes": [
+      "x",
+      "y"
+    ],
+    "category": "fluid-animation",
+    "derivedFrom": "lava",
+    "name": "lava_1",
+    "frame": 1,
+    "file": "tiles/lava_1.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "c7046b0a47676519f88a356674859fee82a8aec01072d8f95d39b5bbf68c9c9d"
+  },
+  {
+    "source": "sources/lava.png",
+    "cell": 0,
+    "sourceRect": [
+      0,
+      0,
+      1254,
+      1254
+    ],
+    "sourceDimensions": [
+      1254,
+      1254
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "opaque",
+    "repeatAxes": [
+      "x",
+      "y"
+    ],
+    "category": "fluid-animation",
+    "derivedFrom": "lava",
+    "name": "lava_2",
+    "frame": 2,
+    "file": "tiles/lava_2.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "c7046b0a47676519f88a356674859fee82a8aec01072d8f95d39b5bbf68c9c9d"
+  },
+  {
+    "source": "sources/lava.png",
+    "cell": 0,
+    "sourceRect": [
+      0,
+      0,
+      1254,
+      1254
+    ],
+    "sourceDimensions": [
+      1254,
+      1254
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "opaque",
+    "repeatAxes": [
+      "x",
+      "y"
+    ],
+    "category": "fluid-animation",
+    "derivedFrom": "lava",
+    "name": "lava_3",
+    "frame": 3,
+    "file": "tiles/lava_3.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "cf7e99483bde479e83a78a5215d7448adc6ee20771ce15dc551126071fa8b8ac"
+  },
+  {
+    "source": "sources/lava.png",
+    "cell": 0,
+    "sourceRect": [
+      0,
+      0,
+      1254,
+      1254
+    ],
+    "sourceDimensions": [
+      1254,
+      1254
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "opaque",
+    "repeatAxes": [
+      "x",
+      "y"
+    ],
+    "category": "fluid-animation",
+    "derivedFrom": "lava",
+    "name": "lava_4",
+    "frame": 4,
+    "file": "tiles/lava_4.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "cf7e99483bde479e83a78a5215d7448adc6ee20771ce15dc551126071fa8b8ac"
+  },
+  {
+    "source": "sources/lava.png",
+    "cell": 0,
+    "sourceRect": [
+      0,
+      0,
+      1254,
+      1254
+    ],
+    "sourceDimensions": [
+      1254,
+      1254
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "opaque",
+    "repeatAxes": [
+      "x",
+      "y"
+    ],
+    "category": "fluid-animation",
+    "derivedFrom": "lava",
+    "name": "lava_5",
+    "frame": 5,
+    "file": "tiles/lava_5.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "cf7e99483bde479e83a78a5215d7448adc6ee20771ce15dc551126071fa8b8ac"
+  },
+  {
+    "source": "sources/lava.png",
+    "cell": 0,
+    "sourceRect": [
+      0,
+      0,
+      1254,
+      1254
+    ],
+    "sourceDimensions": [
+      1254,
+      1254
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "opaque",
+    "repeatAxes": [
+      "x",
+      "y"
+    ],
+    "category": "fluid-animation",
+    "derivedFrom": "lava",
+    "name": "lava_6",
+    "frame": 6,
+    "file": "tiles/lava_6.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "c7046b0a47676519f88a356674859fee82a8aec01072d8f95d39b5bbf68c9c9d"
+  },
+  {
+    "source": "sources/lava.png",
+    "cell": 0,
+    "sourceRect": [
+      0,
+      0,
+      1254,
+      1254
+    ],
+    "sourceDimensions": [
+      1254,
+      1254
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "opaque",
+    "repeatAxes": [
+      "x",
+      "y"
+    ],
+    "category": "fluid-animation",
+    "derivedFrom": "lava",
+    "name": "lava_7",
+    "frame": 7,
+    "file": "tiles/lava_7.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "c7046b0a47676519f88a356674859fee82a8aec01072d8f95d39b5bbf68c9c9d"
+  },
+  {
+    "source": "sources/furnace_faces.png",
+    "cell": 2,
+    "sourceRect": [
+      82,
+      685,
+      480,
+      479
+    ],
+    "sourceDimensions": [
+      1269,
+      1240
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "opaque",
+    "repeatAxes": [],
+    "category": "machine-animation",
+    "derivedFrom": "furnace_front",
+    "name": "furnace_front_lit_0",
+    "animation": "furnace_front_lit",
+    "frame": 0,
+    "opening": [
+      8,
+      19,
+      16,
+      9
+    ],
+    "file": "tiles/furnace_front_lit_0.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "ead4f724a9833d5a3e64ab9d0035324397bf99aa35c93b283b88d35073878cb1"
+  },
+  {
+    "source": "sources/furnace_faces.png",
+    "cell": 2,
+    "sourceRect": [
+      82,
+      685,
+      480,
+      479
+    ],
+    "sourceDimensions": [
+      1269,
+      1240
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "opaque",
+    "repeatAxes": [],
+    "category": "machine-animation",
+    "derivedFrom": "furnace_front",
+    "name": "furnace_front_lit_1",
+    "animation": "furnace_front_lit",
+    "frame": 1,
+    "opening": [
+      8,
+      19,
+      16,
+      9
+    ],
+    "file": "tiles/furnace_front_lit_1.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "3a59d975d764456126e6f4dbabd8bd6a099e45290d745c88fa692dc006245b4d"
+  },
+  {
+    "source": "sources/furnace_faces.png",
+    "cell": 2,
+    "sourceRect": [
+      82,
+      685,
+      480,
+      479
+    ],
+    "sourceDimensions": [
+      1269,
+      1240
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "opaque",
+    "repeatAxes": [],
+    "category": "machine-animation",
+    "derivedFrom": "furnace_front",
+    "name": "furnace_front_lit_2",
+    "animation": "furnace_front_lit",
+    "frame": 2,
+    "opening": [
+      8,
+      19,
+      16,
+      9
+    ],
+    "file": "tiles/furnace_front_lit_2.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "dea865a6434d1f2ccdf51e260998a8a148648297cf2a166271dc7682b88e4faa"
+  },
+  {
+    "source": "sources/furnace_faces.png",
+    "cell": 2,
+    "sourceRect": [
+      82,
+      685,
+      480,
+      479
+    ],
+    "sourceDimensions": [
+      1269,
+      1240
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "opaque",
+    "repeatAxes": [],
+    "category": "machine-animation",
+    "derivedFrom": "furnace_front",
+    "name": "furnace_front_lit_3",
+    "animation": "furnace_front_lit",
+    "frame": 3,
+    "opening": [
+      8,
+      19,
+      16,
+      9
+    ],
+    "file": "tiles/furnace_front_lit_3.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "156ad863010962b2cbc5edb4787620077c07c1ca81bd6df98904fd98efa16a3f"
+  },
+  {
+    "source": "sources/furnace_faces.png",
+    "cell": 2,
+    "sourceRect": [
+      82,
+      685,
+      480,
+      479
+    ],
+    "sourceDimensions": [
+      1269,
+      1240
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "opaque",
+    "repeatAxes": [],
+    "category": "machine-animation",
+    "derivedFrom": "furnace_front",
+    "name": "furnace_front_lit_4",
+    "animation": "furnace_front_lit",
+    "frame": 4,
+    "opening": [
+      8,
+      19,
+      16,
+      9
+    ],
+    "file": "tiles/furnace_front_lit_4.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "e71c038ae8703f3b53b36fdbf3bed6550bbdb83c203da217ccff668aec952391"
+  },
+  {
+    "source": "sources/furnace_faces.png",
+    "cell": 2,
+    "sourceRect": [
+      82,
+      685,
+      480,
+      479
+    ],
+    "sourceDimensions": [
+      1269,
+      1240
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "opaque",
+    "repeatAxes": [],
+    "category": "machine-animation",
+    "derivedFrom": "furnace_front",
+    "name": "furnace_front_lit_5",
+    "animation": "furnace_front_lit",
+    "frame": 5,
+    "opening": [
+      8,
+      19,
+      16,
+      9
+    ],
+    "file": "tiles/furnace_front_lit_5.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "f3772eadd6717cc9da14b4698f143f2957d93605aed8dcbed0245f3a5777df08"
+  },
+  {
+    "source": "sources/furnace_faces.png",
+    "cell": 2,
+    "sourceRect": [
+      82,
+      685,
+      480,
+      479
+    ],
+    "sourceDimensions": [
+      1269,
+      1240
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "opaque",
+    "repeatAxes": [],
+    "category": "machine-animation",
+    "derivedFrom": "furnace_front",
+    "name": "furnace_front_lit_6",
+    "animation": "furnace_front_lit",
+    "frame": 6,
+    "opening": [
+      8,
+      19,
+      16,
+      9
+    ],
+    "file": "tiles/furnace_front_lit_6.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "f8dba97b997ed03613856ac8d453eee1bd8973cf6d10a235e4b69c4bd1c2415b"
+  },
+  {
+    "source": "sources/furnace_faces.png",
+    "cell": 2,
+    "sourceRect": [
+      82,
+      685,
+      480,
+      479
+    ],
+    "sourceDimensions": [
+      1269,
+      1240
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "opaque",
+    "repeatAxes": [],
+    "category": "machine-animation",
+    "derivedFrom": "furnace_front",
+    "name": "furnace_front_lit_7",
+    "animation": "furnace_front_lit",
+    "frame": 7,
+    "opening": [
+      8,
+      19,
+      16,
+      9
+    ],
+    "file": "tiles/furnace_front_lit_7.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "247a90311830d5c60e467d05231d8e51f46b57cc4fd969489c4c6a9c8980e09b"
+  },
+  {
+    "source": "sources/forge_faces.png",
+    "cell": 2,
+    "sourceRect": [
+      1556,
+      101,
+      514,
+      507
+    ],
+    "sourceDimensions": [
+      2172,
+      724
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "opaque",
+    "repeatAxes": [],
+    "category": "machine-animation",
+    "derivedFrom": "forge_front",
+    "name": "forge_front_0",
+    "animation": "forge_front",
+    "frame": 0,
+    "opening": [
+      9,
+      18,
+      14,
+      10
+    ],
+    "file": "tiles/forge_front_0.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "21ec35e9d278ee21cb5e0836a548c0cab6a46e6342ab78df0bfbf5096814288a"
+  },
+  {
+    "source": "sources/forge_faces.png",
+    "cell": 2,
+    "sourceRect": [
+      1556,
+      101,
+      514,
+      507
+    ],
+    "sourceDimensions": [
+      2172,
+      724
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "opaque",
+    "repeatAxes": [],
+    "category": "machine-animation",
+    "derivedFrom": "forge_front",
+    "name": "forge_front_1",
+    "animation": "forge_front",
+    "frame": 1,
+    "opening": [
+      9,
+      18,
+      14,
+      10
+    ],
+    "file": "tiles/forge_front_1.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "03e10f03941f57043b50a0e50705215506fd4c673dd9df3d9d07987df770d09c"
+  },
+  {
+    "source": "sources/forge_faces.png",
+    "cell": 2,
+    "sourceRect": [
+      1556,
+      101,
+      514,
+      507
+    ],
+    "sourceDimensions": [
+      2172,
+      724
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "opaque",
+    "repeatAxes": [],
+    "category": "machine-animation",
+    "derivedFrom": "forge_front",
+    "name": "forge_front_2",
+    "animation": "forge_front",
+    "frame": 2,
+    "opening": [
+      9,
+      18,
+      14,
+      10
+    ],
+    "file": "tiles/forge_front_2.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "7e1e1f59c377ae2b3f6ae93344c6a123c6521bad981d695f998c9bda24cd4d73"
+  },
+  {
+    "source": "sources/forge_faces.png",
+    "cell": 2,
+    "sourceRect": [
+      1556,
+      101,
+      514,
+      507
+    ],
+    "sourceDimensions": [
+      2172,
+      724
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "opaque",
+    "repeatAxes": [],
+    "category": "machine-animation",
+    "derivedFrom": "forge_front",
+    "name": "forge_front_3",
+    "animation": "forge_front",
+    "frame": 3,
+    "opening": [
+      9,
+      18,
+      14,
+      10
+    ],
+    "file": "tiles/forge_front_3.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "ca52f7bec536c3099ad7cb5a7cde361702d9ab01c2f2559681979176187eafc1"
+  },
+  {
+    "source": "sources/forge_faces.png",
+    "cell": 2,
+    "sourceRect": [
+      1556,
+      101,
+      514,
+      507
+    ],
+    "sourceDimensions": [
+      2172,
+      724
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "opaque",
+    "repeatAxes": [],
+    "category": "machine-animation",
+    "derivedFrom": "forge_front",
+    "name": "forge_front_4",
+    "animation": "forge_front",
+    "frame": 4,
+    "opening": [
+      9,
+      18,
+      14,
+      10
+    ],
+    "file": "tiles/forge_front_4.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "5add8364af73a63546a026b6e2996b367f09eaf498a5f8d4b3be3c2268117fe7"
+  },
+  {
+    "source": "sources/forge_faces.png",
+    "cell": 2,
+    "sourceRect": [
+      1556,
+      101,
+      514,
+      507
+    ],
+    "sourceDimensions": [
+      2172,
+      724
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "opaque",
+    "repeatAxes": [],
+    "category": "machine-animation",
+    "derivedFrom": "forge_front",
+    "name": "forge_front_5",
+    "animation": "forge_front",
+    "frame": 5,
+    "opening": [
+      9,
+      18,
+      14,
+      10
+    ],
+    "file": "tiles/forge_front_5.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "9b13b10e9041ec5e7ec889d9b6b0193654c4e59a856e741f8433e3c9279c5249"
+  },
+  {
+    "source": "sources/forge_faces.png",
+    "cell": 2,
+    "sourceRect": [
+      1556,
+      101,
+      514,
+      507
+    ],
+    "sourceDimensions": [
+      2172,
+      724
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "opaque",
+    "repeatAxes": [],
+    "category": "machine-animation",
+    "derivedFrom": "forge_front",
+    "name": "forge_front_6",
+    "animation": "forge_front",
+    "frame": 6,
+    "opening": [
+      9,
+      18,
+      14,
+      10
+    ],
+    "file": "tiles/forge_front_6.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "6e59f9201a5e63c2da4d55b9dd513c1f355a61501d40ff07f71a888795d4e79f"
+  },
+  {
+    "source": "sources/forge_faces.png",
+    "cell": 2,
+    "sourceRect": [
+      1556,
+      101,
+      514,
+      507
+    ],
+    "sourceDimensions": [
+      2172,
+      724
+    ],
+    "destination": [
+      0,
+      0,
+      32,
+      32
+    ],
+    "alpha": "opaque",
+    "repeatAxes": [],
+    "category": "machine-animation",
+    "derivedFrom": "forge_front",
+    "name": "forge_front_7",
+    "animation": "forge_front",
+    "frame": 7,
+    "opening": [
+      9,
+      18,
+      14,
+      10
+    ],
+    "file": "tiles/forge_front_7.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "2b7816d178350346c9fb4902d07c70e5e946755181850de70583ddf6100ceee0"
+  },
+  {
+    "source": "sources/utility_faces.png",
+    "cell": 2,
+    "sourceRect": [
+      232,
+      692,
+      173,
+      505
+    ],
+    "sourceDimensions": [
+      1254,
+      1254
+    ],
+    "destination": [
+      0,
+      12,
+      32,
+      20
+    ],
+    "alpha": "cutout",
+    "repeatAxes": [],
+    "category": "machine-animation",
+    "derivedFrom": "torch",
+    "name": "torch_0",
+    "animation": "torch",
+    "frame": 0,
+    "opening": [
+      12,
+      12,
+      8,
+      7
+    ],
+    "file": "tiles/torch_0.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "8eb0133200dab5c38e8140f7429ba4e10f66744e3bc17a36cc992a572e09e610"
+  },
+  {
+    "source": "sources/utility_faces.png",
+    "cell": 2,
+    "sourceRect": [
+      232,
+      692,
+      173,
+      505
+    ],
+    "sourceDimensions": [
+      1254,
+      1254
+    ],
+    "destination": [
+      0,
+      12,
+      32,
+      20
+    ],
+    "alpha": "cutout",
+    "repeatAxes": [],
+    "category": "machine-animation",
+    "derivedFrom": "torch",
+    "name": "torch_1",
+    "animation": "torch",
+    "frame": 1,
+    "opening": [
+      12,
+      12,
+      8,
+      7
+    ],
+    "file": "tiles/torch_1.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "0c69db17be6bba253bd289d1c42936a4a3f143abec9cd67b90c9a68a0fb815b3"
+  },
+  {
+    "source": "sources/utility_faces.png",
+    "cell": 2,
+    "sourceRect": [
+      232,
+      692,
+      173,
+      505
+    ],
+    "sourceDimensions": [
+      1254,
+      1254
+    ],
+    "destination": [
+      0,
+      12,
+      32,
+      20
+    ],
+    "alpha": "cutout",
+    "repeatAxes": [],
+    "category": "machine-animation",
+    "derivedFrom": "torch",
+    "name": "torch_2",
+    "animation": "torch",
+    "frame": 2,
+    "opening": [
+      12,
+      12,
+      8,
+      7
+    ],
+    "file": "tiles/torch_2.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "813f1436e6fb2519a3dbaed7302605f7b0d1de6107c26de04c445becca354876"
+  },
+  {
+    "source": "sources/utility_faces.png",
+    "cell": 2,
+    "sourceRect": [
+      232,
+      692,
+      173,
+      505
+    ],
+    "sourceDimensions": [
+      1254,
+      1254
+    ],
+    "destination": [
+      0,
+      12,
+      32,
+      20
+    ],
+    "alpha": "cutout",
+    "repeatAxes": [],
+    "category": "machine-animation",
+    "derivedFrom": "torch",
+    "name": "torch_3",
+    "animation": "torch",
+    "frame": 3,
+    "opening": [
+      12,
+      12,
+      8,
+      7
+    ],
+    "file": "tiles/torch_3.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "3ec21e5e2510c8ffc9a7d20545072dcaa0d89a7a9d9cac16af87e76f8c7dd678"
+  },
+  {
+    "source": "sources/utility_faces.png",
+    "cell": 2,
+    "sourceRect": [
+      232,
+      692,
+      173,
+      505
+    ],
+    "sourceDimensions": [
+      1254,
+      1254
+    ],
+    "destination": [
+      0,
+      12,
+      32,
+      20
+    ],
+    "alpha": "cutout",
+    "repeatAxes": [],
+    "category": "machine-animation",
+    "derivedFrom": "torch",
+    "name": "torch_4",
+    "animation": "torch",
+    "frame": 4,
+    "opening": [
+      12,
+      12,
+      8,
+      7
+    ],
+    "file": "tiles/torch_4.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "681b01ec305ec845cb4205b22778606da9052541f5a373af3be7938e57bbb1f7"
+  },
+  {
+    "source": "sources/utility_faces.png",
+    "cell": 2,
+    "sourceRect": [
+      232,
+      692,
+      173,
+      505
+    ],
+    "sourceDimensions": [
+      1254,
+      1254
+    ],
+    "destination": [
+      0,
+      12,
+      32,
+      20
+    ],
+    "alpha": "cutout",
+    "repeatAxes": [],
+    "category": "machine-animation",
+    "derivedFrom": "torch",
+    "name": "torch_5",
+    "animation": "torch",
+    "frame": 5,
+    "opening": [
+      12,
+      12,
+      8,
+      7
+    ],
+    "file": "tiles/torch_5.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "334e5cc37a43e1dd81c77eacdf708c794f2071e5450d407133e4a19d6a6ed070"
+  },
+  {
+    "source": "sources/utility_faces.png",
+    "cell": 2,
+    "sourceRect": [
+      232,
+      692,
+      173,
+      505
+    ],
+    "sourceDimensions": [
+      1254,
+      1254
+    ],
+    "destination": [
+      0,
+      12,
+      32,
+      20
+    ],
+    "alpha": "cutout",
+    "repeatAxes": [],
+    "category": "machine-animation",
+    "derivedFrom": "torch",
+    "name": "torch_6",
+    "animation": "torch",
+    "frame": 6,
+    "opening": [
+      12,
+      12,
+      8,
+      7
+    ],
+    "file": "tiles/torch_6.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "692238e1a5b20694faec5533cc0b58f8512ab9e87e8c83cda0400c87361a2926"
+  },
+  {
+    "source": "sources/utility_faces.png",
+    "cell": 2,
+    "sourceRect": [
+      232,
+      692,
+      173,
+      505
+    ],
+    "sourceDimensions": [
+      1254,
+      1254
+    ],
+    "destination": [
+      0,
+      12,
+      32,
+      20
+    ],
+    "alpha": "cutout",
+    "repeatAxes": [],
+    "category": "machine-animation",
+    "derivedFrom": "torch",
+    "name": "torch_7",
+    "animation": "torch",
+    "frame": 7,
+    "opening": [
+      12,
+      12,
+      8,
+      7
+    ],
+    "file": "tiles/torch_7.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "f964b46ff4920c7d255573e47517a8aa1d4d97a4ea7c033ac78afddb787ea5e0"
+  },
+  {
+    "source": "sources/utility_faces.png",
+    "cell": 3,
+    "sourceRect": [
+      806,
+      703,
+      272,
+      484
+    ],
+    "sourceDimensions": [
+      1254,
+      1254
+    ],
+    "destination": [
+      10,
+      16,
+      12,
+      16
+    ],
+    "alpha": "cutout",
+    "repeatAxes": [],
+    "category": "machine-animation",
+    "derivedFrom": "lantern",
+    "name": "lantern_0",
+    "animation": "lantern",
+    "frame": 0,
+    "opening": [
+      14,
+      22,
+      5,
+      6
+    ],
+    "file": "tiles/lantern_0.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "3067cdd9f14c2096461b9fa8851814d736ee9414442380adbac9d8a41cca2925"
+  },
+  {
+    "source": "sources/utility_faces.png",
+    "cell": 3,
+    "sourceRect": [
+      806,
+      703,
+      272,
+      484
+    ],
+    "sourceDimensions": [
+      1254,
+      1254
+    ],
+    "destination": [
+      10,
+      16,
+      12,
+      16
+    ],
+    "alpha": "cutout",
+    "repeatAxes": [],
+    "category": "machine-animation",
+    "derivedFrom": "lantern",
+    "name": "lantern_1",
+    "animation": "lantern",
+    "frame": 1,
+    "opening": [
+      14,
+      22,
+      5,
+      6
+    ],
+    "file": "tiles/lantern_1.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "8ab19fdedd5799b7dd56c85fa489185c4b9dbf4c376afe156d6f347df769b452"
+  },
+  {
+    "source": "sources/utility_faces.png",
+    "cell": 3,
+    "sourceRect": [
+      806,
+      703,
+      272,
+      484
+    ],
+    "sourceDimensions": [
+      1254,
+      1254
+    ],
+    "destination": [
+      10,
+      16,
+      12,
+      16
+    ],
+    "alpha": "cutout",
+    "repeatAxes": [],
+    "category": "machine-animation",
+    "derivedFrom": "lantern",
+    "name": "lantern_2",
+    "animation": "lantern",
+    "frame": 2,
+    "opening": [
+      14,
+      22,
+      5,
+      6
+    ],
+    "file": "tiles/lantern_2.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "4344ffd1f7597e5af20625e0db18644d5efb9e6be72f0144c2a8ec1a2afa4779"
+  },
+  {
+    "source": "sources/utility_faces.png",
+    "cell": 3,
+    "sourceRect": [
+      806,
+      703,
+      272,
+      484
+    ],
+    "sourceDimensions": [
+      1254,
+      1254
+    ],
+    "destination": [
+      10,
+      16,
+      12,
+      16
+    ],
+    "alpha": "cutout",
+    "repeatAxes": [],
+    "category": "machine-animation",
+    "derivedFrom": "lantern",
+    "name": "lantern_3",
+    "animation": "lantern",
+    "frame": 3,
+    "opening": [
+      14,
+      22,
+      5,
+      6
+    ],
+    "file": "tiles/lantern_3.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "be30be8f32e524b24f0185b9cd34a68f36c7a56eff539da40708da251875db4d"
+  },
+  {
+    "source": "sources/utility_faces.png",
+    "cell": 3,
+    "sourceRect": [
+      806,
+      703,
+      272,
+      484
+    ],
+    "sourceDimensions": [
+      1254,
+      1254
+    ],
+    "destination": [
+      10,
+      16,
+      12,
+      16
+    ],
+    "alpha": "cutout",
+    "repeatAxes": [],
+    "category": "machine-animation",
+    "derivedFrom": "lantern",
+    "name": "lantern_4",
+    "animation": "lantern",
+    "frame": 4,
+    "opening": [
+      14,
+      22,
+      5,
+      6
+    ],
+    "file": "tiles/lantern_4.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "67e73a2cba00371a737d2c04e8d03847e1279d1466aa64cad8687c3341176e5c"
+  },
+  {
+    "source": "sources/utility_faces.png",
+    "cell": 3,
+    "sourceRect": [
+      806,
+      703,
+      272,
+      484
+    ],
+    "sourceDimensions": [
+      1254,
+      1254
+    ],
+    "destination": [
+      10,
+      16,
+      12,
+      16
+    ],
+    "alpha": "cutout",
+    "repeatAxes": [],
+    "category": "machine-animation",
+    "derivedFrom": "lantern",
+    "name": "lantern_5",
+    "animation": "lantern",
+    "frame": 5,
+    "opening": [
+      14,
+      22,
+      5,
+      6
+    ],
+    "file": "tiles/lantern_5.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "fe8d2b8eaf3129ba58f2119ab70da6cc86aa4807117792a785286c3aa5a74820"
+  },
+  {
+    "source": "sources/utility_faces.png",
+    "cell": 3,
+    "sourceRect": [
+      806,
+      703,
+      272,
+      484
+    ],
+    "sourceDimensions": [
+      1254,
+      1254
+    ],
+    "destination": [
+      10,
+      16,
+      12,
+      16
+    ],
+    "alpha": "cutout",
+    "repeatAxes": [],
+    "category": "machine-animation",
+    "derivedFrom": "lantern",
+    "name": "lantern_6",
+    "animation": "lantern",
+    "frame": 6,
+    "opening": [
+      14,
+      22,
+      5,
+      6
+    ],
+    "file": "tiles/lantern_6.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "76effb51e5eec51b7aab8aceb241189b5c5c8c650f0c2744e31712b0f2af980b"
+  },
+  {
+    "source": "sources/utility_faces.png",
+    "cell": 3,
+    "sourceRect": [
+      806,
+      703,
+      272,
+      484
+    ],
+    "sourceDimensions": [
+      1254,
+      1254
+    ],
+    "destination": [
+      10,
+      16,
+      12,
+      16
+    ],
+    "alpha": "cutout",
+    "repeatAxes": [],
+    "category": "machine-animation",
+    "derivedFrom": "lantern",
+    "name": "lantern_7",
+    "animation": "lantern",
+    "frame": 7,
+    "opening": [
+      14,
+      22,
+      5,
+      6
+    ],
+    "file": "tiles/lantern_7.png",
+    "width": 32,
+    "height": 32,
+    "pixelSha256": "5573ebef451cbf1227cde5f7e3871344d182d7aa27eef86aa5fd04014e451ff7"
+  }
+]

@@ -215,7 +215,8 @@ const BASE: BlockSpec[] = [
   { key: 'dirt', name: 'Dirt', tiles: all('dirt'), hardness: 0.5, density: 1300, ...soil },
   // Tilled soil: crops grow on it, faster with water near.
   { key: 'farmland', name: 'Farmland', tiles: { top: 'farmland', side: 'dirt', bottom: 'dirt' }, hardness: 0.6, density: 1300, drops: 'dirt', mineWith: 'shovel' },
-  { key: 'grass', name: 'Grass', tiles: { top: 'grass_top', side: 'grass_side', bottom: 'dirt' }, hardness: 0.6, density: 1300, drops: 'dirt', ...soil },
+  // The owner's grass block is vegetation on all six faces, including its underside.
+  { key: 'grass', name: 'Grass', tiles: { top: 'grass_top', side: 'grass_side', bottom: 'grass_top' }, hardness: 0.6, density: 1300, drops: 'dirt', ...soil },
   { key: 'sand', name: 'Sand', tiles: all('sand'), hardness: 0.5, falls: true, density: 1600, smeltsTo: 'glass', ...soil },
   { key: 'gravel', name: 'Gravel', tiles: all('gravel'), hardness: 0.6, falls: true, density: 1900, ...soil },
   { key: 'clay', name: 'Clay', tiles: all('clay'), hardness: 0.6, density: 1700, smeltsTo: 'brick', ...soil },
@@ -312,6 +313,7 @@ function gameplay(): BlockSpec[] {
       boxes: (v) => [PANEL[v < 4 ? v : TURN[v - 4]!]!], fuel: 10 },
     // A bed covers two cells: variant facing + 4 for the head end.
     { key: 'bed', name: 'Bed', tiles: { top: 'bed_top', side: 'bed_side', bottom: 'planks' }, shape: 'boxes', variants: 8,
+      variantFaces:Array.from({length:8},(_,v)=>({top:v<4?'bed_top':'bed_head_'+(v-4),side:'bed_side',bottom:'planks'})),
       boxes: () => [[0, 0, 0, 16, 9, 16]], hardness: 0.5, density: 300 },
     ...STAIR_MATERIALS.map((m): BlockSpec => ({
       key: `${m}_stairs`, name: `${m[0]!.toUpperCase()}${m.slice(1)} stairs`, tiles: all(m), shape: 'boxes', variants: 4,

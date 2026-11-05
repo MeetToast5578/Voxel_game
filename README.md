@@ -17,7 +17,9 @@ world is made of 16×16×16 chunks (9.6 m) with no height limit.
   torches, doors, beds, stairs, slabs and chests; dropped items; 20 creature/NPC types, including three biome monsters and Traveling Traders.
 - **Saves:** automatic, in the browser (IndexedDB). Worlds can be exported and imported as files from the pause menu.
 
-The Woodland & Ember texture pack supplies authored 32×32 pixel art for materials, plants and items. Creature
+The Woodland & Ember [world and equipment rework](assets/woodland-ember/rework/README.md) supplies separated 32×32
+textures for terrain, ores, tree species, plants, furniture and inventory items, with active station/fluid loops.
+Grass covers all six block faces. Cube, slab, stair and assembled-door bindings are checked on the actual models. Creature
 skins use the authored [mob refinement pack](assets/woodland-ember/refinement/README.md); sounds are generated in code. All artwork is bundled for offline play. See
 [`assets/woodland-ember/README.md`](assets/woodland-ember/README.md) for sources and rebuilding. The [expansion library](assets/woodland-ember/expansion/README.md) adds creature skins,
 material variations, animated fluid textures and prepared artwork for trees, effects, UI and future content.
@@ -56,7 +58,7 @@ A production build (`npm run build`, then `npm run preview`) can be installed fr
 | B / G | Creative: mark corners and fill / clear a box with the held block |
 | C / V | Creative: mark two corners to copy a box / paste it against the face you aim at |
 | Ctrl+Z / Ctrl+Y | Creative: undo / redo |
-| F3 | Debug text and frame-time graph |
+| F3 | Toggle debug text and frame-time graph (hidden by default) |
 | Esc | Pause menu: difficulty, settings (keys, volume, invert Y, menu size), worlds, export and import |
 
 Every key above except the hotbar numbers, Ctrl+Z/Y and Esc can be changed in the settings.

@@ -461,7 +461,7 @@ function App({ m }: { m: UiModel }) {
   if (m.loading !== null) return <div class="menu loading"><h1>Loading</h1><p>{m.loading}</p></div>;
   return (
     <>
-      <Hud play={m.play} hideKey={m.settings.keys.hint} />
+      {!m.paused && m.play.screen === 'none' && !m.dead && !m.ending && <Hud play={m.play} hideKey={m.settings.keys.hint} />}
       {m.play.workshop ? <WorkshopScreen key={m.play.workshop.key} play={m.play}/> : m.play.screen !== 'none' && <InventoryScreen play={m.play} />}
       {m.dead ? <Death m={m} /> : m.ending ? <Ending m={m} /> : m.paused && m.play.screen === 'none' && <Menu m={m} />}
     </>
