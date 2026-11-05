@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import art from './effectArt.json';
 import { decodeArtTile, type PackedArtTile } from './artCodec';
+import { WORLD_FOG_FRAGMENT, worldFogUniforms, type WorldFogUniforms } from './worldFog';
 export const EFFECT_KINDS=['fire','smoke','sparks','splash','lightning','impact'] as const;
 export type EffectKind=typeof EFFECT_KINDS[number];
 interface Effect {kind:EffectKind;x:number;y:number;z:number;age:number;life:number;size:number}
@@ -11,7 +12,7 @@ export class WorldEffects {
   private readonly geometry:THREE.InstancedBufferGeometry;
   private readonly center=new THREE.InstancedBufferAttribute(new Float32Array(CAP*3),3);
   private readonly info=new THREE.InstancedBufferAttribute(new Float32Array(CAP*4),4);
-  constructor(scene:THREE.Scene){
+  constructor(scene:THREE.Scene,fog?:WorldFogUniforms){
     const source:Record<string,PackedArtTile>=art,data=new Uint8Array(32*32*4*48);
     EFFECT_KINDS.forEach((kind,k)=>{for(let f=0;f<8;f++){
       const p=decodeArtTile(source[`${kind}_${f}`]!);
@@ -24,14 +25,14 @@ export class WorldEffects {
     this.geometry.setAttribute('center',this.center);this.geometry.setAttribute('info',this.info);this.geometry.instanceCount=0;
     this.center.setUsage(THREE.DynamicDrawUsage);this.info.setUsage(THREE.DynamicDrawUsage);
     const material=new THREE.ShaderMaterial({glslVersion:THREE.GLSL3,transparent:true,depthWrite:false,side:THREE.DoubleSide,
-      uniforms:{sprites:{value:texture}},vertexShader:`
-      in vec3 center;in vec4 info;out vec2 vUv;flat out float vFrame;out float vAlpha;
+      uniforms:{sprites:{value:texture},...worldFogUniforms(fog)},vertexShader:`
+      in vec3 center;in vec4 info;out vec2 vUv;flat out float vFrame;out float vAlpha;out float vFogDepth;
       void main(){vec3 right=vec3(viewMatrix[0][0],viewMatrix[1][0],viewMatrix[2][0]);
       vec3 up=vec3(viewMatrix[0][1],viewMatrix[1][1],viewMatrix[2][1]);
       vec3 p=center+right*position.x*info.y+up*position.y*info.z;
-      vUv=uv;vFrame=info.x;vAlpha=info.w;gl_Position=projectionMatrix*viewMatrix*vec4(p,1.0);}`,
-      fragmentShader:`uniform highp sampler2DArray sprites;in vec2 vUv;flat in float vFrame;in float vAlpha;out vec4 outColor;
-      void main(){vec4 c=texture(sprites,vec3(vUv,vFrame));if(c.a<.1)discard;outColor=vec4(c.rgb,c.a*vAlpha);}`});
+      vUv=uv;vFrame=info.x;vAlpha=info.w;vFogDepth=length(p.xz-cameraPosition.xz);gl_Position=projectionMatrix*viewMatrix*vec4(p,1.0);}`,
+      fragmentShader:WORLD_FOG_FRAGMENT+`uniform highp sampler2DArray sprites;in vec2 vUv;flat in float vFrame;in float vAlpha;in float vFogDepth;out vec4 outColor;
+      void main(){vec4 c=texture(sprites,vec3(vUv,vFrame));if(c.a<.1)discard;outColor=vec4(applyWorldFog(c.rgb,vFogDepth),c.a*vAlpha);}`});
     const mesh=new THREE.Mesh(this.geometry,material);mesh.frustumCulled=false;mesh.renderOrder=4;scene.add(mesh);
   }
   burst(kind:EffectKind,x:number,y:number,z:number,size=1):void {

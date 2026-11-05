@@ -1,0 +1,1275 @@
+[
+  {
+    "id": "farmland",
+    "names": [
+      "farmland"
+    ],
+    "cols": 1,
+    "kind": "terrain",
+    "file": "sources/farmland.png",
+    "rows": 1
+  },
+  {
+    "id": "clay",
+    "names": [
+      "clay"
+    ],
+    "cols": 1,
+    "kind": "terrain",
+    "file": "sources/clay.png",
+    "rows": 1
+  },
+  {
+    "id": "snow",
+    "names": [
+      "snow"
+    ],
+    "cols": 1,
+    "kind": "terrain",
+    "file": "sources/snow.png",
+    "rows": 1
+  },
+  {
+    "id": "granite",
+    "names": [
+      "granite"
+    ],
+    "cols": 1,
+    "kind": "terrain",
+    "file": "sources/granite.png",
+    "rows": 1
+  },
+  {
+    "id": "diorite",
+    "names": [
+      "diorite"
+    ],
+    "cols": 1,
+    "kind": "terrain",
+    "file": "sources/diorite.png",
+    "rows": 1
+  },
+  {
+    "id": "andesite",
+    "names": [
+      "andesite"
+    ],
+    "cols": 1,
+    "kind": "terrain",
+    "file": "sources/andesite.png",
+    "rows": 1
+  },
+  {
+    "id": "sandstone",
+    "names": [
+      "sandstone"
+    ],
+    "cols": 1,
+    "kind": "terrain",
+    "file": "sources/sandstone.png",
+    "rows": 1
+  },
+  {
+    "id": "limestone",
+    "names": [
+      "limestone"
+    ],
+    "cols": 1,
+    "kind": "terrain",
+    "file": "sources/limestone.png",
+    "rows": 1
+  },
+  {
+    "id": "slate",
+    "names": [
+      "slate"
+    ],
+    "cols": 1,
+    "kind": "terrain",
+    "file": "sources/slate.png",
+    "rows": 1
+  },
+  {
+    "id": "basalt",
+    "names": [
+      "basalt"
+    ],
+    "cols": 1,
+    "kind": "terrain",
+    "file": "sources/basalt.png",
+    "rows": 1
+  },
+  {
+    "id": "deepslate",
+    "names": [
+      "deepslate"
+    ],
+    "cols": 1,
+    "kind": "terrain",
+    "file": "sources/deepslate.png",
+    "rows": 1
+  },
+  {
+    "id": "obsidian",
+    "names": [
+      "obsidian"
+    ],
+    "cols": 1,
+    "kind": "terrain",
+    "file": "sources/obsidian.png",
+    "rows": 1
+  },
+  {
+    "id": "bedrock",
+    "names": [
+      "bedrock"
+    ],
+    "cols": 1,
+    "kind": "terrain",
+    "file": "sources/bedrock.png",
+    "rows": 1
+  },
+  {
+    "id": "glowstone",
+    "names": [
+      "glowstone"
+    ],
+    "cols": 1,
+    "kind": "terrain",
+    "file": "sources/glowstone.png",
+    "rows": 1
+  },
+  {
+    "id": "coal_ore",
+    "names": [
+      "coal_ore"
+    ],
+    "cols": 1,
+    "kind": "terrain",
+    "file": "sources/coal_ore.png",
+    "rows": 1
+  },
+  {
+    "id": "iron_ore",
+    "names": [
+      "iron_ore"
+    ],
+    "cols": 1,
+    "kind": "terrain",
+    "file": "sources/iron_ore.png",
+    "rows": 1
+  },
+  {
+    "id": "gold_ore",
+    "names": [
+      "gold_ore"
+    ],
+    "cols": 1,
+    "kind": "terrain",
+    "file": "sources/gold_ore.png",
+    "rows": 1
+  },
+  {
+    "id": "diamond_ore",
+    "names": [
+      "diamond_ore"
+    ],
+    "cols": 1,
+    "kind": "terrain",
+    "file": "sources/diamond_ore.png",
+    "rows": 1
+  },
+  {
+    "id": "lapis_ore",
+    "names": [
+      "lapis_ore"
+    ],
+    "cols": 1,
+    "kind": "terrain",
+    "file": "sources/lapis_ore.png",
+    "rows": 1
+  },
+  {
+    "id": "ember_ore",
+    "names": [
+      "ember_ore"
+    ],
+    "cols": 1,
+    "kind": "terrain",
+    "file": "sources/ember_ore.png",
+    "rows": 1
+  },
+  {
+    "id": "redstone_ore",
+    "names": [
+      "redstone_ore"
+    ],
+    "cols": 1,
+    "kind": "terrain",
+    "file": "sources/redstone_ore.png",
+    "rows": 1
+  },
+  {
+    "id": "emerald_ore",
+    "names": [
+      "emerald_ore"
+    ],
+    "cols": 1,
+    "kind": "terrain",
+    "file": "sources/emerald_ore.png",
+    "rows": 1
+  },
+  {
+    "id": "tools_pickaxe",
+    "names": [
+      "wooden_pickaxe",
+      "stone_pickaxe",
+      "iron_pickaxe",
+      "diamond_pickaxe"
+    ],
+    "cols": 2,
+    "kind": "equipment",
+    "file": "sources/tools_pickaxe.png",
+    "rows": 2
+  },
+  {
+    "id": "tools_axe",
+    "names": [
+      "wooden_axe",
+      "stone_axe",
+      "iron_axe",
+      "diamond_axe"
+    ],
+    "cols": 2,
+    "kind": "equipment",
+    "file": "sources/tools_axe.png",
+    "rows": 2
+  },
+  {
+    "id": "tools_shovel",
+    "names": [
+      "wooden_shovel",
+      "stone_shovel",
+      "iron_shovel",
+      "diamond_shovel"
+    ],
+    "cols": 2,
+    "kind": "equipment",
+    "file": "sources/tools_shovel.png",
+    "rows": 2
+  },
+  {
+    "id": "tools_sword",
+    "names": [
+      "wooden_sword",
+      "stone_sword",
+      "iron_sword",
+      "diamond_sword"
+    ],
+    "cols": 2,
+    "kind": "equipment",
+    "file": "sources/tools_sword.png",
+    "rows": 2
+  },
+  {
+    "id": "tools_hoe",
+    "names": [
+      "wooden_hoe",
+      "stone_hoe",
+      "iron_hoe",
+      "diamond_hoe"
+    ],
+    "cols": 2,
+    "kind": "equipment",
+    "file": "sources/tools_hoe.png",
+    "rows": 2
+  },
+  {
+    "id": "armour_leather",
+    "names": [
+      "leather_helmet",
+      "leather_chestplate",
+      "leather_leggings",
+      "leather_boots"
+    ],
+    "cols": 2,
+    "kind": "equipment",
+    "file": "sources/armour_leather.png",
+    "rows": 2
+  },
+  {
+    "id": "armour_iron",
+    "names": [
+      "iron_helmet",
+      "iron_chestplate",
+      "iron_leggings",
+      "iron_boots"
+    ],
+    "cols": 2,
+    "kind": "equipment",
+    "file": "sources/armour_iron.png",
+    "rows": 2
+  },
+  {
+    "id": "armour_diamond",
+    "names": [
+      "diamond_helmet",
+      "diamond_chestplate",
+      "diamond_leggings",
+      "diamond_boots"
+    ],
+    "cols": 2,
+    "kind": "equipment",
+    "file": "sources/armour_diamond.png",
+    "rows": 2
+  },
+  {
+    "id": "chest_faces",
+    "names": [
+      "chest_top",
+      "chest_side",
+      "chest_front"
+    ],
+    "cols": 3,
+    "kind": "station",
+    "file": "sources/chest_faces.png",
+    "rows": 1
+  },
+  {
+    "id": "ancient_chest_faces",
+    "names": [
+      "ancient_chest_top",
+      "ancient_chest_side",
+      "ancient_chest_front"
+    ],
+    "cols": 3,
+    "kind": "station",
+    "file": "sources/ancient_chest_faces.png",
+    "rows": 1
+  },
+  {
+    "id": "crafting_faces",
+    "names": [
+      "crafting_table_top",
+      "crafting_table_side"
+    ],
+    "cols": 2,
+    "kind": "station",
+    "file": "sources/crafting_faces.png",
+    "rows": 1
+  },
+  {
+    "id": "furnace_faces",
+    "names": [
+      "furnace_top",
+      "furnace_side",
+      "furnace_front",
+      "furnace_front_lit"
+    ],
+    "cols": 2,
+    "kind": "station",
+    "file": "sources/furnace_faces.png",
+    "rows": 2
+  },
+  {
+    "id": "post_faces",
+    "names": [
+      "post_top",
+      "post_side",
+      "post_front"
+    ],
+    "cols": 3,
+    "kind": "station",
+    "file": "sources/post_faces.png",
+    "rows": 1
+  },
+  {
+    "id": "forge_faces",
+    "names": [
+      "forge_top",
+      "forge_side",
+      "forge_front"
+    ],
+    "cols": 3,
+    "kind": "station",
+    "file": "sources/forge_faces.png",
+    "rows": 1
+  },
+  {
+    "id": "bed_faces",
+    "names": [
+      "bed_top",
+      "bed_side"
+    ],
+    "cols": 2,
+    "kind": "station",
+    "file": "sources/bed_faces.png",
+    "rows": 1,
+    "skip": [
+      0
+    ]
+  },
+  {
+    "id": "campfire_faces",
+    "names": [
+      "campfire_top",
+      "campfire_side"
+    ],
+    "cols": 2,
+    "kind": "station",
+    "file": "sources/campfire_faces.png",
+    "rows": 1
+  },
+  {
+    "id": "tree_oak",
+    "names": [
+      "oak_bark",
+      "oak_end",
+      "oak_leaves",
+      "oak_planks"
+    ],
+    "cols": 2,
+    "kind": "tree",
+    "file": "sources/tree_oak.png",
+    "rows": 2,
+    "skip": [
+      2,
+      3
+    ]
+  },
+  {
+    "id": "tree_maple",
+    "names": [
+      "maple_bark",
+      "maple_end",
+      "maple_leaves",
+      "maple_planks"
+    ],
+    "cols": 2,
+    "kind": "tree",
+    "file": "sources/tree_maple.png",
+    "rows": 2,
+    "skip": [
+      2,
+      3
+    ]
+  },
+  {
+    "id": "tree_spruce",
+    "names": [
+      "spruce_bark",
+      "spruce_end",
+      "spruce_leaves",
+      "spruce_planks"
+    ],
+    "cols": 2,
+    "kind": "tree",
+    "file": "sources/tree_spruce.png",
+    "rows": 2,
+    "skip": [
+      2,
+      3
+    ]
+  },
+  {
+    "id": "tree_fir",
+    "names": [
+      "fir_bark",
+      "fir_end",
+      "fir_leaves",
+      "fir_planks"
+    ],
+    "cols": 2,
+    "kind": "tree",
+    "file": "sources/tree_fir.png",
+    "rows": 2,
+    "skip": [
+      2,
+      3
+    ]
+  },
+  {
+    "id": "tree_larch",
+    "names": [
+      "larch_bark",
+      "larch_end",
+      "larch_leaves",
+      "larch_planks"
+    ],
+    "cols": 2,
+    "kind": "tree",
+    "file": "sources/tree_larch.png",
+    "rows": 2,
+    "skip": [
+      2,
+      3
+    ]
+  },
+  {
+    "id": "tree_birch",
+    "names": [
+      "birch_bark",
+      "birch_end",
+      "birch_leaves",
+      "birch_planks"
+    ],
+    "cols": 2,
+    "kind": "tree",
+    "file": "sources/tree_birch.png",
+    "rows": 2,
+    "skip": [
+      2,
+      3
+    ]
+  },
+  {
+    "id": "tree_pine",
+    "names": [
+      "pine_bark",
+      "pine_end",
+      "pine_leaves",
+      "pine_planks"
+    ],
+    "cols": 2,
+    "kind": "tree",
+    "file": "sources/tree_pine.png",
+    "rows": 2,
+    "skip": [
+      2,
+      3
+    ]
+  },
+  {
+    "id": "tree_jungle_giant",
+    "names": [
+      "jungle_giant_bark",
+      "jungle_giant_end",
+      "jungle_giant_leaves",
+      "jungle_giant_planks"
+    ],
+    "cols": 2,
+    "kind": "tree",
+    "file": "sources/tree_jungle_giant.png",
+    "rows": 2,
+    "skip": [
+      2,
+      3
+    ]
+  },
+  {
+    "id": "tree_palm",
+    "names": [
+      "palm_bark",
+      "palm_end",
+      "palm_leaves",
+      "palm_planks"
+    ],
+    "cols": 2,
+    "kind": "tree",
+    "file": "sources/tree_palm.png",
+    "rows": 2,
+    "skip": [
+      2,
+      3
+    ]
+  },
+  {
+    "id": "tree_baobab",
+    "names": [
+      "baobab_bark",
+      "baobab_end",
+      "baobab_leaves",
+      "baobab_planks"
+    ],
+    "cols": 2,
+    "kind": "tree",
+    "file": "sources/tree_baobab.png",
+    "rows": 2,
+    "skip": [
+      2,
+      3
+    ]
+  },
+  {
+    "id": "tree_acacia",
+    "names": [
+      "acacia_bark",
+      "acacia_end",
+      "acacia_leaves",
+      "acacia_planks"
+    ],
+    "cols": 2,
+    "kind": "tree",
+    "file": "sources/tree_acacia.png",
+    "rows": 2,
+    "skip": [
+      2,
+      3
+    ]
+  },
+  {
+    "id": "tree_willow",
+    "names": [
+      "willow_bark",
+      "willow_end",
+      "willow_leaves",
+      "willow_planks"
+    ],
+    "cols": 2,
+    "kind": "tree",
+    "file": "sources/tree_willow.png",
+    "rows": 2,
+    "skip": [
+      2,
+      3
+    ]
+  },
+  {
+    "id": "tree_mangrove",
+    "names": [
+      "mangrove_bark",
+      "mangrove_end",
+      "mangrove_leaves",
+      "mangrove_planks"
+    ],
+    "cols": 2,
+    "kind": "tree",
+    "file": "sources/tree_mangrove.png",
+    "rows": 2,
+    "skip": [
+      2,
+      3
+    ]
+  },
+  {
+    "id": "tree_bush",
+    "names": [
+      "bush_bark",
+      "bush_end",
+      "bush_leaves",
+      "bush_planks"
+    ],
+    "cols": 2,
+    "kind": "tree",
+    "file": "sources/tree_bush.png",
+    "rows": 2,
+    "skip": [
+      2,
+      3
+    ]
+  },
+  {
+    "id": "utility_faces",
+    "names": [
+      "door",
+      "ladder",
+      "torch",
+      "lantern"
+    ],
+    "cols": 2,
+    "kind": "station",
+    "file": "sources/utility_faces.png",
+    "rows": 2
+  },
+  {
+    "id": "beacon_faces",
+    "names": [
+      "beacon_top",
+      "beacon_side"
+    ],
+    "cols": 2,
+    "kind": "station",
+    "file": "sources/beacon_faces.png",
+    "rows": 1
+  },
+  {
+    "id": "dead_cactus",
+    "names": [
+      "dead_snag_bark",
+      "dead_snag_end",
+      "saguaro_side",
+      "saguaro_top"
+    ],
+    "cols": 2,
+    "kind": "station",
+    "file": "sources/dead_cactus.png",
+    "rows": 2
+  },
+  {
+    "id": "ice_glass",
+    "names": [
+      "ice",
+      "glass"
+    ],
+    "cols": 2,
+    "kind": "station",
+    "file": "sources/ice_glass.png",
+    "rows": 1
+  },
+  {
+    "id": "station_flames",
+    "names": [
+      "station_flame_0",
+      "station_flame_1",
+      "station_flame_2",
+      "station_flame_3",
+      "station_flame_4",
+      "station_flame_5",
+      "station_flame_6",
+      "station_flame_7"
+    ],
+    "cols": 4,
+    "kind": "animation",
+    "file": "sources/station_flames.png",
+    "rows": 2
+  },
+  {
+    "id": "resources_metals",
+    "names": [
+      "stick",
+      "coal",
+      "iron_ingot",
+      "gold_ingot"
+    ],
+    "cols": 2,
+    "kind": "equipment",
+    "file": "sources/resources_metals.png",
+    "rows": 2
+  },
+  {
+    "id": "resources_crystals",
+    "names": [
+      "diamond",
+      "lapis",
+      "ember_crystal",
+      "beacon_shard"
+    ],
+    "cols": 2,
+    "kind": "equipment",
+    "file": "sources/resources_crystals.png",
+    "rows": 2
+  },
+  {
+    "id": "resources_fibres",
+    "names": [
+      "leather",
+      "feather",
+      "wool",
+      "string"
+    ],
+    "cols": 2,
+    "kind": "equipment",
+    "file": "sources/resources_fibres.png",
+    "rows": 2
+  },
+  {
+    "id": "food_proteins",
+    "names": [
+      "raw_fish",
+      "cooked_fish",
+      "raw_meat",
+      "cooked_meat"
+    ],
+    "cols": 2,
+    "kind": "equipment",
+    "file": "sources/food_proteins.png",
+    "rows": 2
+  },
+  {
+    "id": "food_crops",
+    "names": [
+      "baked_potato",
+      "harvested_wheat",
+      "harvested_carrot",
+      "harvested_potato"
+    ],
+    "cols": 2,
+    "kind": "equipment",
+    "file": "sources/food_crops.png",
+    "rows": 2
+  },
+  {
+    "id": "containers",
+    "names": [
+      "bucket",
+      "water_bucket",
+      "lava_bucket",
+      "boat"
+    ],
+    "cols": 2,
+    "kind": "equipment",
+    "file": "sources/containers.png",
+    "rows": 2
+  },
+  {
+    "id": "ranged_goods",
+    "names": [
+      "bow",
+      "arrow",
+      "fishing_rod",
+      "trade_coin"
+    ],
+    "cols": 2,
+    "kind": "equipment",
+    "file": "sources/ranged_goods.png",
+    "rows": 2
+  },
+  {
+    "id": "paper_bone",
+    "names": [
+      "bone",
+      "bone_meal",
+      "paper"
+    ],
+    "cols": 3,
+    "kind": "equipment",
+    "file": "sources/paper_bone.png",
+    "rows": 1
+  },
+  {
+    "id": "navigation",
+    "names": [
+      "compass",
+      "map"
+    ],
+    "cols": 2,
+    "kind": "equipment",
+    "file": "sources/navigation.png",
+    "rows": 1
+  },
+  {
+    "id": "ground_plants",
+    "names": [
+      "tall_grass",
+      "fern",
+      "moss",
+      "leaf_litter"
+    ],
+    "cols": 2,
+    "kind": "plant",
+    "file": "sources/ground_plants.png",
+    "rows": 2
+  },
+  {
+    "id": "flowers_fungi",
+    "names": [
+      "poppy",
+      "dandelion",
+      "brown_mushroom",
+      "red_mushroom"
+    ],
+    "cols": 2,
+    "kind": "plant",
+    "file": "sources/flowers_fungi.png",
+    "rows": 2
+  },
+  {
+    "id": "wet_plants",
+    "names": [
+      "reed",
+      "lily_pad"
+    ],
+    "cols": 2,
+    "kind": "plant",
+    "file": "sources/wet_plants.png",
+    "rows": 1
+  },
+  {
+    "id": "crop_wheat",
+    "names": [
+      "wheat_0",
+      "wheat_1",
+      "wheat_2",
+      "wheat_3"
+    ],
+    "cols": 2,
+    "kind": "crop",
+    "file": "sources/crop_wheat.png",
+    "rows": 2
+  },
+  {
+    "id": "crop_carrots",
+    "names": [
+      "carrots_0",
+      "carrots_1",
+      "carrots_2",
+      "carrots_3"
+    ],
+    "cols": 2,
+    "kind": "crop",
+    "file": "sources/crop_carrots.png",
+    "rows": 2
+  },
+  {
+    "id": "crop_potatoes",
+    "names": [
+      "potatoes_0",
+      "potatoes_1",
+      "potatoes_2",
+      "potatoes_3"
+    ],
+    "cols": 2,
+    "kind": "crop",
+    "file": "sources/crop_potatoes.png",
+    "rows": 2
+  },
+  {
+    "id": "saplings_north",
+    "names": [
+      "oak_sapling",
+      "birch_sapling",
+      "spruce_sapling",
+      "maple_sapling"
+    ],
+    "cols": 2,
+    "kind": "plant",
+    "file": "sources/saplings_north.png",
+    "rows": 2
+  },
+  {
+    "id": "saplings_south",
+    "names": [
+      "pine_sapling",
+      "acacia_sapling",
+      "jungle_giant_sapling",
+      "palm_sapling"
+    ],
+    "cols": 2,
+    "kind": "plant",
+    "file": "sources/saplings_south.png",
+    "rows": 2
+  },
+  {
+    "name": "decoration_faces",
+    "names": [
+      "sign",
+      "frame_empty",
+      "frame_backing"
+    ],
+    "cols": 3,
+    "kind": "station",
+    "id": "decoration_faces",
+    "file": "sources/decoration_faces.png",
+    "rows": 1
+  },
+  {
+    "id": "leaf_oak",
+    "names": [
+      "oak_leaves"
+    ],
+    "cols": 1,
+    "rows": 1,
+    "kind": "tree",
+    "file": "sources/leaf_oak.png"
+  },
+  {
+    "id": "leaf_maple",
+    "names": [
+      "maple_leaves"
+    ],
+    "cols": 1,
+    "rows": 1,
+    "kind": "tree",
+    "file": "sources/leaf_maple.png"
+  },
+  {
+    "id": "leaf_birch",
+    "names": [
+      "birch_leaves"
+    ],
+    "cols": 1,
+    "rows": 1,
+    "kind": "tree",
+    "file": "sources/leaf_birch.png"
+  },
+  {
+    "id": "leaf_mangrove",
+    "names": [
+      "mangrove_leaves"
+    ],
+    "cols": 1,
+    "rows": 1,
+    "kind": "tree",
+    "file": "sources/leaf_mangrove.png"
+  },
+  {
+    "id": "bed_head",
+    "names": [
+      "bed_head"
+    ],
+    "cols": 1,
+    "rows": 1,
+    "kind": "station",
+    "file": "sources/bed_head.png"
+  },
+  {
+    "id": "oak_planks",
+    "names": [
+      "oak_planks"
+    ],
+    "cols": 1,
+    "rows": 1,
+    "kind": "tree",
+    "file": "sources/oak_planks.png"
+  },
+  {
+    "id": "maple_planks",
+    "names": [
+      "maple_planks"
+    ],
+    "cols": 1,
+    "rows": 1,
+    "kind": "tree",
+    "file": "sources/maple_planks.png"
+  },
+  {
+    "id": "spruce_planks",
+    "names": [
+      "spruce_planks"
+    ],
+    "cols": 1,
+    "rows": 1,
+    "kind": "tree",
+    "file": "sources/spruce_planks.png"
+  },
+  {
+    "id": "fir_planks",
+    "names": [
+      "fir_planks"
+    ],
+    "cols": 1,
+    "rows": 1,
+    "kind": "tree",
+    "file": "sources/fir_planks.png"
+  },
+  {
+    "id": "larch_planks",
+    "names": [
+      "larch_planks"
+    ],
+    "cols": 1,
+    "rows": 1,
+    "kind": "tree",
+    "file": "sources/larch_planks.png"
+  },
+  {
+    "id": "birch_planks",
+    "names": [
+      "birch_planks"
+    ],
+    "cols": 1,
+    "rows": 1,
+    "kind": "tree",
+    "file": "sources/birch_planks.png"
+  },
+  {
+    "id": "pine_planks",
+    "names": [
+      "pine_planks"
+    ],
+    "cols": 1,
+    "rows": 1,
+    "kind": "tree",
+    "file": "sources/pine_planks.png"
+  },
+  {
+    "id": "jungle_giant_planks",
+    "names": [
+      "jungle_giant_planks"
+    ],
+    "cols": 1,
+    "rows": 1,
+    "kind": "tree",
+    "file": "sources/jungle_giant_planks.png"
+  },
+  {
+    "id": "palm_planks",
+    "names": [
+      "palm_planks"
+    ],
+    "cols": 1,
+    "rows": 1,
+    "kind": "tree",
+    "file": "sources/palm_planks.png"
+  },
+  {
+    "id": "baobab_planks",
+    "names": [
+      "baobab_planks"
+    ],
+    "cols": 1,
+    "rows": 1,
+    "kind": "tree",
+    "file": "sources/baobab_planks.png"
+  },
+  {
+    "id": "acacia_planks",
+    "names": [
+      "acacia_planks"
+    ],
+    "cols": 1,
+    "rows": 1,
+    "kind": "tree",
+    "file": "sources/acacia_planks.png"
+  },
+  {
+    "id": "willow_planks",
+    "names": [
+      "willow_planks"
+    ],
+    "cols": 1,
+    "rows": 1,
+    "kind": "tree",
+    "file": "sources/willow_planks.png"
+  },
+  {
+    "id": "mangrove_planks",
+    "names": [
+      "mangrove_planks"
+    ],
+    "cols": 1,
+    "rows": 1,
+    "kind": "tree",
+    "file": "sources/mangrove_planks.png"
+  },
+  {
+    "id": "bush_planks",
+    "names": [
+      "bush_planks"
+    ],
+    "cols": 1,
+    "rows": 1,
+    "kind": "tree",
+    "file": "sources/bush_planks.png"
+  },
+  {
+    "id": "water",
+    "names": [
+      "water"
+    ],
+    "cols": 1,
+    "rows": 1,
+    "kind": "fluid",
+    "file": "sources/water.png"
+  },
+  {
+    "id": "lava",
+    "names": [
+      "lava"
+    ],
+    "cols": 1,
+    "rows": 1,
+    "kind": "fluid",
+    "file": "sources/lava.png"
+  },
+  {
+    "id": "bed_top",
+    "names": [
+      "bed_top"
+    ],
+    "cols": 1,
+    "rows": 1,
+    "kind": "station",
+    "file": "sources/bed_top.png"
+  },
+  {
+    "id": "leaf_spruce",
+    "names": [
+      "spruce_leaves"
+    ],
+    "cols": 1,
+    "rows": 1,
+    "kind": "tree",
+    "file": "sources/leaf_spruce.png"
+  },
+  {
+    "id": "leaf_fir",
+    "names": [
+      "fir_leaves"
+    ],
+    "cols": 1,
+    "rows": 1,
+    "kind": "tree",
+    "file": "sources/leaf_fir.png"
+  },
+  {
+    "id": "leaf_larch",
+    "names": [
+      "larch_leaves"
+    ],
+    "cols": 1,
+    "rows": 1,
+    "kind": "tree",
+    "file": "sources/leaf_larch.png"
+  },
+  {
+    "id": "leaf_pine",
+    "names": [
+      "pine_leaves"
+    ],
+    "cols": 1,
+    "rows": 1,
+    "kind": "tree",
+    "file": "sources/leaf_pine.png"
+  },
+  {
+    "id": "leaf_jungle_giant",
+    "names": [
+      "jungle_giant_leaves"
+    ],
+    "cols": 1,
+    "rows": 1,
+    "kind": "tree",
+    "file": "sources/leaf_jungle_giant.png"
+  },
+  {
+    "id": "leaf_palm",
+    "names": [
+      "palm_leaves"
+    ],
+    "cols": 1,
+    "rows": 1,
+    "kind": "tree",
+    "file": "sources/leaf_palm.png"
+  },
+  {
+    "id": "leaf_baobab",
+    "names": [
+      "baobab_leaves"
+    ],
+    "cols": 1,
+    "rows": 1,
+    "kind": "tree",
+    "file": "sources/leaf_baobab.png"
+  },
+  {
+    "id": "leaf_acacia",
+    "names": [
+      "acacia_leaves"
+    ],
+    "cols": 1,
+    "rows": 1,
+    "kind": "tree",
+    "file": "sources/leaf_acacia.png"
+  },
+  {
+    "id": "leaf_willow",
+    "names": [
+      "willow_leaves"
+    ],
+    "cols": 1,
+    "rows": 1,
+    "kind": "tree",
+    "file": "sources/leaf_willow.png"
+  },
+  {
+    "id": "leaf_bush",
+    "names": [
+      "bush_leaves"
+    ],
+    "cols": 1,
+    "rows": 1,
+    "kind": "tree",
+    "file": "sources/leaf_bush.png"
+  }
+]

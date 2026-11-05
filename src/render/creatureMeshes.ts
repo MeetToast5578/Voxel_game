@@ -4,6 +4,7 @@ import { creaturePixels, SKIN_COLUMNS, SKIN_INDEX, SKIN_ROWS, SKIN_SIZE } from '
 import { MAX_MOB_PARTS, mobRig, poseMobPart } from './mobModels';
 import type { MobPart } from './mobModels';
 import type { Creature } from '../creatures/creatures';
+import { attachWorldFog, type WorldFogUniforms } from './worldFog';
 
 const CAPACITY = CREATURE_CAP * MAX_MOB_PARTS;
 const tmpM = new THREE.Matrix4(), tmpQ = new THREE.Quaternion(), localQ = new THREE.Quaternion();
@@ -18,7 +19,7 @@ export class CreatureMeshes {
   private readonly rigs = new Map<string, readonly MobPart[]>();
   private readonly sleepOffsets = new Map<string, number>();
 
-  constructor(scene: THREE.Scene) {
+  constructor(scene: THREE.Scene, fog?: WorldFogUniforms) {
     const atlas = new THREE.DataTexture(creaturePixels(), SKIN_SIZE * SKIN_COLUMNS, SKIN_SIZE * SKIN_ROWS);
     atlas.magFilter = atlas.minFilter = THREE.NearestFilter;
     atlas.needsUpdate = true;
@@ -34,6 +35,7 @@ export class CreatureMeshes {
       shader.fragmentShader = shader.fragmentShader.replace('#include <color_fragment>','#include <color_fragment>\ndiffuseColor.rgb *= mobShade;');
     };
     material.customProgramCacheKey = () => 'woodland-mob-rigs-v3';
+    attachWorldFog(material, fog);
     this.mesh = new THREE.InstancedMesh(geometry, material, CAPACITY);
     this.mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
     this.mesh.count = 0;

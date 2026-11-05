@@ -106,6 +106,8 @@ try {
     await page.evaluate(() => { document.querySelector('#ui').style.display = 'none'; });
     await page.screenshot({ path: 'screenshots/drops.png' });
     // The map and the compass show while held.
+    await page.locator('#game').click();
+    await page.waitForFunction(() => !!document.pointerLockElement);
     const tools = await page.evaluate(async () => {
       const n = window.__game, S = (k) => n.blocks.state(k), shown = (el) => el && getComputedStyle(el).display !== 'none';
       n.play.inventory.slots[0] = { state: S('map'), count: 1 };

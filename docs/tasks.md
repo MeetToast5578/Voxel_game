@@ -441,3 +441,55 @@ The owner named all four as bad:
 - [ ] **18.D4 Bosses:** summoned or found, with arenas and unique drops.
 - [ ] **18.D5 NPC towns:** villagers who move into suitable houses, sell goods and sleep at night.
 
+## 19. New and improved art — production backlog
+
+Owner requested a complete texture/image/animation audit on 2026-11-04. Full checklist, existing-versus-missing
+coverage, animation briefs, integration dependencies and all 164 visible registered types:
+[`texture-asset-audit.md`](texture-asset-audit.md). Production progress is recorded below separately from the audit.
+
+- [x] **19.1 Audit current coverage.** Registry/material/provider check, source/preview inspection and renderer/UI
+  review completed. Current array: 297 named tile layers with no missing providers; all twenty mobs have skins.
+- [x] **19.2 Core world art.** Improve terrain, coherent material alternatives, ores, foliage, crops and tree faces;
+  cover the complete existing material set and keep slabs/stairs aligned with their parent materials.
+  **Expanded in 0.6.6:** all base ground/rock/ore materials; fifteen wood bark/end sets, fourteen leaf/plank sets;
+  ground plants, twelve crop stages and eight saplings. All-face grass follows the owner's correction; the earlier
+  grass-over-soil interpretation was wrong. Separate exports, measured source bounds, active variation overrides,
+  actual-mesher inspection and coverage: `assets/woodland-ember/rework/README.md` and `coverage.json`.
+  **Done when:** the complete material set matches the art direction and passes coverage/seam and in-game checks.
+  **Depth refinement (0.6.7):** reviewed detail scale and surface shading, repainting 58 flatter materials with larger
+  forms and restrained shadows. Grass restores defined overhead/upright blades while keeping all faces green.
+  Existing successful icon/frame/bark shading is retained. Art standard and exact review: `texture-depth-review.md`.
+- [ ] **19.3 Animated machinery and fluids.** Furnace/forge openings, torch/lantern flames, beacon activation/active
+  state, directional flowing/falling fluid and foam. Reuse/refine existing fire, smoke, sparks, splash and impact art.
+  **Integrated in 0.6.6:** eight-frame furnace, forge, torch and lantern loops; coherent replacement still-water/lava
+  loops. All principal furniture/workshop faces also replaced. Door image is continuous over four cells; frame
+  backing is displayed, beds select oriented pillows, and light world/item UVs are separate. Beacon activation,
+  directional/falling fluids and edge foam remain open.
+  **Done when:** named frame sheets and playback/orientation integration pass visual checks, not just file export.
+- [ ] **19.4 Items and first-person presentation.** Distinct tool tiers, tier-preserving ember upgrades, harvested
+  crop icons, held-item grips/action states and suitable projectile/drop geometry. Reuse existing hand pose art.
+  **Integrated in 0.6.6:** all twenty tools, twelve armour icons, ordinary resources, food/containers/ranged and
+  navigation icons; dedicated wheat/carrot/potato inventory icons. Upgrades, grips/actions and projectile shapes remain open.
+  **Done when:** item tiers/actions remain identifiable in inventory, first person and world rendering.
+- [ ] **19.5 Targeted mob surfaces and states.** Head sides/back, exposed hands, selected facial states and emission
+  masks; a trader portrait matching the refined model. Preserve current rigs and reuse the existing sixty skins.
+  **Done when:** all twenty species retain correct materials and readable facial states in the actual rig gallery.
+- [ ] **19.6 Use the existing UI library.** Wire unused component states, status, controller, navigation, journal and
+  action-prompt assets before creating duplicate sheets. Add only missing milestone subjects and identity artwork.
+  **Done when:** integrated states reflect real gameplay/input and remain legible at supported sizes/scales.
+- [ ] **19.7 Secondary images and scenery.** Weathered structure surfaces, boat materials, map/compass framing,
+  title/ending/death illustrations, app/share images and optional authored sky/weather details.
+  **Done when:** selected images have real display/export uses and preserve responsive layout and dynamic sky/weather.
+
+Future NPC professions, brewing, rails, beekeeping and other milestone-14 ideas need separate feature selection;
+their potential art requirements are recorded in the audit, not promoted to current implementation tasks.
+
+## 20. Visual consistency review
+
+- [x] **20.1 Clean play and readable interfaces.** Debugging is opt-in with F3; menus hide the HUD, reticle and held
+  navigation displays. Item icons retain usable space; title, crafting, palette and workshops fit narrow displays
+  across the supported GUI scales.
+- [x] **20.2 Shared atmosphere.** Creatures, drops, boats, decorations and effects use the same live fog uniforms,
+  horizontal distance and haze curve as terrain. GPU checks verify they disappear at the fog limit.
+- [x] **20.3 Proper target and decoration shapes.** Partial-block outlines/cracks follow the block geometry;
+  framed art stays square and sign lettering remains legible.

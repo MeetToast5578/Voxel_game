@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { textureVariantSetup } from './textureVariants';
 import type { RenderLayer } from '../engine/blocks';
+import { tileIndex } from './tilePixels';
 
 const VERTEX = /* glsl */ `
 in uvec2 data;
@@ -21,6 +22,7 @@ out float vDepth;
 out vec3 vWorldPosition;
 flat out float vVariationStart;
 flat out float vAnimationStart;
+flat out float vAnimationRate;
 
 const float SHADE[8] = float[8](0.6, 0.6, 1.0, 0.5, 0.8, 0.8, 0.85, 0.85);
 const float AO[4] = float[4](0.45, 0.65, 0.82, 1.0);
@@ -94,6 +96,7 @@ in vec2 vUv;
 in vec3 vWorldPosition;
 flat in float vVariationStart;
 flat in float vAnimationStart;
+flat in float vAnimationRate;
 flat in float vTile;
 in vec3 vColor;
 in vec2 vLight;
@@ -112,11 +115,15 @@ void main() {
   }
   vec4 tex;
   if (vAnimationStart >= 0.0) {
-    // Fluids blend each frame into the next, so the loop flows instead of stepping.
-    float frame = time * 4.0;
+    float frame = time * vAnimationRate;
     vec4 a = textureGrad(tiles, vec3(fract(vUv), vAnimationStart + mod(floor(frame), 8.0)), dFdx(vUv), dFdy(vUv));
-    vec4 b = textureGrad(tiles, vec3(fract(vUv), vAnimationStart + mod(floor(frame) + 1.0, 8.0)), dFdx(vUv), dFdy(vUv));
-    tex = mix(a, b, fract(frame));
+    // Preserve main's smooth fluids; station/cutout frames keep their authored discrete silhouettes and rates.
+    if (int(vTile) == ${tileIndex('water')} || int(vTile) == ${tileIndex('lava')}) {
+      vec4 b = textureGrad(tiles, vec3(fract(vUv), vAnimationStart + mod(floor(frame) + 1.0, 8.0)), dFdx(vUv), dFdy(vUv));
+      tex = mix(a, b, fract(frame));
+    } else {
+      tex = a;
+    }
   } else {
     tex = textureGrad(tiles, vec3(fract(vUv), tile), dFdx(vUv), dFdy(vUv));
   }

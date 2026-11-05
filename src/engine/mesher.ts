@@ -80,11 +80,14 @@ const GROUP = new Uint16Array(COUNT);
 const FLUID_KIND = new Uint8Array(COUNT);
 /** How far a fluid cell's top sits below the cell top when no fluid is above it, in sixteenths. */
 const FLUID_DROP = new Uint8Array(COUNT);
+const IS_DOOR = new Uint8Array(COUNT);
+const DOOR_TILES = Array.from({length:4},(_,i)=>tileIndex('door_segment_'+i));
 
 const TINT_KIND: Record<string, number> = { grass_top: 1, grass_side: 1, tall_grass: 1, fern: 1, leaves: 2 };
 for (const t of BLOCKS.types) {
   for (let s = t.id; s < t.id + t.variants; s++) {
     const v = s - t.id;
+    IS_DOOR[s] = t.key==='door'?1:0;
     PASS[s] = Math.max(0, LAYERS.indexOf(t.layer));
     KIND[s] = t.layer === 'none' ? 0 : t.shape === 'cube' ? 1 : t.shape === 'cross' ? 2 : 3;
     GROUP[s] = t.layer === 'water' ? 0xffff : t.key === 'lava' || t.key === 'flowing_lava' ? 0xfffe : t.cullSame ? BLOCKS.typeIndex[s]! + 1 : 0;
@@ -297,11 +300,23 @@ function plant(buf: QuadBuffer, s: number, x: number, y: number, z: number, ligh
 /** The state's boxes (slabs, snow, thin layers, stairs, doors, torches). Faces on the cell boundary are culled by opaque neighbours. */
 function box(buf: QuadBuffer, states: Uint16Array, light: Uint8Array, s: number, x: number, y: number, z: number, p: number,
   clim: number): void {
-  for (const b of BOXES[s]!) boxFaces(buf, states, light, s, x, y, z, p, clim, b);
+  let tile=-1;
+  if(IS_DOOR[s]){
+    // A four-cell door has at least one end visible in the padded chunk, even across a chunk boundary.
+    let below=0;
+    while(below<3&&y-below-1>=-1&&IS_DOOR[states[p-(below+1)*SY]!])below++;
+    let segment=below;
+    if(below<3&&y-below-1<-1){
+      let above=0;while(above<3&&y+above+1<=CHUNK_SIZE_&&IS_DOOR[states[p+(above+1)*SY]!])above++;
+      segment=3-above;
+    }
+    tile=DOOR_TILES[segment]!;
+  }
+  for (const b of BOXES[s]!) boxFaces(buf, states, light, s, x, y, z, p, clim, b,tile);
 }
 
 function boxFaces(buf: QuadBuffer, states: Uint16Array, light: Uint8Array, s: number, x: number, y: number, z: number, p: number,
-  clim: number, b: Box): void {
+  clim: number, b: Box, tileOverride = -1): void {
   const lo = [b[0], b[1], b[2]], hi = [b[3], b[4], b[5]];
   for (let f = 0; f < 6; f++) {
     const axis = f >> 1, positive = (f & 1) === 0;
@@ -310,7 +325,7 @@ function boxFaces(buf: QuadBuffer, states: Uint16Array, light: Uint8Array, s: nu
     const n = p + dir[0] + dir[1] * SY + dir[2] * SZ;
     if (onBoundary && (FLAGS[states[n]!]! & OPAQUE) !== 0) continue;
     const lightByte = onBoundary ? light[n]! : light[p]!;
-    const tile = FACE_TILE[s * 6 + f]!, tint = FACE_TINT[s * 6 + f]!;
+    const tile = tileOverride>=0?tileOverride:FACE_TILE[s * 6 + f]!, tint = FACE_TINT[s * 6 + f]!;
     const corners = CORNERS[f]!;
     for (let c = 0; c < 4; c++) {
       const cr = corners[c]!;

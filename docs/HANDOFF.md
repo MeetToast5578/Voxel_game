@@ -1,5 +1,7 @@
 # Handoff: Voxel Game (MeetToast5578/Voxel_game)
 
+Latest local work is the 0.6.7 texture depth/detail refinement on `codex/gameplay-qol`; see the dated entry at the end.
+
 ## Current state (2026-10-31, `main` at 463450a)
 
 - **The game:** the 0.6 m rewrite (spec 54) is the only game. Both PRs are merged: #58 (phases 1–11 and polish) and #59
@@ -1107,3 +1109,152 @@ Regular Chromium `smoke.mjs --view 4` completed successfully: title creation, al
 held map/compass, edit latency (0.1–0.4 ms, two frames) and save/reload; no browser errors or chunk failures. Final
 source gallery also passes. Screenshots are in ignored `screenshots/`, with the original saved as
 `mob-gallery-before.png`. These are software-rendered checks, not owner-hardware frame-rate measurements.
+
+## 2026-11-03 — visual consistency review (0.6.4)
+
+Owner asked for a visual check and corrections. Reviewed existing terrain/forest/river/night/cave captures, the actual
+mob models, menus, icons and wall decorations, then exercised the live game at desktop, phone and tablet sizes.
+Findings and fixes: `docs/visual-review.md`.
+
+Fixed default-on debug clutter (F3 remains available), menu leakage of the HUD/reticle/map/compass, cramped item art,
+GUI-scale/layout overflow, faint reticle, stretched framed items and low-contrast sign text. Added proper component
+outlines/cracks for partial and thin blocks. Non-terrain objects previously bypassed fog: mobs, drops, boats,
+decorations and effects now share the terrain's live uniforms, horizontal distance and exponential haze curve.
+Atmosphere updates precede world-object lighting so both use the same frame. Source texture art, saves, world
+registry, creature hitboxes and survival balance are unchanged. Changes remain local on `codex/gameplay-qol`.
+
+Validation: `npm run check` passes 227 tests in 34 files, typecheck and production build. After the final overlay/layout
+adjustments, typecheck and production build pass again. Benchmark budgets pass (generation 0.99 ms mean, meshing
+0.33 ms mean; unchanged mesh hash). `visual-review.mjs` checks six actual GPU-rendered object types both before and
+beyond the fog limit, F3 toggling, normal gameplay and modal overlays, readable icons, plus 336 combinations of seven
+screens × three viewport widths × sixteen GUI scales. No browser/shader errors or horizontal overflow. Actual target
+shape/breaking-overlay fixtures and production wall-sign/frame captures were visually inspected.
+
+Regular system-Chromium `smoke.mjs --view 4` passes title creation, all seven scenes, inventory, dropped items,
+held map/compass during active play, editing (0.1–0.3 ms, two frames) and save/reload, with no chunk failures or browser
+errors. The production `decorations-gallery.mjs` also passes. Screenshots and measured layout bounds are in ignored
+`screenshots/visual-*`; refreshed regular views are in `screenshots/`. Software-rendered checks do not substitute
+for owner hardware performance/balance acceptance. Work has not been pushed.
+
+## 2026-11-04 — texture audit and first core rework batch (0.6.5)
+
+Owner requested a complete list of texture/image/animation work, then explicitly authorised starting the rework
+with properly separated textures checked on their 3D models. `docs/texture-asset-audit.md` records all 164 visible
+registered types and specific material, item, mob, animation and UI needs. Existing coverage is complete; the work
+is mostly better art, missing states and integration, rather than untextured blocks. Milestone 19 tracks the backlog.
+
+Integrated eight independent image-generated masters: stone, dirt, grass top, grass side, sand, gravel, cobblestone
+and brick. `assets/woodland-ember/core-rework/` preserves one complete texture per source, explicit face bindings,
+36 individual 32×32 exports (eight base tiles plus 28 generated alternatives), exact output index and portable
+packed pixels. `pack-core-rework.mjs` mechanically resamples full sources, quantizes and matches declared repeat
+edges; no atlas-cell guessing. Runtime overrides apply after earlier variant providers, retaining names/IDs and
+the 297-layer array. Remaining terrain, ores, foliage, trees, items and animations stay open.
+
+The owner reported grass appearing green on every side. Grass now has a distinct sod edge over brown soil, dirt
+underneath, vegetation-only biome tint and top-aligned side UV cropping for lower slabs. Other slab/stair materials
+retain world-unit texture scale. The UV flag uses the previously unused packed vertex bit 31; no save changes.
+
+`core-texture-gallery.mjs` renders 78 actual-game cases: seven cubes, 42 individual faces, ten slab halves,
+twelve stair facings and seven 4×4 fields. GPU pixel probes verify green cube/slab edges and soil colours matching
+the selected source variation without biome tint. All four gallery captures were visually inspected. File size,
+source separation, decoded hashes, runtime overrides, repeat boundaries, alpha, face bindings and slab UV flags
+are covered by `check-core-textures.mjs` and `coreRework.test.ts`.
+
+Validation: `npm run check` passes 231 tests in 35 files, typecheck and production build. Gallery checks pass with no
+browser/shader errors. Isolated benchmark budgets pass (generation 0.91 ms mean, meshing 0.32 ms mean; unchanged mesh
+hash). First production smoke completed all scenes, inventory/held tools and save/reload without browser errors or
+chunk failures, but one edit took three frames against a two-frame limit (0.1–0.4 ms main-thread edit work). The
+unchanged smoke test passed on repeat: every measured edit completed in two frames (0.2–0.4 ms), with all scenes,
+inventory/held tools and save/reload passing again. The initial timing outlier remains recorded rather than changing
+the test budget. These software-rendered checks do not replace owner hardware measurements. Work remains local on
+`codex/gameplay-qol`; not pushed.
+
+## 2026-11-04 — full base texture rework and all-face grass (0.6.6)
+
+The owner clarified that grass blocks are grass on every face, not grass over soil, and that the eight-material
+sample was much too narrow. Corrected grass cube/slab tops, sides and undersides, with identical vegetation
+sources/variations. Removed the soil-only tint branch and special slab UV flag introduced by the earlier
+misinterpretation. Dirt remains a separate material; gameplay drops and saves are unchanged.
+
+Expanded production across the entire registered base-art surface. `assets/woodland-ember/rework/` has 81 source
+images, 213 base tiles and 83 derived exports (296 individual 32×32 PNGs). Alongside the 36 core exports, the live
+array uses 332 reworked layers out of 344. The preserved twelve are ten connected breaking stages and two existing
+ember-upgrade images. All 164 visible registered block/item types have their declared base face/state art covered.
+`coverage.json` records exact names/types; these counts do not imply the remaining animation/UI/mob states are done.
+
+The pass includes every rock/ore type, all fifteen bark/end sets and fourteen leaf/plank sets, cactus, plants,
+crop stages, saplings, all twenty tool and twelve armour icons, normal resources/food/containers/navigation/ranged
+gear, furniture/workshop faces, signs/frames and six active eight-frame loops (water/lava, furnace, forge, torch,
+lantern). Harvested crops use independent icons. Flames are composited into fixed station openings; whole-frame
+stone/metal does not flicker. Fluid motion is a coherent periodic phase sequence, not unrelated frame paintings.
+
+Export contracts are explicit: transparent source-cell separation, measured crop rectangles, alpha/repeat axes,
+per-file hashes, icon proportions and world UV placement. The packer rejects overlap/non-square material faces;
+the carrot sheet was regenerated after a cell overlap, and four leaf panels were replaced after the alpha check
+found white painted gaps. Source processing is batched to keep Chromium image memory bounded. Original images
+remain in `sources/`, skipped panels are explicit, and generated derived variants are not called new authored art.
+
+Model integration fixes: doors select four continuous vertical segments in every facing/open state, even across
+chunk boundaries; beds select oriented pillow/head art; torch/lantern world surfaces fill their partial-box UVs and
+use separate padded inventory sprites; item frames display linen backing; upright plant feet align to ground.
+No collision, recipe, AI or save-format changes. Runtime array names remain within the 10-bit packed vertex limit.
+
+`core-texture-gallery.mjs` now covers 386 actual mesh/icon/animation cases. GPU probes verify all six faces of the
+grass cube and both slab halves; animation renders must change. Unit checks cover source separation, live provider
+coverage, alpha, seams, growth scale/ground contact, stable animation surroundings, cross-chunk door segments and
+bed-head direction. All source/packed previews, real world spawn and representative model captures were inspected.
+
+Validation: after the final plant ground-alignment adjustment, `npm run check` passes 237 tests in 37 files,
+typecheck and production build; the 386-case actual-render gallery passes again. Isolated benchmark passes (generation 0.88 ms mean, mesh
+0.29 ms mean, unchanged mesh hash). Production `smoke.mjs --view 4` passes title creation, seven scenes,
+inventory/held tools, 0.2–0.4 ms edits in two frames and save/reload without browser errors or chunk failures.
+Production decoration review also passes. These software-rendered checks do not measure owner hardware frame rate.
+
+Open art work is now concentrated on mob head/hand/facial states and matching trader portrait, first-person grips
+and action poses, tier-preserving ember upgrades, projectile/drop geometry, directional falling fluids/foam, beacon
+activation, seasonal/weathered surfaces, UI state integration and illustrations. See updated milestone 19 and the
+full `texture-asset-audit.md`; existing creature rigs/sixty refined skins remain active. Work remains local; not pushed.
+
+## 2026-11-04 — restrained texture depth and larger details (0.6.7)
+
+Owner said the replacement materials were flat and too finely detailed, preferred the original defined grass blades,
+and explicitly asked not to overdo the relief. Compared original grass pixels, the 0.6.6 replacements, packed
+material sheets and real model/world captures. The issue was lost form shading/readability, not the use of 2D art.
+
+Repainted 58 materials: grass top/side, stone/dirt/sand/gravel, twelve further ground/rock surfaces, eight ores,
+fourteen plank species, fourteen leaf species, water/lava and two bedding surfaces. Primary forms are larger, with
+restrained edge/plane highlights and tucked shadows. Snow/sand/clay, water and fabric stay quieter than rock.
+Grass now has independent overhead tufts and upright side blades, with vegetation on every face; undersides use
+grass_top. Successful equipment, furniture/frame, bark/end, plant and other existing shading is retained.
+
+Rebuilt affected alternatives/aliases, bed orientations and fluid frames: decoded hashes show 124 changed runtime
+exports and 208 retained exports across the active core/world packs. Tile names, 344 layers, 164 visible types,
+geometry, saves and renderer lighting remain compatible. World source layout now has 107 images; separate plank
+and leaf masters explicitly replace skipped original sheet panels. All 296 world and 36 core output files remain
+separated. White/checker matte in four foliage sources was removed with image generation; the alpha test now also
+rejects white background pixels left in partially transparent foliage.
+
+Art standard and family review: `docs/texture-depth-review.md`. Exact primary-material list, before/after decoded
+hashes and retained exports: `assets/woodland-ember/depth-review/`. `grass-definition.png` compares original,
+previous and updated actual 32px pixels; `depth-preview.mjs` and `depth-review.mjs` reproduce the inspection output.
+The actual model gallery accepts optional view names for targeted reviews. Before captures are retained in ignored
+`screenshots/depth-before-*`; final material/model and normal-world captures were inspected, including day/night.
+
+Validation: `npm run check` passes 237 tests in 37 files, typecheck and production build. All 386 actual-render
+gallery cases pass, including six-face grass cube/slab probes and animated material playback. Isolated benchmark
+passes (generation 0.77 ms mean, meshing 0.28 ms mean, unchanged mesh hash). Production `smoke.mjs --view 4` passes
+title creation, seven scenes, inventory/held tools, edits (0.1–1.4 ms, two frames) and save/reload with no browser
+errors or chunk failures. Work remains local on `codex/gameplay-qol`; not pushed.
+
+## 2026-11-05 — resolve PR #69 conflicts with main
+
+Merged main at `82fcac2` into `codex/gameplay-qol`. Preserved the newer movement, camera interpolation, mining,
+UI background and cutout-halo fixes alongside the texture/visual rework. Resolved the terrain shader by retaining
+smooth water/lava frame blending with per-material animation rates; station/cutout animations keep their discrete
+authored frames. GPU midpoint probes verify both behaviors. Retained both task lists: the RPG plan keeps milestone
+18, art stays 19, and the completed visual consistency review is now 20.
+
+Validation: 239 tests in 37 files, typecheck and production build pass. All 386 actual-render gallery cases pass,
+including fluid blend/station timing probes. Isolated benchmark budgets pass with unchanged mesh hash. Production
+smoke passes seven scenes, inventory/held tools, two-frame edits (0.1–0.4 ms) and save/reload with no browser errors
+or chunk failures.

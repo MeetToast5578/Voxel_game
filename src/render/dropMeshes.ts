@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { DROP_CAP } from '../config';
 import type { Drop } from '../game/drops';
 import { itemTile, tileIndex } from './tilePixels';
+import { WORLD_FOG_FRAGMENT, worldFogUniforms, type WorldFogUniforms } from './worldFog';
 
 const tmpM = new THREE.Matrix4(), tmpQ = new THREE.Quaternion(), tmpP = new THREE.Vector3(), tmpS = new THREE.Vector3();
 const UP = new THREE.Vector3(0, 1, 0);
@@ -12,35 +13,39 @@ export class DropMeshes {
   private readonly tile = new THREE.InstancedBufferAttribute(new Float32Array(DROP_CAP), 1);
   private readonly light = new THREE.InstancedBufferAttribute(new Float32Array(DROP_CAP), 1);
 
-  constructor(scene: THREE.Scene, tiles: THREE.Texture) {
+  constructor(scene: THREE.Scene, tiles: THREE.Texture, fog?: WorldFogUniforms) {
     const geometry = new THREE.BoxGeometry(1, 1, 1);
     geometry.setAttribute('tile', this.tile);
     geometry.setAttribute('light', this.light);
     const material = new THREE.ShaderMaterial({
       glslVersion: THREE.GLSL3,
-      uniforms: { tiles: { value: tiles } },
+      uniforms: { tiles: { value: tiles }, ...worldFogUniforms(fog) },
       vertexShader: /* glsl */ `
         in float tile;
         in float light;
         out vec2 vUv;
         flat out float vTile;
         out float vLight;
+        out float vFogDepth;
         void main() {
           vUv = uv;
           vTile = tile;
           vLight = light;
-          gl_Position = projectionMatrix * modelViewMatrix * instanceMatrix * vec4(position, 1.0);
+          vec4 world = modelMatrix * instanceMatrix * vec4(position, 1.0);
+          vFogDepth = length(world.xz - cameraPosition.xz);
+          gl_Position = projectionMatrix * viewMatrix * world;
         }`,
-      fragmentShader: /* glsl */ `
+      fragmentShader: WORLD_FOG_FRAGMENT + /* glsl */ `
         uniform highp sampler2DArray tiles;
         in vec2 vUv;
         flat in float vTile;
         in float vLight;
+        in float vFogDepth;
         out vec4 outColor;
         void main() {
           vec4 c = texture(tiles, vec3(vUv, vTile));
           if (c.a < 0.5) discard;
-          outColor = vec4(c.rgb * vLight, 1.0);
+          outColor = vec4(applyWorldFog(c.rgb * vLight, vFogDepth), 1.0);
         }`,
     });
     this.mesh = new THREE.InstancedMesh(geometry, material, DROP_CAP);

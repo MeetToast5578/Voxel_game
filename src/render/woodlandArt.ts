@@ -3,11 +3,13 @@ import variations from './variationArt.json';
 import trees from './treeArt.json';
 import workshops from './workshopArt.json';
 import stations from './stationArt.json';
+import core from './coreArt.json';
+import rework from './reworkArt.json';
 import { decodeArtTile, type PackedArtTile } from './artCodec';
 
 const SIZE = 32;
 const tiles = new Map<string, Uint8ClampedArray>();
-const source: Record<string, PackedArtTile> = { ...packed, ...variations, ...trees, ...workshops, ...stations };
+const source: Record<string, PackedArtTile> = { ...packed, ...variations, ...trees, ...workshops, ...stations, ...core, ...rework };
 
 /** Connected fracture lines. Every later stage retains the earlier branches. */
 function cracks(stage: number): Uint8ClampedArray {

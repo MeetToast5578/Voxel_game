@@ -1,0 +1,54 @@
+<!doctype html><html><head><meta charset="UTF-8"><link rel="icon" href="data:,"><style>body{margin:24px;background:#102b33;color:#eff5e7;font:16px system-ui}h1{font-size:26px}.grid{display:grid;grid-template-columns:repeat(3,320px);gap:18px}.card{background:#193b43;padding:8px}.images{display:flex}.images img{width:152px;height:152px;image-rendering:pixelated}.caption{color:#adc7c6;font-size:12px}</style></head><body><h1>World rendering review</h1><p>Actual game materials · clear view / full terrain-matched fog</p><div class="grid"></div><script type="module">
+import * as THREE from 'three';
+import {CreatureMeshes} from '/src/render/creatureMeshes.ts';
+import {DropMeshes} from '/src/render/dropMeshes.ts';
+import {BoatMesh} from '/src/render/boatMesh.ts';
+import {DecorationMeshes} from '/src/render/decorations.ts';
+import {WorldEffects} from '/src/render/worldEffects.ts';
+import {Highlight} from '/src/render/highlight.ts';
+import {SPECIES} from '/src/creatures/species.ts';
+import {World} from '/src/engine/world.ts';import {Chunk} from '/src/engine/chunk.ts';import {BLOCKS} from '/src/engine/blocks.ts';
+import {Decorations} from '/src/game/workshops.ts';import {tilePixels,TILE_SIZE,TILE_NAMES} from '/src/render/tilePixels.ts';
+THREE.ColorManagement.enabled=false;
+const renderer=new THREE.WebGLRenderer({antialias:false,preserveDrawingBuffer:true});renderer.setSize(160,160);renderer.outputColorSpace=THREE.LinearSRGBColorSpace;
+const fog={fogColor:{value:new THREE.Color(.15,.29,.34)},fogNear:{value:8},fogFar:{value:12}};
+const target=new THREE.WebGLRenderTarget(160,160),pixels=new Uint8Array(160*160*4),bg=[38,74,87];
+const camera=new THREE.PerspectiveCamera(40,1,.1,100);camera.position.set(.5,1,6);camera.lookAt(.5,.9,0);
+const tiles=new THREE.DataArrayTexture(tilePixels(),TILE_SIZE,TILE_SIZE,TILE_NAMES.length);tiles.magFilter=tiles.minFilter=THREE.NearestFilter;tiles.needsUpdate=true;
+const S=k=>BLOCKS.state(k),report=[];
+for(const kind of ['creature','drop','boat','sign','frame','effects']){
+ const scene=new THREE.Scene();scene.background=fog.fogColor.value;
+ if(kind==='creature'){
+  const species=SPECIES.find(s=>s.key==='warden');const meshes=new CreatureMeshes(scene,fog);
+  meshes.update([{id:1,species,body:{x:.5,y:0,z:0,vx:0,vy:0,vz:0,halfWidth:.45,height:2},yaw:Math.PI,mode:'idle',walk:0,cooldown:0,hurt:0}],()=>1,1);
+ }else if(kind==='drop'){
+  new DropMeshes(scene,tiles,fog).update([{stack:{state:S('diamond'),count:1},age:0,body:{x:.5,y:.5,z:0,height:1,halfWidth:.5,onGround:true}}],0,()=>1);
+ }else if(kind==='boat')new BoatMesh(scene,fog).update(true,.5,1,0,0,1);
+ else if(kind==='effects'){const effects=new WorldEffects(scene,fog);effects.update(0,0,[{kind:'fire',x:.5,y:1,z:0,size:1.5}]);}
+ else{
+  const world=new World();world.add(new Chunk(0,0,0,0));world.set(0,0,0,S(kind==='sign'?'sign':'item_frame')+3);
+  const data=new Decorations();if(kind==='sign')data.setSign('0,0,0','Camp Ember\nTrading ahead');else data.frames.set('0,0,0',{state:S('diamond'),count:1});
+  new DecorationMeshes(scene,fog).update(data,world,camera,()=>1);await new Promise(r=>setTimeout(r,100));
+ }
+ const card=document.createElement('div');card.className='card';card.innerHTML='<b>'+kind+'</b><div class="caption">Clear view / same object beyond fog range</div><div class="images"></div>';document.querySelector('.grid').append(card);
+ const counts=[];
+ for(const full of [false,true]){
+  fog.fogNear.value=full?0:8;fog.fogFar.value=full?2:12;
+  renderer.setRenderTarget(target);renderer.render(scene,camera);renderer.readRenderTargetPixels(target,0,0,160,160,pixels);
+  let count=0;for(let i=0;i<pixels.length;i+=4)if(bg.some((v,j)=>Math.abs(pixels[i+j]-v)>2))count++;counts.push(count);
+  renderer.setRenderTarget(null);renderer.render(scene,camera);const img=new Image();img.src=renderer.domElement.toDataURL();card.querySelector('.images').append(img);
+ }
+ report.push({kind,clearPixels:counts[0],fogPixels:counts[1]});
+}
+for(const [key,variant] of [['stone_slab',0],['stone_slab',1],['stone_stairs',2],['door',4],['torch',0],['sign',3]]){
+ const scene=new THREE.Scene();scene.background=new THREE.Color('#193b43');
+ const state=BLOCKS.state(key,variant),type=BLOCKS.type(state);
+ const boxes=type.boxes?type.boxes(variant).map(b=>b.map(n=>n/16)):type.shape==='slab'?[[0,variant ? .5 : 0,0,1,variant?1:.5,1]]:[[0,0,0,1,1,1]];
+ for(const b of boxes){const mesh=new THREE.Mesh(new THREE.BoxGeometry(b[3]-b[0],b[4]-b[1],b[5]-b[2]),new THREE.MeshBasicMaterial({color:key.includes('stone')?0x596978:0x8c6640}));mesh.position.set((b[0]+b[3])/2,(b[1]+b[4])/2,(b[2]+b[5])/2);scene.add(mesh);}
+ new Highlight(scene).set({x:0,y:0,z:0,nx:0,ny:1,nz:0,distance:2},.55,state);
+ camera.position.set(1.8,1.6,2.2);camera.lookAt(.5,.4,.5);renderer.render(scene,camera);
+ const card=document.createElement('div');card.className='card';card.innerHTML='<b>'+key+' #'+variant+'</b><div class="caption">Actual targeting outline and breaking overlay</div>';
+ const img=new Image();img.src=renderer.domElement.toDataURL();card.append(img);document.querySelector('.grid').append(card);
+}
+window.fixtureReport=report;window.fixturesReady=true;
+</script></body></html>

@@ -1,6 +1,7 @@
 import { BLOCKS } from '../engine/blocks';
 import { artworkPixels } from './woodlandArt';
 import { EXTRA_TILE_NAMES } from './variationNames';
+import { REWORK_TILE_NAMES } from './reworkNames';
 
 /** Authored Woodland & Ember tiles, shared by terrain, items and UI. */
 export const TILE_SIZE = 32;
@@ -10,7 +11,7 @@ export const TILE_NAMES: readonly string[] = [...new Set([
   ...BLOCKS.types.filter((t) => t.layer !== 'none')
     .flatMap((t) => t.variantTiles ?? [t.tiles.top, t.tiles.side, t.tiles.bottom, ...(t.front ? [t.front] : []), ...(t.variantFaces?.flatMap(f => [f.top,f.side,f.bottom]) ?? [])]),
   ...Array.from({ length: 10 }, (_, i) => 'crack_' + i),
-  ...EXTRA_TILE_NAMES, 'ember_pickaxe', 'ember_chestplate',
+  ...EXTRA_TILE_NAMES, 'ember_pickaxe', 'ember_chestplate', ...REWORK_TILE_NAMES,
 ])];
 
 export function tileIndex(name: string): number {
@@ -22,6 +23,10 @@ export function tileIndex(name: string): number {
 /** The tile that shows a state as an item (slot icons, dropped items): its front, side or own tile. */
 export function itemTile(state: number, upgrade = 0): string {
   const t = BLOCKS.type(state);
+  if(t.key==='wheat')return 'harvested_wheat';
+  if(t.key==='carrots')return 'harvested_carrot';
+  if(t.key==='potatoes')return 'harvested_potato';
+  if(t.key==='torch'||t.key==='lantern')return t.key+'_item';
   if(upgrade>0&&t.tool?.kind==='pickaxe')return 'ember_pickaxe';
   if(upgrade>0&&t.armour?.slot===1)return 'ember_chestplate';
   const faces = t.variantFaces?.[state-t.id] ?? t.tiles;
