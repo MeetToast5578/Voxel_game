@@ -62,7 +62,7 @@ export class Input {
       if (document.pointerLockElement !== canvas) this.reset();
     });
     canvas.addEventListener('click', () => {
-      if (document.pointerLockElement !== canvas && this.canLock()) canvas.requestPointerLock();
+      if (document.pointerLockElement !== canvas && this.canLock()) lockPointer(canvas);
     });
     canvas.addEventListener('mousedown', (e) => {
       if (document.pointerLockElement !== canvas) return;
@@ -189,7 +189,7 @@ export class Input {
   /** Starts play: captures the pointer, or with touch or a gamepad just resumes. */
   start(): void {
     if (this.free) this.touchPlaying = true;
-    else this.canvas.requestPointerLock();
+    else lockPointer(this.canvas);
   }
 
   /** Stops play (a screen or menu opens). */
@@ -234,4 +234,10 @@ export class Input {
   /** Stick input in [-1, 1] on both axes, added to the keys. */
   stickX = 0;
   stickZ = 0;
+}
+
+/** Raw mouse movement, without the system's pointer acceleration, where the browser offers it; plain pointer lock otherwise. */
+function lockPointer(el: HTMLElement): void {
+  const request = el.requestPointerLock as (options?: { unadjustedMovement?: boolean }) => Promise<void> | undefined;
+  request.call(el, { unadjustedMovement: true })?.catch(() => el.requestPointerLock());
 }

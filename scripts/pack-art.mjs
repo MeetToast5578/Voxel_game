@@ -2,9 +2,11 @@
 // Run after editing source atlases: node scripts/pack-art.mjs
 import { chromium } from 'playwright';
 import { readFileSync, writeFileSync } from 'node:fs';
+import { dropStrays } from './art-clean.mjs';
 const manifest = JSON.parse(readFileSync('assets/woodland-ember/manifest.json', 'utf8'));
 const browser = await chromium.launch({executablePath: process.env.CHROMIUM_PATH || '/usr/bin/chromium', headless:true, args:['--no-sandbox']});
 const page = await browser.newPage();
+await page.addScriptTag({content: dropStrays.toString()});
 const packed = {};
 try {
  for (const [group, columns, rows] of [['terrain',8,7],['items',8,8],['cutouts',6,5]]) {
@@ -27,6 +29,7 @@ try {
      else ctx.drawImage(copy,0,0,32,32,10,16,12,16);
     }
     const p=ctx.getImageData(0,0,32,32).data;
+    if(group!=='terrain'&&!/leaves|litter|moss|glass|ladder/.test(name)){for(let j=3;j<p.length;j+=4)p[j]=p[j]>=160?255:0;dropStrays(p,32);}
     // Match opposite edge texels on repeating natural materials; never blend furniture frames.
     const repeat = group==='terrain' && !/chest|table|furnace|door|bed_|campfire|beacon/.test(name);
     if(repeat){

@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { textureVariantSetup } from './textureVariants';
 import type { RenderLayer } from '../engine/blocks';
+import { tileIndex } from './tilePixels';
 
 const VERTEX = /* glsl */ `
 in uvec2 data;
@@ -18,7 +19,6 @@ flat out float vTile;
 out vec3 vColor;
 out vec2 vLight;
 out float vDepth;
-out vec2 vWorldXZ;
 out vec3 vWorldPosition;
 flat out float vVariationStart;
 flat out float vAnimationStart;
@@ -76,7 +76,6 @@ void main() {
   vColor = tint * SHADE[n] * AO[(w0 >> 27u) & 3u];
   // Fog by horizontal distance, so looking down from high up does not fog the ground.
   vDepth = length(world.xz - cameraPosition.xz);
-  vWorldXZ = world.xz;
   vWorldPosition = world.xyz;
   ${textureVariantSetup()}
   gl_Position = projectionMatrix * viewMatrix * world;
@@ -94,7 +93,6 @@ uniform float fogFar;
 uniform float opacity;
 uniform float time;
 in vec2 vUv;
-in vec2 vWorldXZ;
 in vec3 vWorldPosition;
 flat in float vVariationStart;
 flat in float vAnimationStart;
@@ -115,8 +113,20 @@ void main() {
     hash ^= hash >> 13u;
     tile = vVariationStart + float(hash & 3u);
   }
-  if (vAnimationStart >= 0.0) tile = vAnimationStart + mod(floor(time * vAnimationRate), 8.0);
-  vec4 tex = textureGrad(tiles, vec3(fract(vUv), tile), dFdx(vUv), dFdy(vUv));
+  vec4 tex;
+  if (vAnimationStart >= 0.0) {
+    float frame = time * vAnimationRate;
+    vec4 a = textureGrad(tiles, vec3(fract(vUv), vAnimationStart + mod(floor(frame), 8.0)), dFdx(vUv), dFdy(vUv));
+    // Preserve main's smooth fluids; station/cutout frames keep their authored discrete silhouettes and rates.
+    if (int(vTile) == ${tileIndex('water')} || int(vTile) == ${tileIndex('lava')}) {
+      vec4 b = textureGrad(tiles, vec3(fract(vUv), vAnimationStart + mod(floor(frame) + 1.0, 8.0)), dFdx(vUv), dFdy(vUv));
+      tex = mix(a, b, fract(frame));
+    } else {
+      tex = a;
+    }
+  } else {
+    tex = textureGrad(tiles, vec3(fract(vUv), tile), dFdx(vUv), dFdy(vUv));
+  }
 #ifdef CUTOUT
   if (tex.a < 0.5) discard;
 #endif
@@ -125,11 +135,6 @@ void main() {
   // A faint floor so unlit caves still show their shapes.
   float light = 0.07 + 0.93 * max(curved.x * daylight, curved.y);
   vec3 color = tex.rgb * vColor * light;
-#ifdef WATER
-  // Moving ripples on the water.
-  float ripple = sin(vWorldXZ.x * 1.3 + time * 1.7) * sin(vWorldXZ.y * 1.1 - time * 1.3);
-  color *= 1.0 + 0.1 * ripple;
-#endif
   // Haze that thickens quickly then levels off, reaching the fog colour exactly at fogFar (same curve as the horizon).
   color = mix(color, fogColor, (1.0 - exp(-3.0 * clamp((vDepth - fogNear) / (fogFar - fogNear), 0.0, 1.0))) / (1.0 - exp(-3.0)));
   outColor = vec4(color, opacity);
@@ -146,7 +151,7 @@ export function terrainMaterial(layer: RenderLayer, uniforms: Record<string, THR
     vertexShader: (multiDraw ? '#extension GL_ANGLE_multi_draw : require\n' : '#define gl_DrawID _gl_DrawID\nuniform int _gl_DrawID;\n')
       + 'precision highp float;\nuniform mat4 viewMatrix;\n' + VERTEX,
     fragmentShader: FRAGMENT,
-    defines: layer === 'cutout' ? { CUTOUT: 1 } : layer === 'water' ? { WATER: 1 } : {},
+    defines: layer === 'cutout' ? { CUTOUT: 1 } : {},
     uniforms: { ...uniforms, opacity: { value: layer === 'water' ? 0.72 : layer === 'ice' ? 0.82 : 1 } },
     transparent,
     depthWrite: layer !== 'water',

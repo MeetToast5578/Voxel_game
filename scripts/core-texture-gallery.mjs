@@ -9,6 +9,7 @@ try{
   await p.goto('http://127.0.0.1:4184/scripts/core-texture-gallery.html?view='+view);await p.waitForFunction(()=>window.galleryReady,null,{timeout:60000});
   const result=await p.evaluate(()=>window.coreGallery);assert.ok(result.cases.every(c=>c.icon||c.quads>0));
   for(const q of result.probes)assert.ok(q.green>=8,q.shape+' '+q.angle+' is not entirely grass: '+JSON.stringify(q));
+  for(const q of result.timingProbes){assert.ok(q.error<=2,'Incorrect fluid blend or station timing: '+JSON.stringify(q));assert.ok(q.change>0,'Consecutive frames do not animate: '+q.block);}
   if(view==='animations')for(const block of ['water','lava','lit_furnace','ember_forge','torch','lantern'])assert.ok(new Set(result.cases.filter(c=>c.block===block).map(c=>c.render)).size>=3,'Animation is not playing: '+block);
   result.cases.forEach(c=>delete c.render);results.push(result);await p.screenshot({path:'screenshots/core-textures-'+view+'.png',fullPage:true});await p.close();
  }

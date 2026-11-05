@@ -1,20 +1,22 @@
-/* Pixel artwork keeps crisp corners at the selected GUI scale. */
+/* Pixel artwork keeps crisp corners at the selected GUI scale. Panels, buttons and toasts draw only the artwork's
+   frame (no `fill`): stretching its 64 px middle over a large box blew it up into blotches behind the text, so the
+   middle is a flat colour sampled from the artwork. */
 .screen,.menu,.toast,.hintbox,.menu button,.screen button { image-rendering:pixelated; }
 #ui { color:#edf6ef; }
-.screen,.menu { border:12px solid transparent; border-image:var(--aero-panel) 12 fill / 12px; background:#123347ed; padding:14px; box-shadow:0 5px 24px #0008; max-width:calc(100vw - 56px); }
+.screen,.menu { border:12px solid transparent; border-image:var(--aero-panel) 12 / 12px; background:#082f58ee; background-clip:padding-box; padding:14px; box-shadow:0 5px 24px #0008; max-width:calc(100vw - 56px); }
 .slot { border:7px solid transparent; border-image:var(--aero-slot) 12 fill / 7px; background:#173c48e8; image-rendering:pixelated; }
 .slot:hover { border-image-source:var(--aero-hover); }
 .slot.selected { border-image-source:var(--aero-selected); }
 .slot.upgraded::after { content:'✦'; position:absolute; left:0; top:-4px; color:#ffd58b; text-shadow:1px 1px #000; font-size:12px; }
 .slot img { inset:2px; width:calc(100% - 4px); height:calc(100% - 4px); }
-.menu button,.screen button { border:8px solid transparent; border-image:var(--aero-button) 12 fill / 8px; color:#fff; background:#24556b; padding:3px 9px; font:inherit; cursor:pointer; }
-.menu button:hover,.screen button:hover { border-image-source:var(--aero-buttonHover); }
+.menu button,.screen button { border:8px solid transparent; border-image:var(--aero-button) 12 / 8px; color:#fff; background:#255a94; background-clip:padding-box; padding:3px 9px; font:inherit; cursor:pointer; }
+.menu button:hover,.screen button:hover { border-image-source:var(--aero-buttonHover); background-color:#1b8cab; }
 .screen button:disabled { opacity:.45; cursor:default; }
 .menu input,.menu select,.screen textarea { background:#102e3c; border:1px solid #86cfd7; color:#fff; padding:5px; font:inherit; }
 .screen textarea { width:min(24em,70vw); min-height:7em; resize:vertical; }
 .menu h1,.screen h2 { color:#e1faf4; margin:0; }
 .menu h2,.help,.hint { color:#bdd6d5; }
-.toast,.hintbox { border:9px solid transparent; border-image:var(--aero-toast) 12 fill / 9px; background:#173c43ed; border-radius:0; }
+.toast,.hintbox { border:9px solid transparent; border-image:var(--aero-toast) 12 / 9px; background:#2a3824ee; background-clip:padding-box; border-radius:0; }
 .bars { background:#123347dd; padding:7px 10px; border:1px solid #5b9eab; }
 .status-meter { display:flex; align-items:center; gap:5px; }
 .ui-glyph { width:24px; height:24px; object-fit:contain; image-rendering:pixelated; flex:none; }

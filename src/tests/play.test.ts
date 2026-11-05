@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { MINE_SPEED } from '../config';
 import { BLOCKS } from '../engine/blocks';
 import { Chunk } from '../engine/chunk';
 import { World } from '../engine/world';
@@ -67,7 +68,7 @@ describe('play', () => {
       play.update(0.05, input, player);
       steps++;
     }
-    expect(steps * 0.05).toBeCloseTo(0.75, 1);
+    expect(steps * 0.05).toBeCloseTo(0.75 / MINE_SPEED, 1);
     // The block pops out as an item, picked up when near.
     expect(play.inventory.count(S('cobblestone'))).toBe(0);
     collect(world, play, player);

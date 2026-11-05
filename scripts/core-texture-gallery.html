@@ -53,5 +53,12 @@ for(const [block,v]of [['grass',0],['grass_slab',0],['grass_slab',1]])for(const 
  const samples=[];for(const dx of [-.3,0,.3])for(const dy of [-.3,0,.3]){const x=Math.round(64+dx/1.2*128),y=Math.round(64+dy*(slab&&angle!=='top'&&angle!=='bottom'?.5:1)/1.2*128),at=(y*128+x)*4;samples.push(Array.from(buffer.subarray(at,at+3)));}
  probes.push({shape:block+'#'+v,angle,samples,green:samples.filter(p=>p[1]>p[0]&&p[1]>p[2]).length});
 }
-renderer.setRenderTarget(null);await Promise.all([...document.images].map(i=>i.decode()));window.coreGallery={view,cases:stats,probes};window.galleryReady=true;
+const timingProbes=[];
+if(view==='animations')for(const [block,fps,blend]of [['water',4,true],['lava',4,true],['lit_furnace',8,false],['ember_forge',6,false],['torch',8,false],['lantern',6,false]]){
+ mesh(block);const center=new THREE.Vector3(5.5,4.5,5.5);ortho.up.set(0,blend?0:1,blend?-1:0);ortho.position.copy(center).add(blend?new THREE.Vector3(0,5,0):new THREE.Vector3(5,0,0));ortho.lookAt(center);
+ const frames=[];for(const phase of [0,.5,1]){game.uniforms.time.value=phase/fps;renderer.setRenderTarget(target);renderer.render(game.scene,ortho);renderer.readRenderTargetPixels(target,0,0,128,128,buffer);frames.push(new Uint8Array(buffer));}
+ let error=0,change=0;for(let i=0;i<buffer.length;i++){if(i%4===3)continue;const expected=blend?(frames[0][i]+frames[2][i])/2:frames[0][i];error=Math.max(error,Math.abs(frames[1][i]-expected));change=Math.max(change,Math.abs(frames[0][i]-frames[2][i]));}
+ timingProbes.push({block,blend,error,change});
+}
+renderer.setRenderTarget(null);await Promise.all([...document.images].map(i=>i.decode()));window.coreGallery={view,cases:stats,probes,timingProbes};window.galleryReady=true;
 </script></body></html>

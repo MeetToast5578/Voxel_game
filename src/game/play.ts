@@ -81,6 +81,8 @@ export class Play {
   /** 0..1 progress breaking the target, or 0. */
   breaking = 0;
   private breakingCell = '';
+  /** Seconds to the next chip of the block being dug: a tap and a few fragments, so digging reads as progress. */
+  private chipClock = 0;
   private repeat = 0;
   /** Bumped whenever anything the UI shows changes. */
   version = 0;
@@ -129,7 +131,7 @@ export class Play {
   readonly campfires = new Map<string, [number, number][]>();
 
   constructor(private readonly world: World, setBlock: (x: number, y: number, z: number, s: number) => void,
-    private readonly events: { sound(name: 'break' | 'place' | 'eat'): void; sleep(): boolean; fertilise?(x: number, y: number, z: number): boolean }, mode: Mode = 'creative') {
+    private readonly events: { sound(name: 'break' | 'place' | 'eat', volume?: number): void; sleep(): boolean; fertilise?(x: number, y: number, z: number): boolean }, mode: Mode = 'creative') {
     this.mode = mode;
     // Every change the player makes is recorded for undo while a group is open.
     this.setBlock = (x, y, z, s) => {
@@ -663,9 +665,17 @@ export class Play {
     if (cell !== this.breakingCell) {
       this.breakingCell = cell;
       this.breaking = 0;
+      this.chipClock = 0;
     }
     const seconds = breakSeconds(state, this.held);
     this.breaking = seconds <= 0 ? 1 : this.breaking + dt / seconds;
+    this.chipClock -= dt;
+    if (this.chipClock <= 0 && this.breaking < 1) {
+      this.chipClock = 0.2;
+      this.particles.burst(state, t.x + 0.5, t.y + 0.5, t.z + 0.5, 3);
+      this.events.sound('break', 0.35);
+      this.swings++;
+    }
     if (this.breaking >= 1) {
       this.breaking = 0;
       this.breakingCell = '';

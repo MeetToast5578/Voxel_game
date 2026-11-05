@@ -188,6 +188,23 @@ describe('jump timing', () => {
     }
   });
 
+  it('jumps higher while jump is held than for a tap, and falls faster than it rises', () => {
+    const apex = (holdTicks: number) => {
+      const p = new Player(0.5, 0, 0.5); p.body.onGround = true;
+      let top = 0, rise = 0, fall = 0;
+      for (let i = 0; i < 120; i++) {
+        tick(p, i < holdTicks);
+        if (p.body.vy > 0) rise++; else if (!p.body.onGround) fall++;
+        top = Math.max(top, p.body.y);
+      }
+      return { top, rise, fall };
+    };
+    const held = apex(120), tap = apex(2);
+    expect(held.top).toBeGreaterThan(2);
+    expect(tap.top).toBeLessThan(held.top * 0.5);
+    expect(held.fall).toBeLessThan(held.rise);
+  });
+
   it('remembers a released jump pressed just before landing', () => {
     const p = new Player(0.5, 0.01, 0.5); p.body.vy = -2;
     tick(p, true); expect(p.body.onGround).toBe(true);

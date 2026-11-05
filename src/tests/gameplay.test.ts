@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { MAX_HEALTH, MAX_HUNGER, SMELT_S } from '../config';
+import { MAX_HEALTH, MAX_HUNGER, SAFE_FALL_SPEED_M_S, SMELT_S } from '../config';
 import { BLOCKS } from '../engine/blocks';
 import { consumeIngredients, craftResult } from '../game/crafting';
 import { newFurnace, tickFurnace } from '../game/furnace';
@@ -130,7 +130,7 @@ describe('survival', () => {
     expect(s.health).toBeGreaterThan(hurt);
     s.land(9);
     const before = s.health;
-    s.land(15);
+    s.land(SAFE_FALL_SPEED_M_S + 5);
     expect(s.health).toBe(before - 5);
     s.hunger = 10;
     expect(s.eat(6)).toBe(true);

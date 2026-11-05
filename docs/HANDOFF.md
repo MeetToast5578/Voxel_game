@@ -1245,3 +1245,16 @@ gallery cases pass, including six-face grass cube/slab probes and animated mater
 passes (generation 0.77 ms mean, meshing 0.28 ms mean, unchanged mesh hash). Production `smoke.mjs --view 4` passes
 title creation, seven scenes, inventory/held tools, edits (0.1–1.4 ms, two frames) and save/reload with no browser
 errors or chunk failures. Work remains local on `codex/gameplay-qol`; not pushed.
+
+## 2026-11-05 — resolve PR #69 conflicts with main
+
+Merged main at `82fcac2` into `codex/gameplay-qol`. Preserved the newer movement, camera interpolation, mining,
+UI background and cutout-halo fixes alongside the texture/visual rework. Resolved the terrain shader by retaining
+smooth water/lava frame blending with per-material animation rates; station/cutout animations keep their discrete
+authored frames. GPU midpoint probes verify both behaviors. Retained both task lists: the RPG plan keeps milestone
+18, art stays 19, and the completed visual consistency review is now 20.
+
+Validation: 239 tests in 37 files, typecheck and production build pass. All 386 actual-render gallery cases pass,
+including fluid blend/station timing probes. Isolated benchmark budgets pass with unchanged mesh hash. Production
+smoke passes seven scenes, inventory/held tools, two-frame edits (0.1–0.4 ms) and save/reload with no browser errors
+or chunk failures.

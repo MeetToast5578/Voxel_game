@@ -17,7 +17,9 @@ describe('Woodland & Ember artwork', () => {
       expect(p.some((v, i) => i % 4 === 3 && v > 0), name).toBe(true);
       // WebGL layer orientation is bottom-first; UI reverses it back.
       const layer = TILE_NAMES.indexOf(name) * 4096;
-      expect([...packed.subarray(layer, layer + 128)], name).toEqual([...p.subarray(31 * 128)]);
+      // Clear texels take a fill colour (see the halo test), so only visible texels are compared.
+      const visible = (a: ArrayLike<number>) => Array.from({ length: 32 }, (_, i) => a[i * 4 + 3] ? [...Array.from({ length: 4 }, (_, k) => a[i * 4 + k])] : 0);
+      expect(visible(packed.subarray(layer, layer + 128)), name).toEqual(visible(p.subarray(31 * 128)));
     }
   });
   it('keeps opaque terrain solid and held items on transparent backgrounds', () => {
@@ -30,6 +32,12 @@ describe('Woodland & Ember artwork', () => {
         expect(alpha.includes(255), t.key).toBe(true);
       } else if (t.opaque) expect(alpha.every(a => a === 255), t.key).toBe(true);
     }
+  });
+  it('gives clear texels of cutouts the art colour, so distant plants have no dark halo', () => {
+    const p = tilePixels(), size = TILE_SIZE * TILE_SIZE * 4, layer = TILE_NAMES.indexOf('poppy');
+    const clear = Array.from({ length: TILE_SIZE * TILE_SIZE }, (_, i) => layer * size + i * 4).filter((o) => p[o + 3] === 0);
+    expect(clear.length).toBeGreaterThan(0);
+    expect(clear.every((o) => p[o]! + p[o + 1]! + p[o + 2]! > 60)).toBe(true);
   });
   it('matches natural texture edges under repetition', () => {
     for (const name of ['stone','dirt','grass_top','grass_side','sand','log_side','planks','water','ember_ore']) {
