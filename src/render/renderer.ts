@@ -66,6 +66,7 @@ export class Renderer {
       fogFar: { value: 200 },
       autumn: { value: 0 },
       summer: { value: 0 },
+      waterInside: { value: 0 },
     };
     this.sky = new Sky(this.scene, seed);
     this.clouds = new Clouds(this.scene, seed);
@@ -86,6 +87,7 @@ export class Renderer {
 
   /** Daylight, sky, fog and the seasons for this frame. */
   setAtmosphere(a: Atmosphere): void {
+    this.uniforms.waterInside!.value = a.underwater ? 1 : 0;
     const day = Math.min(1, Math.max(0, (a.sun[1] + 0.15) / 0.4));
     this.uniforms.daylight!.value = Math.min(1, (NIGHT_DAYLIGHT + (1 - NIGHT_DAYLIGHT) * day) * (1 - 0.35 * a.cloudCover) + a.flash * 0.5);
     this.sky.update(this.camera, HORIZON_CELLS * 1.1, a.sun, a.moonPhase, a.cloudCover, a.flash, a.starAngle, a.underground);

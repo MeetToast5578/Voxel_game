@@ -49,6 +49,15 @@ by the shader. A four-cell door uses four vertical portions of its full image, s
 chunk boundaries; it no longer repeats a complete door on every cell. Block IDs, named saves, collision and recipes
 remain compatible. Item frames display the backing material, and harvested crops use their dedicated icons.
 
+## Fluid artifact refinement (0.6.8)
+
+Water and lava have independently repainted masters without regular directional bands. Their eight frames use a
+periodic warp across the whole tile, including the borders; a fixed perimeter around a moving interior previously
+made a stationary grid. Every frame retains matching opposite edges. The terrain shader interpolates fluid frames
+while station flames retain their own discrete timing. Water draws the boundary facing the camera's medium,
+removing dark rectangles from overlapping far walls/bottoms; underwater detection follows the actual fluid height.
+The mesher also retains the exposed joining strip between different fluid heights instead of leaving open cracks.
+
 ## Rebuild and check
 
 From the repository root, with the existing Chromium/Playwright setup:

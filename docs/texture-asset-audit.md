@@ -13,6 +13,11 @@ Depth/detail update (0.6.7): the owner asked for larger readable forms and restr
 defined grass blades as the reference. The [depth review](texture-depth-review.md) records 58 material repaints,
 retained successful surfaces, a native-pixel grass comparison and the standard for subsequent art.
 
+Visual artifact update (0.6.8): water/lava masters and border animation are revised; water back-face overlap is
+fixed. Title, pause, inventory and workshop presentation has been rebuilt. The older UI inventory below is a
+historical baseline, not a requirement to reintroduce heavy nine-slice panel frames. Current review and remaining
+visual work: [visual-artifact-review.md](visual-artifact-review.md).
+
 ## Baseline inventory when audited (0.6.4)
 
 The task file is `docs/tasks.md`. Its opening “Where the game stands” paragraph describes the old starting point;

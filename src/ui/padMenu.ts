@@ -75,7 +75,7 @@ export class PadMenu {
       active.dispatchEvent(new Event('change', { bubbles: true }));
       return;
     }
-    const all = [...this.root.querySelectorAll<HTMLElement>(FOCUSABLE)].filter((e) => e.getClientRects().length > 0);
+    const all = [...this.root.querySelectorAll<HTMLElement>(FOCUSABLE)].filter((e) => e.getClientRects().length > 0 && !e.matches(':disabled'));
     if (all.length === 0) return;
     if (!active || !all.includes(active)) {
       all[0]!.focus();

@@ -1,6 +1,6 @@
 # Handoff: Voxel Game (MeetToast5578/Voxel_game)
 
-Latest local work is the 0.6.7 texture depth/detail refinement on `codex/gameplay-qol`; see the dated entry at the end.
+Latest work is the 0.6.8 visual artifact and menu rework on `codex/fluid-seams-menu`; see the dated entries at the end.
 
 ## Current state (2026-10-31, `main` at 463450a)
 
@@ -1258,3 +1258,69 @@ Validation: 239 tests in 37 files, typecheck and production build pass. All 386 
 including fluid blend/station timing probes. Isolated benchmark budgets pass with unchanged mesh hash. Production
 smoke passes seven scenes, inventory/held tools, two-frame edits (0.1–0.4 ms) and save/reload with no browser errors
 or chunk failures.
+
+## 2026-11-05 — fluid artifacts and menu reinvention (0.6.8)
+
+Owner asked for visual artifacts to be found, especially striped water/lava and the menu interface. Repainted the
+water/lava masters and replaced the fixed-border/interior-translation animation with periodic whole-tile warping.
+All eight frames have moving, matching opposite edges; terrain retains smooth frame blending and discrete station
+animation. Separate PNG exports, decoded hashes, runtime art and fluid previews are refreshed.
+
+Actual joined fields exposed a second issue: double-sided transparent water blended far walls/bottoms through the
+surface into a dark inset rectangle. Water now renders the outside boundary above water and the inside boundary
+while submerged, in one pass. Immersion follows the visible source/flow/falling height through a calculation shared
+with the mesher, rather than changing prematurely at the top of the containing voxel.
+
+The full river capture still showed thin brown stripes: same-fluid culling discarded the whole shared side even
+when neighboring surfaces had different heights. Greedy masks now retain the exposed strip, closing river/flow
+cracks without drawing submerged shared faces. Tests cover water/lava source, flow, falling and chunk-edge joins.
+
+Rebuilt title/pause around distinct navigation sections with persistent Continue/Resume actions. World creation,
+saved worlds, settings and controls have their own views; changing views retains creation drafts. Grouped settings,
+world cards and an ink/sage/brass interface replace the old panel treatment. Inventory activities and supplies have
+separate panes; recipe cards show ingredients and preparation status, and trades show received items, cost and owned
+quantity. Dialogs have close buttons, focus outlines, responsive layouts and reduced-motion treatment. Controller
+navigation skips disabled trade offers. Existing equipment, recipes, workshop rules and save data are preserved.
+
+Validation: `npm run check` passes 241 tests in 37 files, typecheck, source/PNG/runtime checks and production build.
+The full GPU gallery passes 396 cases, including six-face grass, station/fluid timing, stepped fields and above/below
+water against single-boundary references. Browser review passes six fog renderers, modal/HUD behavior, keyboard
+section activation, creation-draft persistence and 672 screen/viewport/GUI-scale combinations. Production inventory
+and workshop smoke scripts pass recipe preparation/collection, transfers, furnace withdrawal, trading, upgrades,
+sign/frame editing and saved reload. Isolated benchmark passes: generation 0.78 ms, meshing 0.34 ms mean. Production
+world smoke passes title creation, seven scenes, held navigation tools, two-frame edits (0.2–0.4 ms) and save/reload
+without browser errors or chunk failures. Software rendering does not establish player-hardware frame rate.
+
+Inspection report, exact captures and remaining issues: `docs/visual-artifact-review.md`. In particular, coarse
+far-terrain triangles are visible at short view distances; direction-aware fluid art/foam, mob head/hand/facial
+states, beacon states, held-item actions and authored illustrations remain open. Grass remains green on all six
+faces. Changes remain local on `codex/gameplay-qol`.
+
+## 2026-11-05 — verify the reported spaces between fluid blocks (0.6.8 follow-up)
+
+Owner supplied the river capture with exposed brown lines between water levels and requested the issue be checked
+for all fluids. Confirmed that the local height-aware shared-face correction closes those openings for both water
+and lava. Expanded coverage beyond the initial +X/source examples: every source/flow/falling state pair, all four
+side directions, both sides of horizontal chunk borders, intersecting vertical chunk borders and greedy joins over
+an entire chunk width. Six new tests cover 2,754 pair configurations plus two full-width joins.
+
+Added an actual GPU coverage fixture with an independent union of filled boxes as the reference. It assembles
+flat, river-step, flowing and waterfall fields across X/Y/Z chunk boundaries, then checks four camera directions
+for both water and lava (32 views). It also deliberately removes the joining strips to reproduce the original
+bug: the negative controls expose 18,752 hole pixels, while corrected meshes have no continuous openings across
+811,184 checked pixels. Isolated one/two-pixel differences from independent triangle rasterization are recorded
+separately. The ordinary gallery now includes representative assembled fluid captures.
+
+Validation: `npm run check` passes 247 tests in 38 files, typecheck and production build. Fluid gallery and all
+32 coverage probes pass. The benchmark passes (generation 0.72 ms and meshing 0.34 ms mean). Production smoke at
+view 4 passes title creation, seven scenes, held tools/inventory, two-frame edits (0.1–0.3 ms) and save/reload,
+with no browser errors or chunk failures. The production river close-up, `screenshots/river-fluid-seams.png`, was
+visually checked and has none of the reported exposed brown cross-river lines. This remains part of the local,
+unpushed 0.6.8 work on `codex/gameplay-qol`.
+
+## 2026-11-05 — submit 0.6.8 for GitHub review
+
+PR #69 is merged into main at `a77b824`. Prepared the completed menu/fluid batch on the fresh branch
+`codex/fluid-seams-menu`, based directly on that main commit. Includes separated fluid masters/frames, renderer and
+mesher corrections, menu/inventory/workshop presentation, regression fixtures and the visual audit. The validation
+results in the preceding entry apply unchanged; this submission adds no runtime behavior beyond that tested work.

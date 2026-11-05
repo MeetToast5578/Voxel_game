@@ -91,6 +91,7 @@ uniform vec3 fogColor;
 uniform float fogNear;
 uniform float fogFar;
 uniform float opacity;
+uniform float waterInside;
 uniform float time;
 in vec2 vUv;
 in vec3 vWorldPosition;
@@ -104,6 +105,11 @@ in float vDepth;
 out vec4 outColor;
 
 void main() {
+#ifdef WATER
+  // Only the boundary facing the camera's medium contributes. Drawing the far wall and bottom through the
+  // surface darkens parts of a pool into hard rectangles. Keep the inner boundary visible while submerged.
+  if (gl_FrontFacing == (waterInside > 0.5)) discard;
+#endif
   // fract() repeats the tile across merged quads; the gradients of the unwrapped UV keep mip selection smooth at seams.
   float tile = vTile;
   if (vVariationStart >= 0.0) {
@@ -151,10 +157,11 @@ export function terrainMaterial(layer: RenderLayer, uniforms: Record<string, THR
     vertexShader: (multiDraw ? '#extension GL_ANGLE_multi_draw : require\n' : '#define gl_DrawID _gl_DrawID\nuniform int _gl_DrawID;\n')
       + 'precision highp float;\nuniform mat4 viewMatrix;\n' + VERTEX,
     fragmentShader: FRAGMENT,
-    defines: layer === 'cutout' ? { CUTOUT: 1 } : {},
+    defines: layer === 'cutout' ? { CUTOUT: 1 } : layer === 'water' ? { WATER: 1 } : {},
     uniforms: { ...uniforms, opacity: { value: layer === 'water' ? 0.72 : layer === 'ice' ? 0.82 : 1 } },
     transparent,
     depthWrite: layer !== 'water',
+    forceSinglePass: layer === 'water',
     side: layer === 'cutout' || layer === 'water' ? THREE.DoubleSide : THREE.FrontSide,
   });
 }
