@@ -2,6 +2,28 @@ import { describe, expect, it } from 'vitest';
 import { DAY_LENGTH_S, DAYS_PER_SEASON } from '../config';
 import { Clock } from '../sim/clock';
 import { climateTemperature, WeatherModel } from '../sim/weather';
+import { Environment } from '../sim/environment';
+import { BLOCKS } from '../engine/blocks';
+import { Chunk } from '../engine/chunk';
+import { World } from '../engine/world';
+
+it('switches underwater rendering at the visible fluid surface, including flow and chunk boundaries', () => {
+  const world = new World(), env = new Environment(1, .5, 0);
+  world.add(new Chunk(-1, 0, -1, 0, 0));
+  world.add(new Chunk(-1, 1, -1, 0, 0));
+  world.set(-1, 15, -1, BLOCKS.state('water'));
+  const inside = (y: number) => env.frame(0, -.5, y, -.5, world).underwater;
+  expect(inside(15.9)).toBe(false);
+  expect(inside(15.87)).toBe(true);
+  world.set(-1, 16, -1, BLOCKS.state('water'));
+  expect(inside(15.99)).toBe(true);
+  world.set(-1, 16, -1, 0);
+  world.set(-1, 15, -1, BLOCKS.state('flowing_water', 0));
+  expect(inside(15.2)).toBe(false);
+  expect(inside(15.1)).toBe(true);
+  world.set(-1, 15, -1, BLOCKS.state('flowing_water', 8));
+  expect(inside(15.99)).toBe(true);
+});
 
 describe('clock', () => {
   it('puts the sun up at noon, down at midnight, and higher in summer', () => {

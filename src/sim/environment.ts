@@ -1,6 +1,6 @@
 import { BLOCK_SIZE_M, LIGHTNING_FAR_M, LIGHTNING_MEAN_INTERVAL_S, LIGHTNING_NEAR_M, SOUND_SPEED_M_S, WEATHER_SAMPLE_S } from '../config';
 import { columnIndex, localIndex, toChunk, toLocal } from '../core/coords';
-import { BLOCKS } from '../engine/blocks';
+import { BLOCKS, fluidHeight16 } from '../engine/blocks';
 import type { World } from '../engine/world';
 import type { Atmosphere } from '../render/renderer';
 import { Clock } from './clock';
@@ -53,7 +53,10 @@ export class Environment {
     const chunk = world.chunkAt(Math.floor(x), Math.floor(y), Math.floor(z));
     const cell = localIndex(toLocal(Math.floor(x)), toLocal(Math.floor(y)), toLocal(Math.floor(z)));
     const sky = chunk ? chunk.skyLight(cell) : 15;
-    this.atmosphere.underwater = chunk !== undefined && BLOCKS.types[BLOCKS.typeIndex[chunk.get(cell)]!]!.layer === 'water';
+    const state = chunk?.get(cell) ?? 0;
+    const water = BLOCKS.type(state).layer === 'water';
+    const covered = water && BLOCKS.type(world.get(Math.floor(x), Math.floor(y) + 1, Math.floor(z))).layer === 'water';
+    this.atmosphere.underwater = water && (covered || y - Math.floor(y) < fluidHeight16(state) / 16);
     const target = Math.min(1, Math.max(0, (10 - sky) / 8));
     this.underground += (target - this.underground) * Math.min(1, dt * 2);
     // Lightning: strikes around the player in storms, mostly far off; near ones flash brighter and thunder sooner.

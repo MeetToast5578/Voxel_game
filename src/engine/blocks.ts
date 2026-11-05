@@ -388,4 +388,12 @@ const SLABS: BlockSpec[] = BASE.filter((s) => (s.solid ?? true) && (s.layer ?? '
     drops: undefined, smeltsTo: undefined }));
 
 export const BLOCKS = new BlockRegistry([...BASE, ...SLABS, ...gameplay()]);
+
+/** Exposed fluid height in sixteenths; a cell covered by the same fluid is full height. */
+export function fluidHeight16(state: number): number {
+  const type = BLOCKS.type(state), variant = BLOCKS.variant(state);
+  if (type.flows && variant >= FLUID_LEVELS) return 16;
+  const level = type.flows ? variant + 1 : FLUID_LEVELS;
+  return Math.max(2, Math.round(14 * level / FLUID_LEVELS));
+}
 export const AIR = 0;

@@ -1,4 +1,4 @@
-import { render } from 'preact';
+import { render, type ComponentChildren } from 'preact';
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { BLOCK_SIZE_M, BODY_COLD_C, BODY_HOT_C, MAX_HEALTH, MAX_HUNGER, BREATH_S, MAX_VIEW_CHUNKS, MIN_VIEW_CHUNKS } from '../config';
 import { BLOCKS } from '../engine/blocks';
@@ -84,7 +84,7 @@ function Slot(props: { stack: ItemStack | null; onClick?: (right: boolean, quick
       onKeyDown={(e)=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();props.onClick?.(false,e.shiftKey);}}}
       onMouseDown={(e) => { e.preventDefault(); props.onClick?.(e.button === 2,e.shiftKey); }} onContextMenu={(e) => e.preventDefault()}>
       {props.shortcut&&<span class="slot-key" aria-hidden="true">{props.shortcut}</span>}
-      {s && <img src={stackIconUrl(s)} draggable={false} />}
+      {s && <img alt="" src={stackIconUrl(s)} draggable={false} />}
       {s && s.count > 1 && <span class="count">{s.count}</span>}
       {s && tool && s.wear ? <span class="wear" style={{ width: `${100 * (1 - s.wear / (tool.durability*(1+(s.upgrade??0)*.5)))}%` }} /> : null}
     </div>
@@ -120,7 +120,7 @@ function Hud({ play, hideKey }: { play: Play; hideKey: string }) {
           <Thermometer coreC={s.temperature.coreC} feltC={s.feltC} />
         </div>
       )}
-      <div class="hotbar">{inv.slots.slice(0, 9).map((st, i) => <Slot stack={st} shortcut={i+1} selected={i === inv.selected} />)}</div>
+      <div class="hotbar">{inv.slots.slice(0, 9).map((st, i) => <Slot key={i} stack={st} shortcut={i+1} selected={i === inv.selected} />)}</div>
       {play.breaking > 0 && <div class="progress"><div style={{ width: `${play.breaking * 100}%` }} /></div>}
     </div>
   );
@@ -130,10 +130,21 @@ function Grid({ slots, from, to, play, cols = 9 }: { slots: (ItemStack | null)[]
   return (
     <div class="grid" style={{ gridTemplateColumns: `repeat(${cols}, auto)` }}>
       {slots.slice(from, to).map((st, k) => (
-        <Slot stack={st} onClick={(right,quick) => { if(quick){play.quickMove(slots,from+k);return;} play.cursor = clickSlot(slots, from + k, play.cursor, right); play.version++; }} />
+        <Slot key={from+k} stack={st} onClick={(right,quick) => { if(quick){play.quickMove(slots,from+k);return;} play.cursor = clickSlot(slots, from + k, play.cursor, right); play.version++; }} />
       ))}
     </div>
   );
+}
+
+function ScreenHead({title,subtitle,close}:{title:string;subtitle:string;close:()=>void}) {
+  return <header class="screen-head"><div><span class="eyebrow">FIELD KIT</span><h2>{title}</h2><p class="hint">{subtitle}</p></div><button class="close-screen" aria-label="Close" onClick={close}>×<small>ESC</small></button></header>;
+}
+
+function MenuShell({title,subtitle,tabs,active,select,children,action}:{title:string;subtitle:string;tabs:readonly string[];active:string;select:(tab:string)=>void;children:ComponentChildren;action?:ComponentChildren}) {
+  return <><div class="menu-shade"/><div class={`menu menu-shell${title==='Voxel Game'?' title':''}`} role="dialog" aria-label={title} aria-modal="true">
+    <aside class="menu-rail"><div class="brand-mark" aria-hidden="true">◆</div><span class="eyebrow">WOODLAND &amp; EMBER</span><h1>{title}</h1><p class="rail-copy">{subtitle}</p><nav aria-label="Menu sections">{tabs.map(tab=><button key={tab} aria-current={active===tab?'page':undefined} onClick={()=>select(tab)}>{tab}<span aria-hidden="true">›</span></button>)}</nav><div class="rail-bottom">{action}<small>Voxel Game · {version}</small></div></aside>
+    <main class="menu-content">{children}</main>
+  </div></>;
 }
 
 function WorkshopScreen({play}:{play:Play}) {
@@ -141,14 +152,15 @@ function WorkshopScreen({play}:{play:Play}) {
   const [text,setText]=useState(w?play.decorations.signs.get(w.key)??'':'');
   if(!w)return null;
   const title={trade:'Trading',forge:'Ember Forge',sign:'Edit sign',frame:'Item frame'}[w.kind];
-  return <div class="screen workshop">
-    <div class="workshop-head"><img alt="" src={artUrl('future',w.kind==='trade'?'map_trader':w.kind==='forge'?'ember_forge':w.kind==='sign'?'sign':'frame_empty')} /><div><h2>{title}</h2><p class="hint">{w.kind==='forge'?'Upgrade tools and armour: +20% digging speed, +50% durability per level; armour gains protection and warmth.':'Right click to interact · Esc closes'}</p></div></div>
-    {w.kind==='trade'&&<div class="trade-list">{TRADE_OFFERS.map((o,i)=><button onClick={()=>play.performTrade(i)}><img alt="" src={iconUrl(BLOCKS.state(o.cost[0]))}/>{o.cost[1]} {BLOCKS.byName(o.cost[0]).name} → <img alt="" src={iconUrl(BLOCKS.state(o.gives[0]))}/>{o.gives[1]} {BLOCKS.byName(o.gives[0]).name}</button>)}</div>}
+  return <div class="screen workshop" role="dialog" aria-modal="true" aria-label={title}>
+    <ScreenHead title={title} subtitle={w.kind==='forge'?'Strengthen the equipment you carry. Each level adds speed, protection and durability.':'Supplies for the journey ahead.'} close={()=>play.closeScreen()}/>
+    <p class="pack-summary">{play.inventory.slots.filter(Boolean).length}/36 pack slots · {play.inventory.count(BLOCKS.state('trade_coin'))} coins · {play.inventory.count(BLOCKS.state('ember_crystal'))} ember · {play.inventory.count(BLOCKS.state('iron_ingot'))} iron</p>
+    {w.kind==='trade'&&<div class="trade-list">{TRADE_OFFERS.map((o,i)=>{const owned=play.inventory.count(BLOCKS.state(o.cost[0]));return <button key={i} disabled={owned<o.cost[1]} onClick={()=>play.performTrade(i)}><span class="offer-item"><img alt="" src={iconUrl(BLOCKS.state(o.gives[0]))}/><b>{o.gives[1]} {BLOCKS.byName(o.gives[0]).name}</b></span><span class="offer-cost"><img alt="" src={iconUrl(BLOCKS.state(o.cost[0]))}/>{o.cost[1]} {BLOCKS.byName(o.cost[0]).name}<small>You have {owned}</small></span></button>;})}</div>}
     {w.kind==='forge'&&<div class="equipment-list">{play.inventory.slots.map((s,i)=>s&&(BLOCKS.type(s.state).tool||BLOCKS.type(s.state).armour)&&<button title={tooltip(s)} disabled={(s.upgrade??0)>=3} onClick={()=>play.performForge(i)}><img alt="" src={stackIconUrl(s)}/>{BLOCKS.type(s.state).name}<span>Level {s.upgrade??0}/3</span><span>{upgradeCost(s)} ember + 2 iron</span></button>)}</div>}
     {w.kind==='sign'&&<><label>Up to four lines, 24 characters per line<textarea aria-label="Sign text" maxLength={96} value={text} onInput={e=>setText(e.currentTarget.value)}/></label><button onClick={()=>{if(play.writeSign(text))play.closeScreen();}}>Save sign</button></>}
     {w.kind==='frame'&&<><p class="help">Choose an inventory item to display. Replacing it returns the old item.</p><div class="equipment-list">{play.inventory.slots.map((s,i)=>s&&<button title={tooltip(s)} onClick={()=>play.frameItem(i)}><img alt="" src={stackIconUrl(s)}/>{BLOCKS.type(s.state).name}</button>)}</div><button onClick={()=>play.frameItem(null)}>Take displayed item</button></>}
     {play.message&&<p role="status">{play.message}</p>}
-    <button onClick={()=>play.closeScreen()}>Close</button>
+    <footer class="screen-footer">Changes are saved with your world. <button onClick={()=>play.closeScreen()}>Done</button></footer>
   </div>;
 }
 
@@ -159,14 +171,17 @@ function InventoryScreen({ play }: { play: Play }) {
   const furnace = play.screen === 'furnace' && play.openFurnace ? play.furnaces.get(play.openFurnace) : undefined;
   const chest = play.screen === 'chest' && play.openChest ? play.chests.get(play.openChest) : undefined;
   return (
-    <div class="screen" onContextMenu={(e) => e.preventDefault()}>
+    <div class="screen inventory-screen" role="dialog" aria-modal="true" aria-label={chest?'Chest':furnace?'Furnace':'Inventory'} onContextMenu={(e) => e.preventDefault()}>
+      <ScreenHead title={chest?'Chest':furnace?'Furnace':play.mode==='creative'?'Builder’s kit':'Inventory'} subtitle={chest?'Store supplies or transfer them to your pack.':furnace?'Add a material and fuel. Collect the finished result.':'Equipment, crafting and supplies for your next journey.'} close={()=>play.closeScreen()}/>
+      <div class="inventory-layout"><section class="activity-pane">
       {chest ? (
-        <Grid slots={chest} from={0} to={chest.length} play={play} />
+        <><h3>Storage</h3><Grid slots={chest} from={0} to={chest.length} play={play} /></>
       ) : furnace ? (
         <div class="row">
-          <div class="col">
+          <div class="col"><h3>Material</h3>
             <Slot stack={furnace.input} onClick={(r,q) => { const box = [furnace.input]; if(q)play.quickMove(box,0);else play.cursor = clickSlot(box, 0, play.cursor, r); furnace.input = box[0]!; play.version++; }} />
             <div class="flame" style={{ opacity: furnace.burn > 0 ? 1 : 0.2 }}>🔥</div>
+            <h3>Fuel</h3>
             <Slot stack={furnace.fuel} onClick={(r,q) => { const box = [furnace.fuel]; if(q)play.quickMove(box,0);else play.cursor = clickSlot(box, 0, play.cursor, r); furnace.fuel = box[0]!; play.version++; }} />
           </div>
           <div class="progress small"><div style={{ width: `${(furnace.progress / 8) * 100}%` }} /></div>
@@ -175,13 +190,13 @@ function InventoryScreen({ play }: { play: Play }) {
       ) : play.mode === 'creative' ? (
         <><label class="palette-search">Find a block or item<input type="search" aria-label="Search blocks and items" placeholder="Try birch, stairs or lantern…" value={search} onInput={e=>setSearch(e.currentTarget.value)}/></label>
         <div class="palette">
-          {filtered.map((s) => <Slot stack={{ state: s, count: 1 }} onClick={() => { play.cursor = { state: s, count: BLOCKS.type(s).maxStack ?? 64 }; play.version++; }} />)}
+          {filtered.map((s) => <Slot key={s} stack={{ state: s, count: 1 }} onClick={() => { play.cursor = { state: s, count: BLOCKS.type(s).maxStack ?? 64 }; play.version++; }} />)}
         </div>{filtered.length===0&&<p role="status">No matching blocks or items.</p>}</>
       ) : (
         <>
-          <div class="row">
+          <h3>Equipment &amp; crafting</h3><div class="row">
             <div class="col armour" title="Armour: head, chest, legs, feet">
-              {play.armour.map((a, i) => <Slot stack={a} onClick={(right) => play.clickArmour(i, right)} />)}
+              {play.armour.map((a, i) => <Slot key={i} stack={a} title={a?undefined:['Helmet','Chest armour','Leg armour','Boots'][i]} onClick={(right) => play.clickArmour(i, right)} />)}
             </div>
             <Grid slots={play.craft} from={0} to={play.craftSize * play.craftSize} play={play} cols={play.craftSize} />
             <span class="arrow">→</span>
@@ -190,10 +205,13 @@ function InventoryScreen({ play }: { play: Play }) {
           <RecipeList play={play} />
         </>
       )}
-      <p class="hint">Shift-click: quick transfer · Right-click: split/place one · Shift+Enter: keyboard quick transfer</p>
+      </section><section class="bag-pane"><h3>Backpack <small>{inv.filter(Boolean).length}/36 slots</small></h3>
       <Grid slots={inv} from={9} to={36} play={play} />
+      <h3>Quick access</h3>
       <Grid slots={inv} from={0} to={9} play={play} />
+      <p class="hint">Shift-click to transfer · Right-click to split or place one · Shift+Enter for keyboard transfer</p>
       {play.cursor && <div class="hint">Holding {BLOCKS.type(play.cursor.state).name} × {play.cursor.count}. E or Esc closes.</div>}
+      </section></div>
     </div>
   );
 }
@@ -202,7 +220,7 @@ function SettingsSection({ m }: { m: WorldsModel }) {
   const s = m.settings;
   const set = (patch: Partial<Settings>) => m.changeSettings({ ...s, ...patch });
   return (
-    <>
+    <div class="settings-grid"><fieldset><legend>Display &amp; camera</legend>
       <label>View distance: {s.viewChunks} chunks ({Math.round(s.viewChunks * 16 * BLOCK_SIZE_M)} m)
         <input type="range" min={MIN_VIEW_CHUNKS} max={MAX_VIEW_CHUNKS} step={1} value={s.viewChunks} onInput={(e) => set({ viewChunks: Number((e.target as HTMLInputElement).value) })} />
       </label>
@@ -212,20 +230,20 @@ function SettingsSection({ m }: { m: WorldsModel }) {
       <label>Mouse sensitivity
         <input type="range" min={0.0005} max={0.01} step={0.0001} value={s.mouseSensitivity} onInput={(e) => set({ mouseSensitivity: Number((e.target as HTMLInputElement).value) })} />
       </label>
-      <label>Effects volume: {Math.round(s.effectsVolume * 100)}%
+      </fieldset><fieldset><legend>Audio</legend><label>Effects volume: {Math.round(s.effectsVolume * 100)}%
         <input type="range" min={0} max={1} step={0.05} value={s.effectsVolume} onInput={(e) => set({ effectsVolume: Number((e.target as HTMLInputElement).value) })} />
       </label>
       <label>Music volume: {Math.round(s.musicVolume * 100)}%
         <input type="range" min={0} max={1} step={0.05} value={s.musicVolume} onInput={(e) => set({ musicVolume: Number((e.target as HTMLInputElement).value) })} />
       </label>
-      <label>Menu and HUD size: {Math.round(s.guiScale * 100)}%
+      </fieldset><fieldset><legend>Interface &amp; comfort</legend><label>Menu and HUD size: {Math.round(s.guiScale * 100)}%
         <input type="range" min={0.75} max={1.5} step={0.05} value={s.guiScale} onChange={(e) => set({ guiScale: Number((e.target as HTMLInputElement).value) })} />
       </label>
       <label class="check"><input type="checkbox" checked={s.invertY} onChange={(e) => set({ invertY: (e.target as HTMLInputElement).checked })} /> Invert mouse Y</label>
       <label class="check"><input type="checkbox" checked={s.viewBob} onChange={(e) => set({ viewBob: (e.target as HTMLInputElement).checked })} /> View bob and sprint widening</label>
       <label class="check"><input type="checkbox" checked={s.hints} onChange={(e) => set({ hints: (e.target as HTMLInputElement).checked })} /> Show hints</label>
-      <KeyBindings m={m} />
-    </>
+      </fieldset>
+    </div>
   );
 }
 
@@ -247,7 +265,7 @@ function KeyBindings({ m }: { m: WorldsModel }) {
   }, [waiting]);
   const used = Object.values(keys);
   return (
-    <details class="keys">
+    <details class="keys" open>
       <summary>Keys</summary>
       <div class="keygrid">
         {(Object.entries(BINDINGS) as [Binding, string][]).map(([b, label]) => (
@@ -275,23 +293,24 @@ export function freshWorldName(worlds: readonly { name: string }[]): string {
 function NewWorldForm({ m }: { m: WorldsModel }) {
   // Form fields live in refs: the menu re-renders while open, and plain variables would reset.
   const form = useRef({ name: '', seed: '', mode: 'survival' as Mode, difficulty: 'normal' as Difficulty }).current;
-  return (
-    <div class="newworld">
-      <input placeholder={freshWorldName(m.worlds)} aria-label="World name" onInput={(e) => (form.name = (e.target as HTMLInputElement).value)} />
-      <input placeholder="Seed (optional)" aria-label="Seed" onInput={(e) => (form.seed = (e.target as HTMLInputElement).value)} />
-      <select aria-label="Mode" onChange={(e) => (form.mode = (e.target as HTMLSelectElement).value as Mode)}>
-        <option value="survival">Survival</option>
-        <option value="creative">Creative</option>
-      </select>
-      <DifficultySelect value={form.difficulty} onChange={(d) => (form.difficulty = d)} />
-      <button class="create" onClick={() => {
+  const create = () => {
         const name = form.name.trim() || freshWorldName(m.worlds);
         if (m.worlds.some((w) => w.name === name) && !confirm(`A world named '${name}' exists. Replace it?`)) return;
         const text = form.seed.trim();
         const seed = text === '' ? Math.floor(Math.random() * 2 ** 31) : Number.isFinite(Number(text)) ? Number(text) : hashSeed(text);
         m.openWorld(name, { seed, mode: form.mode, difficulty: form.difficulty });
-      }}>Create world</button>
-    </div>
+      };
+  return (
+    <form class="newworld" onSubmit={e=>{e.preventDefault();create();}}>
+      <label>World name<input placeholder={freshWorldName(m.worlds)} aria-label="World name" onInput={(e) => (form.name = (e.target as HTMLInputElement).value)} /></label>
+      <label>Seed <small>Optional</small><input placeholder="Leave blank for a surprise" aria-label="Seed" onInput={(e) => (form.seed = (e.target as HTMLInputElement).value)} /></label>
+      <label>Play style<select aria-label="Mode" onChange={(e) => (form.mode = (e.target as HTMLSelectElement).value as Mode)}>
+        <option value="survival">Survival</option>
+        <option value="creative">Creative</option>
+      </select></label>
+      <label>Challenge<DifficultySelect value={form.difficulty} onChange={(d) => (form.difficulty = d)} /></label>
+      <button class="create primary" type="submit">Create world <span aria-hidden="true">→</span></button>
+    </form>
   );
 }
 
@@ -308,9 +327,9 @@ function DifficultySelect(props: { value: Difficulty; onChange: (d: Difficulty) 
 function WorldsSection({ m }: { m: WorldsModel }) {
   return (
     <>
-      <ul class="worlds">
+      {m.worlds.length===0&&<p class="empty-state">No saved worlds yet. Start a new adventure, or import a world below.</p>}<ul class="worlds">
         {m.worlds.map((w) => (
-          <li>
+          <li key={w.name}>
             <b>{w.name}</b> <small>seed {w.seed} · {new Date(w.lastPlayed).toLocaleString()}</small>
             {w.name === m.worldName ? <em> (playing)</em> : <button onClick={() => m.openWorld(w.name)}>Open</button>}
             <button onClick={() => m.exportWorld(w.name)}>Export</button>
@@ -340,65 +359,32 @@ function ingredients(r: Recipe): string {
 
 /** Every recipe; those you can make now are bright, and a click lays one out in the grid. */
 function RecipeList({ play }: { play: Play }) {
-  const [search,setSearch]=useState('');
-  const recipes=RECIPES.filter(r=>BLOCKS.byName(r.result[0]).name.toLowerCase().includes(search.trim().toLowerCase()));
-  return (
-    <details class="recipes" open>
-      <summary>Recipes</summary>
-      <input type="search" aria-label="Search recipes" placeholder="Find a recipe…" value={search} onInput={e=>setSearch(e.currentTarget.value)}/>
-      {recipes.length===0&&<p role="status">No matching recipes.</p>}
-      <div class="palette">
-        {recipes.map((r) => {
-          const out = { state: BLOCKS.state(r.result[0]), count: r.result[1] };
-          const small = !fits(r, play.craftSize);
-          const title = `${BLOCKS.type(out.state).name}${out.count > 1 ? ` × ${out.count}` : ''}\nNeeds ${ingredients(r)}${small ? '\nOnly at a crafting table' : ''}`;
-          return <Slot stack={out} title={title} dim={!play.canMake(r)} onClick={() => play.fillRecipe(r)} />;
-        })}
-      </div>
-    </details>
-  );
+  const [search,setSearch]=useState(''),[available,setAvailable]=useState(false);
+  const recipes=RECIPES.filter(r=>BLOCKS.byName(r.result[0]).name.toLowerCase().includes(search.trim().toLowerCase())&&(!available||play.canMake(r)));
+  return <section class="recipes"><h3>Recipe book <small>{recipes.length} recipes</small></h3><div class="recipe-tools"><input type="search" aria-label="Search recipes" placeholder="Find a recipe…" value={search} onInput={e=>setSearch(e.currentTarget.value)}/><label class="check"><input type="checkbox" checked={available} onChange={e=>setAvailable(e.currentTarget.checked)}/>Craftable</label></div>
+    <div class="recipe-list">{recipes.map(r=>{const out={state:BLOCKS.state(r.result[0]),count:r.result[1]},can=play.canMake(r),small=!fits(r,play.craftSize);return <button key={r.result[0]+':'+r.pattern.join('/')+':'+Object.values(r.key).flat().join('/')} class={'recipe-card'+(can?' available':'')} title={ingredients(r)} onClick={()=>play.fillRecipe(r)}><img alt="" src={stackIconUrl(out)}/><span><b>{BLOCKS.type(out.state).name}{out.count>1?' × '+out.count:''}</b><small>{ingredients(r)}</small></span><em>{small?'Workbench':can?'Prepare':'Missing items'}</em></button>;})}</div>{recipes.length===0&&<p class="empty-state" role="status">No matching recipes.</p>}<p class="hint">Choose a recipe to prepare its ingredients, then collect the result above.</p>
+  </section>;
 }
 
 function Menu({ m }: { m: UiModel }) {
-  return (
-    <div class="menu">
-      <h1>Paused</h1>
-      <button class="primary" onClick={m.resume}>Resume</button>
-      {m.play.mode === 'survival' && (
-        <label>Difficulty <DifficultySelect value={m.play.difficulty} onChange={m.setDifficulty} /></label>
-      )}
-      {m.play.mode === 'survival' && <Journal play={m.play} />}
-      <h2>Settings</h2>
-      <SettingsSection m={m} />
-      <h2>Worlds</h2>
-      <WorldsSection m={m} />
-      <h2>New world</h2>
-      <NewWorldForm m={m} />
-      <h2>Controls</h2>
-      <p class="help">{CONTROLS}</p>
-      <button onClick={m.quitToTitle}>Save and quit to title</button>
-    </div>
-  );
+  const [tab,setTab]=useState('Journey');
+  return <MenuShell title="Paused" subtitle={m.worldName??'Your adventure'} tabs={['Journey','Settings','Worlds','Controls']} active={tab} select={setTab} action={<button class="primary" onClick={m.resume}>Resume</button>}>
+    <section class="menu-panel" hidden={tab!=='Journey'}><span class="eyebrow">TAKE A BREATHER</span><h2>Your journey</h2><p class="section-copy">Your world will be here when you’re ready.</p><div class="journey-summary"><span>World<strong>{m.worldName}</strong></span><span>Mode<strong>{m.play.mode}</strong></span><span>Milestones<strong>{m.play.journal.done.size} / {MILESTONES.length}</strong></span></div>{m.play.mode==='survival'&&<><label>Difficulty<DifficultySelect value={m.play.difficulty} onChange={m.setDifficulty}/></label><Journal play={m.play}/></>}<StatsList play={m.play}/><button onClick={()=>m.exportWorld(m.worldName!)}>Export this world</button><button class="quiet" onClick={m.quitToTitle}>Save and quit to title</button></section>
+    <section class="menu-panel" hidden={tab!=='Settings'}><span class="eyebrow">MAKE IT YOURS</span><h2>Settings</h2><SettingsSection m={m}/></section>
+    <section class="menu-panel" hidden={tab!=='Worlds'}><span class="eyebrow">YOUR COLLECTION</span><h2>Saved worlds</h2><WorldsSection m={m}/></section>
+    <section class="menu-panel" hidden={tab!=='Controls'}><span class="eyebrow">FIND YOUR RHYTHM</span><h2>Controls</h2><p class="section-copy">{CONTROLS}</p><KeyBindings m={m}/></section>
+  </MenuShell>;
 }
 
-/** The first screen: carry on with the last world, start a new one, or manage the saved ones. */
+/** Distinct destinations keep world creation, saves and preferences out of one long scrolling form. */
 function Title({ m }: { m: WorldsModel }) {
-  const last = m.worlds[0];
-  return (
-    <div class="menu title">
-      <h1>Voxel Game</h1>
-      <p class="version">Version {version}</p>
-      {last && <button class="primary continue" onClick={() => m.openWorld(last.name)}>Continue: {last.name}</button>}
-      <h2>New world</h2>
-      <NewWorldForm m={m} />
-      {m.worlds.length > 0 && <><h2>Saved worlds</h2><WorldsSection m={m} /></>}
-      {m.worlds.length === 0 && <WorldsSection m={m} />}
-      <h2>Settings</h2>
-      <SettingsSection m={m} />
-      <h2>Controls</h2>
-      <p class="help">{CONTROLS}</p>
-    </div>
-  );
+  const [tab,setTab]=useState('New adventure');const last=m.worlds[0];
+  return <MenuShell title="Voxel Game" subtitle="Build a shelter. Explore what lies below." tabs={['New adventure','Saved worlds','Settings','Controls']} active={tab} select={setTab} action={last?<button class="primary continue" onClick={()=>m.openWorld(last.name)}>Continue: {last.name}</button>:undefined}>
+    <section class="menu-panel" hidden={tab!=='New adventure'}><span class="eyebrow">THE NEXT CHAPTER</span><h2>New adventure</h2><p class="section-copy">Choose a world to call your own. Survive the wilds, or build freely in Creative.</p><NewWorldForm m={m}/><p class="save-note">Your progress saves automatically on this device. Export a copy from Saved worlds.</p></section>
+    <section class="menu-panel" hidden={tab!=='Saved worlds'}><span class="eyebrow">PICK UP THE TRAIL</span><h2>Saved worlds</h2><WorldsSection m={m}/></section>
+    <section class="menu-panel" hidden={tab!=='Settings'}><span class="eyebrow">MAKE IT YOURS</span><h2>Settings</h2><SettingsSection m={m}/></section>
+    <section class="menu-panel" hidden={tab!=='Controls'}><span class="eyebrow">READY TO EXPLORE</span><h2>Controls</h2><p class="section-copy">{CONTROLS}</p><KeyBindings m={m}/></section>
+  </MenuShell>;
 }
 
 /** Draws the title screen into `root`. Call again whenever the model changes. */

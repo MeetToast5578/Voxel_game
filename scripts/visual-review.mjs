@@ -40,13 +40,24 @@ try{
    if(width===390&&scale===1)await p.screenshot({path:'screenshots/visual-'+kind+'-phone.png'});
   }
  }
- await p.goto('http://127.0.0.1:4182/');await p.waitForSelector('.menu.title');
+ const reviewMenu=async(kind,tabs)=>{for(const tab of tabs){
+ await p.locator('nav[aria-label="Menu sections"]').getByRole('button',{name:tab,exact:true}).click();
+ assert.equal(await p.locator('.menu-panel:visible').count(),1);
+ await p.setViewportSize({width:1280,height:800});await p.evaluate(()=>{const u=document.querySelector('#ui');u.style.zoom='1';u.style.setProperty('--gui-scale','1');});
+ await p.screenshot({path:'screenshots/visual-'+kind+'-'+tab.toLowerCase().replaceAll(' ','-')+'-desktop.png'});
  for(const width of [390,320,768])for(const scale of scales){
   await p.setViewportSize({width,height:844});await p.evaluate(scale=>{const u=document.querySelector('#ui');u.style.zoom=String(scale);u.style.setProperty('--gui-scale',String(scale));},scale);
-  const bounds=await p.locator('.menu.title').evaluate(e=>({rect:e.getBoundingClientRect().toJSON(),client:e.clientWidth,scroll:e.scrollWidth}));
-  assert.ok(bounds.rect.left>=0&&bounds.rect.right<=width+1&&bounds.rect.top>=0&&bounds.rect.bottom<=845,'Offscreen title: '+JSON.stringify({width,scale,bounds}));
-  assert.ok(bounds.scroll<=bounds.client+1,'Title scrolls sideways: '+JSON.stringify({width,scale,bounds}));report.push({screen:'title',width,scale,bounds});
-  if(width===390&&scale===1)await p.screenshot({path:'screenshots/visual-title-phone.png'});
- }
+  const bounds=await p.locator('.menu-shell').evaluate(e=>({rect:e.getBoundingClientRect().toJSON(),client:e.clientWidth,scroll:e.scrollWidth}));
+  assert.ok(bounds.rect.left>=0&&bounds.rect.right<=width+1&&bounds.rect.top>=0&&bounds.rect.bottom<=845,'Offscreen '+kind+'/'+tab+': '+JSON.stringify({width,scale,bounds}));
+  assert.ok(bounds.scroll<=bounds.client+1,kind+'/'+tab+' scrolls sideways: '+JSON.stringify({width,scale,bounds}));report.push({screen:kind+'/'+tab,width,scale,bounds});
+  if(width===390&&scale===1)await p.screenshot({path:'screenshots/visual-'+kind+'-'+tab.toLowerCase().replaceAll(' ','-')+'-phone.png'});
+ }}};
+ await p.evaluate(()=>window.__game.play.closeScreen());await p.waitForSelector('.menu-shell');
+ await reviewMenu('pause',['Journey','Settings','Worlds','Controls']);
+ await p.goto('http://127.0.0.1:4182/');await p.waitForSelector('.menu.title');
+ await p.getByLabel('World name',{exact:true}).fill('Keep my draft');await p.getByLabel('Seed',{exact:true}).fill('forest trail');
+ await reviewMenu('title',['New adventure','Saved worlds','Settings','Controls']);
+ await p.locator('nav').getByRole('button',{name:'New adventure',exact:true}).focus();await p.keyboard.press('Enter');
+ assert.equal(await p.getByLabel('World name',{exact:true}).inputValue(),'Keep my draft');assert.equal(await p.getByLabel('Seed',{exact:true}).inputValue(),'forest trail');
  assert.deepEqual(errors,[]);writeFileSync('screenshots/visual-review.json',JSON.stringify({fixtures,desktopIcon,layouts:report},null,2));console.log('PASS: six actual object renderers match fog; F3, clean gameplay, modal overlays, readable icons and '+report.length+' responsive screen/GUI-scale layouts.');
 }finally{await browser.close();await server.close();}

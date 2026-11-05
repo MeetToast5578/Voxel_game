@@ -6592,7 +6592,7 @@
     "file": "tiles/water.png",
     "width": 32,
     "height": 32,
-    "pixelSha256": "45bfec334a36c3ca2d85e054b2fa749a5f3e9df08cc8dff889f899972794058e"
+    "pixelSha256": "61ddcb68704784267d07851c2b4a0cf0fe4731a03544637305cf901369c618a5"
   },
   {
     "source": "sources/lava.png",
@@ -6624,7 +6624,7 @@
     "file": "tiles/lava.png",
     "width": 32,
     "height": 32,
-    "pixelSha256": "402e3c28b079a2f3061be5c1a7551e510f787cba4eb34ab18df0949c05fa414c"
+    "pixelSha256": "a5a0240bb4c38c92c05252bb4df8421d1befa97c441d5fe05a4e535283a54836"
   },
   {
     "source": "sources/bed_top.png",
@@ -7532,7 +7532,7 @@
     "file": "tiles/water_0.png",
     "width": 32,
     "height": 32,
-    "pixelSha256": "45bfec334a36c3ca2d85e054b2fa749a5f3e9df08cc8dff889f899972794058e"
+    "pixelSha256": "1663034cd374391dbc3e274bdf4a85bdda28eff3a6eaf4bb16a0f200622c2883"
   },
   {
     "source": "sources/water.png",
@@ -7565,7 +7565,7 @@
     "file": "tiles/water_1.png",
     "width": 32,
     "height": 32,
-    "pixelSha256": "3bd390417c5b0c2d3afa429f148e3a88a7e37e0c279e41aac11a53c746c58126"
+    "pixelSha256": "a7f24aaac14111e983ac08a97d1c24c7aed93e9e4bd9f94c1be898fb475f4d2d"
   },
   {
     "source": "sources/water.png",
@@ -7598,7 +7598,7 @@
     "file": "tiles/water_2.png",
     "width": 32,
     "height": 32,
-    "pixelSha256": "ced044368bd250b7af41debfd1eea9f0b96b997f4c2eb045c4d19eda043f57e8"
+    "pixelSha256": "250981d24715cc375b8686eb872f7c10dbae061e6c0a8e7e40ef37a2dbcabe68"
   },
   {
     "source": "sources/water.png",
@@ -7631,7 +7631,7 @@
     "file": "tiles/water_3.png",
     "width": 32,
     "height": 32,
-    "pixelSha256": "178af4049b6a757c1e4c4ea8fa6952bd077dc11fc993654751f2707f3341e5e8"
+    "pixelSha256": "f08015accfbe226be1148689c10c8233d3a80e18718b7c6e9962da46964a5cb9"
   },
   {
     "source": "sources/water.png",
@@ -7664,7 +7664,7 @@
     "file": "tiles/water_4.png",
     "width": 32,
     "height": 32,
-    "pixelSha256": "15c7da5fb23c5bf81f36f7aa9ebc515fcee91b3fe61f6cb2dcef393e655a1625"
+    "pixelSha256": "0d356586052cd313911c10c7fe896929de37f1e3dd94e2131280d8c43bafe8e0"
   },
   {
     "source": "sources/water.png",
@@ -7697,7 +7697,7 @@
     "file": "tiles/water_5.png",
     "width": 32,
     "height": 32,
-    "pixelSha256": "178af4049b6a757c1e4c4ea8fa6952bd077dc11fc993654751f2707f3341e5e8"
+    "pixelSha256": "7bd6e176c080247e545460421f764f8569992162cbc2fbef650f01ee500a6e6f"
   },
   {
     "source": "sources/water.png",
@@ -7730,7 +7730,7 @@
     "file": "tiles/water_6.png",
     "width": 32,
     "height": 32,
-    "pixelSha256": "ced044368bd250b7af41debfd1eea9f0b96b997f4c2eb045c4d19eda043f57e8"
+    "pixelSha256": "1e512e4f9920c40987c90d66569052b284b094d59fe2beb1b87387bed0a5d11c"
   },
   {
     "source": "sources/water.png",
@@ -7763,7 +7763,7 @@
     "file": "tiles/water_7.png",
     "width": 32,
     "height": 32,
-    "pixelSha256": "3bd390417c5b0c2d3afa429f148e3a88a7e37e0c279e41aac11a53c746c58126"
+    "pixelSha256": "bd207e4eb6401a415a8d0ac6184f88edce616e751ad0e219c7e307344b8d5c63"
   },
   {
     "source": "sources/lava.png",
@@ -7796,7 +7796,7 @@
     "file": "tiles/lava_0.png",
     "width": 32,
     "height": 32,
-    "pixelSha256": "402e3c28b079a2f3061be5c1a7551e510f787cba4eb34ab18df0949c05fa414c"
+    "pixelSha256": "889e4cf0c2ef329390dab06a3dcada1035f4c3acbb9cbe9215593f94f0ab254a"
   },
   {
     "source": "sources/lava.png",
@@ -7829,7 +7829,7 @@
     "file": "tiles/lava_1.png",
     "width": 32,
     "height": 32,
-    "pixelSha256": "c7046b0a47676519f88a356674859fee82a8aec01072d8f95d39b5bbf68c9c9d"
+    "pixelSha256": "a6bf3479b0c346036d85de62453bbed5234ab416295dd099eea37ff1971cbdac"
   },
   {
     "source": "sources/lava.png",
@@ -7862,7 +7862,7 @@
     "file": "tiles/lava_2.png",
     "width": 32,
     "height": 32,
-    "pixelSha256": "c7046b0a47676519f88a356674859fee82a8aec01072d8f95d39b5bbf68c9c9d"
+    "pixelSha256": "6cf18337a3474de91c602d7f6834d490b057d2e359f039683902c4a613eb9f6c"
   },
   {
     "source": "sources/lava.png",
@@ -7895,7 +7895,7 @@
     "file": "tiles/lava_3.png",
     "width": 32,
     "height": 32,
-    "pixelSha256": "cf7e99483bde479e83a78a5215d7448adc6ee20771ce15dc551126071fa8b8ac"
+    "pixelSha256": "99eed3ef0bbcb7addb9e94f73a91ddbe8ea907009a10e87eee424d912a4e5bb0"
   },
   {
     "source": "sources/lava.png",
@@ -7928,7 +7928,7 @@
     "file": "tiles/lava_4.png",
     "width": 32,
     "height": 32,
-    "pixelSha256": "cf7e99483bde479e83a78a5215d7448adc6ee20771ce15dc551126071fa8b8ac"
+    "pixelSha256": "19cb181e8c5e47b78ddeee793634de15a7c075f9b8df5f3fd588e4a805dcbe54"
   },
   {
     "source": "sources/lava.png",
@@ -7961,7 +7961,7 @@
     "file": "tiles/lava_5.png",
     "width": 32,
     "height": 32,
-    "pixelSha256": "cf7e99483bde479e83a78a5215d7448adc6ee20771ce15dc551126071fa8b8ac"
+    "pixelSha256": "50101e874f7746549302c84e716394c48b4fcc709c6f14a456236d1917ee47ef"
   },
   {
     "source": "sources/lava.png",
@@ -7994,7 +7994,7 @@
     "file": "tiles/lava_6.png",
     "width": 32,
     "height": 32,
-    "pixelSha256": "c7046b0a47676519f88a356674859fee82a8aec01072d8f95d39b5bbf68c9c9d"
+    "pixelSha256": "2d048b61fa59ed66d4c225b8f9c4842674ba496e11ec670c7316896ac1319f1f"
   },
   {
     "source": "sources/lava.png",
@@ -8027,7 +8027,7 @@
     "file": "tiles/lava_7.png",
     "width": 32,
     "height": 32,
-    "pixelSha256": "c7046b0a47676519f88a356674859fee82a8aec01072d8f95d39b5bbf68c9c9d"
+    "pixelSha256": "fe53e01c4dee7e59e91e4ca6f4bc7a58ed9fdf974f5b307015ff9167b2f6394f"
   },
   {
     "source": "sources/furnace_faces.png",

@@ -1,6 +1,6 @@
 import { CHUNK_SIZE } from '../config';
 import { tileIndex } from '../render/tilePixels';
-import { BLOCKS, FLUID_LEVELS, OPAQUE, type Box, type RenderLayer } from './blocks';
+import { BLOCKS, fluidHeight16, OPAQUE, type Box, type RenderLayer } from './blocks';
 
 // Imported constants copied locally: hot loops then read a plain constant, not a module binding.
 const CHUNK_SIZE_ = CHUNK_SIZE;
@@ -74,9 +74,9 @@ const PASS = new Uint8Array(COUNT);
 const KIND = new Uint8Array(COUNT);
 /** The boxes of each box-shaped state, in sixteenths. */
 const BOXES: (readonly Box[])[] = [];
-/** Faces between two cells of the same group are hidden (0: no group). */
+/** Shared-face culling group (0: no group); fluids retain the strip above a lower neighbour's surface. */
 const GROUP = new Uint16Array(COUNT);
-/** Fluid cells: 1 water, 2 lava (faces between the same fluid are hidden; their tops sit lower). */
+/** Fluid cells: 1 water, 2 lava (only overlapping shared faces are hidden; exposed tops sit lower). */
 const FLUID_KIND = new Uint8Array(COUNT);
 /** How far a fluid cell's top sits below the cell top when no fluid is above it, in sixteenths. */
 const FLUID_DROP = new Uint8Array(COUNT);
@@ -94,8 +94,7 @@ for (const t of BLOCKS.types) {
     FLUID_KIND[s] = t.layer === 'water' ? 1 : t.key === 'lava' || t.key === 'flowing_lava' ? 2 : 0;
     if (FLUID_KIND[s]) {
       // A source's surface is 14/16 high; flowing fluid of level 1..8 scales that down; falling fluid fills the cell.
-      const level = t.flows ? (v >= FLUID_LEVELS ? -1 : v + 1) : FLUID_LEVELS + 1;
-      FLUID_DROP[s] = level < 0 ? 0 : 16 - Math.max(2, Math.round((14 * Math.min(level, FLUID_LEVELS)) / FLUID_LEVELS));
+      FLUID_DROP[s] = 16 - fluidHeight16(s);
     }
     if (t.shape === 'slab') BOXES[s] = [[0, v === 0 ? 0 : 8, 0, 16, v === 0 ? 8 : 16, 16]];
     else if (t.shape === 'layer') BOXES[s] = [[0, 0, 0, 16, t.key === 'snow' ? (v + 1) * 2 : 1, 16]];
@@ -171,6 +170,7 @@ function cornerShading(states: Uint16Array, light: Uint8Array, p: number, f: num
 const AREA = CHUNK_SIZE_ * CHUNK_SIZE_;
 const maskA = new Int32Array(AREA);
 const maskB = new Int32Array(AREA);
+// Corner AO occupies bits 0..7; bits 8..11 hold the lower edge of an exposed fluid joining strip.
 const maskC = new Int32Array(AREA);
 
 /** Builds the quads of one chunk. Pure apart from module scratch space; safe to run in a worker. */
@@ -207,7 +207,19 @@ function greedyCubes(states: Uint16Array, light: Uint8Array, climate: Uint8Array
           const s = states[p]!;
           const m = v * CHUNK_SIZE_ + u;
           const n = states[p + front]!;
-          if (KIND[s] !== 1 || (FLAGS[n]! & OPAQUE) !== 0 || (GROUP[s] !== 0 && GROUP[s] === GROUP[n])) {
+          let bottom = 0;
+          let hidden = KIND[s] !== 1 || (FLAGS[n]! & OPAQUE) !== 0;
+          if (!hidden && GROUP[s] !== 0 && GROUP[s] === GROUP[n]) {
+            hidden = true;
+            if (FLUID_KIND[s] && f !== 2 && f !== 3) {
+              const height = FLUID_KIND[states[p + SY]!] === FLUID_KIND[s] ? 16 : 16 - FLUID_DROP[s]!;
+              const neighbourHeight = FLUID_KIND[states[p + front + SY]!] === FLUID_KIND[n] ? 16 : 16 - FLUID_DROP[n]!;
+              // Equal fluids hide only their overlapping volume. The exposed strip joins differing surface
+              // heights; culling the entire side left open cracks along every river step and flowing edge.
+              if (height > neighbourHeight) { hidden = false; bottom = neighbourHeight; }
+            }
+          }
+          if (hidden) {
             maskA[m] = 0;
             continue;
           }
@@ -222,7 +234,7 @@ function greedyCubes(states: Uint16Array, light: Uint8Array, climate: Uint8Array
           maskA[m] = (1 + FACE_TILE[s * 6 + f]!) | (PASS[s]! << 11) | (tint << 13) | (clim << 15) | (lowered << 23);
           maskB[m] = (skyC[0]! | (skyC[1]! << 4) | (skyC[2]! << 8) | (skyC[3]! << 12)) |
             ((blockC[0]! | (blockC[1]! << 4) | (blockC[2]! << 8) | (blockC[3]! << 12)) << 16);
-          maskC[m] = aoC[0]! | (aoC[1]! << 2) | (aoC[2]! << 4) | (aoC[3]! << 6);
+          maskC[m] = aoC[0]! | (aoC[1]! << 2) | (aoC[2]! << 4) | (aoC[3]! << 6) | (bottom << 8);
           any = true;
         }
       }
@@ -266,10 +278,11 @@ function emitGreedy(buf: QuadBuffer, f: number, pos: number[], ua: number, va: n
   size[ua] = 16 * w;
   size[va] = 16 * h;
   const corners = CORNERS[f]!;
+  const bottom = (kc >> 8) & 15;
   for (let c = 0; c < 4; c++) {
     const cr = corners[c]!;
     const x = pos[0]! * 16 + cr[0] * size[0]!;
-    const y = pos[1]! * 16 + cr[1] * size[1]! - (cr[1] === 1 ? lowered : 0);
+    const y = pos[1]! * 16 + cr[1] * size[1]! + (cr[1] === 1 ? -lowered : bottom);
     const z = pos[2]! * 16 + cr[2] * size[2]!;
     const ao = (kc >> (c * 2)) & 3;
     w0[c] = (x | (y << 9) | (z << 18) | (ao << 27) | (f << 29)) >>> 0;

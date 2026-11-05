@@ -115,14 +115,18 @@ try {
     const sequences=[];
     for(const name of ['water','lava']){
       const base=tiles.find(t=>t.name===name);if(!base)continue;
-      const phases=name==='water'?[0,1,2,3,4,3,2,1]:[0,1,1,2,2,2,1,1],frames=[];
+      const frames=[],period=31,tau=Math.PI*2,strength=name==='water'?1.4:.8;
       for(let f=0;f<8;f++){
         const p=new Uint8ClampedArray(4096);
         for(let y=0;y<32;y++)for(let x=0;x<32;x++){
-          // The edge is canonical; a complete cycle returns smoothly to the original pattern.
-          const edge=x===0||x===31||y===0||y===31;
-          const at=(edge?y*32+x:((y+phases[f])%32)*32+(x+phases[f])%32)*4;
-          p.set(base.rgba.slice(at,at+4),(y*32+x)*4);
+          // A toroidal warp animates the borders too. Fixed borders produced stationary grid stripes.
+          const t=f/8,u=x/period,v=y/period;
+          const sx=x+strength*(Math.sin(tau*(v+t))+.55*Math.cos(tau*(u+v-t)));
+          const sy=y+strength*(Math.cos(tau*(u-t))+.45*Math.sin(tau*(u-v+t)));
+          const ix=Math.floor(sx),iy=Math.floor(sy),fx=sx-ix,fy=sy-iy;
+          const at=(a,b)=>(((b%period+period)%period)*32+(a%period+period)%period)*4;
+          for(let c=0;c<3;c++)p[(y*32+x)*4+c]=(1-fy)*((1-fx)*base.rgba[at(ix,iy)+c]+fx*base.rgba[at(ix+1,iy)+c])+fy*((1-fx)*base.rgba[at(ix,iy+1)+c]+fx*base.rgba[at(ix+1,iy+1)+c]);
+          p[(y*32+x)*4+3]=255;
         }
         const frame=name+'_'+f;frames.push(frame);emit(frame,p,{...base,derivedFrom:name,category:'fluid-animation',frame:f});
       }

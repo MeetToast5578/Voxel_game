@@ -69,6 +69,7 @@ try {
     // The pause menu shows whenever the pointer is free, which it always is here: hide the UI for the views.
     await page.evaluate(() => { document.querySelector('#ui').style.display = 'none'; });
     await page.screenshot({ path: `screenshots/${name}.png` });
+    if (name === 'river') await page.screenshot({ path: 'screenshots/river-fluid-seams.png', clip: { x: 230, y: 310, width: 710, height: 400 } });
     await page.close();
   }
   // The UI: the pause menu with the world list, and a survival inventory with crafting.

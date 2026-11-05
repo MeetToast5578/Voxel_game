@@ -69,6 +69,27 @@ describe('mesher', () => {
     expect(top(S('flowing_water', 8))).toBeCloseTo(1);
   });
 
+  it('closes fluid height gaps across a chunk edge without drawing submerged faces', () => {
+    for (const kind of ['water', 'lava']) for (const [variant, stacked, low, high] of [
+      [0, false, 2 / 16, 14 / 16], [8, false, 14 / 16, 1], [-1, true, 14 / 16, 1], [-1, false, 0, 0],
+    ] as const) {
+      const out = buildMesh(input((x, y, z) => {
+        if (z !== 5) return 0;
+        if (x === 15 && (y === 0 || (stacked && y === 1))) return variant === 8 ? S('flowing_' + kind, 8) : S(kind);
+        if (x === 16 && y === 0) return variant === 0 ? S('flowing_' + kind, 0) : S(kind);
+        return 0;
+      }));
+      const words = out[pass(kind === 'water' ? 'water' : 'opaque')]!;
+      const heights: number[] = [];
+      for (let q = 0; q < words.length; q += 8) {
+        const vertices = [0, 2, 4, 6].map(i => decodeVertex(words[q + i]!, words[q + i + 1]!));
+        if (vertices.every(v => v.normal === 0 && v.x === 16 && v.y <= 1)) heights.push(...vertices.map(v => v.y));
+      }
+      expect(heights.length, kind + '/' + variant + '/' + stacked).toBe(high === 0 ? 0 : 4);
+      if (heights.length) expect([...new Set(heights)].sort((a,b)=>a-b)).toEqual([low, high]);
+    }
+  });
+
   it('draws plants as two swaying crossed quads in the cutout pass', () => {
     const out = buildMesh(input((x, y, z) => (x === 1 && y === 1 && z === 1 ? S('tall_grass') : 0)));
     const words = out[pass('cutout')]!;

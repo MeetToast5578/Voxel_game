@@ -47,6 +47,10 @@ describe('full world texture rework',()=>{
    expect(a.frames).toHaveLength(8);const start=tileIndex(a.frames[0]!);
    for(let i=0;i<8;i++)expect(tileIndex(a.frames[i]!)).toBe(start+i);
    expect(new Set(a.frames.map(n=>data[n]!.indices)).size,a.tile).toBeGreaterThanOrEqual(3);
+   if(a.tile==='water'||a.tile==='lava'){
+    const edges=a.frames.map(name=>{const p=pixels(name);return Array.from(p.subarray(0,128)).join(',');});
+    expect(new Set(edges).size,a.tile+' has a frozen border that creates stripes').toBeGreaterThanOrEqual(3);
+   }
    if(a.opening){
     const [x0,y0,w,h]=a.opening,base=pixels(a.frames[0]!);
     for(const name of a.frames.slice(1)){

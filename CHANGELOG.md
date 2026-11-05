@@ -3,6 +3,21 @@
 The newest version comes first. `npm run check` fails if the version at the top here is not the one in
 `package.json`, so the two are changed together.
 
+## 0.6.8 — 2026-11-05
+
+- Rebuilt title and pause menus around distinct navigation sections, preserving new-world drafts between sections.
+  Introduced a consistent ink, sage and brass interface with readable settings, world cards and keyboard focus states.
+- Split inventory activities from backpack/quick access; recipes now show their ingredients and availability.
+  Trading shows the received item, price and owned currency. Dialogs have explicit close controls.
+- Repainted water and lava without directional bands. Fluid frames now warp continuously across moving tile edges,
+  keeping seamless borders and smooth interpolation rather than a frozen grid around the moving interior.
+- Removed hard dark rectangles on water by rendering only the outside boundary above water and the inside boundary
+  while submerged. Added joined-field and above/below-water GPU checks, plus broader menu navigation/layout checks.
+- Closed thin gaps along river steps and unequal flowing water/lava levels: shared sides now retain their exposed
+  strip instead of hiding the whole face. Covered source, flow, falling and chunk-boundary cases.
+- Expanded fluid gap regression coverage to every flow/falling state, all side directions and intersecting chunk
+  borders, with GPU coverage checks that deliberately reproduce the original missing-face defect.
+
 ## 0.6.7 — 2026-11-04
 
 - Restored defined grass blades: separate overhead tufts and upright side blades with restrained painted edge

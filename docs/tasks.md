@@ -493,3 +493,12 @@ their potential art requirements are recorded in the audit, not promoted to curr
   horizontal distance and haze curve as terrain. GPU checks verify they disappear at the fog limit.
 - [x] **20.3 Proper target and decoration shapes.** Partial-block outlines/cracks follow the block geometry;
   framed art stays square and sign lettering remains legible.
+
+- [x] **20.4 Fluid artifacts.** Replaced banded masters, animated tile borders and retained smooth frame blending.
+  Water renders the outside boundary above water and the inside boundary below its visible surface, eliminating
+  the hard inset rectangle from overlapping back faces. Exposed strips close gaps at differing source/flow heights.
+  Joined-field, stepped-fluid, chunk-edge and underwater checks cover these fixes.
+- [x] **20.5 Reinvent menus.** Separate title/pause navigation sections, grouped settings, saved-world cards,
+  two-pane inventory, searchable ingredient-bearing recipe cards and explicit trade prices. Ink/sage/brass styling
+  replaces the inconsistent panel treatment. Draft persistence, keyboard navigation, gameplay transactions and
+  672 responsive layouts checked; details in `visual-artifact-review.md`.
