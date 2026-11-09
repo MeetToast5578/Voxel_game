@@ -370,6 +370,7 @@ function gameplay(): BlockSpec[] {
     item('trade_coin','Trade Coin'),
     item('gel', 'Gel', { fuel: 20 }),
     item('slime_crown', 'Gel Crown', { maxStack: 1 }),
+    item('life_crystal', 'Life Crystal', { maxStack: 16 }),
     item('stick', 'Stick', { fuel: 5 }),
     item('coal', 'Coal', { fuel: 80 }),
     item('iron_ingot', 'Iron ingot'),

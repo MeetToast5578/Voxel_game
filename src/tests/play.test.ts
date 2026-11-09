@@ -156,6 +156,18 @@ describe('play', () => {
     expect(copy.accessories.slice(0, 2)).toEqual([{ state: S('iron_band'), count: 1 }, { state: S('swift_anklet'), count: 1 }]);
   });
 
+  it('grows the heart with life crystals, up to twice the starting health, and keeps it in saves', () => {
+    const { play, player, input, press } = setup('survival');
+    play.inventory.slots[0] = { state: S('life_crystal'), count: 16 };
+    player.pitch = 0.6;
+    for (let i = 0; i < 12; i++) { press('place'); play.update(0, input, player); }
+    expect(play.survival.maxHealth).toBe(40);
+    expect(play.inventory.count(S('life_crystal'))).toBe(6);
+    const copy = setup('survival').play;
+    copy.load(JSON.parse(JSON.stringify(play.save())));
+    expect(copy.survival.maxHealth).toBe(40);
+  });
+
   it('sorts the backpack and keeps the last trashed item', () => {
     const { play } = setup('survival');
     play.inventory.slots[0] = { state: S('dirt'), count: 3 };

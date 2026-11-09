@@ -1,6 +1,6 @@
 import { render, type ComponentChildren } from 'preact';
 import { useEffect, useRef, useState } from 'preact/hooks';
-import { BLOCK_SIZE_M, BODY_COLD_C, BODY_HOT_C, MAX_HEALTH, MAX_HUNGER, BREATH_S, MAX_VIEW_CHUNKS, MIN_VIEW_CHUNKS } from '../config';
+import { BLOCK_SIZE_M, BODY_COLD_C, BODY_HOT_C, MAX_HUNGER, BREATH_S, MAX_VIEW_CHUNKS, MIN_VIEW_CHUNKS } from '../config';
 import { BLOCKS } from '../engine/blocks';
 import { clickSlot, type ItemStack } from '../game/inventory';
 import { canCraft, CRAFTS, haveFor, timesCraftable } from '../game/crafting';
@@ -117,7 +117,7 @@ function Hud({ play, hideKey }: { play: Play; hideKey: string }) {
       {play.hints.text && <div class="hintbox">{play.hints.text} <small>({keyLabel(hideKey)} hides this)</small></div>}
       {play.mode === 'survival' && (
         <div class="bars">
-          <Bar value={s.health} max={MAX_HEALTH} color="#d33" label="Health" />
+          <Bar value={s.health} max={s.maxHealth} color="#d33" label="Health" />
           <Bar value={s.hunger} max={MAX_HUNGER} color="#c8862a" label="Hunger" />
           {s.air < BREATH_S && <Bar value={s.air} max={BREATH_S} color="#5ad" label="Air" />}
           <Thermometer coreC={s.temperature.coreC} feltC={s.feltC} />

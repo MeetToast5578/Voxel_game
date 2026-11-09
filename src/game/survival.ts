@@ -6,6 +6,8 @@ import { BodyTemperature } from './bodyTemperature';
 
 /** Health, hunger and breath, and what changes them. */
 export class Survival {
+  /** Raised by life crystals, up to twice the starting maximum. */
+  maxHealth = MAX_HEALTH;
   health = MAX_HEALTH;
   hunger = MAX_HUNGER;
   /** Seconds of breath left under water. */
@@ -31,7 +33,7 @@ export class Survival {
   update(dt: number, s: { sprinting: boolean; headInWater: boolean; inLava: boolean; feltC?: number; inFire?: boolean; inWater?: boolean;
     breath?: number; fireproof?: boolean; regen?: number }): void {
     this.hunger = Math.max(0, this.hunger - (HUNGER_PER_S + (s.sprinting ? SPRINT_HUNGER_PER_S : 0)) * this.hungerRate * dt);
-    if (this.hunger >= REGEN_HUNGER) this.health = Math.min(MAX_HEALTH, this.health + REGEN_PER_S * (s.regen ?? 1) * dt);
+    if (this.hunger >= REGEN_HUNGER) this.health = Math.min(this.maxHealth, this.health + REGEN_PER_S * (s.regen ?? 1) * dt);
     if (this.hunger <= 0) this.hurt(STARVE_PER_S * dt, 'starved');
     if (s.headInWater) {
       this.air = Math.max(0, this.air - dt / (s.breath ?? 1));
@@ -61,6 +63,14 @@ export class Survival {
     this.cause = cause;
   }
 
+  /** A life crystal: two more health for good, and healed by as much. Returns false at the limit. */
+  growHeart(): boolean {
+    if (this.maxHealth >= MAX_HEALTH * 2) return false;
+    this.maxHealth += 2;
+    this.health = Math.min(this.maxHealth, this.health + 2);
+    return true;
+  }
+
   eat(food: number): boolean {
     if (this.hunger >= MAX_HUNGER) return false;
     this.hunger = Math.min(MAX_HUNGER, this.hunger + food);
@@ -68,7 +78,7 @@ export class Survival {
   }
 
   reset(): void {
-    this.health = MAX_HEALTH;
+    this.health = this.maxHealth;
     this.hunger = MAX_HUNGER;
     this.air = BREATH_S;
     this.temperature.reset();

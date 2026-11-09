@@ -1,4 +1,4 @@
-import { ACCESSORY_SLOTS, AXE_ARC_RAD, CRIT_CHANCE, CRIT_FACTOR, KNOCKBACK_FACTOR, SWORD_ARC_RAD, LIGHTNING_DAMAGE, LIGHTNING_REACH_M, FISH_MAX_S, FISH_MIN_S, BLOCK_SIZE_M, ARROW_DAMAGE, ARROW_SPEED_M_S, BOLT_SPEED_M_S, BOW_DRAW_S, AXE_DAMAGE, BUILD_CELLS_PER_TICK, CAMPFIRE_COOK_S, CAMPFIRE_SLOTS, DIFFICULTY, PLAYER_ATTACK_COOLDOWN_S, SWORD_DAMAGE, type Difficulty, BUILD_MAX_M, DROP_PICKUP_DELAY_S, DROP_THROW_M_S, HAND_DAMAGE, REACH_M, REPEAT_S, TOOL_DAMAGE, UNDO_STEPS, cells, toCells } from '../config';
+import { MAX_HEALTH, ACCESSORY_SLOTS, AXE_ARC_RAD, CRIT_CHANCE, CRIT_FACTOR, KNOCKBACK_FACTOR, SWORD_ARC_RAD, LIGHTNING_DAMAGE, LIGHTNING_REACH_M, FISH_MAX_S, FISH_MIN_S, BLOCK_SIZE_M, ARROW_DAMAGE, ARROW_SPEED_M_S, BOLT_SPEED_M_S, BOW_DRAW_S, AXE_DAMAGE, BUILD_CELLS_PER_TICK, CAMPFIRE_COOK_S, CAMPFIRE_SLOTS, DIFFICULTY, PLAYER_ATTACK_COOLDOWN_S, SWORD_DAMAGE, type Difficulty, BUILD_MAX_M, DROP_PICKUP_DELAY_S, DROP_THROW_M_S, HAND_DAMAGE, REACH_M, REPEAT_S, TOOL_DAMAGE, UNDO_STEPS, cells, toCells } from '../config';
 import { lootOf, type Creature, type Creatures } from '../creatures/creatures';
 import { AIR, BLOCKS, SOLID } from '../engine/blocks';
 import type { World } from '../engine/world';
@@ -865,6 +865,15 @@ export class Play {
       this.wear(held);
       return;
     }
+    if (heldType.key === 'life_crystal') {
+      if (this.survival.growHeart()) {
+        if (this.mode === 'survival') this.inventory.useHeld();
+        this.toast(`Your heart grows stronger: ${this.survival.maxHealth} health`, 4);
+        this.events.sound('eat');
+      } else this.toast('Your heart can grow no stronger', 3);
+      this.version++;
+      return;
+    }
     if (heldType.key === 'slime_crown' && this.creatures) {
       // Calls the Slime King: it drops in a little way off, ready to fight. One at a time.
       if (this.creatures.list.some((c) => c.species.boss)) this.toast('A boss is already here', 3);
@@ -1160,7 +1169,7 @@ export class Play {
     const s = (st: ItemStack | null) => (st ? [BLOCKS.stateName(st.state), st.count] : null);
     return {
       decorations: this.decorations.save(), mode: this.mode, difficulty: this.difficulty, hints: this.hints.save(), inventory: this.inventory.save(), selected: this.inventory.selected, drops: this.drops.save(),
-      health: this.survival.health, hunger: this.survival.hunger, air: this.survival.air, bodyC: this.survival.temperature.coreC, spawn: this.spawn,
+      health: this.survival.health, maxHealth: this.survival.maxHealth, hunger: this.survival.hunger, air: this.survival.air, bodyC: this.survival.temperature.coreC, spawn: this.spawn,
       furnaces: [...this.furnaces].map(([k, f]) => [k, s(f.input), s(f.fuel), s(f.output), f.burn, f.progress]),
       journal: this.journal.save(), stats: this.stats, biomesSeen: [...this.biomesSeen], deepestM: this.deepestM, found: [...this.found], beaconLit: this.beaconLit, endingSeen: this.endingSeen, boating: this.boating,
       armour: this.armour.map((a) => (a ? [BLOCKS.stateName(a.state), 1, a.wear ?? 0, a.upgrade ?? 0] : null)),
@@ -1183,7 +1192,8 @@ export class Play {
     this.inventory.load(p.inventory);
     this.drops.load(p.drops);
     this.inventory.selected = Math.max(0, Math.min(8, Math.floor(num(p.selected, 0))));
-    this.survival.health = num(p.health, this.survival.health);
+    this.survival.maxHealth = Math.max(MAX_HEALTH, Math.min(MAX_HEALTH * 2, Math.round(num(p.maxHealth, MAX_HEALTH) / 2) * 2));
+    this.survival.health = Math.min(this.survival.maxHealth, num(p.health, this.survival.health));
     this.survival.hunger = num(p.hunger, this.survival.hunger);
     this.survival.air = num(p.air, this.survival.air);
     this.survival.temperature.coreC = Math.max(30, Math.min(42, num(p.bodyC, this.survival.temperature.coreC)));

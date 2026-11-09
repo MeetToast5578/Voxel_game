@@ -14,6 +14,11 @@ export const TRADE_OFFERS: readonly TradeOffer[] = [
   {name:'Buy iron',cost:['trade_coin',5],gives:['iron_ingot',2]},
   {name:'Buy a map',cost:['trade_coin',6],gives:['map',1]},
   {name:'Buy a lantern',cost:['trade_coin',4],gives:['lantern',1]},
+  {name:'Sell gel',cost:['gel',10],gives:['trade_coin',1]},
+  {name:'Buy a Gel Crown',cost:['trade_coin',20],gives:['slime_crown',1]},
+  {name:'Buy a Swiftstep Anklet',cost:['trade_coin',30],gives:['swift_anklet',1]},
+  {name:'Buy a Gill Pendant',cost:['trade_coin',25],gives:['gill_pendant',1]},
+  {name:'Buy a Life Crystal',cost:['trade_coin',60],gives:['life_crystal',1]},
 ];
 const copy = (inv: Inventory) => {const other=new Inventory();inv.slots.forEach((s,i)=>other.slots[i]=s?{...s}:null);other.selected=inv.selected;return other;};
 function take(inv: Inventory, key: string, count: number): boolean {
