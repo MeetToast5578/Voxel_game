@@ -27,8 +27,8 @@ export interface Species {
   /** Raw meat dropped on death, and leather (from hide). */
   meat: number;
   leather?: number;
-  /** Other items left on death: [item key, count]. */
-  loot?: readonly (readonly [string, number])[];
+  /** Other items left on death: [item key, count, chance (default 1)]. Rare drops have a small chance. */
+  loot?: readonly (readonly [string, number, number?])[];
   /** Food it follows a player holding, and breeds when fed. */
   food?: readonly string[];
   /** Keeps its distance and shoots bolts instead of biting. */
@@ -41,6 +41,14 @@ export interface Species {
   voice: number;
   /** A peaceful merchant: right click opens trade offers. */
   trader?: boolean;
+  /** Moves in hops, like a slime: still on the ground, gliding through the air. */
+  hops?: boolean;
+  /** Flies: no gravity, flutters a few cells above the ground. */
+  flies?: boolean;
+  /** A monster that is out by day too, and spawns in daylight. */
+  daytime?: boolean;
+  /** Lava and fire do not hurt it. */
+  fireproof?: boolean;
 }
 
 const BASE = { grazer: false, prey: [], hostile: false, herds: false, nocturnal: false, medium: 'land', attack: 0, meat: 1, voice: 0.5 } as const;
@@ -72,33 +80,49 @@ export const SPECIES: readonly Species[] = [
   { ...BASE, key: 'fish', name: 'Fish', halfWidthM: 0.12, heightM: 0.2, speedM_S: 1.5, health: 2, medium: 'water',
     biomes: ['water'], group: [2, 5], colours: { body: [96, 140, 170], head: [110, 156, 186], legs: [80, 120, 150] }, voice: 1 },
   { ...BASE, key: 'zombie', name: 'Zombie', halfWidthM: 0.28, heightM: 1.8, speedM_S: 1.4, health: 20, hostile: true, nocturnal: true,
-    attack: 3, biomes: ['dark'], group: [1, 2], colours: { body: [60, 110, 140], head: [96, 150, 90], legs: [70, 60, 120] }, meat: 0, voice: 0.35 },
+    attack: 3, biomes: ['dark'], group: [1, 2], colours: { body: [60, 110, 140], head: [96, 150, 90], legs: [70, 60, 120] }, meat: 0, loot: [['bone', 1, 0.4], ['heart_locket', 1, 0.01]], voice: 0.35 },
   // Hostiles spawn: 'dark' in darkness anywhere, 'cave' in dark caves, 'deep' in caves below -60 m, or in the dark in the
   // biomes listed.
   { ...BASE, key: 'skulker', name: 'Skulker', halfWidthM: 0.25, heightM: 1.7, speedM_S: 1.6, health: 14, hostile: true, nocturnal: true,
     ranged: true, attack: 3, biomes: ['dark'], group: [1, 1], colours: { body: [70, 64, 82], head: [200, 196, 176], legs: [50, 46, 60] },
-    meat: 0, loot: [['feather', 2]], voice: 0.55 },
+    meat: 0, loot: [['feather', 2], ['arrow', 3, 0.5], ['feather_charm', 1, 0.02]], voice: 0.55 },
   { ...BASE, key: 'crawler', name: 'Cave crawler', halfWidthM: 0.45, heightM: 0.6, speedM_S: 2.4, health: 10, hostile: true, nocturnal: true,
     climbs: true, attack: 2, biomes: ['cave'], group: [1, 3], colours: { body: [44, 40, 38], head: [120, 30, 30], legs: [36, 32, 30] },
-    meat: 0, loot: [['string', 2]], voice: 0.85 },
+    meat: 0, loot: [['string', 2], ['swift_anklet', 1, 0.015]], voice: 0.85 },
   { ...BASE, key: 'brute', name: 'Frost brute', halfWidthM: 0.5, heightM: 2.2, speedM_S: 1.1, health: 40, hostile: true, nocturnal: true,
     attack: 7, biomes: ['deep', 'tundra', 'snowy_taiga', 'glacier', 'snowcapped_peaks'], group: [1, 1],
-    colours: { body: [170, 196, 214], head: [210, 226, 236], legs: [120, 140, 160] }, meat: 0, loot: [['bone', 3]], voice: 0.1 },
+    colours: { body: [170, 196, 214], head: [210, 226, 236], legs: [120, 140, 160] }, meat: 0, loot: [['bone', 3], ['iron_band', 1, 0.04]], voice: 0.1 },
   { ...BASE, key: 'warden', name: 'Ember Warden', halfWidthM: 0.55, heightM: 2.5, speedM_S: 1.3, health: 160, hostile: true, guardian: true,
     attack: 8, biomes: [], group: [1, 1], colours: { body: [58, 40, 44], head: [255, 120, 40], legs: [40, 30, 34] }, meat: 0,
-    loot: [['ember_crystal', 3], ['diamond', 2]], voice: 0.05 },
+    loot: [['ember_crystal', 3], ['diamond', 2], ['ember_ring', 1], ['heart_locket', 1, 0.5]], voice: 0.05 },
   { ...BASE, key: 'desert_stalker', name: 'Dune Stalker', halfWidthM:.48, heightM:.8, speedM_S:2.4, health:24,
-    hostile:true, nocturnal:true, attack:4, biomes:['desert','badlands'], group:[1,2], meat:0, loot:[['iron_ingot',1]],
+    hostile:true, nocturnal:true, attack:4, biomes:['desert','badlands'], group:[1,2], meat:0, loot:[['iron_ingot',1],['swift_anklet',1,0.04]],
     colours:{body:[186,145,75],head:[210,174,98],legs:[144,106,53]}, voice:.65 },
   { ...BASE, key:'swamp_hollow', name:'Mire Hollow', halfWidthM:.4, heightM:2.1, speedM_S:1.3, health:32,
-    hostile:true, nocturnal:true, attack:5, biomes:['swamp'], group:[1,2], meat:0, loot:[['moss',3],['bone',1]],
+    hostile:true, nocturnal:true, attack:5, biomes:['swamp'], group:[1,2], meat:0, loot:[['moss',3],['bone',1],['gill_pendant',1,0.05]],
     colours:{body:[72,95,44],head:[80,110,48],legs:[64,78,36]}, voice:.25 },
   { ...BASE, key:'snow_prowler', name:'Snow Prowler', halfWidthM:.38, heightM:1.15, speedM_S:2.8, health:26,
     hostile:true, nocturnal:true, attack:4, biomes:['snowy_taiga','tundra','glacier','snowcapped_peaks'], group:[1,2],meat:0,
-    loot:[['leather',2],['bone',1]],colours:{body:[223,234,239],head:[238,244,248],legs:[193,213,226]},voice:.4 },
+    loot:[['leather',2],['bone',1],['feather_charm',1,0.03]],colours:{body:[223,234,239],head:[238,244,248],legs:[193,213,226]},voice:.4 },
   { ...BASE, key:'trader',name:'Traveling Trader',halfWidthM:.28,heightM:1.8,speedM_S:.8,health:30,trader:true,
     biomes:['plains','meadow','temperate_deciduous','birch','savanna'],group:[1,1],meat:0,
     colours:{body:[45,99,111],head:[207,162,116],legs:[57,54,66]},voice:.5 },
+  // Slimes hop about by day and night; their kind follows where they live.
+  { ...BASE, key: 'slime', name: 'Green Slime', halfWidthM: 0.3, heightM: 0.55, speedM_S: 2.2, health: 8, hostile: true, daytime: true, hops: true,
+    attack: 2, biomes: [...GRASSLAND, ...FORESTS], group: [1, 3], colours: { body: [104, 200, 92], head: [62, 150, 58], legs: [30, 60, 30] },
+    meat: 0, loot: [['gel', 2], ['gel', 1, 0.5], ['swift_anklet', 1, 0.01]], voice: 0.9 },
+  { ...BASE, key: 'cave_slime', name: 'Cave Slime', halfWidthM: 0.35, heightM: 0.65, speedM_S: 2.4, health: 14, hostile: true, hops: true,
+    attack: 3, biomes: ['cave'], group: [1, 2], colours: { body: [80, 140, 230], head: [44, 90, 180], legs: [20, 40, 80] },
+    meat: 0, loot: [['gel', 3], ['iron_ingot', 1, 0.2], ['iron_band', 1, 0.015]], voice: 0.85 },
+  { ...BASE, key: 'ember_slime', name: 'Ember Slime', halfWidthM: 0.4, heightM: 0.75, speedM_S: 2.6, health: 22, hostile: true, hops: true, fireproof: true,
+    attack: 5, biomes: ['deep'], group: [1, 2], colours: { body: [240, 120, 40], head: [200, 60, 20], legs: [255, 220, 120] },
+    meat: 0, loot: [['gel', 3], ['ember_crystal', 1, 0.25], ['ember_ring', 1, 0.02]], voice: 0.7 },
+  { ...BASE, key: 'bat', name: 'Cave Bat', halfWidthM: 0.2, heightM: 0.4, speedM_S: 3.2, health: 4, hostile: true, flies: true,
+    attack: 1, biomes: ['cave'], group: [1, 3], colours: { body: [70, 56, 52], head: [86, 68, 60], legs: [50, 40, 40] },
+    meat: 0, loot: [['leather', 1, 0.3], ['cloud_charm', 1, 0.015]], voice: 1 },
+  { ...BASE, key: 'skeleton', name: 'Skeleton', halfWidthM: 0.28, heightM: 1.8, speedM_S: 1.7, health: 22, hostile: true, nocturnal: true,
+    attack: 4, biomes: ['cave', 'deep'], group: [1, 2], colours: { body: [226, 220, 200], head: [236, 232, 214], legs: [200, 194, 176] },
+    meat: 0, loot: [['bone', 2], ['arrow', 2, 0.4], ['iron_ingot', 1, 0.2], ['iron_band', 1, 0.02]], voice: 0.6 },
 ];
 
 export const SPECIES_BY_KEY = new Map(SPECIES.map((s) => [s.key, s]));

@@ -6,7 +6,7 @@ import {breakSeconds,dropsOf} from '../game/mining';
 import {craftResult} from '../game/crafting';
 import {Chunk} from '../engine/chunk';
 import {encodeChunk,decodeChunk} from '../storage/chunkCodec';
-import {MAX_MOB_PARTS,mobRig,poseMobPart} from '../render/mobModels';
+import {hasShapeModel,MAX_SHAPES,shapeCount} from '../render/shapeMobs';
 import {SPECIES} from '../creatures/species';
 import {treeCells} from '../worldgen/trees';
 const S=(key:string,v=0)=>BLOCKS.state(key,v);
@@ -55,19 +55,8 @@ describe('tree materials and model rigs',()=>{
   states.forEach((s,i)=>c.set(i,s));const bytes=await encodeChunk(c);const decoded=await decodeChunk(0,0,0,bytes);
   states.forEach((s,i)=>expect(decoded.get(i)).toBe(s));
  });
- it('gives each species a bounded distinct rig with finite poses and a front-facing head',()=>{
-  const signatures=new Set<string>();
-  for(const s of SPECIES){
-   const rig=mobRig(s.key);expect(rig.length).toBeLessThanOrEqual(MAX_MOB_PARTS);expect(rig.some(p=>p.name==='head'&&p.skin===1)).toBe(true);
-   signatures.add(JSON.stringify(rig));
-   for(const part of rig)for(const sleeping of [false,true]){
-    const p=poseMobPart(part,{phase:1,time:2,moving:true,sleeping,attacking:true});expect(Object.values(p).every(Number.isFinite)).toBe(true);
-    expect(part.w>0&&part.h>0&&part.d>0).toBe(true);
-   }
-  }
-  expect(signatures.size).toBeGreaterThanOrEqual(17);
-  expect(mobRig('deer').some(p=>p.name.startsWith('antler'))).toBe(true);
-  expect(mobRig('rabbit').find(p=>p.name==='ear_-1')!.h).toBeGreaterThan(mobRig('cow').find(p=>p.name==='ear_-1')!.h);
-  expect(mobRig('camel').some(p=>p.name==='hump')).toBe(true);expect(mobRig('fish').some(p=>p.name==='tail')).toBe(true);
+ it('gives every species a shape model within the instance budget',()=>{
+  for(const s of SPECIES){expect(hasShapeModel(s.key)).toBe(true);const n=shapeCount(s.key);expect(n).toBeGreaterThan(4);expect(n).toBeLessThanOrEqual(MAX_SHAPES);}
+  expect(new Set(SPECIES.map(s=>shapeCount(s.key))).size).toBeGreaterThan(10);
  });
 });

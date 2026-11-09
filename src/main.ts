@@ -20,7 +20,7 @@ import { Creatures } from './creatures/creatures';
 import { WorldEffects, type EffectKind } from './render/worldEffects';
 import { SPECIES } from './creatures/species';
 import { DecorationMeshes } from './render/decorations';
-import { CreatureMeshes } from './render/creatureMeshes';
+import { ShapeMobs } from './render/shapeMobs';
 import { DropMeshes } from './render/dropMeshes';
 import { BoatMesh } from './render/boatMesh';
 import { FrameGraph } from './ui/frameGraph';
@@ -245,7 +245,7 @@ const creatures = new Creatures(world, mulberry32(seed ^ 0xc0ffee), {
 });
 creatures.load(saver.worldMeta.creatures);
 play.creatures = creatures;
-const creatureMeshes = new CreatureMeshes(renderer.scene, renderer.uniforms);
+const creatureMeshes = new ShapeMobs(renderer.scene, renderer.uniforms);
 const effects = new WorldEffects(renderer.scene, renderer.uniforms);
 const decorationMeshes = new DecorationMeshes(renderer.scene, renderer.uniforms);
 const boatMesh = new BoatMesh(renderer.scene, renderer.uniforms);

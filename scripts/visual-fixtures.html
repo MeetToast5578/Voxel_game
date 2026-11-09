@@ -1,6 +1,6 @@
 <!doctype html><html><head><meta charset="UTF-8"><link rel="icon" href="data:,"><style>body{margin:24px;background:#102b33;color:#eff5e7;font:16px system-ui}h1{font-size:26px}.grid{display:grid;grid-template-columns:repeat(3,320px);gap:18px}.card{background:#193b43;padding:8px}.images{display:flex}.images img{width:152px;height:152px;image-rendering:pixelated}.caption{color:#adc7c6;font-size:12px}</style></head><body><h1>World rendering review</h1><p>Actual game materials · clear view / full terrain-matched fog</p><div class="grid"></div><script type="module">
 import * as THREE from 'three';
-import {CreatureMeshes} from '/src/render/creatureMeshes.ts';
+import {ShapeMobs} from '/src/render/shapeMobs.ts';
 import {DropMeshes} from '/src/render/dropMeshes.ts';
 import {BoatMesh} from '/src/render/boatMesh.ts';
 import {DecorationMeshes} from '/src/render/decorations.ts';
@@ -19,8 +19,8 @@ const S=k=>BLOCKS.state(k),report=[];
 for(const kind of ['creature','drop','boat','sign','frame','effects']){
  const scene=new THREE.Scene();scene.background=fog.fogColor.value;
  if(kind==='creature'){
-  const species=SPECIES.find(s=>s.key==='warden');const meshes=new CreatureMeshes(scene,fog);
-  meshes.update([{id:1,species,body:{x:.5,y:0,z:0,vx:0,vy:0,vz:0,halfWidth:.45,height:2},yaw:Math.PI,mode:'idle',walk:0,cooldown:0,hurt:0}],()=>1,1);
+  const species=SPECIES.find(s=>s.key==='warden');const meshes=new ShapeMobs(scene,fog);
+  meshes.update([{id:1,species,body:{x:.5,y:0,z:0,vx:0,vy:0,vz:0,halfWidth:.45,height:2,onGround:true},yaw:Math.PI,mode:'idle',walk:0,cooldown:0,hurt:0}],()=>1,1);
  }else if(kind==='drop'){
   new DropMeshes(scene,tiles,fog).update([{stack:{state:S('diamond'),count:1},age:0,body:{x:.5,y:.5,z:0,height:1,halfWidth:.5,onGround:true}}],0,()=>1);
  }else if(kind==='boat')new BoatMesh(scene,fog).update(true,.5,1,0,0,1);

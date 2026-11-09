@@ -14,5 +14,5 @@ skins.trader_body=skins.skulker_body;skins.trader_legs=skins.skulker_legs;skins.
 const refined='assets/woodland-ember/refinement/creatures.json';
 if(existsSync(refined))Object.assign(skins,JSON.parse(readFileSync(refined,'utf8')));
 const workshops={};for(const key of ['village_sign','ember_forge','ember_forge_top','sign','frame_empty','trade_coin','ember_pickaxe','ember_chestplate'])workshops[key]=future[key];
-for(const [file,data] of Object.entries({treeArt:trees,creatureSkins:skins,workshopArt:workshops,effectArt:Object.fromEntries(Object.entries(effects).filter(([k])=>!k.startsWith('water_')&&!k.startsWith('lava_')))}))writeFileSync(`src/render/${file}.json`,JSON.stringify(data));
+for(const [file,data] of Object.entries({treeArt:trees,workshopArt:workshops,effectArt:Object.fromEntries(Object.entries(effects).filter(([k])=>!k.startsWith('water_')&&!k.startsWith('lava_')))}))writeFileSync(`src/render/${file}.json`,JSON.stringify(data));
 console.log('Runtime trees, mobs, workshops and effects exported.');

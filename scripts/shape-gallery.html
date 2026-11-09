@@ -1,0 +1,24 @@
+<!doctype html><html><head><meta charset="UTF-8"><link rel="icon" href="data:,"><style>body{margin:0;background:#1d3436;color:#e7e4cc;font:14px system-ui}canvas{display:block}.label{position:absolute;text-shadow:1px 2px 3px #000}</style></head><body><script type="module">
+// Every species' shape model in its poses. ?page=N shows 6 species per page.
+import * as THREE from 'three';import {ShapeMobs} from '/src/render/shapeMobs.ts';import {SPECIES} from '/src/creatures/species.ts';
+THREE.ColorManagement.enabled=false;
+const q=new URLSearchParams(location.search),page=Number(q.get('page')??0),keys=q.get('keys')?q.get('keys').split(','):SPECIES.map(s=>s.key).slice(page*6,page*6+6);
+const cols=[['idle',0],['walk',.8],['run',1.6],['attack',0],['rest',0]],W=1500,H=keys.length*170+30;
+const renderer=new THREE.WebGLRenderer({antialias:true});renderer.setSize(W,H);document.body.append(renderer.domElement);renderer.outputColorSpace=THREE.LinearSRGBColorSpace;renderer.setScissorTest(true);
+const camera=new THREE.PerspectiveCamera(30,(W/5)/170,.05,200);
+keys.forEach((key,row)=>{
+ const s=SPECIES.find(s=>s.key===key),h=s.heightM/.6,w=s.halfWidthM/.6;
+ cols.forEach(([pose,speed],col)=>{
+  const scene=new THREE.Scene();scene.background=new THREE.Color(row%2?'#6f8f96':'#7d9aa0');
+  const ground=new THREE.Mesh(new THREE.CircleGeometry(Math.max(w,h*.6)*2.2,40),new THREE.MeshBasicMaterial({color:0x5d7a52}));ground.rotation.x=-Math.PI/2;scene.add(ground);
+  const mobs=new ShapeMobs(scene),v=speed*s.speedM_S/.6;
+  const c={id:1,species:s,body:{x:0,y:0,z:0,vx:v,vy:0,vz:0,halfWidth:w,height:h,onGround:true},yaw:Math.PI*0.9,mode:pose==='rest'?'sleep':pose==='attack'?'hunt':speed?'wander':'idle',walk:1.1,cooldown:pose==='attack'?1.0:0,hurt:0};
+  mobs.update([c],()=>1,2.2);
+  const t=new THREE.Vector3(0,h*0.4,0),d=(q.get("top")?new THREE.Vector3(0.3,1.6,1):new THREE.Vector3(1.1,.5,1.25)).normalize(),size=Math.max(h,w*3);
+  camera.position.copy(t).addScaledVector(d,size*(new URLSearchParams(location.search).get("zoom")?1.5:2.6));camera.lookAt(t);
+  const x=col*W/5,y=H-30-(row+1)*170;renderer.setViewport(x,y,W/5,170);renderer.setScissor(x,y,W/5,170);renderer.render(scene,camera);
+  if(row===0){const l=document.createElement('div');l.className='label';l.textContent=pose;l.style.left=(x+8)+'px';l.style.top='6px';document.body.append(l);}
+  if(col===0){const l=document.createElement('div');l.className='label';l.textContent=s.name;l.style.left='8px';l.style.top=(30+row*170+4)+'px';document.body.append(l);}
+ });
+});window.ready=true;
+</script></body></html>

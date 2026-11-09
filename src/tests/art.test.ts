@@ -2,8 +2,6 @@ import { describe, expect, it } from 'vitest';
 import { BLOCKS } from '../engine/blocks';
 import { TILE_NAMES, TILE_SIZE, itemTile, tilePixels } from '../render/tilePixels';
 import { artworkPixels } from '../render/woodlandArt';
-import { creaturePixels, SKIN_COLUMNS, SKIN_ROWS, SKIN_SIZE } from '../render/creatureArt';
-import { SPECIES } from '../creatures/species';
 
 describe('Woodland & Ember artwork', () => {
   it('covers every registered face, item, crop stage and breaking overlay with RGBA pixels', () => {
@@ -53,11 +51,5 @@ describe('Woodland & Ember artwork', () => {
       const before=artworkPixels(`crack_${s-1}`)!, after=artworkPixels(`crack_${s}`)!;
       for(let i=3;i<before.length;i+=4) if(before[i]) expect(after[i]).toBeGreaterThanOrEqual(before[i]!);
     }
-  });
-  it('has body, face and leg skins for every creature without changing species', () => {
-    const pixels=creaturePixels();
-    expect(SKIN_COLUMNS).toBe(SPECIES.length);
-    expect(pixels.length).toBe(SKIN_SIZE**2*SKIN_COLUMNS*SKIN_ROWS*4);
-    expect(creaturePixels()).toEqual(pixels);
   });
 });

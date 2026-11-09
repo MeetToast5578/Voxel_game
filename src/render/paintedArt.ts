@@ -9,6 +9,23 @@ type Icon = readonly [palette: Readonly<Record<string, string>>, rows: readonly 
 
 const GOLD = { g: '#e8b84a', G: '#fff0a8', o: '#a8742a' };
 const ICONS: Readonly<Record<string, Icon>> = {
+  gel: [{ g: '#5cc850', G: '#b8f4a0', d: '#2e8a3a', w: '#ffffff' }, [
+    '................',
+    '................',
+    '................',
+    '................',
+    '.......gg.......',
+    '......gGgg......',
+    '.....gGwggg.....',
+    '....gGwgggggg...',
+    '...ggGggggggg...',
+    '...gggggggggd...',
+    '..gggggggggddd..',
+    '..ggggggggdddd..',
+    '...ddddddddd....',
+    '................',
+    '................',
+    '................']],
   swift_anklet: [{ b: '#8a5a32', B: '#c08a52', d: '#4a3020', w: '#f2f0e6', s: '#b8c4d0', ...GOLD }, [
     '................',
     '..........ww....',

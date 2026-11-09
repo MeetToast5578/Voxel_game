@@ -28,6 +28,34 @@ const ctx = (world: World, p = player(), survival = true, day = true, hostiles =
 });
 
 describe('creatures', () => {
+  it('lets animals sleep but never monsters', () => {
+    const world = plain();
+    const cs = new Creatures(world, mulberry32(2), { bite: () => undefined, sound: () => undefined });
+    const deer = cs.add(SPECIES_BY_KEY.get('deer')!, 30, 0, 30, 10), zombie = cs.add(SPECIES_BY_KEY.get('zombie')!, -30, 0, 30, 20);
+    // Night: deer sleep, the zombie (out in its own hour) is awake. Day: the zombie lingers, it does not sleep.
+    for (let i = 0; i < 60; i++) cs.update(1 / 60, ctx(world, player(), false, false));
+    expect(deer.mode).toBe('sleep');
+    expect(zombie.mode).not.toBe('sleep');
+    for (let i = 0; i < 60; i++) cs.update(1 / 60, ctx(world, player(), false, true, 1));
+    if (cs.list.includes(zombie)) expect(zombie.mode).not.toBe('sleep');
+  });
+
+  it('slimes move in hops and bats fly above the ground', () => {
+    const world = plain();
+    const cs = new Creatures(world, mulberry32(3), { bite: () => undefined, sound: () => undefined });
+    const slime = cs.add(SPECIES_BY_KEY.get('slime')!, 12, 0, 0.5, 8), bat = cs.add(SPECIES_BY_KEY.get('bat')!, -12, 0, 0.5, 4);
+    let airborne = 0, grounded = 0, high = 0;
+    for (let i = 0; i < 600; i++) {
+      cs.update(1 / 60, ctx(world, player(), true, true));
+      if (slime.body.onGround) grounded++; else airborne++;
+      if (bat.body.y > 1.5) high++;
+    }
+    expect(airborne).toBeGreaterThan(20);
+    expect(grounded).toBeGreaterThan(20);
+    expect(slime.body.x).toBeLessThan(11); // hopped towards the player
+    expect(high).toBeGreaterThan(300);
+  });
+
   it('grazers run from the player', () => {
     const world = plain();
     const cs = new Creatures(world, mulberry32(1), { bite: () => undefined, sound: () => undefined });
@@ -81,7 +109,7 @@ describe('creatures', () => {
     const cs = new Creatures(world, mulberry32(4), { bite: () => undefined, sound: () => undefined });
     for (let i = 0; i < 60 * 60; i++) cs.update(1 / 60, ctx(world));
     expect(cs.list.length).toBeGreaterThan(0);
-    const plainsKinds = new Set(['deer', 'rabbit', 'sheep', 'cow', 'trader']);
+    const plainsKinds = new Set(['deer', 'rabbit', 'sheep', 'cow', 'trader', 'slime']);
     for (const c of cs.list) expect(plainsKinds.has(c.species.key)).toBe(true);
     const back = new Creatures(world, mulberry32(5), { bite: () => undefined, sound: () => undefined });
     back.load(JSON.parse(JSON.stringify(cs.save())));

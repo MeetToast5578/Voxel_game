@@ -24,6 +24,7 @@ export const RECIPES: readonly Recipe[] = [
   { pattern: ['L'], key: { L: ['log'] }, result: ['planks', 4] },
   { pattern: ['P', 'P'], key: { P: ['planks'] }, result: ['stick', 4] },
   { pattern: ['C', 'S'], key: { C: ['coal'], S: ['stick'] }, result: ['torch', 4] },
+  { pattern: ['G', 'S'], key: { G: ['gel'], S: ['stick'] }, result: ['torch', 3] },
   { pattern: ['PP', 'PP'], key: { P: ['planks'] }, result: ['crafting_table', 1] },
   { pattern: ['PPP', 'P P', 'PPP'], key: { P: ['planks'] }, result: ['chest', 1] },
   { pattern: ['CCC', 'C C', 'CCC'], key: { C: ['cobblestone'] }, result: ['furnace', 1] },
