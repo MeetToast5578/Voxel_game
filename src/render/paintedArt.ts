@@ -234,6 +234,32 @@ const ICONS: Readonly<Record<string, Icon>> = {
 
 const hex = (c: string): number[] => [1, 3, 5].map((i) => parseInt(c.slice(i, i + 2), 16)).concat(255);
 
+/** Art made by recolouring other art: [source tile, hue in degrees given to its blue-green gem colours]. */
+const RECOLOURED: readonly [RegExp, (name: string) => string, number][] = [[/^jade(_|$)/, (n) => n.replace(/^jade/, 'diamond'), 138]];
+
+/** The source tile a recoloured tile is made from, if it is one. */
+export function recolourSource(name: string): { from: string; hue: number } | undefined {
+  const r = RECOLOURED.find(([re]) => re.test(name));
+  return r && { from: r[1](name), hue: r[2] };
+}
+
+/** Pixels with their cyan and blue colours turned to `hue`, everything else (handles, stone) kept. */
+export function recolour(pixels: Uint8ClampedArray, hue: number): Uint8ClampedArray {
+  const out = pixels.slice();
+  for (let i = 0; i < out.length; i += 4) {
+    const r = out[i]! / 255, g = out[i + 1]! / 255, b = out[i + 2]! / 255, max = Math.max(r, g, b), min = Math.min(r, g, b), d = max - min;
+    if (d < 0.08 || max === r) continue;
+    const h = 60 * (max === g ? (b - r) / d + 2 : (r - g) / d + 4);
+    if (h < 150 || h > 250) continue;
+    // HSV with the new hue, a touch deeper.
+    const v = max * 0.92, s = d / max, k = (n: number) => (n + hue / 60) % 6, f = (n: number) => v - v * s * Math.max(0, Math.min(k(n), 4 - k(n), 1));
+    out[i] = f(5) * 255;
+    out[i + 1] = f(3) * 255;
+    out[i + 2] = f(1) * 255;
+  }
+  return out;
+}
+
 /** RGBA, top row first, or undefined if no icon has that name. */
 export function paintedPixels(name: string): Uint8ClampedArray | undefined {
   const icon = ICONS[name];

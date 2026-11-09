@@ -4,6 +4,7 @@ import index from '../../assets/woodland-ember/rework/texture-index.json';
 import packed from '../render/reworkArt.json';
 import {decodeArtTile,type PackedArtTile} from '../render/artCodec';
 import {artworkPixels} from '../render/woodlandArt';
+import {recolourSource} from '../render/paintedArt';
 import {TILE_NAMES,tileIndex,itemTile} from '../render/tilePixels';
 import {BLOCKS,WOOD_SPECIES,TOOL_TIERS,TOOL_KINDS,ARMOUR_PIECES} from '../engine/blocks';
 const data=packed as Record<string,PackedArtTile>;
@@ -16,7 +17,8 @@ describe('full world texture rework',()=>{
   expect(new Set(index.map(e=>e.file)).size).toBe(index.length);
   for(const e of index){expect(TILE_NAMES,e.name).toContain(e.name);expect([...artworkPixels(e.name)!],e.name).toEqual([...pixels(e.name)]);}
   for(const s of WOOD_SPECIES){for(const suffix of ['bark','end'])expect(data[s+'_'+suffix]).toBeDefined();if(s!=='dead_snag')for(const suffix of ['leaves','planks'])expect(data[s+'_'+suffix]).toBeDefined();}
-  for(const tier of TOOL_TIERS)for(const kind of TOOL_KINDS)expect(data[tier+'_'+kind]).toBeDefined();
+  // Authored art for every tier, except tiers recoloured from another (jade from diamond).
+  for(const tier of TOOL_TIERS)for(const kind of TOOL_KINDS){const n=tier+'_'+kind;if(recolourSource(n))expect(artworkPixels(n),n).toBeDefined();else expect(data[n],n).toBeDefined();}
   for(const tier of ['leather','iron','diamond'])for(const part of ARMOUR_PIECES)expect(data[tier+'_'+part]).toBeDefined();
   for(const [key,name]of [['wheat','harvested_wheat'],['carrots','harvested_carrot'],['potatoes','harvested_potato']])for(let v=0;v<4;v++)expect(itemTile(BLOCKS.state(key!,v))).toBe(name);
  });

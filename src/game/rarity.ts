@@ -10,7 +10,7 @@ const UNCOMMON = new Set(['gold_ingot', 'lapis', 'lantern', 'bow', 'trade_coin']
 /** How rare an item is, 0 (common) to 4 (legendary): by material and kind, raised by ember upgrades. */
 export function rarity(s: ItemStack): number {
   const t = BLOCKS.type(s.state), k = t.key;
-  let r = k === 'beacon' || k === 'lit_beacon' ? 4 : EPIC.has(k) ? 3 : RARE.has(k) || k.startsWith('diamond_') ? 2
+  let r = k === 'beacon' || k === 'lit_beacon' ? 4 : EPIC.has(k) || k === 'jade' || k.startsWith('jade_') ? 3 : RARE.has(k) || k.startsWith('diamond_') ? 2
     : UNCOMMON.has(k) || k.startsWith('iron_') ? 1 : 0;
   r += s.upgrade ?? 0;
   return Math.min(4, r);

@@ -288,6 +288,8 @@ const BASE: BlockSpec[] = [
   // Redstone and emerald ore are no longer generated (they had no use); they stay so old worlds keep them.
   // Ember ore: deep down in deepslate near the lava, glowing faintly; only a diamond pickaxe gets its crystals.
   stone('ember_ore', 'Ember ore', { hardness: 6, needsTier: 3, drops: 'ember_crystal', lightEmission: 5 }),
+  // Verdant jade: the deepest gem, past diamond; its tools and armour are the best there are.
+  stone('jade_ore', 'Verdant jade ore', { hardness: 7, needsTier: 3, drops: 'jade' }),
   { key: 'cactus', name: 'Cactus', tiles: { top: 'saguaro_top', side: 'saguaro_side', bottom: 'saguaro_top' }, hardness: 0.5, density: 700 },
   // Tall grass sometimes gives wheat seeds (handled where blocks are broken).
   plant('tall_grass', 'Tall grass', { drops: '' }),
@@ -310,15 +312,16 @@ const DECOR_PANEL: readonly Box[][] = [[[0,2,2,2,14,14]],[[14,2,2,16,14,14]],[[2
 const TURN = [2, 3, 1, 0];
 const HIGH_HALF: Record<number, Box> = { 0: [8, 8, 0, 16, 16, 16], 1: [0, 8, 0, 8, 16, 16], 2: [0, 8, 8, 16, 16, 16], 3: [0, 8, 0, 16, 16, 8] };
 const STAIR_MATERIALS = ['planks', 'cobblestone', 'stone', 'brick', 'sandstone'];
-export const TOOL_TIERS = ['wooden', 'stone', 'iron', 'diamond'] as const;
+export const TOOL_TIERS = ['wooden', 'stone', 'iron', 'diamond', 'jade'] as const;
 export const TOOL_KINDS: readonly ToolKind[] = ['pickaxe', 'axe', 'shovel', 'sword', 'hoe'];
-const DURABILITY = [60, 132, 251, 1561];
+const DURABILITY = [60, 132, 251, 1561, 2400];
 /** Armour materials and pieces: protection per piece (head, chest, legs, feet), warmth per piece, and hits it takes. */
 export const ARMOUR_PIECES = ['helmet', 'chestplate', 'leggings', 'boots'] as const;
 export const ARMOUR_MATERIALS = {
   leather: { protection: [1, 3, 2, 1], warmth: [3, 6, 4, 2], durability: 80 },
   iron: { protection: [2, 6, 5, 2], warmth: [0, 1, 1, 0], durability: 240 },
   diamond: { protection: [3, 8, 6, 3], warmth: [0, 1, 1, 0], durability: 500 },
+  jade: { protection: [4, 9, 7, 4], warmth: [1, 2, 1, 1], durability: 800 },
 } as const;
 export const CROP_STAGES = 4;
 /** Sapling variants: the tree species each grows into. */
@@ -381,6 +384,7 @@ function gameplay(): BlockSpec[] {
     item('iron_ingot', 'Iron ingot'),
     item('gold_ingot', 'Gold ingot'),
     item('diamond', 'Diamond'),
+    item('jade', 'Verdant jade'),
     item('lapis', 'Lapis'),
     item('ember_crystal', 'Ember crystal'),
     item('beacon_shard', 'Beacon shard'),

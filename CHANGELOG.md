@@ -19,6 +19,8 @@ The "3D Terraria" pass (Milestone 18).
   accessories; monsters drop coins, and the trader sells accessories for them.
 - Combat: swords and axes sweep an arc and hit everything in it, with crits, knockback and stagger, damage numbers,
   health bars and a slash trail. A brief moment of safety follows each bite. The held item is drawn in 3D and swings.
+- A new top tier: Verdant Jade, deep below -200 m (diamond pickaxe needed). Jade tools mine fastest and hit hardest;
+  jade armour is the strongest. Its art is recoloured from diamond's until authored art replaces it.
 - Magic: the Spark Wand and Ember Staff cast bolts that fly straight, using mana (20, shown while a staff is held).
 - Bosses: the Slime King (summoned with a Gel Crown) and the Gloom Matriarch (a giant moth, called at night with a Moth
   Lure); both call their brood when struck. Gloom Moths flutter over forests and plains at night.
