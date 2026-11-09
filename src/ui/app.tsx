@@ -253,6 +253,11 @@ function SettingsSection({ m }: { m: WorldsModel }) {
       </fieldset><fieldset><legend>Interface &amp; comfort</legend><label>Menu and HUD size: {Math.round(s.guiScale * 100)}%
         <input type="range" min={0.75} max={1.5} step={0.05} value={s.guiScale} onChange={(e) => set({ guiScale: Number((e.target as HTMLInputElement).value) })} />
       </label>
+      <label>Resolution
+        <select aria-label="Resolution" value={String(s.renderScale)} onChange={(e) => set({ renderScale: Number((e.target as HTMLSelectElement).value) })}>
+          <option value="0">Automatic (smooth frame rate)</option><option value="1">Full</option><option value="0.85">85%</option><option value="0.7">70%</option><option value="0.5">50% (fastest)</option>
+        </select>
+      </label>
       <label class="check"><input type="checkbox" checked={s.invertY} onChange={(e) => set({ invertY: (e.target as HTMLInputElement).checked })} /> Invert mouse Y</label>
       <label class="check"><input type="checkbox" checked={s.viewBob} onChange={(e) => set({ viewBob: (e.target as HTMLInputElement).checked })} /> View bob and sprint widening</label>
       <label class="check"><input type="checkbox" checked={s.hints} onChange={(e) => set({ hints: (e.target as HTMLInputElement).checked })} /> Show hints</label>

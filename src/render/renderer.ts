@@ -108,6 +108,21 @@ export class Renderer {
     this.uniforms.summer!.value = a.summer;
   }
 
+  /** Share of the screen's resolution that is rendered (the canvas is stretched to fill the window). */
+  private resolution = 1;
+
+  setResolution(scale: number): void {
+    const next = Math.max(0.5, Math.min(1, scale));
+    if (Math.abs(next - this.resolution) < 0.01) return;
+    this.resolution = next;
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2) * next);
+    this.resize();
+  }
+
+  get resolutionScale(): number {
+    return this.resolution;
+  }
+
   resize(): void {
     const w = window.innerWidth, h = window.innerHeight;
     this.renderer.setSize(w, h);

@@ -154,6 +154,7 @@ describe('archives and settings', () => {
   it('clamps and defaults settings', async () => {
     const { parseSettings, DEFAULT_SETTINGS } = await import('../storage/settings');
     expect(parseSettings(null)).toEqual(DEFAULT_SETTINGS);
+    expect([0, 0.2, 0.7, 3].map((renderScale) => parseSettings({ renderScale }).renderScale)).toEqual([0, 0.5, 0.7, 1]);
     expect(parseSettings({ viewChunks: 999, fov: 'x', mouseSensitivity: 0.004 })).toEqual({ ...DEFAULT_SETTINGS, viewChunks: 32, mouseSensitivity: 0.004 });
   });
 

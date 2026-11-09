@@ -126,6 +126,7 @@ const input = new Input(canvas, settings.mouseSensitivity, settings.keys);
 /** Settings that take effect at once: field of view, mouse, keys, volume and GUI size. */
 function applySettings(): void {
   renderer.camera.fov = settings.fov;
+  if (settings.renderScale > 0) renderer.setResolution(settings.renderScale);
   renderer.camera.updateProjectionMatrix();
   input.sensitivity = settings.mouseSensitivity;
   input.invertY = settings.invertY;
@@ -634,6 +635,20 @@ const hand = document.querySelector<HTMLDivElement>('#hand')!, handImg = hand.qu
 const interactionHint=document.createElement('div');interactionHint.id='interaction-hint';interactionHint.hidden=true;document.body.append(interactionHint);
 let handSwings = 0;
 const combat = new CombatOverlay();
+/**
+ * Automatic resolution: with frames slower than about 45 fps for a couple of seconds, render fewer pixels; with plenty
+ * of headroom, more again. Drawing, not the main thread, is what limits most machines.
+ */
+let frameMs = 16, resolutionClock = 0;
+function autoResolution(dt: number): void {
+  if (settings.renderScale > 0 || dt <= 0 || dt > 0.25) return;
+  frameMs += (dt * 1000 - frameMs) * 0.05;
+  if ((resolutionClock += dt) < 2) return;
+  resolutionClock = 0;
+  const now = renderer.resolutionScale;
+  if (frameMs > 22) renderer.setResolution(now - 0.15);
+  else if (frameMs < 13) renderer.setResolution(now + 0.1);
+}
 function updateHand():void {
   const state=play.held?.state??-1;
   const armour=play.armour[1],key=armour?BLOCKS.type(armour.state).key:'bare';
@@ -717,6 +732,7 @@ const loop = new FixedStepLoop(1 / 60, 0.25, timedUpdate, (alpha, frameDt) => {
   burnGlow.style.opacity = play.survival.burning > 0 ? '1' : '0';
   updateHeldTools(now);
   updateHand();
+  autoResolution(frameDt);
   combat.update(frameDt, renderer.camera, play.hits, creatures.list, play.slashes, play.screen === 'none' && !play.survival.dead);
   ambience.update(frameDt, surroundings);
   if (play.journal.done.size > milestones) {
