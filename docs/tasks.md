@@ -454,7 +454,10 @@ The owner named all four as bad:
 - [~] **18.D4 Bosses:** summoned or found, with arenas and unique drops. 0.7.0: boss health bar; the Slime King,
   summoned with a Gel Crown, splits off slimes and drops accessories and Life Crystals. The Ember Warden shows the bar
   too. More bosses and arenas remain.
-- [ ] **18.D5 NPC towns:** villagers who move into suitable houses, sell goods and sleep at night.
+- [~] **18.D5 NPC towns:** villagers who move into suitable houses, sell goods and sleep at night. 0.7.0: generated
+  villages (houses with pitched roofs in tree-free clearings); a farmer, smith or herbalist per house with their own
+  shop, out near home by day and asleep in their bed at night. A villager returns while its bed stands. Moving into
+  houses the player builds is still to do.
 
 ## 19. New and improved art — production backlog
 

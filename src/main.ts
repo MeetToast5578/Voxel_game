@@ -368,6 +368,7 @@ function update(dt: number): void {
   if (exposureClock >= 0.5) {
     updateExposure(exposureClock);
     play.wakeGuardians(player);
+    play.wakeVillagers(player);
     exposureClock = 0;
   }
   if (play.mode === 'survival' && !play.survival.dead) {

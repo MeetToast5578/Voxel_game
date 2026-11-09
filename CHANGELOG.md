@@ -20,6 +20,8 @@ The "3D Terraria" pass (Milestone 18).
 - Combat: swords and axes sweep an arc and hit everything in it, with crits, knockback and stagger, damage numbers,
   health bars and a slash trail. A brief moment of safety follows each bite. The held item is drawn in 3D and swings.
 - Boss: the Slime King, summoned with a Gel Crown. Bosses show a health bar.
+- Villages: clusters of houses with pitched roofs in clearings. Each house has a farmer, smith or herbalist with their
+  own shop, who wanders near home by day and sleeps in their bed at night. Defeated creatures fall over and fade.
 - Automatic resolution keeps the frame rate smooth on slower machines (Settings, Resolution).
 - Saves upgrade step by step, keeping a backup of the old record (save version 5).
 

@@ -269,6 +269,25 @@ const MODELS: Record<string, Model> = {
       head.shapes.push(shape(CAPSULE, [0, 0.19, 0], [0.32, 0.02, 0.32], 0x6e4c2c), shape(CAPSULE, [0, 0.24, 0], [0.18, 0.1, 0.18], 0x6e4c2c), ball([0, 0.02, -0.06], [0.14, 0.08, 0.1], 0x7a5a40));
       root.shapes.push(box([0, 0.18, 0.13], [0.22, 0.26, 0.12], 0x7a5434), box([0, 0.33, 0.13], [0.2, 0.05, 0.13], 0x5e3e24), box([0, 0.02, -0.09], [0.24, 0.05, 0.02], 0x8a6a3a));
     } }),
+  farmer: biped({ skin: 0xd8a878, shirt: 0x5a7e3a, trousers: 0x6a5238, shoe: 0x3a2a1c, eye: 0x241a14,
+    extra: (root, head) => {
+      // A wide straw hat and an apron.
+      head.shapes.push(shape(CAPSULE, [0, 0.18, 0], [0.42, 0.025, 0.42], 0xe2c46a), shape(CAPSULE, [0, 0.23, 0], [0.2, 0.09, 0.2], 0xd6b45a), shape(CAPSULE, [0, 0.2, 0], [0.21, 0.025, 0.21], 0xa0402c));
+      root.shapes.push(box([0, 0.12, -0.085], [0.2, 0.28, 0.015], 0xe8dcc0));
+    } }),
+  smith: biped({ skin: 0xc08a60, shirt: 0x6a6e74, trousers: 0x3a3a40, shoe: 0x2a2220, eye: 0x241a14, bulk: 1.15,
+    extra: (root, head, arms) => {
+      // A leather apron, a full beard and a hammer.
+      root.shapes.push(box([0, 0.14, -0.1], [0.24, 0.34, 0.02], 0x6a4428));
+      head.shapes.push(ball([0, 0.01, -0.06], [0.16, 0.12, 0.1], 0x5a3a22), ball([0, 0.16, 0.0], [0.17, 0.06, 0.17], 0x5a3a22));
+      arms[1]!.kids[0]!.shapes.push(shape(CAPSULE, [0, -0.24, -0.08], [0.025, 0.24, 0.025], 0x6e4c2c, [1.2, 0, 0]), box([0, -0.24, -0.2], [0.07, 0.07, 0.12], 0x7a8088));
+    } }),
+  herbalist: biped({ skin: 0xe0b890, shirt: 0x6a4a86, trousers: 0x4a3460, shoe: 0x2a2030, eye: 0x241a14, thin: 0.9,
+    extra: (root, head) => {
+      // A long robe, a hood and a satchel of herbs.
+      root.shapes.push(cone([0, -0.06, 0], [0.34, 0.5, 0.26], 0x5a3e76, [Math.PI, 0, 0]), box([0.13, 0.06, 0.02], [0.06, 0.12, 0.14], 0x7a5a34), ball([0.13, 0.14, 0.02], [0.06, 0.05, 0.08], 0x6aa04a));
+      head.shapes.push(ball([0, 0.12, 0.03], [0.23, 0.22, 0.22], 0x6a4a86), cone([0, 0.25, 0.06], [0.14, 0.14, 0.14], 0x6a4a86, [0.5, 0, 0]));
+    } }),
   crawler: spider(0x3e3632, 0x4a403a, 0x302a26, 0xff3030, 4, [0.6, 0.4, 0.8]),
   desert_stalker: spider(0xba914b, 0xd2ae62, 0x90693a, 0x301808, 3, [0.5, 0.35, 0.8], (root, head) => {
     // A curled tail over the back ending in a sting, and two claws.
@@ -460,8 +479,8 @@ export class ShapeMobs {
         m.multiply(local.makeRotationAxis(FORWARD, (Math.PI / 2) * fall * fall));
       }
       if (sleeping && model.plan === 'biped') {
-        // Lying on one side on the ground.
-        m.multiply(local.makeTranslation(0, 0.13, 0)).multiply(local.makeRotationAxis(FORWARD, Math.PI / 2));
+        // Lying on one side, the head where the creature stands (a villager's pillow) and the feet behind.
+        m.multiply(local.makeTranslation(0.9, 0.13, 0)).multiply(local.makeRotationAxis(FORWARD, Math.PI / 2));
       }
       tmpC.setRGB(light, light, light);
       if (c.hurt > 0) tmpC.lerp(HURT, 0.6);

@@ -7,7 +7,7 @@ import { Journal, MILESTONES, type JournalFacts } from '../game/journal';
 import { lootTableFor, rollLoot } from '../game/loot';
 import { Play } from '../game/play';
 import { Generator } from '../worldgen/generator';
-import { siteIn, sitesNear, structureCells } from '../worldgen/structures';
+import { HOUSE_BED, siteIn, sitesNear, structureCells, villageAt } from '../worldgen/structures';
 
 const S = (key: string, v = 0) => BLOCKS.state(key, v);
 
@@ -26,9 +26,21 @@ function statesAround(gen: Generator, x: number, z: number, cy0: number, cy1: nu
 
 describe('structures', () => {
   it('stay within reach of their anchor, so every column that holds a part of one finds it', () => {
-    for (const kind of ['cabin', 'tower', 'camp', 'mine', 'vault', 'shrine'] as const) {
+    for (const kind of ['cabin', 'tower', 'camp', 'mine', 'vault', 'shrine', 'house'] as const) {
       for (const [dx, , dz] of structureCells(1, kind, 0, 0, 0)) expect(Math.max(Math.abs(dx), Math.abs(dz))).toBeLessThanOrEqual(8);
     }
+  });
+
+  it('gathers houses into villages, each with a bed', () => {
+    const half = Math.round(1500 / BLOCK_SIZE_M), houses = sitesNear(2, -half, -half, half, half).filter((s) => s.kind === 'house');
+    expect(houses.length).toBeGreaterThan(3);
+    for (const h of houses) expect(villageAt(2, h.x, h.z)).not.toBeNull();
+    // Houses of one village share its centre, and there are several per village.
+    const centres = new Map<string, number>();
+    for (const h of houses) { const k = villageAt(2, h.x, h.z)!.join(); centres.set(k, (centres.get(k) ?? 0) + 1); }
+    expect(Math.max(...centres.values())).toBeGreaterThan(2);
+    const bed = structureCells(2, 'house', houses[0]!.x, houses[0]!.z, 10).filter(([dx, y, dz]) => dx === HOUSE_BED[0] && dz === HOUSE_BED[1] && y === 11).pop(); // later cells win
+    expect(BLOCKS.type(bed![3]).key).toBe('bed');
   });
 
   it('are found from any column they reach into, whatever the order', () => {

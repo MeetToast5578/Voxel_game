@@ -11,7 +11,7 @@ import { BINDINGS, DEFAULT_KEYS, keyLabel, type Binding, type Settings } from '.
 import type { Difficulty } from '../config';
 import type { WorldMeta } from '../storage/store';
 import { artUrl } from './artAssets';
-import { TRADE_OFFERS, upgradeCost } from '../game/workshops';
+import { upgradeCost } from '../game/workshops';
 import { WOOD_SPECIES, SAPLING_SPECIES } from '../engine/blocks';
 import './pixelAero.css';
 import { iconUrl, stackIconUrl } from './icons';
@@ -158,7 +158,7 @@ function WorkshopScreen({play}:{play:Play}) {
   return <div class="screen workshop" role="dialog" aria-modal="true" aria-label={title}>
     <ScreenHead title={title} subtitle={w.kind==='forge'?'Strengthen the equipment you carry. Each level adds speed, protection and durability.':'Supplies for the journey ahead.'} close={()=>play.closeScreen()}/>
     <p class="pack-summary">{play.inventory.slots.filter(Boolean).length}/36 pack slots · {play.inventory.count(BLOCKS.state('trade_coin'))} coins · {play.inventory.count(BLOCKS.state('ember_crystal'))} ember · {play.inventory.count(BLOCKS.state('iron_ingot'))} iron</p>
-    {w.kind==='trade'&&<div class="trade-list">{TRADE_OFFERS.map((o,i)=>{const owned=play.inventory.count(BLOCKS.state(o.cost[0]));return <button key={i} disabled={owned<o.cost[1]} onClick={()=>play.performTrade(i)}><span class="offer-item"><img alt="" src={iconUrl(BLOCKS.state(o.gives[0]))}/><b>{o.gives[1]} {BLOCKS.byName(o.gives[0]).name}</b></span><span class="offer-cost"><img alt="" src={iconUrl(BLOCKS.state(o.cost[0]))}/>{o.cost[1]} {BLOCKS.byName(o.cost[0]).name}<small>You have {owned}</small></span></button>;})}</div>}
+    {w.kind==='trade'&&<div class="trade-list">{play.offers.map((o,i)=>{const owned=play.inventory.count(BLOCKS.state(o.cost[0]));return <button key={i} disabled={owned<o.cost[1]} onClick={()=>play.performTrade(i)}><span class="offer-item"><img alt="" src={iconUrl(BLOCKS.state(o.gives[0]))}/><b>{o.gives[1]} {BLOCKS.byName(o.gives[0]).name}</b></span><span class="offer-cost"><img alt="" src={iconUrl(BLOCKS.state(o.cost[0]))}/>{o.cost[1]} {BLOCKS.byName(o.cost[0]).name}<small>You have {owned}</small></span></button>;})}</div>}
     {w.kind==='forge'&&<div class="equipment-list">{play.inventory.slots.map((s,i)=>s&&(BLOCKS.type(s.state).tool||BLOCKS.type(s.state).armour)&&<button title={tooltip(s)} disabled={(s.upgrade??0)>=3} onClick={()=>play.performForge(i)}><img alt="" src={stackIconUrl(s)}/>{BLOCKS.type(s.state).name}<span>Level {s.upgrade??0}/3</span><span>{upgradeCost(s)} ember + 2 iron</span></button>)}</div>}
     {w.kind==='sign'&&<><label>Up to four lines, 24 characters per line<textarea aria-label="Sign text" maxLength={96} value={text} onInput={e=>setText(e.currentTarget.value)}/></label><button onClick={()=>{if(play.writeSign(text))play.closeScreen();}}>Save sign</button></>}
     {w.kind==='frame'&&<><p class="help">Choose an inventory item to display. Replacing it returns the old item.</p><div class="equipment-list">{play.inventory.slots.map((s,i)=>s&&<button title={tooltip(s)} onClick={()=>play.frameItem(i)}><img alt="" src={stackIconUrl(s)}/>{BLOCKS.type(s.state).name}</button>)}</div><button onClick={()=>play.frameItem(null)}>Take displayed item</button></>}

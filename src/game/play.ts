@@ -19,8 +19,8 @@ import { lootTableFor, rollLoot, type LootTable } from './loot';
 import { Journal, type Stats } from './journal';
 import { aimAt, Projectiles } from './projectiles';
 import type { BoxAt } from './collision';
-import { sitesNear, undergroundFloor } from '../worldgen/structures';
-import { Decorations, WORKSHOP_BLOCKS, trade, forge, type WorkshopKind } from './workshops';
+import { HOUSE_BED, professionAt, sitesNear, undergroundFloor } from '../worldgen/structures';
+import { Decorations, SHOPS, TRADE_OFFERS, WORKSHOP_BLOCKS, trade, forge, type TradeOffer, type WorkshopKind } from './workshops';
 import { SPECIES_BY_KEY } from '../creatures/species';
 import { buildingMaterial } from './building';
 
@@ -483,6 +483,28 @@ export class Play {
       if (this.chests.has(`${site.x},${floor + 1},${site.z}`) || creatures.guardianNear(site.x + 0.5, floor, site.z + 0.5, r)) continue;
       creatures.add(WARDEN, site.x + 0.5, floor, site.z - 1.5, WARDEN.health);
       this.toast('Something stirs in the shrine…', 3);
+    }
+  }
+
+  /**
+   * Brings each village house near the player to life (call about once a second): a house whose bed still stands and
+   * whose villager is not about gets its villager back, by the bed.
+   */
+  wakeVillagers(player: Player): void {
+    const creatures = this.creatures;
+    if (!creatures) return;
+    const r = 48, px = Math.floor(player.body.x), pz = Math.floor(player.body.z);
+    for (const site of sitesNear(this.seed, px - r, pz - r, px + r, pz + r)) {
+      if (site.kind !== 'house') continue;
+      const bx = site.x + HOUSE_BED[0], bz = site.z + HOUSE_BED[1], ground = this.world.surfaceAt(site.x, site.z);
+      if (ground === undefined) continue;
+      let bed = -1;
+      for (let y = ground - 4; y <= ground + 6 && bed < 0; y++) if (this.world.isLoaded(bx, y, bz) && BLOCKS.type(this.world.get(bx, y, bz)) === BED) bed = y;
+      // Home is the bed's head cell: lying there, the villager's feet reach past the foot of the bed.
+      if (bed < 0 || creatures.list.some((c) => c.home && c.home[0] === bx + 1.5 && c.home[2] === bz + 0.5)) continue;
+      const species = SPECIES_BY_KEY.get(professionAt(this.seed, site.x, site.z))!;
+      const c = creatures.add(species, site.x + 0.5, bed, site.z + 0.5, species.health);
+      c.home = [bx + 1.5, bed, bz + 0.5];
     }
   }
 
@@ -1048,8 +1070,14 @@ export class Play {
     return [x,y,z].every(Number.isFinite)&&this.world.isLoaded(x!,y!,z!)&&
       WORKSHOP_BLOCKS[BLOCKS.type(this.world.get(x!,y!,z!)).key]===kind&&Math.hypot(x!+.5-this.feet[0],y!+.5-this.feet[1],z!+.5-this.feet[2])<=toCells(REACH_M)+2;
   }
+  /** The offers of the open trade: a villager's own shop, or the general list. */
+  get offers(): readonly TradeOffer[] {
+    const w = this.workshop;
+    const c = w?.key.startsWith('mob:') ? this.creatures?.list.find((m) => m.id === Number(w.key.slice(4))) : undefined;
+    return (c?.species.shop && SHOPS[c.species.shop]) || TRADE_OFFERS;
+  }
   performTrade(offer:number):boolean {
-    const ok=this.workshopValid('trade')&&trade(this.inventory,offer);this.toast(ok?'Trade completed.':'Trade unavailable: check payment, space and reach.',2);this.version++;return ok;
+    const ok=this.workshopValid('trade')&&trade(this.inventory,offer,this.offers);this.toast(ok?'Trade completed.':'Trade unavailable: check payment, space and reach.',2);this.version++;return ok;
   }
   performForge(slot:number):boolean {
     const ok=this.workshopValid('forge')&&forge(this.inventory,slot);this.toast(ok?'Ember upgrade applied.':'Needs ember crystals, two iron ingots and eligible equipment (maximum level 3).',3);this.version++;return ok;

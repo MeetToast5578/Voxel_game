@@ -41,6 +41,8 @@ export interface Creature {
   hop: number;
   /** Health when spawned, for health bars. */
   maxHealth: number;
+  /** A villager's bed: where it goes at night and stays near by day. */
+  home?: readonly [number, number, number];
 }
 
 /** What creatures need to know about the world and the player each tick. */
@@ -139,6 +141,29 @@ export class Creatures {
   /** Picks what to do: flee a threat, hunt prey, keep with the herd, wander or rest. */
   private decide(c: Creature, ctx: CreatureContext): void {
     const s = c.species, b = c.body, p = ctx.player;
+    if (c.home) {
+      // Villagers: home to bed at night, out and about near home by day.
+      const [hx, hy, hz] = c.home, homeD = Math.hypot(hx - b.x, hz - b.z);
+      if (!this.active(c, ctx)) {
+        if (homeD < 0.6 && Math.abs(hy - b.y) < 1.5) {
+          c.mode = 'sleep';
+          c.goal = null;
+          // Head on the pillow (+x), lying along the bed.
+          c.yaw = Math.PI;
+        } else {
+          c.mode = 'wander';
+          c.goal = [hx, hz];
+        }
+        return;
+      }
+      if (c.mode === 'sleep' || !c.goal || Math.hypot(c.goal[0] - b.x, c.goal[1] - b.z) < toCells(0.8) || this.rand() < 0.04) {
+        if (this.rand() < 0.4) { c.mode = 'idle'; c.goal = null; return; }
+        const a = this.rand() * Math.PI * 2, r = toCells(2 + this.rand() * 9);
+        c.mode = 'wander';
+        c.goal = [hx + Math.cos(a) * r, hz + Math.sin(a) * r];
+      }
+      return;
+    }
     if (!this.active(c, ctx) && c.mode !== 'flee') {
       // Only animals and people sleep; a monster out of its hour lingers, waiting.
       c.mode = s.hostile ? 'idle' : 'sleep';
@@ -526,7 +551,8 @@ export class Creatures {
   }
 
   save(): [string, number, number, number, number][] {
-    return this.list.map((c) => [c.species.key, c.body.x, c.body.y, c.body.z, c.health]);
+    // Villagers are not saved: they come back to their houses' beds.
+    return this.list.filter((c) => !c.home).map((c) => [c.species.key, c.body.x, c.body.y, c.body.z, c.health]);
   }
 
   load(saved: unknown): void {

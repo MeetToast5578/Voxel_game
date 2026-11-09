@@ -40,6 +40,23 @@ describe('creatures', () => {
     if (cs.list.includes(zombie)) expect(zombie.mode).not.toBe('sleep');
   });
 
+  it('villagers stay near home by day and go to bed at night', () => {
+    const world = plain();
+    const cs = new Creatures(world, mulberry32(6), { bite: () => undefined, sound: () => undefined });
+    const v = cs.add(SPECIES_BY_KEY.get('farmer')!, 10.5, 0, 10.5, 30);
+    v.home = [20.5, 0, 10.5];
+    let farthest = 0;
+    for (let i = 0; i < 60 * 60; i++) {
+      cs.update(1 / 60, ctx(world, player(), false, true));
+      farthest = Math.max(farthest, Math.hypot(v.body.x - 20.5, v.body.z - 10.5));
+    }
+    expect(farthest).toBeLessThan(25);
+    for (let i = 0; i < 60 * 40; i++) cs.update(1 / 60, ctx(world, player(), false, false));
+    expect(v.mode).toBe('sleep');
+    expect(Math.hypot(v.body.x - 20.5, v.body.z - 10.5)).toBeLessThan(1);
+    expect(cs.save().some((e) => e[0] === 'farmer')).toBe(false); // villagers come back from their houses, not the save
+  });
+
   it('slimes move in hops and bats fly above the ground', () => {
     const world = plain();
     const cs = new Creatures(world, mulberry32(3), { bite: () => undefined, sound: () => undefined });

@@ -51,6 +51,10 @@ export interface Species {
   fireproof?: boolean;
   /** A boss: its health shows in a bar across the top of the screen. */
   boss?: boolean;
+  /** Lives in a village house: stays near home by day and sleeps in its bed at night. Never spawns on its own. */
+  villager?: boolean;
+  /** Which shop list a trader offers (see workshops.ts); the general list when unset. */
+  shop?: string;
 }
 
 const BASE = { grazer: false, prey: [], hostile: false, herds: false, nocturnal: false, medium: 'land', attack: 0, meat: 1, voice: 0.5 } as const;
@@ -119,6 +123,9 @@ export const SPECIES: readonly Species[] = [
   { ...BASE, key: 'ember_slime', name: 'Ember Slime', halfWidthM: 0.4, heightM: 0.75, speedM_S: 2.6, health: 22, hostile: true, hops: true, fireproof: true,
     attack: 5, biomes: ['deep'], group: [1, 2], colours: { body: [240, 120, 40], head: [200, 60, 20], legs: [255, 220, 120] },
     meat: 0, loot: [['gel', 3], ['ember_crystal', 1, 0.25], ['ember_ring', 1, 0.02]], voice: 0.7 },
+  ...(['farmer', 'smith', 'herbalist'] as const).map((job): Species => ({ ...BASE, key: job, name: job[0]!.toUpperCase() + job.slice(1),
+    halfWidthM: 0.28, heightM: 1.8, speedM_S: 0.9, health: 30, trader: true, villager: true, shop: job, biomes: [], group: [1, 1], meat: 0,
+    colours: { body: [80, 110, 70], head: [207, 162, 116], legs: [70, 60, 50] }, voice: 0.5 })),
   { ...BASE, key: 'king_slime', name: 'Slime King', halfWidthM: 1.0, heightM: 1.7, speedM_S: 2.8, health: 240, hostile: true, daytime: true, hops: true,
     boss: true, attack: 6, biomes: [], group: [1, 1], colours: { body: [80, 150, 240], head: [40, 90, 200], legs: [200, 230, 255] },
     meat: 0, loot: [['gel', 30], ['life_crystal', 2], ['cloud_charm', 1], ['swift_anklet', 1, 0.6], ['heart_locket', 1, 0.3], ['gold_ingot', 4]], voice: 0.3 },
