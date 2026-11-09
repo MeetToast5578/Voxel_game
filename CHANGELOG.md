@@ -3,6 +3,26 @@
 The newest version comes first. `npm run check` fails if the version at the top here is not the one in
 `package.json`, so the two are changed together.
 
+## 0.7.0 — 2026-11-09
+
+The "3D Terraria" pass (Milestone 18).
+
+- Crafting is a list, not a grid: everything you can make from what you carry, by category, with ingredients and
+  have/need counts, Craft and Craft all. A workbench within four cells opens its recipes.
+- New inventory: equipment and accessories, hotbar and backpack, and crafting side by side. Sort the backpack; a trash
+  slot keeps the last item thrown away. Items have rarity colours.
+- Five accessory slots and seven accessories: Swiftstep Anklet, Cloud Charm (double jump), Featherfall Charm, Ironskin
+  Band, Gill Pendant, Ember Ring and Heart Locket. Life Crystals raise max health to 40.
+- Creatures are rebuilt from smooth shapes on jointed skeletons with walk, run, graze, attack, flinch, hop and flap
+  animation. Animals and the trader lie down to sleep; monsters never sleep.
+- New monsters: green, cave and ember slimes that hop, cave bats that fly, and skeletons. Rare drops include
+  accessories; monsters drop coins, and the trader sells accessories for them.
+- Combat: swords and axes sweep an arc and hit everything in it, with crits, knockback and stagger, damage numbers,
+  health bars and a slash trail. A brief moment of safety follows each bite. The held item is drawn in 3D and swings.
+- Boss: the Slime King, summoned with a Gel Crown. Bosses show a health bar.
+- Automatic resolution keeps the frame rate smooth on slower machines (Settings, Resolution).
+- Saves upgrade step by step, keeping a backup of the old record (save version 5).
+
 ## 0.6.8 — 2026-11-05
 
 - Rebuilt title and pause menus around distinct navigation sections, preserving new-world drafts between sections.

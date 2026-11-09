@@ -230,8 +230,12 @@ const play = new Play(world, (x, y, z, s) => setBlock(x, y, z, s, true), {
 }, (params.get('mode') as Mode | null) ?? 'survival');
 const urlDifficulty = params.get('difficulty');
 if (urlDifficulty && urlDifficulty in DIFFICULTY) play.difficulty = urlDifficulty as Difficulty;
+let lastBite = -Infinity;
 const creatures = new Creatures(world, mulberry32(seed ^ 0xc0ffee), {
   bite: (damage, by) => {
+    // A moment of safety after each bite, so a crowd cannot take the player down all at once.
+    if (performance.now() - lastBite < 500) return;
+    lastBite = performance.now();
     if (play.mode === 'survival' && !play.survival.dead) {
       play.survival.hurt(play.protect(damage * DIFFICULTY[play.difficulty].damage), `killed by a ${by.toLowerCase()}`);
       sounds.play('break', 0.6);
