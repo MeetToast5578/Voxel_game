@@ -72,3 +72,17 @@ describe('progression past iron', () => {
     expect(Math.abs(bearing(0, 0, 0, 0, 10))).toBeCloseTo(Math.PI);
   });
 });
+
+describe('verdant jade', () => {
+  it('is the tier past diamond: needs a diamond pickaxe, mines faster and hits harder', async () => {
+    const { breakSeconds, canHarvest } = await import('../game/mining');
+    const { weaponDamage } = await import('../game/play');
+    const { BLOCKS } = await import('../engine/blocks');
+    const one = (k: string) => ({ state: BLOCKS.state(k), count: 1 });
+    const ore = BLOCKS.state('jade_ore');
+    expect(canHarvest(ore, one('iron_pickaxe'))).toBe(false);
+    expect(canHarvest(ore, one('diamond_pickaxe'))).toBe(true);
+    expect(breakSeconds(BLOCKS.state('stone'), one('jade_pickaxe'))).toBeLessThan(breakSeconds(BLOCKS.state('stone'), one('diamond_pickaxe')));
+    expect(weaponDamage(one('jade_sword'))).toBeGreaterThan(weaponDamage(one('diamond_sword')));
+  });
+});

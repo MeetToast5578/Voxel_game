@@ -30,6 +30,8 @@ const ORES = [
   { key: 'ember_ore', topM: -100, bottomM: -480, per1000M3: 0.12, cells: 3 },
   { key: 'lapis_ore', topM: -128, bottomM: -320, per1000M3: 0.3, cells: 4 },
   { key: 'diamond_ore', topM: -160, bottomM: -480, per1000M3: 0.15, cells: 3 },
+  // New ores go last, so the veins of the earlier ones keep their places.
+  { key: 'jade_ore', topM: -200, bottomM: -480, per1000M3: 0.1, cells: 3 },
 ].map((o) => ({ ...o, state: BLOCKS.state(o.key) }));
 
 /** Rock layers, caves and ores: everything below the surface. Pure and deterministic per seed. */

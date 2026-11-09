@@ -14,7 +14,35 @@ export const TRADE_OFFERS: readonly TradeOffer[] = [
   {name:'Buy iron',cost:['trade_coin',5],gives:['iron_ingot',2]},
   {name:'Buy a map',cost:['trade_coin',6],gives:['map',1]},
   {name:'Buy a lantern',cost:['trade_coin',4],gives:['lantern',1]},
+  {name:'Sell gel',cost:['gel',10],gives:['trade_coin',1]},
+  {name:'Buy a Gel Crown',cost:['trade_coin',20],gives:['slime_crown',1]},
+  {name:'Buy a Swiftstep Anklet',cost:['trade_coin',30],gives:['swift_anklet',1]},
+  {name:'Buy a Gill Pendant',cost:['trade_coin',25],gives:['gill_pendant',1]},
+  {name:'Buy a Life Crystal',cost:['trade_coin',60],gives:['life_crystal',1]},
 ];
+const offer = (name: string, cost: readonly [string, number], gives: readonly [string, number]): TradeOffer => ({ name, cost, gives });
+/** Each villager's own shop; the traveling trader and trading posts use TRADE_OFFERS. */
+export const SHOPS: Readonly<Record<string, readonly TradeOffer[]>> = {
+  farmer: [
+    offer('Sell wheat', ['wheat', 6], ['trade_coin', 1]), offer('Sell carrots', ['carrots', 8], ['trade_coin', 1]),
+    offer('Buy seeds', ['trade_coin', 1], ['wheat', 4]), offer('Buy carrots', ['trade_coin', 2], ['carrots', 3]),
+    offer('Buy potatoes', ['trade_coin', 2], ['potatoes', 3]), offer('Buy baked potatoes', ['trade_coin', 2], ['baked_potato', 4]),
+    offer('Buy bone meal', ['trade_coin', 1], ['bone_meal', 4]), offer('Buy wool', ['trade_coin', 2], ['wool', 2]),
+  ],
+  smith: [
+    offer('Sell coal', ['coal', 10], ['trade_coin', 1]), offer('Sell iron', ['iron_ingot', 3], ['trade_coin', 2]),
+    offer('Buy iron', ['trade_coin', 4], ['iron_ingot', 2]), offer('Buy an iron sword', ['trade_coin', 10], ['iron_sword', 1]),
+    offer('Buy an iron pickaxe', ['trade_coin', 12], ['iron_pickaxe', 1]), offer('Buy an iron helmet', ['trade_coin', 12], ['iron_helmet', 1]),
+    offer('Buy an iron chestplate', ['trade_coin', 18], ['iron_chestplate', 1]), offer('Buy an Ironskin Band', ['trade_coin', 35], ['iron_band', 1]),
+    offer('Buy a bucket', ['trade_coin', 5], ['bucket', 1]), offer('Buy a lantern', ['trade_coin', 4], ['lantern', 1]),
+  ],
+  herbalist: [
+    offer('Sell feathers', ['feather', 6], ['trade_coin', 1]), offer('Sell gel', ['gel', 8], ['trade_coin', 1]),
+    offer('Buy cooked fish', ['trade_coin', 2], ['cooked_fish', 3]), offer('Buy a Gill Pendant', ['trade_coin', 25], ['gill_pendant', 1]),
+    offer('Buy a Featherfall Charm', ['trade_coin', 30], ['feather_charm', 1]), offer('Buy a Heart Locket', ['trade_coin', 45], ['heart_locket', 1]),
+    offer('Buy a Life Crystal', ['trade_coin', 55], ['life_crystal', 1]), offer('Buy a Gel Crown', ['trade_coin', 18], ['slime_crown', 1]),
+  ],
+};
 const copy = (inv: Inventory) => {const other=new Inventory();inv.slots.forEach((s,i)=>other.slots[i]=s?{...s}:null);other.selected=inv.selected;return other;};
 function take(inv: Inventory, key: string, count: number): boolean {
   const slots=inv.slots.filter(s=>s&&BLOCKS.type(s.state).key===key&&!s.wear&&!s.upgrade&&BLOCKS.variant(s.state)===0);
@@ -27,8 +55,8 @@ function take(inv: Inventory, key: string, count: number): boolean {
 }
 const commit=(inv:Inventory,other:Inventory)=>other.slots.forEach((s,i)=>inv.slots[i]=s);
 /** All exchanges commit together, including capacity checks; failures never consume payment. */
-export function trade(inv:Inventory, offer:number): boolean {
-  const o=TRADE_OFFERS[offer];if(!o)return false;
+export function trade(inv:Inventory, offer:number, offers:readonly TradeOffer[]=TRADE_OFFERS): boolean {
+  const o=offers[offer];if(!o)return false;
   const next=copy(inv);
   if(!take(next,...o.cost)||next.add({state:BLOCKS.state(o.gives[0]),count:o.gives[1]})!==0)return false;
   commit(inv,next);return true;

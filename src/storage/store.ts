@@ -1,6 +1,31 @@
 /** Where worlds are kept: a meta record per world, saved chunks and per-column sky tops. */
 
-export const SAVE_VERSION = 4;
+export const SAVE_VERSION = 5;
+
+/**
+ * Upgrade steps: MIGRATIONS[v] turns a version-v meta record into a version v + 1 one, in place. Add a step with every
+ * change to the saved format; older records are upgraded one step at a time when read.
+ */
+const MIGRATIONS: Readonly<Record<number, (m: Record<string, unknown>) => void>> = {
+  // 5: accessory slots and list crafting. The crafting grid is gone; its cells were already returned on save.
+  4: (m) => {
+    const p = m.play as Record<string, unknown> | undefined;
+    if (typeof p === 'object' && p !== null && !Array.isArray(p.accessories)) p.accessories = [];
+  },
+};
+
+/** A copy of `value` upgraded to SAVE_VERSION, or `value` itself when it is current, newer or not upgradable. */
+export function migrateMeta(value: unknown): unknown {
+  if (typeof value !== 'object' || value === null) return value;
+  let v = (value as { version?: unknown }).version;
+  if (typeof v !== 'number' || v >= SAVE_VERSION || !MIGRATIONS[v]) return value;
+  const m = structuredClone(value) as Record<string, unknown>;
+  while (typeof v === 'number' && v < SAVE_VERSION && MIGRATIONS[v]) {
+    MIGRATIONS[v]!(m);
+    m.version = v = v + 1;
+  }
+  return m;
+}
 
 export interface SavedPlayer {
   x: number;
@@ -58,6 +83,7 @@ export class RevisionConflict extends Error {
 
 /** Checks a meta record read from storage or an import. Returns null if anything is missing or of the wrong type. */
 export function parseMeta(value: unknown): WorldMeta | null {
+  value = migrateMeta(value);
   if (typeof value !== 'object' || value === null) return null;
   const m = value as Record<string, unknown>;
   const num = (v: unknown) => typeof v === 'number' && Number.isFinite(v);
@@ -153,23 +179,39 @@ export class IdbStore implements WorldStore {
   private constructor(private readonly db: IDBDatabase) {}
 
   static async open(): Promise<IdbStore> {
-    const r = indexedDB.open(DB_NAME, 1);
-    r.onupgradeneeded = () => {
+    const r = indexedDB.open(DB_NAME, 2);
+    r.onupgradeneeded = (e) => {
       const db = r.result;
-      db.createObjectStore('meta', { keyPath: 'name' });
-      db.createObjectStore('chunks');
-      db.createObjectStore('columns');
+      if (e.oldVersion < 1) {
+        db.createObjectStore('meta', { keyPath: 'name' });
+        db.createObjectStore('chunks');
+        db.createObjectStore('columns');
+      }
+      // Meta records as they were before an upgrade, by [name, old version].
+      if (e.oldVersion < 2) db.createObjectStore('backups');
     };
     return new IdbStore(await request(r));
   }
 
   async listWorlds() {
     const all = await request(this.db.transaction('meta').objectStore('meta').getAll());
-    return all.map(parseMeta).filter((m): m is WorldMeta => m !== null);
+    return (await Promise.all(all.map((raw) => this.upgrade(raw)))).filter((m): m is WorldMeta => m !== null);
   }
 
   async getMeta(world: string) {
-    return parseMeta(await request(this.db.transaction('meta').objectStore('meta').get(world))) ?? undefined;
+    return (await this.upgrade(await request(this.db.transaction('meta').objectStore('meta').get(world)))) ?? undefined;
+  }
+
+  /** Parses a stored record; an older one is backed up as it was, then stored upgraded. */
+  private async upgrade(raw: unknown): Promise<WorldMeta | null> {
+    const meta = parseMeta(raw);
+    const old = (raw as { version?: unknown } | undefined)?.version;
+    if (!meta || old === SAVE_VERSION) return meta;
+    const tx = this.db.transaction(['meta', 'backups'], 'readwrite');
+    tx.objectStore('backups').put(raw, [meta.name, old as number]);
+    tx.objectStore('meta').put(meta);
+    await done(tx);
+    return meta;
   }
 
   async putMeta(meta: WorldMeta, expectedRevision: number) {
@@ -216,11 +258,12 @@ export class IdbStore implements WorldStore {
   }
 
   async deleteWorld(world: string) {
-    const tx = this.db.transaction(['meta', 'chunks', 'columns'], 'readwrite');
+    const tx = this.db.transaction(['meta', 'chunks', 'columns', 'backups'], 'readwrite');
     const range = IDBKeyRange.bound([world], [world, []]);
     tx.objectStore('meta').delete(world);
     tx.objectStore('chunks').delete(range);
     tx.objectStore('columns').delete(range);
+    tx.objectStore('backups').delete(range);
     await done(tx);
   }
 }

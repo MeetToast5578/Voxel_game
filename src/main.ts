@@ -20,7 +20,9 @@ import { Creatures } from './creatures/creatures';
 import { WorldEffects, type EffectKind } from './render/worldEffects';
 import { SPECIES } from './creatures/species';
 import { DecorationMeshes } from './render/decorations';
-import { CreatureMeshes } from './render/creatureMeshes';
+import { ShapeMobs } from './render/shapeMobs';
+import { CombatOverlay } from './ui/combatOverlay';
+import { HeldItem } from './render/heldItem';
 import { DropMeshes } from './render/dropMeshes';
 import { BoatMesh } from './render/boatMesh';
 import { FrameGraph } from './ui/frameGraph';
@@ -125,6 +127,7 @@ const input = new Input(canvas, settings.mouseSensitivity, settings.keys);
 /** Settings that take effect at once: field of view, mouse, keys, volume and GUI size. */
 function applySettings(): void {
   renderer.camera.fov = settings.fov;
+  if (settings.renderScale > 0) renderer.setResolution(settings.renderScale);
   renderer.camera.updateProjectionMatrix();
   input.sensitivity = settings.mouseSensitivity;
   input.invertY = settings.invertY;
@@ -139,7 +142,7 @@ const highlight = new Highlight(renderer.scene);
 renderer.setViewDistance(viewChunks * CHUNK_SIZE);
 
 const WATER = BLOCKS.typeIndex[BLOCKS.state('water')]!, FLOWING = BLOCKS.typeIndex[BLOCKS.state('flowing_water')]!;
-const LADDER = BLOCKS.typeIndex[BLOCKS.state('ladder')]!, CAMPFIRE = BLOCKS.state('campfire'), ARROW = BLOCKS.state('arrow');
+const LADDER = BLOCKS.typeIndex[BLOCKS.state('ladder')]!, CAMPFIRE = BLOCKS.state('campfire'), ARROW = BLOCKS.state('arrow'), MAGIC_BOLT = BLOCKS.state('ember_crystal');
 const climbAt = (x: number, y: number, z: number) => BLOCKS.typeIndex[world.get(x, y, z)] === LADDER;
 const FLOWING_ID = BLOCKS.state('flowing_water'), LEVELS = 8;
 /** Level of water in a cell for working out flow (a source is full, air is empty, anything else blocks: -1). */
@@ -227,8 +230,12 @@ const play = new Play(world, (x, y, z, s) => setBlock(x, y, z, s, true), {
 }, (params.get('mode') as Mode | null) ?? 'survival');
 const urlDifficulty = params.get('difficulty');
 if (urlDifficulty && urlDifficulty in DIFFICULTY) play.difficulty = urlDifficulty as Difficulty;
+let lastBite = -Infinity;
 const creatures = new Creatures(world, mulberry32(seed ^ 0xc0ffee), {
   bite: (damage, by) => {
+    // A moment of safety after each bite, so a crowd cannot take the player down all at once.
+    if (performance.now() - lastBite < 500) return;
+    lastBite = performance.now();
     if (play.mode === 'survival' && !play.survival.dead) {
       play.survival.hurt(play.protect(damage * DIFFICULTY[play.difficulty].damage), `killed by a ${by.toLowerCase()}`);
       sounds.play('break', 0.6);
@@ -245,7 +252,7 @@ const creatures = new Creatures(world, mulberry32(seed ^ 0xc0ffee), {
 });
 creatures.load(saver.worldMeta.creatures);
 play.creatures = creatures;
-const creatureMeshes = new CreatureMeshes(renderer.scene, renderer.uniforms);
+const creatureMeshes = new ShapeMobs(renderer.scene, renderer.uniforms);
 const effects = new WorldEffects(renderer.scene, renderer.uniforms);
 const decorationMeshes = new DecorationMeshes(renderer.scene, renderer.uniforms);
 const boatMesh = new BoatMesh(renderer.scene, renderer.uniforms);
@@ -337,9 +344,17 @@ function update(dt: number): void {
   const active = input.playing && play.screen === 'none' && !play.survival.dead;
   if (play.mode === 'survival') player.flying = false;
   else if (!active) input.consume('fly');
-  const falling = -player.body.vy;
+  const falling = -player.body.vy, bonus = play.bonus;
+  player.speedBonus = bonus.speed;
+  player.airJumps = bonus.jumps;
+  player.glide = bonus.featherfall;
   player.update(dt, active ? input : idleInput, boxAt, waterAt, climbAt, currentAt);
   if (active) play.update(dt, input, player);
+  if (player.airJumped) {
+    player.airJumped = false;
+    play.particles.burst(BLOCKS.state('snow'), player.body.x - 0.5, player.body.y - 0.6, player.body.z - 0.5, 10);
+    sounds.play('place', 0.4);
+  }
   play.tickFurnaces(dt);
   play.tickCampfires(dt);
   play.tickProjectiles(dt, boxAt, player);
@@ -353,10 +368,11 @@ function update(dt: number): void {
   if (exposureClock >= 0.5) {
     updateExposure(exposureClock);
     play.wakeGuardians(player);
+    play.wakeVillagers(player);
     exposureClock = 0;
   }
   if (play.mode === 'survival' && !play.survival.dead) {
-    if (player.body.onGround && falling > 0 && player.submerged < 0.2) play.survival.land(falling * BLOCK_SIZE_M);
+    if (player.body.onGround && falling > 0 && player.submerged < 0.2 && !bonus.featherfall) play.survival.land(falling * BLOCK_SIZE_M);
     const eye = world.get(Math.floor(player.body.x), Math.floor(player.eyeY), Math.floor(player.body.z));
     const feet = world.get(Math.floor(player.body.x), Math.floor(player.body.y + 0.2), Math.floor(player.body.z));
 
@@ -364,6 +380,7 @@ function update(dt: number): void {
       feltC, sprinting: input.sprint && player.body.onGround, inWater: player.submerged > 0.3,
       inFire: feet === CAMPFIRE || world.get(Math.floor(player.body.x), Math.floor(player.body.y - 0.05), Math.floor(player.body.z)) === CAMPFIRE, headInWater: waterAt(Math.floor(player.body.x), Math.floor(player.eyeY), Math.floor(player.body.z)),
       inLava: BLOCKS.type(eye).key.endsWith('lava') || BLOCKS.type(feet).key.endsWith('lava'),
+      breath: bonus.breath, fireproof: bonus.fireproof, regen: bonus.regen,
     });
     if (play.survival.dead) {
       play.stats.deaths++;
@@ -623,11 +640,28 @@ let bobPhase = 0, bobAmount = 0;
 const hand = document.querySelector<HTMLDivElement>('#hand')!, handImg = hand.querySelector('img')!;
 const interactionHint=document.createElement('div');interactionHint.id='interaction-hint';interactionHint.hidden=true;document.body.append(interactionHint);
 let handSwings = 0;
+const combat = new CombatOverlay();
+const heldItem = new HeldItem();
+let heldShown = false;
+/**
+ * Automatic resolution: with frames slower than about 45 fps for a couple of seconds, render fewer pixels; with plenty
+ * of headroom, more again. Drawing, not the main thread, is what limits most machines.
+ */
+let frameMs = 16, resolutionClock = 0;
+function autoResolution(dt: number): void {
+  if (settings.renderScale > 0 || dt <= 0 || dt > 0.25) return;
+  frameMs += (dt * 1000 - frameMs) * 0.05;
+  if ((resolutionClock += dt) < 2) return;
+  resolutionClock = 0;
+  const now = renderer.resolutionScale;
+  if (frameMs > 22) renderer.setResolution(now - 0.15);
+  else if (frameMs < 13) renderer.setResolution(now + 0.1);
+}
 function updateHand():void {
   const state=play.held?.state??-1;
   const armour=play.armour[1],key=armour?BLOCKS.type(armour.state).key:'bare';
   const material=key.startsWith('diamond')?'diamond':key.startsWith('iron')?'iron':key.startsWith('leather')?'leather':'bare';
-  hand.style.display=input.playing&&!player.flying&&play.screen==='none'?'':'none';
+  hand.style.display=input.playing&&!player.flying&&play.screen==='none'&&!heldShown?'':'none';
   if(play.swings!==handSwings||(play.breaking>0&&!hand.classList.contains('swing'))){
     handSwings=play.swings;hand.classList.remove('swing');void hand.offsetWidth;hand.classList.add('swing');
   }
@@ -706,6 +740,8 @@ const loop = new FixedStepLoop(1 / 60, 0.25, timedUpdate, (alpha, frameDt) => {
   burnGlow.style.opacity = play.survival.burning > 0 ? '1' : '0';
   updateHeldTools(now);
   updateHand();
+  autoResolution(frameDt);
+  combat.update(frameDt, renderer.camera, play.hits, creatures.list, play.slashes, play.screen === 'none' && !play.survival.dead);
   ambience.update(frameDt, surroundings);
   if (play.journal.done.size > milestones) {
     [523, 659, 784].forEach((f, k) => setTimeout(() => sounds.chime(f, 0.25), k * 120));
@@ -731,6 +767,7 @@ const loop = new FixedStepLoop(1 / 60, 0.25, timedUpdate, (alpha, frameDt) => {
   const atmosphereCamera = renderer.camera.position;
   renderer.setAtmosphere(env.frame(frameDt, atmosphereCamera.x, atmosphereCamera.y, atmosphereCamera.z, world));
   const daylight = renderer.uniforms.daylight!.value as number;
+  play.daylight = daylight;
   /** Brightness (0..1) of a cell for things drawn outside the terrain. */
   const lightAt = (cx: number, cy: number, cz: number) => {
     const x = Math.floor(cx), y = Math.floor(cy), z = Math.floor(cz);
@@ -754,12 +791,17 @@ const loop = new FixedStepLoop(1 / 60, 0.25, timedUpdate, (alpha, frameDt) => {
     }
   }
   const burning=creatures.list.filter(c=>c.burning>0).map(c=>({kind:'fire' as const,x:c.body.x,y:c.body.y+c.body.height*.45,z:c.body.z,size:c.body.height*.7}));
-  effects.update(frameDt,now/1000,[...burning,...emitters]);
+  const bolts=play.projectiles.list.filter(p=>p.magic).map(p=>({kind:'sparks' as const,x:p.x,y:p.y,z:p.z,size:.5}));
+  effects.update(frameDt,now/1000,[...burning,...emitters,...bolts]);
   decorationMeshes.update(play.decorations,world,renderer.camera,lightAt);
-  creatureMeshes.update(creatures.list, (c) => lightAt(c.body.x, c.body.y + c.body.height * 0.6, c.body.z), now / 1000);
+  for (const d of creatures.dying) if (!d.puffed) {
+    d.puffed = true;
+    effects.burst('smoke', d.c.body.x, d.c.body.y + d.c.body.height * 0.4, d.c.body.z, Math.max(0.8, d.c.body.height * 0.8));
+  }
+  creatureMeshes.update(creatures.list, (c) => lightAt(c.body.x, c.body.y + c.body.height * 0.6, c.body.z), now / 1000, creatures.dying);
   // Arrows in flight and bits of broken blocks are drawn like dropped items, smaller.
   const flying = [
-    ...play.projectiles.list.map((p) => ({ state: ARROW, x: p.x, y: p.y, z: p.z, size: 0.4 })),
+    ...play.projectiles.list.map((p) => ({ state: p.magic ? MAGIC_BOLT : ARROW, x: p.x, y: p.y, z: p.z, size: p.magic ? 0.3 : 0.4 })),
     ...play.particles.list.map((p) => ({ state: p.state, x: p.x, y: p.y, z: p.z, size: 0.15 })),
   ].map((f) => ({ stack: { state: f.state, count: 1 }, age: 0, wait: 0,
     body: { x: f.x, y: f.y, z: f.z, vx: 0, vy: 0, vz: 0, halfWidth: f.size / 2, height: f.size, onGround: false } }));
@@ -778,6 +820,12 @@ const loop = new FixedStepLoop(1 / 60, 0.25, timedUpdate, (alpha, frameDt) => {
     env.atmosphere.cloudCover, sample?.windSpeed ?? 3, (x, z) => world.column(x >> 4, z >> 4)?.skyTop[((z & 15) << 4) | (x & 15)] ?? -Infinity);
   updateHorizon(cam.x, cam.z);
   renderer.render(now / 1000);
+  heldShown = heldItem.update(frameDt, play.held, {
+    swings: play.swings, slashes: play.slashes, breaking: play.breaking > 0, bob: bobPhase, bobAmount: settings.viewBob ? bobAmount : 0,
+    light: lightAt(player.body.x, player.eyeY, player.body.z), fov: renderer.camera.fov, aspect: renderer.camera.aspect,
+    visible: input.playing && !player.flying && play.screen === 'none' && !play.survival.dead,
+  });
+  heldItem.render(renderer.renderer);
   // The UI redraws when the play state changes, and a few times a second for the survival bars.
   if (!ready && loadingText() === null) {
     // A new world's meta record has no position until its first save, and is not listed until then.

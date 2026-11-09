@@ -41,7 +41,7 @@ export async function importWorld(store: WorldStore, text: string, name?: string
     throw new Error('Not a world file');
   }
   if (doc.format !== FORMAT) throw new Error('Not a world file');
-  if (doc.version !== SAVE_VERSION) throw new Error(`World file version ${String(doc.version)} is not supported`);
+  if (typeof doc.version !== 'number' || doc.version > SAVE_VERSION || parseMeta(doc.meta) === null) throw new Error(`World file version ${String(doc.version)} is not supported`);
   const meta = parseMeta(doc.meta);
   if (!meta) throw new Error('World file has an invalid meta record');
   const pairs = (v: unknown) => Array.isArray(v) && v.every((e) => Array.isArray(e) && Number.isSafeInteger(e[0]) && typeof e[1] === 'string');

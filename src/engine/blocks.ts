@@ -67,6 +67,10 @@ export interface BlockType {
   /** Armour: the body slot it is worn on (0 head, 1 chest, 2 legs, 3 feet), damage points it stops, °C of cold it
    * keeps off, and how many hits it takes. */
   readonly armour?: { readonly slot: number; readonly protection: number; readonly warmth: number; readonly durability: number };
+  /** A magic weapon: right click casts a bolt of `damage` for `mana`, at most once per `cooldown` seconds. */
+  readonly spell?: { readonly damage: number; readonly mana: number; readonly cooldown: number; readonly speed: number };
+  /** Worn in an accessory slot: what it does while worn. */
+  readonly accessory?: Accessory;
   /** Seconds it burns in a furnace. */
   readonly fuel?: number;
   /** What is left when it is used up as fuel or emptied (a bucket). */
@@ -201,6 +205,36 @@ const thin = (key: string, name: string, extra: Partial<BlockSpec> = {}): BlockS
   ({ key, name, tiles: all(key), solid: false, layer: 'cutout', shape: 'layer', hardness: 0, supports: false, density: 300, needsSupport: true, ...extra });
 const fluid = { solid: false, cullSame: true, hardness: 0, supports: false } as const;
 
+/** What a worn accessory does; several add up. */
+export interface Accessory {
+  /** Text for the tooltip. */
+  readonly effect: string;
+  /** Added to walking and sprinting speed, as a fraction. */
+  readonly speed?: number;
+  /** Extra jumps in the air. */
+  readonly jumps?: number;
+  /** No fall damage, and holding jump while falling glides. */
+  readonly featherfall?: boolean;
+  /** Armour points (4% of harm each). */
+  readonly protection?: number;
+  /** Breath lasts this many times longer. */
+  readonly breath?: number;
+  /** Lava and fire do not hurt. */
+  readonly fireproof?: boolean;
+  /** Health comes back this many times faster. */
+  readonly regen?: number;
+}
+
+const ACCESSORIES: readonly [string, string, Accessory][] = [
+  ['swift_anklet', 'Swiftstep Anklet', { effect: '20% faster on foot', speed: 0.2 }],
+  ['cloud_charm', 'Cloud Charm', { effect: 'Jump once more in mid-air', jumps: 1 }],
+  ['feather_charm', 'Featherfall Charm', { effect: 'No fall damage; hold jump to glide', featherfall: true }],
+  ['iron_band', 'Ironskin Band', { effect: 'Stops 12% more harm', protection: 3 }],
+  ['gill_pendant', 'Gill Pendant', { effect: 'Breath lasts four times longer', breath: 4 }],
+  ['ember_ring', 'Ember Ring', { effect: 'Lava and fire do not burn you', fireproof: true }],
+  ['heart_locket', 'Heart Locket', { effect: 'Health returns twice as fast', regen: 2 }],
+];
+
 /** Flowing fluids have 8 levels, each with a falling and a resting variant. */
 export const FLUID_LEVELS = 8;
 /** Snow builds up in this many layers; a full stack fills its cell. */
@@ -254,6 +288,8 @@ const BASE: BlockSpec[] = [
   // Redstone and emerald ore are no longer generated (they had no use); they stay so old worlds keep them.
   // Ember ore: deep down in deepslate near the lava, glowing faintly; only a diamond pickaxe gets its crystals.
   stone('ember_ore', 'Ember ore', { hardness: 6, needsTier: 3, drops: 'ember_crystal', lightEmission: 5 }),
+  // Verdant jade: the deepest gem, past diamond; its tools and armour are the best there are.
+  stone('jade_ore', 'Verdant jade ore', { hardness: 7, needsTier: 3, drops: 'jade' }),
   { key: 'cactus', name: 'Cactus', tiles: { top: 'saguaro_top', side: 'saguaro_side', bottom: 'saguaro_top' }, hardness: 0.5, density: 700 },
   // Tall grass sometimes gives wheat seeds (handled where blocks are broken).
   plant('tall_grass', 'Tall grass', { drops: '' }),
@@ -276,15 +312,16 @@ const DECOR_PANEL: readonly Box[][] = [[[0,2,2,2,14,14]],[[14,2,2,16,14,14]],[[2
 const TURN = [2, 3, 1, 0];
 const HIGH_HALF: Record<number, Box> = { 0: [8, 8, 0, 16, 16, 16], 1: [0, 8, 0, 8, 16, 16], 2: [0, 8, 8, 16, 16, 16], 3: [0, 8, 0, 16, 16, 8] };
 const STAIR_MATERIALS = ['planks', 'cobblestone', 'stone', 'brick', 'sandstone'];
-export const TOOL_TIERS = ['wooden', 'stone', 'iron', 'diamond'] as const;
+export const TOOL_TIERS = ['wooden', 'stone', 'iron', 'diamond', 'jade'] as const;
 export const TOOL_KINDS: readonly ToolKind[] = ['pickaxe', 'axe', 'shovel', 'sword', 'hoe'];
-const DURABILITY = [60, 132, 251, 1561];
+const DURABILITY = [60, 132, 251, 1561, 2400];
 /** Armour materials and pieces: protection per piece (head, chest, legs, feet), warmth per piece, and hits it takes. */
 export const ARMOUR_PIECES = ['helmet', 'chestplate', 'leggings', 'boots'] as const;
 export const ARMOUR_MATERIALS = {
   leather: { protection: [1, 3, 2, 1], warmth: [3, 6, 4, 2], durability: 80 },
   iron: { protection: [2, 6, 5, 2], warmth: [0, 1, 1, 0], durability: 240 },
   diamond: { protection: [3, 8, 6, 3], warmth: [0, 1, 1, 0], durability: 500 },
+  jade: { protection: [4, 9, 7, 4], warmth: [1, 2, 1, 1], durability: 800 },
 } as const;
 export const CROP_STAGES = 4;
 /** Sapling variants: the tree species each grows into. */
@@ -336,11 +373,18 @@ function gameplay(): BlockSpec[] {
     { key:'sign',name:'Sign',tiles:all('sign'),variants:4,shape:'boxes',boxes:v=>DECOR_PANEL[v]!,layer:'cutout',solid:false,blocksSky:false,supports:false,hardness:.5,...wood },
     { key:'item_frame',name:'Item Frame',tiles:all('frame_empty'),variants:4,shape:'boxes',boxes:v=>DECOR_PANEL[v]!,layer:'cutout',solid:false,blocksSky:false,supports:false,hardness:.5,...wood },
     item('trade_coin','Trade Coin'),
+    item('gel', 'Gel', { fuel: 20 }),
+    item('slime_crown', 'Gel Crown', { maxStack: 1 }),
+    item('life_crystal', 'Life Crystal', { maxStack: 16 }),
+    item('moth_lure', 'Moth Lure', { maxStack: 1 }),
+    item('spark_wand', 'Spark Wand', { maxStack: 1, spell: { damage: 3.5, mana: 2, cooldown: 0.3, speed: 22 } }),
+    item('ember_staff', 'Ember Staff', { maxStack: 1, spell: { damage: 8, mana: 4, cooldown: 0.4, speed: 26 } }),
     item('stick', 'Stick', { fuel: 5 }),
     item('coal', 'Coal', { fuel: 80 }),
     item('iron_ingot', 'Iron ingot'),
     item('gold_ingot', 'Gold ingot'),
     item('diamond', 'Diamond'),
+    item('jade', 'Verdant jade'),
     item('lapis', 'Lapis'),
     item('ember_crystal', 'Ember crystal'),
     item('beacon_shard', 'Beacon shard'),
@@ -371,6 +415,7 @@ function gameplay(): BlockSpec[] {
       `${m[0]!.toUpperCase()}${m.slice(1)} ${piece}`, {
         maxStack: 1, armour: { slot, protection: a.protection[slot]!, warmth: a.warmth[slot]!, durability: a.durability },
       }))),
+    ...ACCESSORIES.map(([key, name, accessory]) => item(key, name, { maxStack: 1, accessory })),
     item('bucket', 'Bucket', { maxStack: 16 }),
     item('water_bucket', 'Water bucket', { maxStack: 1, emptiesTo: 'bucket' }),
     item('lava_bucket', 'Lava bucket', { maxStack: 1, emptiesTo: 'bucket', fuel: 200 }),

@@ -1,11 +1,16 @@
 import {
-  BURN_PER_S, BURN_S, BREATH_S, DROWN_PER_S, HUNGER_PER_S, LAVA_PER_S, MAX_HEALTH, MAX_HUNGER, REGEN_HUNGER, REGEN_PER_S, SAFE_FALL_SPEED_M_S,
+  BURN_PER_S, BURN_S, BREATH_S, MANA_DELAY_S, MANA_PER_S, MAX_MANA, DROWN_PER_S, HUNGER_PER_S, LAVA_PER_S, MAX_HEALTH, MAX_HUNGER, REGEN_HUNGER, REGEN_PER_S, SAFE_FALL_SPEED_M_S,
   SPRINT_HUNGER_PER_S, STARVE_PER_S,
 } from '../config';
 import { BodyTemperature } from './bodyTemperature';
 
 /** Health, hunger and breath, and what changes them. */
 export class Survival {
+  /** Mana for spells: spent by casting, refilling after a moment's rest. */
+  mana = MAX_MANA;
+  private sinceCast = 99;
+  /** Raised by life crystals, up to twice the starting maximum. */
+  maxHealth = MAX_HEALTH;
   health = MAX_HEALTH;
   hunger = MAX_HUNGER;
   /** Seconds of breath left under water. */
@@ -28,16 +33,26 @@ export class Survival {
    * One step: hunger falls (faster when sprinting), health regenerates when well fed and drains when starving; breath
    * runs out with the head under water, then drowning hurts; lava burns.
    */
-  update(dt: number, s: { sprinting: boolean; headInWater: boolean; inLava: boolean; feltC?: number; inFire?: boolean; inWater?: boolean }): void {
+  /** Spends `cost` mana if there is that much. */
+  cast(cost: number): boolean {
+    if (this.mana < cost) return false;
+    this.mana -= cost;
+    this.sinceCast = 0;
+    return true;
+  }
+
+  update(dt: number, s: { sprinting: boolean; headInWater: boolean; inLava: boolean; feltC?: number; inFire?: boolean; inWater?: boolean;
+    breath?: number; fireproof?: boolean; regen?: number }): void {
+    if ((this.sinceCast += dt) > MANA_DELAY_S) this.mana = Math.min(MAX_MANA, this.mana + MANA_PER_S * dt);
     this.hunger = Math.max(0, this.hunger - (HUNGER_PER_S + (s.sprinting ? SPRINT_HUNGER_PER_S : 0)) * this.hungerRate * dt);
-    if (this.hunger >= REGEN_HUNGER) this.health = Math.min(MAX_HEALTH, this.health + REGEN_PER_S * dt);
+    if (this.hunger >= REGEN_HUNGER) this.health = Math.min(this.maxHealth, this.health + REGEN_PER_S * (s.regen ?? 1) * dt);
     if (this.hunger <= 0) this.hurt(STARVE_PER_S * dt, 'starved');
     if (s.headInWater) {
-      this.air = Math.max(0, this.air - dt);
+      this.air = Math.max(0, this.air - dt / (s.breath ?? 1));
       if (this.air <= 0) this.hurt(DROWN_PER_S * dt, 'drowned');
     } else this.air = Math.min(BREATH_S, this.air + dt * 3);
-    if (s.inLava) this.hurt(LAVA_PER_S * dt, 'burned in lava');
-    if (s.inLava || s.inFire) this.burning = BURN_S;
+    if (s.inLava && !s.fireproof) this.hurt(LAVA_PER_S * dt, 'burned in lava');
+    if ((s.inLava || s.inFire) && !s.fireproof) this.burning = BURN_S;
     if (s.inWater || s.headInWater) this.burning = 0;
     if (this.burning > 0) {
       this.burning = Math.max(0, this.burning - dt);
@@ -60,6 +75,14 @@ export class Survival {
     this.cause = cause;
   }
 
+  /** A life crystal: two more health for good, and healed by as much. Returns false at the limit. */
+  growHeart(): boolean {
+    if (this.maxHealth >= MAX_HEALTH * 2) return false;
+    this.maxHealth += 2;
+    this.health = Math.min(this.maxHealth, this.health + 2);
+    return true;
+  }
+
   eat(food: number): boolean {
     if (this.hunger >= MAX_HUNGER) return false;
     this.hunger = Math.min(MAX_HUNGER, this.hunger + food);
@@ -67,7 +90,8 @@ export class Survival {
   }
 
   reset(): void {
-    this.health = MAX_HEALTH;
+    this.health = this.maxHealth;
+    this.mana = MAX_MANA;
     this.hunger = MAX_HUNGER;
     this.air = BREATH_S;
     this.temperature.reset();

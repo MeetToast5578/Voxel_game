@@ -1,5 +1,5 @@
 import { ARMOUR_PIECES, BLOCKS } from '../engine/blocks';
-import type { ItemStack } from './inventory';
+import { Inventory, type ItemStack } from './inventory';
 
 /**
  * A shaped recipe: rows of `pattern`, each letter one of the keys in `key` (block or item keys), a space an empty cell.
@@ -11,9 +11,9 @@ export interface Recipe {
   result: readonly [key: string, count: number];
 }
 
-const TOOL_HEADS = { wooden: ['planks'], stone: ['cobblestone'], iron: ['iron_ingot'], diamond: ['diamond'] } as const;
+const TOOL_HEADS = { wooden: ['planks'], stone: ['cobblestone'], iron: ['iron_ingot'], diamond: ['diamond'], jade: ['jade'] } as const;
 const ARMOUR_PATTERNS = [['MMM', 'M M'], ['M M', 'MMM', 'MMM'], ['MMM', 'M M', 'M M'], ['M M', 'M M']] as const;
-const ARMOUR_FROM = { leather: 'leather', iron: 'iron_ingot', diamond: 'diamond' } as const;
+const ARMOUR_FROM = { leather: 'leather', iron: 'iron_ingot', diamond: 'diamond', jade: 'jade' } as const;
 const TOOL_PATTERNS = { pickaxe: ['MMM', ' S ', ' S '], axe: ['MM', 'MS', ' S'], shovel: ['M', 'S', 'S'], sword: ['M', 'M', 'S'], hoe: ['MM', ' S', ' S'] } as const;
 
 export const RECIPES: readonly Recipe[] = [
@@ -24,6 +24,11 @@ export const RECIPES: readonly Recipe[] = [
   { pattern: ['L'], key: { L: ['log'] }, result: ['planks', 4] },
   { pattern: ['P', 'P'], key: { P: ['planks'] }, result: ['stick', 4] },
   { pattern: ['C', 'S'], key: { C: ['coal'], S: ['stick'] }, result: ['torch', 4] },
+  { pattern: ['G', 'S'], key: { G: ['gel'], S: ['stick'] }, result: ['torch', 3] },
+  { pattern: ['GGG', 'GOG', 'GGG'], key: { G: ['gel'], O: ['gold_ingot'] }, result: ['slime_crown', 1] },
+  { pattern: ['FTF', 'GEG', 'FTF'], key: { F: ['feather'], T: ['torch'], G: ['gel'], E: ['ember_crystal'] }, result: ['moth_lure', 1] },
+  { pattern: [' LG', ' SL', 'S  '], key: { L: ['lapis'], G: ['gel'], S: ['stick'] }, result: ['spark_wand', 1] },
+  { pattern: [' EG', ' SE', 'S  '], key: { E: ['ember_crystal'], G: ['gold_ingot'], S: ['stick'] }, result: ['ember_staff', 1] },
   { pattern: ['PP', 'PP'], key: { P: ['planks'] }, result: ['crafting_table', 1] },
   { pattern: ['PPP', 'P P', 'PPP'], key: { P: ['planks'] }, result: ['chest', 1] },
   { pattern: ['CCC', 'C C', 'CCC'], key: { C: ['cobblestone'] }, result: ['furnace', 1] },
@@ -43,6 +48,11 @@ export const RECIPES: readonly Recipe[] = [
   { pattern: [' G ', 'GIG', ' G '], key: { G: ['gold_ingot'], I: ['iron_ingot'] }, result: ['compass', 1] },
   { pattern: ['PPP', 'PCP', 'PLP'], key: { P: ['paper'], C: ['compass'], L: ['lapis'] }, result: ['map', 1] },
   { pattern: [' I ', 'ITI', ' I '], key: { I: ['iron_ingot'], T: ['torch'] }, result: ['lantern', 1] },
+  { pattern: ['F F', 'LGL'], key: { F: ['feather'], L: ['leather'], G: ['gold_ingot'] }, result: ['swift_anklet', 1] },
+  { pattern: ['FFF', 'FSF', 'FGF'], key: { F: ['feather'], S: ['string'], G: ['gold_ingot'] }, result: ['feather_charm', 1] },
+  { pattern: ['III', 'I I', 'IGI'], key: { I: ['iron_ingot'], G: ['gold_ingot'] }, result: ['iron_band', 1] },
+  { pattern: ['S S', 'SFS', ' L '], key: { S: ['string'], F: ['raw_fish'], L: ['lapis'] }, result: ['gill_pendant', 1] },
+  { pattern: [' G ', 'GEG', ' G '], key: { G: ['gold_ingot'], E: ['ember_crystal'] }, result: ['heart_locket', 1] },
   ...Object.entries(ARMOUR_FROM).flatMap(([m, from]) => ARMOUR_PATTERNS.map((pattern, slot) =>
     ({ pattern, key: { M: [from] }, result: [`${m}_${ARMOUR_PIECES[slot]}`, 1] as const }))),
   ...Object.entries(TOOL_HEADS).flatMap(([tier, head]) => Object.entries(TOOL_PATTERNS).map(([kind, pattern]) =>
@@ -77,38 +87,86 @@ export function craftResult(cells: readonly (ItemStack | null)[], size: number):
   return {state: BLOCKS.state(recipe.result[0], variant), count: recipe.result[1]};
 }
 
-/** Uses up one of each ingredient in the grid after crafting. */
-export function consumeIngredients(cells: (ItemStack | null)[]): void {
-  cells.forEach((s, i) => {
-    if (s && --s.count <= 0) cells[i] = null;
-  });
-}
-
 /** Whether a recipe fits a `size`×`size` grid. */
 export function fits(r: Recipe, size: number): boolean {
   return r.pattern.length <= size && r.pattern.every((row) => row.length <= size);
 }
 
-/**
- * For the recipe list: takes one ingredient per filled cell of `r` out of `slots` and lays them out in a `size`×`size`
- * grid from the top left. Only fresh items are used, as in crafting. Returns the grid, or null (leaving `slots` as they
- * were) when something is missing or the recipe does not fit.
- */
-export function takeIngredients(r: Recipe, size: number, slots: (ItemStack | null)[]): (ItemStack | null)[] | null {
-  if (!fits(r, size)) return null;
-  const work = slots.map((s) => s && { ...s });
-  const grid: (ItemStack | null)[] = new Array(size * size).fill(null);
-  for (let y = 0; y < r.pattern.length; y++) {
-    for (let x = 0; x < r.pattern[y]!.length; x++) {
-      const ch = r.pattern[y]![x]!;
-      if (ch === ' ') continue;
-      const i = work.findIndex((s) => s !== null && !s.wear && (BLOCKS.variant(s.state) === 0 || ['log','planks'].includes(BLOCKS.type(s.state).key)) && r.key[ch]!.includes(BLOCKS.type(s.state).key));
-      if (i < 0) return null;
-      const s = work[i]!;
-      grid[y * size + x] = { state: s.state, count: 1 };
-      if (--s.count <= 0) work[i] = null;
-    }
+/** Where a recipe can be made: anywhere, or with a workbench in reach (recipes that need the 3×3 grid). */
+export type Station = 'hand' | 'table';
+
+/** A recipe as a list entry: so many of each ingredient, no layout. */
+export interface Craft {
+  id: string;
+  result: readonly [key: string, count: number];
+  needs: readonly { keys: readonly string[]; count: number }[];
+  station: Station;
+}
+
+/** Every recipe as a list entry, the shaped duplicates (same result and ingredients) merged. */
+export const CRAFTS: readonly Craft[] = (() => {
+  const seen = new Map<string, Craft>();
+  for (const r of RECIPES) {
+    const counts = new Map<string, number>();
+    for (const row of r.pattern) for (const ch of row) if (ch !== ' ') counts.set(ch, (counts.get(ch) ?? 0) + 1);
+    const needs = [...counts].map(([ch, count]) => ({ keys: r.key[ch]!, count }));
+    const id = `${r.result[0]}:${needs.map((n) => `${n.keys.join('|')}*${n.count}`).join(',')}`;
+    if (!seen.has(id)) seen.set(id, { id, result: r.result, needs, station: fits(r, 2) ? 'hand' : 'table' });
   }
-  slots.splice(0, slots.length, ...work);
-  return grid;
+  return [...seen.values()];
+})();
+
+/** Only fresh items count: a worn tool, an upgraded one or a grown crop is not an ingredient. Wood keeps its species. */
+function usable(s: ItemStack | null, keys: readonly string[]): s is ItemStack {
+  if (!s || s.wear || s.upgrade) return false;
+  const t = BLOCKS.type(s.state);
+  return keys.includes(t.key) && (BLOCKS.variant(s.state) === 0 || t.key === 'log' || t.key === 'planks');
+}
+
+/** How many of `keys` the slots hold that can go into a recipe. */
+export function haveFor(slots: readonly (ItemStack | null)[], keys: readonly string[]): number {
+  return slots.reduce((n, s) => n + (usable(s, keys) ? s.count : 0), 0);
+}
+
+/** Whether `c` can be made now from `slots` at `station`. */
+export function canCraft(c: Craft, slots: readonly (ItemStack | null)[], station: Station): boolean {
+  return (c.station === 'hand' || station === 'table') && c.needs.every((n) => haveFor(slots, n.keys) >= n.count);
+}
+
+/** How many times `c` could be made from `slots` (ingredients are never shared between needs). */
+export function timesCraftable(c: Craft, slots: readonly (ItemStack | null)[]): number {
+  return Math.min(...c.needs.map((n) => Math.floor(haveFor(slots, n.keys) / n.count)));
+}
+
+/**
+ * Makes `c` up to `times` times out of `inv`, the results going into `inv`. All or nothing per batch: a batch whose
+ * result does not fit stops it, ingredients untouched. Wooden results take the species of the most plentiful log or
+ * plank used. Returns how many batches were made.
+ */
+export function craft(c: Craft, inv: Inventory, station: Station, times = 1): number {
+  let made = 0;
+  for (; made < times && canCraft(c, inv.slots, station); made++) {
+    const next = new Inventory();
+    inv.slots.forEach((s, i) => (next.slots[i] = s && { ...s }));
+    let variant = 0;
+    for (const n of c.needs) {
+      // Take from the biggest stacks first, so a mix of species uses up the one there is most of.
+      const order = next.slots.map((_, i) => i).filter((i) => usable(next.slots[i]!, n.keys)).sort((a, b) => next.slots[b]!.count - next.slots[a]!.count);
+      let left = n.count;
+      for (const i of order) {
+        const s = next.slots[i]!, k = BLOCKS.type(s.state).key;
+        if ((k === 'log' || k === 'planks') && left === n.count) variant = BLOCKS.variant(s.state);
+        const take = Math.min(left, s.count);
+        s.count -= take;
+        left -= take;
+        if (s.count === 0) next.slots[i] = null;
+        if (left === 0) break;
+      }
+    }
+    const key = c.result[0];
+    const out = { state: BLOCKS.state(key, key === 'planks' && variant < 14 ? variant : 0), count: c.result[1] };
+    if (next.add(out) !== 0) break;
+    next.slots.forEach((s, i) => (inv.slots[i] = s));
+  }
+  return made;
 }

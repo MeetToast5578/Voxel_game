@@ -75,7 +75,9 @@ describe('danger', () => {
 
   it('leaves loot that feeds recipes', () => {
     const c = { species: SPECIES_BY_KEY.get('crawler')! } as Parameters<typeof lootOf>[0];
-    expect(lootOf(c).map((l) => BLOCKS.stateName(l.state))).toEqual(['string']);
+    // Without luck: the sure drops only. With luck: the rare drop and some coins too.
+    expect(lootOf(c, () => 0.99).map((l) => BLOCKS.stateName(l.state))).toEqual(['string']);
+    expect(lootOf(c, () => 0).map((l) => BLOCKS.stateName(l.state))).toEqual(['string', 'swift_anklet', 'trade_coin']);
   });
 
   it('flies arrows under gravity onto what they are aimed at', () => {

@@ -39,9 +39,9 @@ export const HINTS: readonly Hint[] = [
   { id: 'move', done: (f) => f.walkedM > 8, text: (k) => `Walk with ${k('forward')} ${k('left')} ${k('back')} ${k('right')}, jump with ${k('jump')}, and look around with the mouse.` },
   { id: 'log', done: (f) => anyOf(f, 'log', 'planks', 'crafting_table', ...PICKAXES), text: () => 'Hold the left mouse button on a tree trunk to break it and collect a log.' },
   { id: 'inventory', done: (f) => f.screen === 'inventory' || anyOf(f, 'planks', 'crafting_table', ...PICKAXES), text: (k) => `Press ${k('inventory')} to open your inventory.` },
-  { id: 'planks', done: (f) => anyOf(f, 'planks', 'crafting_table', ...PICKAXES), text: () => 'Put a log in the crafting grid and take the planks it makes from the right. The recipe list below the grid can fill it for you.' },
+  { id: 'planks', done: (f) => anyOf(f, 'planks', 'crafting_table', ...PICKAXES), text: () => 'Open your inventory and pick Planks in the crafting list, then press Craft. The list shows everything you can make from what you carry.' },
   { id: 'table', done: (f) => f.craftSize === 3 || anyOf(f, ...PICKAXES),
-    text: () => 'Craft a crafting table from four planks. Place it with right click, then right-click it for a bigger grid.' },
+    text: () => 'Craft a crafting table from four planks and place it with right click. Standing near it unlocks tools and many more recipes.' },
   { id: 'pickaxe', done: (f) => anyOf(f, ...PICKAXES), text: () => 'At the table make sticks (two planks), then a wooden pickaxe: three planks over two sticks.' },
   { id: 'stone', done: (f) => anyOf(f, 'stone_pickaxe', 'iron_pickaxe'), text: () => 'Mine stone with your pickaxe for cobblestone, and make stone tools: they are faster and last longer.' },
 ];

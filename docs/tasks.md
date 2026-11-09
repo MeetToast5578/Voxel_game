@@ -278,7 +278,8 @@ All of it stays procedural: no asset files.
 
 ## 12. Close the gaps (after 0.3.0)
 
-- [ ] **12.1 Save migration** (rest of 10.3). A save version with an upgrade step, and a backup made before upgrading.
+- [x] **12.1 Save migration** (rest of 10.3). A save version with an upgrade step, and a backup made before upgrading.
+  Done in 0.7.0 (save version 5; old meta records are kept in an IndexedDB `backups` store).
   **Done when:** a test upgrades a world saved by the version before.
 - [ ] **12.2 Fire.** A fire block that spreads to wood, leaves and grass, burns out, and is put out by rain and water.
   Lightning and lava can start it.
@@ -413,33 +414,51 @@ The owner named all four as bad:
   raw mouse input, and a view bob that fades out instead of snapping. Owner to play-test. Smooth, responsive mouse look; restrained view bob; sensible default keys.
 - [~] **18.A3 Mining and building.** First pass: digging is 1.6× faster, and each swing chips the block with a tap
   and fragments. Quick, readable digging with clear progress and feedback; fast, precise placing.
-- [ ] **18.A4 Frame rate and stutter.** A profile shows the main thread mostly idle; the cost is drawing. Needs the
-  owner's F3 numbers from a real machine. Find and remove hitches (meshing, lighting, garbage) on a normal laptop.
+- [~] **18.A4 Frame rate and stutter.** A profile shows the main thread mostly idle; the cost is drawing. First pass
+  (0.7.0): a Resolution setting, Automatic by default, renders fewer pixels while frames run under about 45 fps and more
+  again with headroom. Still wants the owner's F3 numbers from a real machine to find any remaining hitches.
 
 ### 18.B Menus and inventory
-- [ ] **18.B1 Redesign every screen**: inventory, chests, crafting, furnace, trading, pause and settings, with a clean,
-  readable layout. Not a reskin.
-- [ ] **18.B2 Terraria-style crafting (decided):** a list of everything craftable from what you carry; standing near a
-  station (workbench, anvil, forge, alchemy table) unlocks its recipes. Replaces the 3×3 grid.
-- [ ] **18.B3 Inventory flow:** always-visible hotbar, quick stacking and sorting, trash slot, accessory and armour
-  slots beside the inventory.
+- [~] **18.B1 Redesign every screen**: inventory, chests, crafting, furnace, trading, pause and settings, with a clean,
+  readable layout. Not a reskin. Title and pause menus rebuilt in 0.6.8; the inventory in 0.7.0 (equipment and
+  accessories, hotbar and backpack, crafting side by side in framed panels; HUD meters show values). Owner to review.
+- [x] **18.B2 Terraria-style crafting (decided):** a list of everything craftable from what you carry; standing near a
+  station (workbench, anvil, forge, alchemy table) unlocks its recipes. Replaces the 3×3 grid. Done in 0.7.0 with
+  categories, search, have/need counts, Craft and Craft all; a workbench within four cells opens its recipes. More
+  stations (anvil, alchemy) come with the recipes that need them.
+- [x] **18.B3 Inventory flow:** always-visible hotbar, quick stacking and sorting, trash slot, accessory and armour
+  slots beside the inventory. Done in 0.7.0.
 
 ### 18.C Creatures and loot
-- [ ] **18.C1 Shape-built creatures:** smooth primitives on a jointed skeleton (prototype exists), proper walk, run,
-  attack, hurt and death animations.
-- [ ] **18.C2 Natural rest:** only animals and village NPCs sleep, in real poses (curled, lying on the side); monsters
-  never sleep.
-- [ ] **18.C3 Bigger roster:** slimes (several colours and sizes, hopping), bats, skeletons, cave crawlers, biome
-  monsters, flying enemies; each with its own movement and attack.
-- [ ] **18.C4 Loot:** every creature drops something, with rarity; rare drops (accessories, weapon parts).
+- [x] **18.C1 Shape-built creatures:** smooth primitives on a jointed skeleton (prototype exists), proper walk, run,
+  attack, hurt and death animations. Done in 0.7.0 for all 26 species (walk, run, graze, attack, flinch, hop, flap);
+  `node scripts/shape-gallery.mjs` shows every model in every pose. A death animation is still to do.
+- [x] **18.C2 Natural rest:** only animals and village NPCs sleep, in real poses (curled, lying on the side); monsters
+  never sleep. Done in 0.7.0.
+- [~] **18.C3 Bigger roster:** slimes (several colours and sizes, hopping), bats, skeletons, cave crawlers, biome
+  monsters, flying enemies; each with its own movement and attack. 0.7.0 adds green, cave and ember slimes (hopping),
+  cave bats (flying) and skeletons. More flying and biome enemies remain.
+- [x] **18.C4 Loot:** every creature drops something, with rarity; rare drops (accessories, weapon parts). Done in
+  0.7.0: chance-based rare drops, coins from monsters, gel from slimes.
 
 ### 18.D RPG systems
-- [ ] **18.D1 Combat (decided): swing arcs and knockback.** Weapons sweep a visible arc and hit everything in it;
-  damage numbers, knockback and brief invulnerability; bows and staffs fire projectiles.
-- [ ] **18.D2 Gear tiers and rarity:** the material ladder in the art wishlist; item rarity colours.
-- [ ] **18.D3 Accessories:** a row of accessory slots with movement and utility effects.
-- [ ] **18.D4 Bosses:** summoned or found, with arenas and unique drops.
-- [ ] **18.D5 NPC towns:** villagers who move into suitable houses, sell goods and sleep at night.
+- [x] **18.D1 Combat (decided): swing arcs and knockback.** Weapons sweep a visible arc and hit everything in it;
+  damage numbers, knockback and brief invulnerability; bows and staffs fire projectiles. 0.7.0: sword and axe arcs,
+  crits, knockback with stagger, damage numbers, health bars, a slash trail, a 3D swinging held item, and half a
+  second of safety after each bite. Magic: Spark Wand and Ember Staff cast mana bolts (mana 20).
+- [~] **18.D2 Gear tiers and rarity:** the material ladder in the art wishlist; item rarity colours. Rarity colours
+  done in 0.7.0. First step of the ladder in 0.7.0: Verdant Jade past diamond (ore below -200 m, tools, armour), its
+  art recoloured from diamond's (`recolour` in `src/render/paintedArt.ts`). Further tiers want authored ore art.
+- [x] **18.D3 Accessories:** a row of accessory slots with movement and utility effects. Done in 0.7.0: five slots and
+  seven accessories (speed, double jump, featherfall, defense, breath, fire immunity, regeneration). Icons are painted
+  in code (`src/render/paintedArt.ts`) until authored art replaces them. Life Crystals raise max health to 40.
+- [~] **18.D4 Bosses:** summoned or found, with arenas and unique drops. 0.7.0: boss health bar; the Slime King,
+  summoned with a Gel Crown, splits off slimes and drops accessories and Life Crystals; the Gloom Matriarch, a giant
+  flying moth called at night with a Moth Lure, calls Gloom Moths. The Ember Warden shows the bar too. Arenas remain.
+- [~] **18.D5 NPC towns:** villagers who move into suitable houses, sell goods and sleep at night. 0.7.0: generated
+  villages (houses with pitched roofs in tree-free clearings); a farmer, smith or herbalist per house with their own
+  shop, out near home by day and asleep in their bed at night. A villager returns while its bed stands. Moving into
+  houses the player builds is still to do.
 
 ## 19. New and improved art — production backlog
 

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { MAX_HEALTH, MAX_HUNGER, SAFE_FALL_SPEED_M_S, SMELT_S } from '../config';
 import { BLOCKS } from '../engine/blocks';
-import { consumeIngredients, craftResult } from '../game/crafting';
+import { craftResult } from '../game/crafting';
 import { newFurnace, tickFurnace } from '../game/furnace';
 import { clickSlot, Inventory, type ItemStack } from '../game/inventory';
 import { breakSeconds, canHarvest, dropsOf, wearTool } from '../game/mining';
@@ -66,11 +66,6 @@ describe('crafting', () => {
     expect(craftResult(grid(['dirt', 'stick'], 2), 2)).toBeNull();
   });
 
-  it('uses up one of each ingredient', () => {
-    const cells = grid(['planks,planks', 'planks,planks'], 2);
-    consumeIngredients(cells);
-    expect(cells.map((c) => c?.count)).toEqual([1, 1, 1, 1]);
-  });
 });
 
 describe('furnace', () => {

@@ -411,3 +411,22 @@ export const BUILD_MAX_M = 19.2;
 export const BUILD_CELLS_PER_TICK = 1500;
 /** Undo steps kept. */
 export const UNDO_STEPS = 32;
+
+/** Slots for worn accessories (charms, rings, anklets). */
+export const ACCESSORY_SLOTS = 5;
+/** Falling speed while gliding with a featherfall charm, m/s. */
+export const GLIDE_FALL_M_S = 2.5;
+/** An air jump (cloud charm) is this fraction of a full jump. */
+export const AIR_JUMP_FACTOR = 0.85;
+/** Half-angle of a sword's and an axe's sweep, radians: every creature inside it takes the hit. */
+export const SWORD_ARC_RAD = 1.0;
+export const AXE_ARC_RAD = 0.7;
+/** Chance of a critical hit, and its damage factor. */
+export const CRIT_CHANCE = 0.08;
+export const CRIT_FACTOR = 1.5;
+/** Knockback of a hit, as a factor of the base, by weapon kind. */
+export const KNOCKBACK_FACTOR: Readonly<Record<string, number>> = { sword: 1.3, axe: 1.7, hand: 0.7 };
+/** Mana: the most there is, how fast it refills, and the rest after casting before it starts to. */
+export const MAX_MANA = 20;
+export const MANA_PER_S = 4;
+export const MANA_DELAY_S = 0.8;

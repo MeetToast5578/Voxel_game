@@ -2,7 +2,7 @@ import { BLOCK_SIZE_M, TREE_REACH_CELLS } from '../config';
 import { hash2 } from '../core/random';
 import { BLOCKS } from '../engine/blocks';
 
-export type StructureKind = 'cabin' | 'tower' | 'camp' | 'mine' | 'vault' | 'shrine';
+export type StructureKind = 'cabin' | 'tower' | 'camp' | 'mine' | 'vault' | 'shrine' | 'house';
 
 /** A structure cell relative to the site: x and z from its anchor, y absolute; then the state. */
 export type StructureCell = readonly [dx: number, y: number, dz: number, state: number];
@@ -19,7 +19,29 @@ const KINDS: Record<StructureKind, { gridM: number; chance: number; salt: number
   vault: { gridM: 260, chance: 0.7, salt: 75, depth: [-95, -70] },
   // The goal structure: in every 600 m grid cell, deep down.
   shrine: { gridM: 600, chance: 1, salt: 76, depth: [-130, -110] },
+  // Village houses: on a fine grid, but only inside village regions, so they stand together.
+  house: { gridM: 20, chance: 0.8, salt: 77 },
 };
+
+/** Village regions: one per 320 m grid cell at most, houses within 34 m of its centre. */
+const VILLAGE_GRID_M = 320, VILLAGE_CHANCE = 0.45, VILLAGE_RADIUS_M = 34;
+
+/** The centre of the village whose region holds cell (x, z), or null when there is none. */
+export function villageAt(seed: number, x: number, z: number): [number, number] | null {
+  const size = Math.round(VILLAGE_GRID_M / BLOCK_SIZE_M), gx = Math.floor(x / size), gz = Math.floor(z / size);
+  if (hash2(seed + 90, gx, gz) >= VILLAGE_CHANCE) return null;
+  const cx = gx * size + size * (0.3 + 0.4 * hash2(seed + 91, gx, gz)), cz = gz * size + size * (0.3 + 0.4 * hash2(seed + 92, gx, gz));
+  return Math.hypot(x - cx, z - cz) < VILLAGE_RADIUS_M / BLOCK_SIZE_M ? [cx, cz] : null;
+}
+
+/** Who lives in the house anchored at (x, z). */
+export const PROFESSIONS = ['farmer', 'smith', 'herbalist'] as const;
+export function professionAt(seed: number, x: number, z: number): (typeof PROFESSIONS)[number] {
+  return PROFESSIONS[Math.floor(hash2(seed + 93, x, z) * PROFESSIONS.length)]!;
+}
+
+/** Where a house's bed is, from its anchor: the foot, with the head one cell further along +x. */
+export const HOUSE_BED: readonly [dx: number, dz: number] = [1, 2];
 export const STRUCTURE_KINDS = Object.keys(KINDS) as StructureKind[];
 /** Every structure stays within this many cells of its anchor, so the feature pass of each column finds it. */
 const REACH = TREE_REACH_CELLS;
@@ -32,7 +54,8 @@ export function siteIn(seed: number, kind: StructureKind, gx: number, gz: number
   const k = KINDS[kind], size = Math.round(k.gridM / BLOCK_SIZE_M);
   if (hash2(seed + k.salt, gx, gz) >= k.chance) return null;
   const span = size - 2 * REACH;
-  return [gx * size + REACH + Math.floor(hash2(seed + k.salt + 100, gx, gz) * span), gz * size + REACH + Math.floor(hash2(seed + k.salt + 200, gx, gz) * span)];
+  const at: [number, number] = [gx * size + REACH + Math.floor(hash2(seed + k.salt + 100, gx, gz) * span), gz * size + REACH + Math.floor(hash2(seed + k.salt + 200, gx, gz) * span)];
+  return kind === 'house' && !villageAt(seed, at[0], at[1]) ? null : at;
 }
 
 /** Sites of every kind whose cells can reach into the square [x0, x1] × [z0, z1] (cells). */
@@ -106,6 +129,45 @@ export function structureCells(seed: number, kind: StructureKind, x: number, z: 
     put(0, base, 2, S('chest', 3));
     put(2,base,2,S('trading_post'));
     for (let dz = -1; dz <= 1; dz++) for (let dx = -1; dx <= 1; dx++) if (dx || dz) put(dx, base, dz, AIR);
+  } else if (kind === 'house') {
+    // A 7×7 home with log corners, glass windows, a doorway on the -z side, a bed, a torch and a workbench. Who lives
+    // here decides the rest: a farmer has a wheat field, a smith a furnace and an anvil-stone, a herbalist flowers.
+    const job = professionAt(seed, x, z);
+    box(3, base - 2, base - 1, () => COBBLE);
+    box(3, base, base + 8, (dx, y, dz) => {
+      const edge = Math.abs(dx) === 3 || Math.abs(dz) === 3, corner = Math.abs(dx) === 3 && Math.abs(dz) === 3;
+      if (y === base) return PLANKS;
+      // Gable ends fill the triangle under the roof; inside, the roof space is open.
+      if (y >= base + 5) return Math.abs(dx) === 3 && y - base - 5 < 3 - Math.abs(dz) ? PLANKS : AIR;
+      if (corner) return LOG;
+      if (edge) {
+        if (dx === 0 && dz === -3 && y <= base + 2) return AIR;
+        if (y === base + 2 && ((Math.abs(dx) === 3 && dz === 0) || (dz === 3 && dx === 0))) return S('glass');
+        return PLANKS;
+      }
+      return AIR;
+    });
+    // A pitched roof of plank stairs from eaves overhanging the walls to a ridge along x, and log beams on the walls.
+    for (let dx = -4; dx <= 4; dx++) {
+      for (let dz = -4; dz <= 4; dz++) put(dx, base + 5 + (4 - Math.abs(dz)), dz, dz === 0 ? PLANKS : S('planks_stairs', dz < 0 ? 2 : 3));
+    }
+    for (let k = -3; k <= 3; k++) for (const e of [-3, 3]) { put(k, base + 4, e, LOG); put(e, base + 4, k, LOG); }
+    put(HOUSE_BED[0], base + 1, HOUSE_BED[1], S('bed', 0));
+    put(HOUSE_BED[0] + 1, base + 1, HOUSE_BED[1], S('bed', 4));
+    put(-2, base + 1, 2, S('crafting_table'));
+    put(-2, base + 1, -2, TORCH);
+    put(2, base + 1, -2, TORCH);
+    if (job === 'farmer') {
+      for (let dx = -3; dx <= 3; dx++) for (const dz of [5, 6]) {
+        put(dx, base, dz, dx === 0 ? S('water') : S('farmland'));
+        put(dx, base + 1, dz, dx === 0 ? AIR : S('wheat', 1 + ((dx + dz) & 1) * 2));
+      }
+    } else if (job === 'smith') {
+      put(-2, base + 1, 0, S('furnace', 0));
+      put(-2, base + 1, -1, S('cobblestone'));
+    } else {
+      for (let dx = -3; dx <= 3; dx += 2) put(dx, base + 1, -5, S('poppy'));
+    }
   } else if (kind === 'mine') {
     // Two crossing tunnels, 3 wide and 3 high, with timber frames every 4 cells, torches, and sometimes a chest.
     for (let k = -REACH; k <= REACH; k++) for (let w = -1; w <= 1; w++) for (let h = 0; h < 3; h++) {

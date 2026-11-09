@@ -12,7 +12,7 @@ import { ClimateSampler, detailAmpMeters, heightMeters } from './climate';
 import { treeCells, unpackTreeCell, type TreeSpecies } from './trees';
 import { Rivers, type WaterSample } from './rivers';
 import { Underground } from './underground';
-import { isUnderground, sitesNear, structureCells, undergroundFloor, type StructureKind } from './structures';
+import { isUnderground, sitesNear, structureCells, undergroundFloor, villageAt, type StructureKind } from './structures';
 
 // Imported constants copied locally: hot loops then read a plain constant, not a module binding.
 const N = CHUNK_SIZE;
@@ -241,6 +241,8 @@ export class Generator {
   /** The species of a tree anchored at (x, z), or null where none grows. */
   private treeAt(x: number, z: number): TreeSpecies | null {
     if (hash2(this.seed + 41, x, z) >= TREE_CHANCE) return null;
+    // Villages stand in clearings.
+    if (villageAt(this.seed, x, z)) return null;
     const [c, i] = this.cellBase(x, z);
     const biome = biomeByIndex(c.biome[i]!);
     if (!biome.trees || c.open[i] || c.top[i]! + 1 <= c.water[i]! || c.shore[i]) return null;
