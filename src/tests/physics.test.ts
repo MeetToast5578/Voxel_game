@@ -205,6 +205,23 @@ describe('jump timing', () => {
     expect(held.fall).toBeLessThan(held.rise);
   });
 
+  it('jumps again in mid-air with a cloud charm, once per flight, and glides with a featherfall charm', () => {
+    const p = new Player(0.5, 10, 0.5);
+    p.airJumps = 1;
+    for (let i = 0; i < 20; i++) tick(p, false, false);
+    const before = p.body.vy;
+    tick(p, true, false);
+    expect(p.body.vy).toBeGreaterThan(before + 5);
+    expect(p.airJumped).toBe(true);
+    const after = p.body.vy;
+    tick(p, false, false); tick(p, true, false);
+    expect(p.body.vy).toBeLessThan(after); // no third jump
+    const g = new Player(0.5, 50, 0.5);
+    g.glide = true;
+    for (let i = 0; i < 120; i++) tick(g, true, false);
+    expect(g.body.vy).toBeCloseTo(-2.5 / 0.6, 1); // 2.5 m/s, in cells
+  });
+
   it('remembers a released jump pressed just before landing', () => {
     const p = new Player(0.5, 0.01, 0.5); p.body.vy = -2;
     tick(p, true); expect(p.body.onGround).toBe(true);

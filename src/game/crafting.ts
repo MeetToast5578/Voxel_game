@@ -43,6 +43,11 @@ export const RECIPES: readonly Recipe[] = [
   { pattern: [' G ', 'GIG', ' G '], key: { G: ['gold_ingot'], I: ['iron_ingot'] }, result: ['compass', 1] },
   { pattern: ['PPP', 'PCP', 'PLP'], key: { P: ['paper'], C: ['compass'], L: ['lapis'] }, result: ['map', 1] },
   { pattern: [' I ', 'ITI', ' I '], key: { I: ['iron_ingot'], T: ['torch'] }, result: ['lantern', 1] },
+  { pattern: ['F F', 'LGL'], key: { F: ['feather'], L: ['leather'], G: ['gold_ingot'] }, result: ['swift_anklet', 1] },
+  { pattern: ['FFF', 'FSF', 'FGF'], key: { F: ['feather'], S: ['string'], G: ['gold_ingot'] }, result: ['feather_charm', 1] },
+  { pattern: ['III', 'I I', 'IGI'], key: { I: ['iron_ingot'], G: ['gold_ingot'] }, result: ['iron_band', 1] },
+  { pattern: ['S S', 'SFS', ' L '], key: { S: ['string'], F: ['raw_fish'], L: ['lapis'] }, result: ['gill_pendant', 1] },
+  { pattern: [' G ', 'GEG', ' G '], key: { G: ['gold_ingot'], E: ['ember_crystal'] }, result: ['heart_locket', 1] },
   ...Object.entries(ARMOUR_FROM).flatMap(([m, from]) => ARMOUR_PATTERNS.map((pattern, slot) =>
     ({ pattern, key: { M: [from] }, result: [`${m}_${ARMOUR_PIECES[slot]}`, 1] as const }))),
   ...Object.entries(TOOL_HEADS).flatMap(([tier, head]) => Object.entries(TOOL_PATTERNS).map(([kind, pattern]) =>

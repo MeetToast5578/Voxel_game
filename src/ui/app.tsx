@@ -70,6 +70,7 @@ export function tooltip(s: ItemStack): string {
   if (t.tool) lines.push(`${TIERS[t.tool.tier] ?? ''} ${t.tool.kind}, ${Math.floor(t.tool.durability * (1+(s.upgrade??0)*.5)) - (s.wear ?? 0)} of ${Math.floor(t.tool.durability*(1+(s.upgrade??0)*.5))} uses left`);
   if (t.mineWith && t.needsTier !== undefined) lines.push(`Needs a ${TIERS[t.needsTier]} ${t.mineWith} or better`);
   if (t.armour) lines.push(`Armour: stops ${(t.armour.protection+(s.upgrade??0)) * 4}% of harm, ${t.armour.warmth+(s.upgrade??0)} °C warmer, ${Math.floor(t.armour.durability*(1+(s.upgrade??0)*.5)) - (s.wear ?? 0)} hits left`);
+  if (t.accessory) lines.push(`Accessory: ${t.accessory.effect}`);
   if (t.fuel) lines.push(`Fuel: burns ${t.fuel} s`);
   if (t.smeltsTo) lines.push(`Smelts into ${BLOCKS.type(BLOCKS.state(t.smeltsTo)).name}`);
   return lines.join('\n');
@@ -169,7 +170,9 @@ function Character({ play }: { play: Play }) {
   const protection = play.armour.reduce((n, a) => n + (a ? (BLOCKS.type(a.state).armour!.protection + (a.upgrade ?? 0)) * 4 : 0), 0);
   return <section class="character-pane"><h3>Equipment</h3>
     <div class="armour">{play.armour.map((a, i) => <Slot key={i} stack={a} title={a ? undefined : ['Helmet', 'Chest armour', 'Leg armour', 'Boots'][i]} onClick={(right) => play.clickArmour(i, right)} />)}</div>
-    <p class="defense" title="Share of harm your armour stops"><b>{Math.min(80, protection)}%</b> defense</p>
+    <p class="defense" title="Share of harm your armour stops"><b>{Math.min(80, protection + play.bonus.protection * 4)}%</b> defense</p>
+    <h3 class="acc-head">Accessories</h3>
+    <div class="accessories">{play.accessories.map((a, i) => <Slot key={i} stack={a} title={a ? undefined : 'Accessory: charms, rings and anklets'} onClick={(right) => play.clickAccessory(i, right)} />)}</div>
   </section>;
 }
 

@@ -1,5 +1,5 @@
 import {
-  AIR_ACCEL, EYE_HEIGHT_M, FALL_GRAVITY_FACTOR, JUMP_CUT, FLY_FAST_FACTOR, FLY_SPEED_M_S, GRAVITY_M_S2, GROUND_ACCEL, JUMP_SPEED_M_S, JUMP_GRACE_S, JUMP_BUFFER_S, PLAYER_DENSITY,
+  AIR_ACCEL, AIR_JUMP_FACTOR, EYE_HEIGHT_M, GLIDE_FALL_M_S, FALL_GRAVITY_FACTOR, JUMP_CUT, FLY_FAST_FACTOR, FLY_SPEED_M_S, GRAVITY_M_S2, GROUND_ACCEL, JUMP_SPEED_M_S, JUMP_GRACE_S, JUMP_BUFFER_S, PLAYER_DENSITY,
   PLAYER_HALF_WIDTH_M, PLAYER_HEIGHT_M, SPRINT_SPEED_M_S, STEP_HEIGHT_M, STEP_SMOOTH_S, SWIM_THRUST_M_S2, SWIM_UP_M_S2,
   TERMINAL_SPEED_M_S, WALK_SPEED_M_S, BOAT_SPEED_M_S, WATER_DENSITY, WATER_DRAG_PER_M, toCells, BLOCK_SIZE_M, CROUCH_FACTOR, CLIMB_SPEED_M_S, CURRENT_ACCEL_M_S2,
 } from '../config';
@@ -47,6 +47,13 @@ export class Player {
   private jumpWasHeld = false;
   /** Rising from a jump that releasing the key can still cut short. */
   private jumping = false;
+  /** From accessories: extra speed as a fraction, jumps allowed in the air, and gliding while jump is held. */
+  speedBonus = 0;
+  airJumps = 0;
+  glide = false;
+  private airJumpsUsed = 0;
+  /** Set when an air jump happens, for a puff of effect; the game clears it. */
+  airJumped = false;
 
   constructor(x: number, y: number, z: number) {
     this.body = {
@@ -92,7 +99,9 @@ export class Player {
     currentAt: (x: number, y: number, z: number) => readonly [number, number, number] | null = () => null): void {
     const b = this.body;
     this.jumpGrace = b.onGround ? JUMP_GRACE_S : Math.max(0, this.jumpGrace - dt);
-    this.jumpBuffer = input.jump && !this.jumpWasHeld ? JUMP_BUFFER_S : Math.max(0, this.jumpBuffer - dt);
+    const pressed = input.jump && !this.jumpWasHeld;
+    this.jumpBuffer = pressed ? JUMP_BUFFER_S : Math.max(0, this.jumpBuffer - dt);
+    if (b.onGround) this.airJumpsUsed = 0;
     this.jumpWasHeld = input.jump;
     this.crouching = false;
     if (input.consume('fly')) {
@@ -154,7 +163,7 @@ export class Player {
       this.move(dt, boxAt, toCells(STEP_HEIGHT_M));
     } else {
       this.crouching = input.descend && b.onGround;
-      const speed = toCells(input.sprint && !this.crouching ? SPRINT_SPEED_M_S : WALK_SPEED_M_S) * (this.crouching ? CROUCH_FACTOR : 1);
+      const speed = toCells(input.sprint && !this.crouching ? SPRINT_SPEED_M_S : WALK_SPEED_M_S) * (this.crouching ? CROUCH_FACTOR : 1) * (1 + this.speedBonus);
       const blend = Math.min(1, (b.onGround ? GROUND_ACCEL : AIR_ACCEL) * dt);
       b.vx += (wx * speed - b.vx) * blend;
       b.vz += (wz * speed - b.vz) * blend;
@@ -172,6 +181,11 @@ export class Player {
           b.vy = toCells(JUMP_SPEED_M_S);
           this.jumpGrace = this.jumpBuffer = 0;
           this.jumping = true;
+        } else if (pressed && this.jumpGrace <= 0 && this.airJumpsUsed < this.airJumps) {
+          b.vy = toCells(JUMP_SPEED_M_S) * AIR_JUMP_FACTOR;
+          this.airJumpsUsed++;
+          this.jumping = true;
+          this.airJumped = true;
         }
         // Releasing jump early cuts the rise short, once per jump.
         if (this.jumping && !input.jump && b.vy > 0) {
@@ -180,6 +194,7 @@ export class Player {
         }
         if (b.vy <= 0) this.jumping = false;
         b.vy = Math.max(-toCells(TERMINAL_SPEED_M_S), b.vy - GRAVITY * (b.vy < 0 ? FALL_GRAVITY_FACTOR : 1) * dt);
+        if (this.glide && input.jump && b.vy < -toCells(GLIDE_FALL_M_S)) b.vy = -toCells(GLIDE_FALL_M_S);
       }
       this.move(dt, boxAt, toCells(STEP_HEIGHT_M));
     }

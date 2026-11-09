@@ -337,9 +337,17 @@ function update(dt: number): void {
   const active = input.playing && play.screen === 'none' && !play.survival.dead;
   if (play.mode === 'survival') player.flying = false;
   else if (!active) input.consume('fly');
-  const falling = -player.body.vy;
+  const falling = -player.body.vy, bonus = play.bonus;
+  player.speedBonus = bonus.speed;
+  player.airJumps = bonus.jumps;
+  player.glide = bonus.featherfall;
   player.update(dt, active ? input : idleInput, boxAt, waterAt, climbAt, currentAt);
   if (active) play.update(dt, input, player);
+  if (player.airJumped) {
+    player.airJumped = false;
+    play.particles.burst(BLOCKS.state('snow'), player.body.x - 0.5, player.body.y - 0.6, player.body.z - 0.5, 10);
+    sounds.play('place', 0.4);
+  }
   play.tickFurnaces(dt);
   play.tickCampfires(dt);
   play.tickProjectiles(dt, boxAt, player);
@@ -356,7 +364,7 @@ function update(dt: number): void {
     exposureClock = 0;
   }
   if (play.mode === 'survival' && !play.survival.dead) {
-    if (player.body.onGround && falling > 0 && player.submerged < 0.2) play.survival.land(falling * BLOCK_SIZE_M);
+    if (player.body.onGround && falling > 0 && player.submerged < 0.2 && !bonus.featherfall) play.survival.land(falling * BLOCK_SIZE_M);
     const eye = world.get(Math.floor(player.body.x), Math.floor(player.eyeY), Math.floor(player.body.z));
     const feet = world.get(Math.floor(player.body.x), Math.floor(player.body.y + 0.2), Math.floor(player.body.z));
 
@@ -364,6 +372,7 @@ function update(dt: number): void {
       feltC, sprinting: input.sprint && player.body.onGround, inWater: player.submerged > 0.3,
       inFire: feet === CAMPFIRE || world.get(Math.floor(player.body.x), Math.floor(player.body.y - 0.05), Math.floor(player.body.z)) === CAMPFIRE, headInWater: waterAt(Math.floor(player.body.x), Math.floor(player.eyeY), Math.floor(player.body.z)),
       inLava: BLOCKS.type(eye).key.endsWith('lava') || BLOCKS.type(feet).key.endsWith('lava'),
+      breath: bonus.breath, fireproof: bonus.fireproof, regen: bonus.regen,
     });
     if (play.survival.dead) {
       play.stats.deaths++;

@@ -1,4 +1,4 @@
-import { LIGHTNING_DAMAGE, LIGHTNING_REACH_M, FISH_MAX_S, FISH_MIN_S, BLOCK_SIZE_M, ARROW_DAMAGE, ARROW_SPEED_M_S, BOLT_SPEED_M_S, BOW_DRAW_S, AXE_DAMAGE, BUILD_CELLS_PER_TICK, CAMPFIRE_COOK_S, CAMPFIRE_SLOTS, DIFFICULTY, PLAYER_ATTACK_COOLDOWN_S, SWORD_DAMAGE, type Difficulty, BUILD_MAX_M, DROP_PICKUP_DELAY_S, DROP_THROW_M_S, HAND_DAMAGE, REACH_M, REPEAT_S, TOOL_DAMAGE, UNDO_STEPS, cells, toCells } from '../config';
+import { ACCESSORY_SLOTS, LIGHTNING_DAMAGE, LIGHTNING_REACH_M, FISH_MAX_S, FISH_MIN_S, BLOCK_SIZE_M, ARROW_DAMAGE, ARROW_SPEED_M_S, BOLT_SPEED_M_S, BOW_DRAW_S, AXE_DAMAGE, BUILD_CELLS_PER_TICK, CAMPFIRE_COOK_S, CAMPFIRE_SLOTS, DIFFICULTY, PLAYER_ATTACK_COOLDOWN_S, SWORD_DAMAGE, type Difficulty, BUILD_MAX_M, DROP_PICKUP_DELAY_S, DROP_THROW_M_S, HAND_DAMAGE, REACH_M, REPEAT_S, TOOL_DAMAGE, UNDO_STEPS, cells, toCells } from '../config';
 import { lootOf, type Creature, type Creatures } from '../creatures/creatures';
 import { AIR, BLOCKS, SOLID } from '../engine/blocks';
 import type { World } from '../engine/world';
@@ -124,6 +124,35 @@ export class Play {
   drawS = 0;
   /** Worn armour: head, chest, legs, feet. */
   readonly armour: (ItemStack | null)[] = [null, null, null, null];
+  /** Worn accessories; each kind at most once. */
+  readonly accessories: (ItemStack | null)[] = new Array(ACCESSORY_SLOTS).fill(null);
+
+  /** What the worn accessories add up to. */
+  get bonus(): { speed: number; jumps: number; featherfall: boolean; protection: number; breath: number; fireproof: boolean; regen: number } {
+    const b = { speed: 0, jumps: 0, featherfall: false, protection: 0, breath: 1, fireproof: false, regen: 1 };
+    for (const s of this.accessories) {
+      const a = s && BLOCKS.type(s.state).accessory;
+      if (!a) continue;
+      b.speed += a.speed ?? 0;
+      b.jumps += a.jumps ?? 0;
+      b.featherfall ||= a.featherfall ?? false;
+      b.protection += a.protection ?? 0;
+      b.breath *= a.breath ?? 1;
+      b.fireproof ||= a.fireproof ?? false;
+      b.regen *= a.regen ?? 1;
+    }
+    return b;
+  }
+
+  /** A click on accessory slot `slot`: only an accessory not worn elsewhere goes in. */
+  clickAccessory(slot: number, right: boolean): void {
+    const c = this.cursor;
+    if (c && (!BLOCKS.type(c.state).accessory || this.accessories.some((a, i) => i !== slot && a?.state === c.state))) return;
+    const box = [this.accessories[slot] ?? null];
+    this.cursor = clickSlot(box, 0, c, right);
+    this.accessories[slot] = box[0]!;
+    this.version++;
+  }
   /** Seconds since the player last hit a creature. */
   private sinceAttack = PLAYER_ATTACK_COOLDOWN_S;
   /** Food cooking on campfires by cell key: the raw item's state and seconds left for each. */
@@ -277,9 +306,10 @@ export class Play {
   /** Scatters the whole inventory where the player died. */
   dropAll(): void {
     const [x, y, z] = this.feet;
-    for (const s of [...this.inventory.slots, ...this.armour]) if (s) this.drops.spawn(s, x, y + 0.5, z, (Math.random() - 0.5) * 6, 4, (Math.random() - 0.5) * 6, DROP_PICKUP_DELAY_S);
+    for (const s of [...this.inventory.slots, ...this.armour, ...this.accessories]) if (s) this.drops.spawn(s, x, y + 0.5, z, (Math.random() - 0.5) * 6, 4, (Math.random() - 0.5) * 6, DROP_PICKUP_DELAY_S);
     this.inventory.clear();
     this.armour.fill(null);
+    this.accessories.fill(null);
     this.version++;
   }
 
@@ -560,7 +590,7 @@ export class Play {
 
   /** Damage left after worn armour (each protection point stops 4%, at most 80%); every hit wears each piece. */
   protect(damage: number): number {
-    let points = 0;
+    let points = this.bonus.protection;
     this.armour.forEach((a, i) => {
       if (!a) return;
       const def = BLOCKS.type(a.state).armour!;
@@ -803,6 +833,16 @@ export class Play {
     const heldType = BLOCKS.type(held.state);
     if (heldType.armour) {
       this.wear(held);
+      return;
+    }
+    if (heldType.accessory) {
+      const free = this.accessories.indexOf(null);
+      if (free >= 0 && !this.accessories.some((a) => a?.state === held.state)) {
+        this.accessories[free] = held;
+        this.inventory.slots[this.inventory.selected] = null;
+        this.events.sound('place');
+        this.version++;
+      } else this.toast(free < 0 ? 'Every accessory slot is full' : `You already wear a ${heldType.name}`, 3);
       return;
     }
     if (heldType.tool?.kind === 'hoe' && t && t.ny === 1) {
@@ -1083,6 +1123,7 @@ export class Play {
       furnaces: [...this.furnaces].map(([k, f]) => [k, s(f.input), s(f.fuel), s(f.output), f.burn, f.progress]),
       journal: this.journal.save(), stats: this.stats, biomesSeen: [...this.biomesSeen], deepestM: this.deepestM, found: [...this.found], beaconLit: this.beaconLit, endingSeen: this.endingSeen, boating: this.boating,
       armour: this.armour.map((a) => (a ? [BLOCKS.stateName(a.state), 1, a.wear ?? 0, a.upgrade ?? 0] : null)),
+      accessories: this.accessories.map((a) => (a ? [BLOCKS.stateName(a.state), 1] : null)),
       campfires: [...this.campfires].map(([k, c]) => [k, c.map(([st, left]) => [BLOCKS.stateName(st), left])]),
       chests: [...this.chests].map(([k, slots]) => [k, slots.map((st) => (st ? [BLOCKS.stateName(st.state), st.count, st.wear ?? 0, st.upgrade ?? 0] : null))]),
     };
@@ -1131,6 +1172,14 @@ export class Play {
       const worn = new Inventory();
       worn.load(p.armour);
       worn.slots.slice(0, 4).forEach((a, i) => (this.armour[i] = a && BLOCKS.type(a.state).armour?.slot === i ? a : null));
+    }
+    if (Array.isArray(p.accessories)) {
+      const worn = new Inventory();
+      worn.load(p.accessories);
+      worn.slots.slice(0, ACCESSORY_SLOTS).forEach((a, i) => {
+        const fine = a && BLOCKS.type(a.state).accessory && !this.accessories.some((o) => o?.state === a.state);
+        this.accessories[i] = fine ? { state: a.state, count: 1 } : null;
+      });
     }
     if (Array.isArray(p.campfires)) {
       for (const c of p.campfires) {

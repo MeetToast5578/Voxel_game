@@ -67,6 +67,8 @@ export interface BlockType {
   /** Armour: the body slot it is worn on (0 head, 1 chest, 2 legs, 3 feet), damage points it stops, °C of cold it
    * keeps off, and how many hits it takes. */
   readonly armour?: { readonly slot: number; readonly protection: number; readonly warmth: number; readonly durability: number };
+  /** Worn in an accessory slot: what it does while worn. */
+  readonly accessory?: Accessory;
   /** Seconds it burns in a furnace. */
   readonly fuel?: number;
   /** What is left when it is used up as fuel or emptied (a bucket). */
@@ -200,6 +202,36 @@ const wood = { mineWith: 'axe', fuel: 15 } as const;
 const thin = (key: string, name: string, extra: Partial<BlockSpec> = {}): BlockSpec =>
   ({ key, name, tiles: all(key), solid: false, layer: 'cutout', shape: 'layer', hardness: 0, supports: false, density: 300, needsSupport: true, ...extra });
 const fluid = { solid: false, cullSame: true, hardness: 0, supports: false } as const;
+
+/** What a worn accessory does; several add up. */
+export interface Accessory {
+  /** Text for the tooltip. */
+  readonly effect: string;
+  /** Added to walking and sprinting speed, as a fraction. */
+  readonly speed?: number;
+  /** Extra jumps in the air. */
+  readonly jumps?: number;
+  /** No fall damage, and holding jump while falling glides. */
+  readonly featherfall?: boolean;
+  /** Armour points (4% of harm each). */
+  readonly protection?: number;
+  /** Breath lasts this many times longer. */
+  readonly breath?: number;
+  /** Lava and fire do not hurt. */
+  readonly fireproof?: boolean;
+  /** Health comes back this many times faster. */
+  readonly regen?: number;
+}
+
+const ACCESSORIES: readonly [string, string, Accessory][] = [
+  ['swift_anklet', 'Swiftstep Anklet', { effect: '20% faster on foot', speed: 0.2 }],
+  ['cloud_charm', 'Cloud Charm', { effect: 'Jump once more in mid-air', jumps: 1 }],
+  ['feather_charm', 'Featherfall Charm', { effect: 'No fall damage; hold jump to glide', featherfall: true }],
+  ['iron_band', 'Ironskin Band', { effect: 'Stops 12% more harm', protection: 3 }],
+  ['gill_pendant', 'Gill Pendant', { effect: 'Breath lasts four times longer', breath: 4 }],
+  ['ember_ring', 'Ember Ring', { effect: 'Lava and fire do not burn you', fireproof: true }],
+  ['heart_locket', 'Heart Locket', { effect: 'Health returns twice as fast', regen: 2 }],
+];
 
 /** Flowing fluids have 8 levels, each with a falling and a resting variant. */
 export const FLUID_LEVELS = 8;
@@ -371,6 +403,7 @@ function gameplay(): BlockSpec[] {
       `${m[0]!.toUpperCase()}${m.slice(1)} ${piece}`, {
         maxStack: 1, armour: { slot, protection: a.protection[slot]!, warmth: a.warmth[slot]!, durability: a.durability },
       }))),
+    ...ACCESSORIES.map(([key, name, accessory]) => item(key, name, { maxStack: 1, accessory })),
     item('bucket', 'Bucket', { maxStack: 16 }),
     item('water_bucket', 'Water bucket', { maxStack: 1, emptiesTo: 'bucket' }),
     item('lava_bucket', 'Lava bucket', { maxStack: 1, emptiesTo: 'bucket', fuel: 200 }),

@@ -57,3 +57,5 @@ h3 small{font-weight:400;color:var(--muted);letter-spacing:0}.section-copy,.help
 .craft-buttons{grid-column:1/-1;display:flex;gap:8px;margin-top:6px}.craft-buttons .primary{flex:1}
 @media(max-width:1100px){.inventory-screen.kit .inventory-layout{grid-template-columns:auto minmax(0,1fr)}.inventory-screen.kit .crafting{grid-column:1/-1}}
 @media(max-width:700px){.inventory-layout,.inventory-screen.kit .inventory-layout{grid-template-columns:1fr}.character-pane .armour{grid-auto-flow:column}}
+.acc-head{margin-top:14px!important}.accessories{display:grid;grid-template-columns:repeat(2,auto);gap:4px}.accessories .slot:last-child{grid-column:1/-1;justify-self:center}.accessories .slot{border-color:#6a5a36}
+@media(max-width:700px){.accessories{grid-auto-flow:column;grid-template-columns:none}.accessories .slot:last-child{grid-column:auto}}

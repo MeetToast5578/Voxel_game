@@ -28,16 +28,17 @@ export class Survival {
    * One step: hunger falls (faster when sprinting), health regenerates when well fed and drains when starving; breath
    * runs out with the head under water, then drowning hurts; lava burns.
    */
-  update(dt: number, s: { sprinting: boolean; headInWater: boolean; inLava: boolean; feltC?: number; inFire?: boolean; inWater?: boolean }): void {
+  update(dt: number, s: { sprinting: boolean; headInWater: boolean; inLava: boolean; feltC?: number; inFire?: boolean; inWater?: boolean;
+    breath?: number; fireproof?: boolean; regen?: number }): void {
     this.hunger = Math.max(0, this.hunger - (HUNGER_PER_S + (s.sprinting ? SPRINT_HUNGER_PER_S : 0)) * this.hungerRate * dt);
-    if (this.hunger >= REGEN_HUNGER) this.health = Math.min(MAX_HEALTH, this.health + REGEN_PER_S * dt);
+    if (this.hunger >= REGEN_HUNGER) this.health = Math.min(MAX_HEALTH, this.health + REGEN_PER_S * (s.regen ?? 1) * dt);
     if (this.hunger <= 0) this.hurt(STARVE_PER_S * dt, 'starved');
     if (s.headInWater) {
-      this.air = Math.max(0, this.air - dt);
+      this.air = Math.max(0, this.air - dt / (s.breath ?? 1));
       if (this.air <= 0) this.hurt(DROWN_PER_S * dt, 'drowned');
     } else this.air = Math.min(BREATH_S, this.air + dt * 3);
-    if (s.inLava) this.hurt(LAVA_PER_S * dt, 'burned in lava');
-    if (s.inLava || s.inFire) this.burning = BURN_S;
+    if (s.inLava && !s.fireproof) this.hurt(LAVA_PER_S * dt, 'burned in lava');
+    if ((s.inLava || s.inFire) && !s.fireproof) this.burning = BURN_S;
     if (s.inWater || s.headInWater) this.burning = 0;
     if (this.burning > 0) {
       this.burning = Math.max(0, this.burning - dt);

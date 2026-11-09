@@ -6,6 +6,7 @@ import stations from './stationArt.json';
 import core from './coreArt.json';
 import rework from './reworkArt.json';
 import { decodeArtTile, type PackedArtTile } from './artCodec';
+import { paintedPixels } from './paintedArt';
 
 const SIZE = 32;
 const tiles = new Map<string, Uint8ClampedArray>();
@@ -39,8 +40,8 @@ export function artworkPixels(name: string): Uint8ClampedArray | undefined {
     return pixels;
   }
   const tile = source[name];
-  if (!tile) return undefined;
-  const pixels = decodeArtTile(tile);
+  const pixels = tile ? decodeArtTile(tile) : paintedPixels(name);
+  if (!pixels) return undefined;
   tiles.set(name, pixels);
   return pixels;
 }

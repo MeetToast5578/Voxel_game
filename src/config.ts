@@ -411,3 +411,10 @@ export const BUILD_MAX_M = 19.2;
 export const BUILD_CELLS_PER_TICK = 1500;
 /** Undo steps kept. */
 export const UNDO_STEPS = 32;
+
+/** Slots for worn accessories (charms, rings, anklets). */
+export const ACCESSORY_SLOTS = 5;
+/** Falling speed while gliding with a featherfall charm, m/s. */
+export const GLIDE_FALL_M_S = 2.5;
+/** An air jump (cloud charm) is this fraction of a full jump. */
+export const AIR_JUMP_FACTOR = 0.85;

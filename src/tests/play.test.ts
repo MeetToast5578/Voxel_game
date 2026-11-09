@@ -135,6 +135,25 @@ describe('play', () => {
     expect(play.inventory.slots[0]).toEqual({ state: S('planks'), count: 4 });
   });
 
+  it('wears accessories once each, adds up their effects and keeps them in saves', () => {
+    const { play } = setup('survival');
+    play.cursor = { state: S('iron_band'), count: 1 };
+    play.clickAccessory(0, false);
+    play.cursor = { state: S('iron_band'), count: 1 };
+    play.clickAccessory(1, false); // the same kind twice is refused
+    expect(play.accessories[1]).toBeNull();
+    play.cursor = { state: S('dirt'), count: 1 };
+    play.clickAccessory(1, false); // not an accessory
+    expect(play.accessories[1]).toBeNull();
+    play.cursor = { state: S('swift_anklet'), count: 1 };
+    play.clickAccessory(1, false);
+    expect(play.bonus).toMatchObject({ speed: 0.2, protection: 3 });
+    expect(play.protect(10)).toBeCloseTo(10 * (1 - 0.12));
+    const copy = setup('survival').play;
+    copy.load(JSON.parse(JSON.stringify(play.save())));
+    expect(copy.accessories.slice(0, 2)).toEqual([{ state: S('iron_band'), count: 1 }, { state: S('swift_anklet'), count: 1 }]);
+  });
+
   it('sorts the backpack and keeps the last trashed item', () => {
     const { play } = setup('survival');
     play.inventory.slots[0] = { state: S('dirt'), count: 3 };
