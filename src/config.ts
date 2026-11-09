@@ -418,3 +418,11 @@ export const ACCESSORY_SLOTS = 5;
 export const GLIDE_FALL_M_S = 2.5;
 /** An air jump (cloud charm) is this fraction of a full jump. */
 export const AIR_JUMP_FACTOR = 0.85;
+/** Half-angle of a sword's and an axe's sweep, radians: every creature inside it takes the hit. */
+export const SWORD_ARC_RAD = 1.0;
+export const AXE_ARC_RAD = 0.7;
+/** Chance of a critical hit, and its damage factor. */
+export const CRIT_CHANCE = 0.08;
+export const CRIT_FACTOR = 1.5;
+/** Knockback of a hit, as a factor of the base, by weapon kind. */
+export const KNOCKBACK_FACTOR: Readonly<Record<string, number>> = { sword: 1.3, axe: 1.7, hand: 0.7 };

@@ -59,3 +59,21 @@ h3 small{font-weight:400;color:var(--muted);letter-spacing:0}.section-copy,.help
 @media(max-width:700px){.inventory-layout,.inventory-screen.kit .inventory-layout{grid-template-columns:1fr}.character-pane .armour{grid-auto-flow:column}}
 .acc-head{margin-top:14px!important}.accessories{display:grid;grid-template-columns:repeat(2,auto);gap:4px}.accessories .slot:last-child{grid-column:1/-1;justify-self:center}.accessories .slot{border-color:#6a5a36}
 @media(max-width:700px){.accessories{grid-auto-flow:column;grid-template-columns:none}.accessories .slot:last-child{grid-column:auto}}
+/* Combat feedback over the view. */
+#combat{position:fixed;inset:0;pointer-events:none;z-index:1;overflow:hidden;font:700 16px system-ui,sans-serif}
+#combat .hit-number{position:absolute;left:0;top:0;color:#fff4e0;text-shadow:0 2px 0 #3a1a10,0 0 6px #000a;will-change:transform}
+#combat .hit-number.crit{color:#ffd040;font-size:22px}
+#combat .mob-bar{position:absolute;left:0;top:0;width:44px;height:6px;background:#1a0e0ecc;border:1px solid #000;border-radius:2px}
+#combat .mob-bar i{display:block;height:100%;background:linear-gradient(#ff7a6a,#c8282c);border-radius:1px}
+#combat .boss-bar{position:absolute;left:50%;top:16px;transform:translateX(-50%);width:min(520px,70vw);text-align:center;color:#ffe6c0;text-shadow:0 2px 3px #000}
+#combat .boss-bar b{font:600 15px Georgia,serif;letter-spacing:.06em}#combat .boss-bar div{height:12px;margin-top:4px;background:#1a0e0edd;border:2px solid #4a2a20;border-radius:6px;overflow:hidden}
+#combat .boss-bar i{display:block;height:100%;background:linear-gradient(#ff9a50,#c83a1c);transition:width .2s}
+#combat .slash{position:absolute;left:50%;top:50%;width:min(46vw,520px);transform:translate(-40%,-55%) rotate(-12deg);opacity:0}
+#combat .slash svg{width:100%;overflow:visible}#combat .slash path{fill:none;stroke:#fffbe8;stroke-width:9;stroke-linecap:round;stroke-dasharray:260;stroke-dashoffset:260;filter:drop-shadow(0 0 6px #ffe9a8)}
+#combat .slash.on{animation:slash-fade .22s ease-out}#combat .slash.on path{animation:slash-draw .22s ease-out}
+@keyframes slash-draw{from{stroke-dashoffset:260}to{stroke-dashoffset:-60}}@keyframes slash-fade{0%{opacity:.95}70%{opacity:.7}100%{opacity:0}}
+@media(prefers-reduced-motion:reduce){#combat .slash{display:none}}
+/* Rarity: green, blue, purple and orange borders and names. */
+.slot.rarity-1{border-color:#5fae58;box-shadow:inset 0 0 8px #5fae5833,inset 0 2px 4px #000a}.slot.rarity-2{border-color:#4f8de0;box-shadow:inset 0 0 10px #4f8de044,inset 0 2px 4px #000a}
+.slot.rarity-3{border-color:#a560e8;box-shadow:inset 0 0 12px #a560e855,inset 0 2px 4px #000a}.slot.rarity-4{border-color:#f0902c;box-shadow:inset 0 0 14px #f0902c66,inset 0 2px 4px #000a}
+.rarity-text-1{color:#8ee07e}.rarity-text-2{color:#7fb4ff}.rarity-text-3{color:#c899ff}.rarity-text-4{color:#ffb060}

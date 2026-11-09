@@ -9,6 +9,23 @@ type Icon = readonly [palette: Readonly<Record<string, string>>, rows: readonly 
 
 const GOLD = { g: '#e8b84a', G: '#fff0a8', o: '#a8742a' };
 const ICONS: Readonly<Record<string, Icon>> = {
+  slime_crown: [{ b: '#5a9cf0', B: '#b8dcff', d: '#2a5ab8', r: '#e03050', ...GOLD }, [
+    '................',
+    '................',
+    '..g...g...g.....',
+    '..gG.gGg.gG.....',
+    '..gGggrggGg.....',
+    '..gGGGGGGGg.....',
+    '..ggggggggg.....',
+    '...bbbbbbb......',
+    '..bBbbbbbbbb....',
+    '.bBbbbbbbbbbb...',
+    '.bbbbbbbbbbbd...',
+    '.bbbbbbbbbbdd...',
+    '..dddddddddd....',
+    '................',
+    '................',
+    '................']],
   gel: [{ g: '#5cc850', G: '#b8f4a0', d: '#2e8a3a', w: '#ffffff' }, [
     '................',
     '................',

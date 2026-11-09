@@ -137,6 +137,9 @@ function slime(s: Species): Model {
     ball([-0.28, 0.72, -0.3], [0.2, 0.14, 0.12], c(shine), undefined, true),
     ...[-1, 1].map((sd) => ball([sd * 0.2, 0.55, -0.55], [0.14, 0.2, 0.08], 0x101418)),
     ...[-1, 1].map((sd) => ball([sd * 0.18, 0.6, -0.59], [0.05, 0.06, 0.03], 0xffffff, undefined, true)),
+    // A king wears a crown.
+    ...(s.boss ? [shape(CAPSULE, [0, 0.9, 0], [0.42, 0.08, 0.42], 0xe8b84a), ...[0, 1, 2, 3, 4].map((k) => cone([Math.sin(k * 1.257) * 0.17, 1.0, Math.cos(k * 1.257) * 0.17], [0.08, 0.16, 0.08], 0xffd060)),
+      ball([0, 0.95, -0.2], [0.07, 0.07, 0.05], 0xe03050, undefined, true)] : []),
   ]) };
 }
 

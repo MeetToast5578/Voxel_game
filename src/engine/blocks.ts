@@ -369,6 +369,7 @@ function gameplay(): BlockSpec[] {
     { key:'item_frame',name:'Item Frame',tiles:all('frame_empty'),variants:4,shape:'boxes',boxes:v=>DECOR_PANEL[v]!,layer:'cutout',solid:false,blocksSky:false,supports:false,hardness:.5,...wood },
     item('trade_coin','Trade Coin'),
     item('gel', 'Gel', { fuel: 20 }),
+    item('slime_crown', 'Gel Crown', { maxStack: 1 }),
     item('stick', 'Stick', { fuel: 5 }),
     item('coal', 'Coal', { fuel: 80 }),
     item('iron_ingot', 'Iron ingot'),

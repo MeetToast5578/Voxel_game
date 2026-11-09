@@ -39,6 +39,8 @@ export interface Creature {
   replan: number;
   /** Hoppers: seconds until the next hop. */
   hop: number;
+  /** Health when spawned, for health bars. */
+  maxHealth: number;
 }
 
 /** What creatures need to know about the world and the player each tick. */
@@ -268,6 +270,11 @@ export class Creatures {
         }
       }
     }
+    // Just hit: staggered, carried by the knockback instead of steering.
+    if (c.hurt > 0.12 && !s.flies) {
+      vx = b.vx;
+      vz = b.vz;
+    }
     if (s.hops) {
       // Sits between hops, then leaps: higher and more often when chasing. In the air it keeps its momentum.
       if (b.onGround) {
@@ -379,16 +386,23 @@ export class Creatures {
   }
 
   /** Hurts a creature, knocking it away from (fromX, fromZ); returns whether it died (and was removed). */
-  damage(c: Creature, amount: number, fromX: number, fromZ: number): boolean {
+  damage(c: Creature, amount: number, fromX: number, fromZ: number, knock = 1): boolean {
     c.health -= amount;
     c.hurt = 0.3;
+    // Heavy creatures are pushed less.
+    const k = knock * Math.min(1.4, 1.2 / Math.max(0.6, c.species.heightM * c.species.halfWidthM * 4)) * (c.species.guardian ? 0.2 : 1);
     const dx = c.body.x - fromX, dz = c.body.z - fromZ, len = Math.hypot(dx, dz) || 1;
-    c.body.vx = (dx / len) * toCells(KNOCKBACK_M_S);
-    c.body.vz = (dz / len) * toCells(KNOCKBACK_M_S);
-    c.body.vy = toCells(3);
+    c.body.vx = (dx / len) * toCells(KNOCKBACK_M_S) * k;
+    c.body.vz = (dz / len) * toCells(KNOCKBACK_M_S) * k;
+    c.body.vy = toCells(3) * Math.min(1.3, k);
     if (c.species.grazer) {
       c.mode = 'flee';
       c.goal = [c.body.x + (dx / len) * toCells(12), c.body.z + (dz / len) * toCells(12)];
+    }
+    if (c.health > 0 && c.species.key === 'king_slime' && this.rand() < 0.4 && this.list.length < CREATURE_CAP) {
+      // The Slime King sheds little slimes as it is struck.
+      const small = SPECIES_BY_KEY.get('slime')!;
+      this.add(small, c.body.x + (this.rand() - 0.5) * 2, c.body.y + 1, c.body.z + (this.rand() - 0.5) * 2, small.health);
     }
     if (c.health > 0) {
       this.events.call?.(c, 'hurt');
@@ -494,7 +508,7 @@ export class Creatures {
   add(s: Species, x: number, y: number, z: number, health: number): Creature {
     const c: Creature = {
       id: this.nextId++, species: s, yaw: this.rand() * Math.PI * 2, health, mode: 'idle', goal: null, target: null,
-      think: this.rand() * THINK_S, cooldown: 0, walk: 0, hurt: 0, path: [], replan: 0, burning: 0, fed: 0, young: 0, hop: this.rand(),
+      think: this.rand() * THINK_S, cooldown: 0, walk: 0, hurt: 0, path: [], replan: 0, burning: 0, fed: 0, young: 0, hop: this.rand(), maxHealth: health,
       body: { x, y, z, vx: 0, vy: 0, vz: 0, onGround: false, halfWidth: toCells(s.halfWidthM), height: toCells(s.heightM) },
     };
     this.list.push(c);
@@ -525,7 +539,7 @@ export function lootOf(c: Creature, rand: () => number = Math.random): { state: 
   const meat = meatOf(c);
   const s = c.species;
   // Monsters carry a few coins, more the tougher they are.
-  const coins = s.hostile && !s.guardian && rand() < 0.6 ? 1 + Math.floor(rand() * (1 + s.health / 12)) : s.guardian ? 20 : 0;
+  const coins = s.guardian || s.boss ? 25 : s.hostile && rand() < 0.6 ? 1 + Math.floor(rand() * (1 + s.health / 12)) : 0;
   return [...(meat ? [meat] : []), ...(s.leather ? [{ state: BLOCKS.state('leather'), count: s.leather }] : []),
     ...(s.loot ?? []).filter(([, , chance]) => chance === undefined || rand() < chance).map(([key, count]) => ({ state: BLOCKS.state(key), count })),
     ...(coins ? [{ state: BLOCKS.state('trade_coin'), count: coins }] : [])];

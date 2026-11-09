@@ -1,4 +1,4 @@
-import { ACCESSORY_SLOTS, LIGHTNING_DAMAGE, LIGHTNING_REACH_M, FISH_MAX_S, FISH_MIN_S, BLOCK_SIZE_M, ARROW_DAMAGE, ARROW_SPEED_M_S, BOLT_SPEED_M_S, BOW_DRAW_S, AXE_DAMAGE, BUILD_CELLS_PER_TICK, CAMPFIRE_COOK_S, CAMPFIRE_SLOTS, DIFFICULTY, PLAYER_ATTACK_COOLDOWN_S, SWORD_DAMAGE, type Difficulty, BUILD_MAX_M, DROP_PICKUP_DELAY_S, DROP_THROW_M_S, HAND_DAMAGE, REACH_M, REPEAT_S, TOOL_DAMAGE, UNDO_STEPS, cells, toCells } from '../config';
+import { ACCESSORY_SLOTS, AXE_ARC_RAD, CRIT_CHANCE, CRIT_FACTOR, KNOCKBACK_FACTOR, SWORD_ARC_RAD, LIGHTNING_DAMAGE, LIGHTNING_REACH_M, FISH_MAX_S, FISH_MIN_S, BLOCK_SIZE_M, ARROW_DAMAGE, ARROW_SPEED_M_S, BOLT_SPEED_M_S, BOW_DRAW_S, AXE_DAMAGE, BUILD_CELLS_PER_TICK, CAMPFIRE_COOK_S, CAMPFIRE_SLOTS, DIFFICULTY, PLAYER_ATTACK_COOLDOWN_S, SWORD_DAMAGE, type Difficulty, BUILD_MAX_M, DROP_PICKUP_DELAY_S, DROP_THROW_M_S, HAND_DAMAGE, REACH_M, REPEAT_S, TOOL_DAMAGE, UNDO_STEPS, cells, toCells } from '../config';
 import { lootOf, type Creature, type Creatures } from '../creatures/creatures';
 import { AIR, BLOCKS, SOLID } from '../engine/blocks';
 import type { World } from '../engine/world';
@@ -118,6 +118,9 @@ export class Play {
   readonly particles = new Particles();
   readonly visualEvents: {kind:'impact'|'sparks';x:number;y:number;z:number}[] = [];
   swings = 0;
+  /** Sweeps of a sword or axe (for the slash trail), and recent hits (for floating damage numbers). */
+  slashes = 0;
+  readonly hits: { x: number; y: number; z: number; amount: number; crit: boolean; age: number }[] = [];
   /** While fishing: seconds until a fish bites, or 0 when the line is not out. */
   fishingS = 0;
   /** Seconds the bow has been drawn, while right click is held with it. */
@@ -363,20 +366,47 @@ export class Play {
     }
   }
 
-  /** Hits the creature under the crosshair, if one is nearer than the targeted block. Returns whether one was hit. */
+  /**
+   * A swing. Swords and axes sweep an arc in front and hit every creature inside it; anything else hits the creature
+   * under the crosshair. Creatures behind the targeted block are safe. Returns whether anything was hit.
+   */
   private attack(ox: number, oy: number, oz: number, dx: number, dy: number, dz: number): boolean {
-    const hit = this.creatures!.raycast(ox, oy, oz, dx, dy, dz, toCells(REACH_M));
-    if (!hit || (this.target && this.target.distance < hit.distance)) return false;
     const held = this.held, tool = held ? BLOCKS.type(held.state).tool : undefined;
+    const arc = tool?.kind === 'sword' ? SWORD_ARC_RAD : tool?.kind === 'axe' ? AXE_ARC_RAD : 0, reach = toCells(REACH_M);
+    const wall = this.target ? this.target.distance + 0.5 : Infinity;
+    let victims: Creature[];
+    if (arc) {
+      victims = this.creatures!.list.filter((c) => {
+        const cx = c.body.x - ox, cy = c.body.y + c.body.height * 0.5 - oy, cz = c.body.z - oz, d = Math.hypot(cx, cy, cz);
+        if (d - c.body.halfWidth > reach || d > wall) return false;
+        return d < c.body.halfWidth + 0.6 || Math.acos(Math.max(-1, Math.min(1, (cx * dx + cy * dy + cz * dz) / d))) <= arc;
+      });
+      // Swinging at nothing still slashes the air, when no block is in reach to dig.
+      if (!victims.length && !this.target) {
+        this.slashes++;
+        this.swings++;
+        this.sinceAttack = 0;
+        this.version++;
+      }
+    } else {
+      const hit = this.creatures!.raycast(ox, oy, oz, dx, dy, dz, reach);
+      victims = hit && !(this.target && this.target.distance < hit.distance) ? [hit.creature] : [];
+    }
+    if (!victims.length) return false;
     // Quick swings land weaker blows: the hit's strength recovers over the cooldown.
     const strength = Math.max(0.2, Math.min(1, this.sinceAttack / PLAYER_ATTACK_COOLDOWN_S));
     this.sinceAttack = 0;
-    const damage = strength * weaponDamage(held);
-    const c = hit.creature;
-    if(this.visualEvents.length<64)this.visualEvents.push({kind:'sparks',x:c.body.x,y:c.body.y+c.body.height*.65,z:c.body.z});
-    if (this.creatures!.damage(c, damage, ox, oz) && this.mode === 'survival') {
-      this.defeated(c);
-      for (const loot of lootOf(c)) this.drop(loot, c.body.x, c.body.y, c.body.z);
+    const crit = Math.random() < CRIT_CHANCE, damage = strength * weaponDamage(held) * (crit ? CRIT_FACTOR : 1);
+    const knock = (KNOCKBACK_FACTOR[tool?.kind ?? 'hand'] ?? 1) * (0.5 + strength * 0.5);
+    if (arc) this.slashes++;
+    for (const c of victims) {
+      const top = c.body.y + c.body.height;
+      if (this.visualEvents.length < 64) this.visualEvents.push({ kind: 'sparks', x: c.body.x, y: c.body.y + c.body.height * .65, z: c.body.z });
+      if (this.hits.length < 32) this.hits.push({ x: c.body.x, y: top, z: c.body.z, amount: Math.max(1, Math.round(damage)), crit, age: 0 });
+      if (this.creatures!.damage(c, damage, ox, oz, knock) && this.mode === 'survival') {
+        this.defeated(c);
+        for (const loot of lootOf(c)) this.drop(loot, c.body.x, c.body.y, c.body.z);
+      }
     }
     if (held && tool && this.mode === 'survival' && !wearTool(held)) this.inventory.slots[this.inventory.selected] = null;
     this.events.sound('break');
@@ -833,6 +863,17 @@ export class Play {
     const heldType = BLOCKS.type(held.state);
     if (heldType.armour) {
       this.wear(held);
+      return;
+    }
+    if (heldType.key === 'slime_crown' && this.creatures) {
+      // Calls the Slime King: it drops in a little way off, ready to fight. One at a time.
+      if (this.creatures.list.some((c) => c.species.boss)) this.toast('A boss is already here', 3);
+      else {
+        const king = SPECIES_BY_KEY.get('king_slime')!, [x, y, z] = this.feet, a = Math.random() * Math.PI * 2;
+        this.creatures.add(king, x + Math.cos(a) * 9, y + 6, z + Math.sin(a) * 9, king.health);
+        if (this.mode === 'survival') this.inventory.useHeld();
+        this.toast('The Slime King has awoken!', 4);
+      }
       return;
     }
     if (heldType.accessory) {

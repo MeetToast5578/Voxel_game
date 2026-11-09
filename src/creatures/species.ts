@@ -49,6 +49,8 @@ export interface Species {
   daytime?: boolean;
   /** Lava and fire do not hurt it. */
   fireproof?: boolean;
+  /** A boss: its health shows in a bar across the top of the screen. */
+  boss?: boolean;
 }
 
 const BASE = { grazer: false, prey: [], hostile: false, herds: false, nocturnal: false, medium: 'land', attack: 0, meat: 1, voice: 0.5 } as const;
@@ -117,6 +119,9 @@ export const SPECIES: readonly Species[] = [
   { ...BASE, key: 'ember_slime', name: 'Ember Slime', halfWidthM: 0.4, heightM: 0.75, speedM_S: 2.6, health: 22, hostile: true, hops: true, fireproof: true,
     attack: 5, biomes: ['deep'], group: [1, 2], colours: { body: [240, 120, 40], head: [200, 60, 20], legs: [255, 220, 120] },
     meat: 0, loot: [['gel', 3], ['ember_crystal', 1, 0.25], ['ember_ring', 1, 0.02]], voice: 0.7 },
+  { ...BASE, key: 'king_slime', name: 'Slime King', halfWidthM: 1.0, heightM: 1.7, speedM_S: 2.8, health: 240, hostile: true, daytime: true, hops: true,
+    boss: true, attack: 6, biomes: [], group: [1, 1], colours: { body: [80, 150, 240], head: [40, 90, 200], legs: [200, 230, 255] },
+    meat: 0, loot: [['gel', 30], ['cloud_charm', 1], ['swift_anklet', 1, 0.6], ['heart_locket', 1, 0.3], ['gold_ingot', 4]], voice: 0.3 },
   { ...BASE, key: 'bat', name: 'Cave Bat', halfWidthM: 0.2, heightM: 0.4, speedM_S: 3.2, health: 4, hostile: true, flies: true,
     attack: 1, biomes: ['cave'], group: [1, 3], colours: { body: [70, 56, 52], head: [86, 68, 60], legs: [50, 40, 40] },
     meat: 0, loot: [['leather', 1, 0.3], ['cloud_charm', 1, 0.015]], voice: 1 },

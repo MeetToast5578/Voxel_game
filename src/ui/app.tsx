@@ -15,6 +15,7 @@ import { TRADE_OFFERS, upgradeCost } from '../game/workshops';
 import { WOOD_SPECIES, SAPLING_SPECIES } from '../engine/blocks';
 import './pixelAero.css';
 import { iconUrl, stackIconUrl } from './icons';
+import { rarity, RARITY_NAMES } from '../game/rarity';
 
 /** A world to create: its seed, mode and difficulty. */
 export interface NewWorld {
@@ -64,7 +65,8 @@ const TIERS = ['wooden', 'stone', 'iron', 'diamond'];
 export function tooltip(s: ItemStack): string {
   const t = BLOCKS.type(s.state);
   const wood=t.key==='sapling'?SAPLING_SPECIES[BLOCKS.variant(s.state)]:t.variantFaces&&['log','leaves','planks'].includes(t.key)?WOOD_SPECIES[t.key==='leaves'?Math.floor(BLOCKS.variant(s.state)/2):BLOCKS.variant(s.state)]:null;
-  const lines = [wood?`${wood.replaceAll('_',' ')} ${t.name}`:t.name];
+  const r = rarity(s);
+  const lines = [`${wood?`${wood.replaceAll('_',' ')} ${t.name}`:t.name}${r ? ` · ${RARITY_NAMES[r]}` : ''}`];
   if(s.upgrade)lines.push(`Ember upgrade ${s.upgrade}/3 · faster, stronger and more durable`);
   if (t.food) lines.push(`Food: restores ${t.food} hunger`);
   if (t.tool) lines.push(`${TIERS[t.tool.tier] ?? ''} ${t.tool.kind}, ${Math.floor(t.tool.durability * (1+(s.upgrade??0)*.5)) - (s.wear ?? 0)} of ${Math.floor(t.tool.durability*(1+(s.upgrade??0)*.5))} uses left`);
@@ -81,7 +83,7 @@ function Slot(props: { stack: ItemStack | null; onClick?: (right: boolean, quick
   const t = s ? BLOCKS.type(s.state) : undefined;
   const tool = t?.tool ?? (t?.armour && { durability: t.armour.durability });
   return (
-    <div class={`slot${props.selected ? ' selected' : ''}${props.big ? ' big' : ''}${props.dim ? ' dim' : ''}${s?.upgrade?' upgraded':''}`} role="button" aria-label={props.title ?? (s ? tooltip(s) : 'Empty slot')} title={props.title ?? (s ? tooltip(s) : '')} tabIndex={0}
+    <div class={`slot${props.selected ? ' selected' : ''}${props.big ? ' big' : ''}${props.dim ? ' dim' : ''}${s?.upgrade?' upgraded':''}${s && rarity(s) ? ` rarity-${rarity(s)}` : ''}`} role="button" aria-label={props.title ?? (s ? tooltip(s) : 'Empty slot')} title={props.title ?? (s ? tooltip(s) : '')} tabIndex={0}
       onKeyDown={(e)=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();props.onClick?.(false,e.shiftKey);}}}
       onMouseDown={(e) => { e.preventDefault(); props.onClick?.(e.button === 2,e.shiftKey); }} onContextMenu={(e) => e.preventDefault()}>
       {props.shortcut&&<span class="slot-key" aria-hidden="true">{props.shortcut}</span>}
@@ -393,7 +395,7 @@ function CraftingPanel({ play }: { play: Play }) {
     {list.length === 0 && <p class="empty-state" role="status">{all || q ? 'No matching recipes.' : 'Nothing to craft from what you carry yet. Chop a tree for logs, or tick Show all.'}</p>}
     {sel && out && <div class="recipe-detail">
       <img alt="" src={stackIconUrl(out)} />
-      <div><b>{BLOCKS.type(out.state).name}{out.count > 1 ? ` × ${out.count}` : ''}</b>
+      <div><b class={`rarity-text-${rarity(out)}`}>{BLOCKS.type(out.state).name}{out.count > 1 ? ` × ${out.count}` : ''}</b>
         <small>{tooltip(out).split('\n').slice(1).join(' · ')}</small>
         <ul class="needs">{sel.c.needs.map((n, i) => { const have = haveFor(slots, n.keys); return <li key={i} class={have >= n.count ? 'ok' : 'short'}>
           <img alt="" src={iconUrl(BLOCKS.state(n.keys[0]!))} />{n.keys.map((k) => BLOCKS.byName(k).name).join(' or ')}<span>{n.count} <small>· have {have}</small></span></li>; })}

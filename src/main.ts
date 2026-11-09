@@ -21,6 +21,7 @@ import { WorldEffects, type EffectKind } from './render/worldEffects';
 import { SPECIES } from './creatures/species';
 import { DecorationMeshes } from './render/decorations';
 import { ShapeMobs } from './render/shapeMobs';
+import { CombatOverlay } from './ui/combatOverlay';
 import { DropMeshes } from './render/dropMeshes';
 import { BoatMesh } from './render/boatMesh';
 import { FrameGraph } from './ui/frameGraph';
@@ -632,6 +633,7 @@ let bobPhase = 0, bobAmount = 0;
 const hand = document.querySelector<HTMLDivElement>('#hand')!, handImg = hand.querySelector('img')!;
 const interactionHint=document.createElement('div');interactionHint.id='interaction-hint';interactionHint.hidden=true;document.body.append(interactionHint);
 let handSwings = 0;
+const combat = new CombatOverlay();
 function updateHand():void {
   const state=play.held?.state??-1;
   const armour=play.armour[1],key=armour?BLOCKS.type(armour.state).key:'bare';
@@ -715,6 +717,7 @@ const loop = new FixedStepLoop(1 / 60, 0.25, timedUpdate, (alpha, frameDt) => {
   burnGlow.style.opacity = play.survival.burning > 0 ? '1' : '0';
   updateHeldTools(now);
   updateHand();
+  combat.update(frameDt, renderer.camera, play.hits, creatures.list, play.slashes, play.screen === 'none' && !play.survival.dead);
   ambience.update(frameDt, surroundings);
   if (play.journal.done.size > milestones) {
     [523, 659, 784].forEach((f, k) => setTimeout(() => sounds.chime(f, 0.25), k * 120));

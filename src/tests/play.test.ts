@@ -8,6 +8,8 @@ import { COLLISION } from '../game/collision';
 import { Play, weaponDamage } from '../game/play';
 import { tickFurnace } from '../game/furnace';
 import { CRAFTS } from '../game/crafting';
+import { Creatures } from '../creatures/creatures';
+import { SPECIES_BY_KEY } from '../creatures/species';
 import { Player } from '../game/player';
 
 const S = (key: string, v = 0) => BLOCKS.state(key, v);
@@ -178,6 +180,33 @@ describe('play', () => {
     expect(weaponDamage(null)).toBe(1);
     // A zombie (20 health) takes under a quarter of the full swings with an iron sword that it takes with a fist.
     expect(Math.ceil(20 / weaponDamage({ state: S('iron_sword'), count: 1 }))).toBeLessThan(20 / weaponDamage(null) / 4);
+  });
+
+  it('sweeps a sword arc that hits every creature in front, and summons the Slime King with a gel crown', () => {
+    const { world, play, player, input, press } = setup('survival');
+    const cs = new Creatures(world, () => 0.5, { bite: () => undefined, sound: () => undefined });
+    play.creatures = cs;
+    player.pitch = 0;
+    const zombie = SPECIES_BY_KEY.get('zombie')!;
+    const left = cs.add(zombie, 2.5, 0, -0.6, 20), right = cs.add(zombie, 2.5, 0, 1.6, 20), behind = cs.add(zombie, -2, 0, 0.5, 20);
+    play.inventory.slots[0] = { state: S('iron_sword'), count: 1 };
+    play.update(1, input, player);
+    press('break');
+    play.update(0, input, player);
+    expect(left.health).toBeLessThan(20);
+    expect(right.health).toBeLessThan(20);
+    expect(behind.health).toBe(20);
+    expect(play.slashes).toBe(1);
+    expect(play.hits.length).toBe(2);
+    // Knocked away from the player.
+    expect(left.body.vx).toBeGreaterThan(0);
+    cs.list.length = 0;
+    play.inventory.slots[0] = { state: S('slime_crown'), count: 1 };
+    player.pitch = 0.6; // at the sky: no block in the way
+    press('place');
+    play.update(0, input, player);
+    expect(cs.list.map((c) => c.species.key)).toEqual(['king_slime']);
+    expect(play.inventory.slots[0]).toBeNull();
   });
 
   it('cooks raw food on a campfire, and gives it back raw if the fire goes', () => {
