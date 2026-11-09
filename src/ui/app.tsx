@@ -1,6 +1,6 @@
 import { render, type ComponentChildren } from 'preact';
 import { useEffect, useRef, useState } from 'preact/hooks';
-import { BLOCK_SIZE_M, BODY_COLD_C, BODY_HOT_C, MAX_HUNGER, BREATH_S, MAX_VIEW_CHUNKS, MIN_VIEW_CHUNKS } from '../config';
+import { BLOCK_SIZE_M, BODY_COLD_C, BODY_HOT_C, MAX_HUNGER, MAX_MANA, BREATH_S, MAX_VIEW_CHUNKS, MIN_VIEW_CHUNKS } from '../config';
 import { BLOCKS } from '../engine/blocks';
 import { clickSlot, type ItemStack } from '../game/inventory';
 import { canCraft, CRAFTS, haveFor, timesCraftable } from '../game/crafting';
@@ -73,6 +73,7 @@ export function tooltip(s: ItemStack): string {
   if (t.mineWith && t.needsTier !== undefined) lines.push(`Needs a ${TIERS[t.needsTier]} ${t.mineWith} or better`);
   if (t.armour) lines.push(`Armour: stops ${(t.armour.protection+(s.upgrade??0)) * 4}% of harm, ${t.armour.warmth+(s.upgrade??0)} °C warmer, ${Math.floor(t.armour.durability*(1+(s.upgrade??0)*.5)) - (s.wear ?? 0)} hits left`);
   if (t.accessory) lines.push(`Accessory: ${t.accessory.effect}`);
+  if (t.spell) lines.push(`Magic: ${t.spell.damage} damage, ${t.spell.mana} mana a cast (hold right click)`);
   if (t.fuel) lines.push(`Fuel: burns ${t.fuel} s`);
   if (t.smeltsTo) lines.push(`Smelts into ${BLOCKS.type(BLOCKS.state(t.smeltsTo)).name}`);
   return lines.join('\n');
@@ -120,6 +121,7 @@ function Hud({ play, hideKey }: { play: Play; hideKey: string }) {
           <Bar value={s.health} max={s.maxHealth} color="#d33" label="Health" />
           <Bar value={s.hunger} max={MAX_HUNGER} color="#c8862a" label="Hunger" />
           {s.air < BREATH_S && <Bar value={s.air} max={BREATH_S} color="#5ad" label="Air" />}
+          {(s.mana < MAX_MANA || (play.held && BLOCKS.type(play.held.state).spell)) && <Bar value={s.mana} max={MAX_MANA} color="#5a6cf0" label="Mana" />}
           <Thermometer coreC={s.temperature.coreC} feltC={s.feltC} />
         </div>
       )}

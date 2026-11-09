@@ -14,6 +14,8 @@ export interface Projectile {
   /** Who shot it: the player's arrows hit creatures, creatures' bolts hit the player. */
   fromPlayer: boolean;
   age: number;
+  /** A magic bolt: flies straight, and leaves nothing where it lands. */
+  magic?: boolean;
 }
 
 /** What a projectile ran into this step. */
@@ -30,9 +32,9 @@ const inside = (b: Body, x: number, y: number, z: number, pad: number) =>
 export class Projectiles {
   readonly list: Projectile[] = [];
 
-  shoot(x: number, y: number, z: number, dx: number, dy: number, dz: number, speedCells: number, damage: number, fromPlayer: boolean): void {
+  shoot(x: number, y: number, z: number, dx: number, dy: number, dz: number, speedCells: number, damage: number, fromPlayer: boolean, magic = false): void {
     const len = Math.hypot(dx, dy, dz) || 1;
-    this.list.push({ x, y, z, vx: (dx / len) * speedCells, vy: (dy / len) * speedCells, vz: (dz / len) * speedCells, damage, fromPlayer, age: 0 });
+    this.list.push({ x, y, z, vx: (dx / len) * speedCells, vy: (dy / len) * speedCells, vz: (dz / len) * speedCells, damage, fromPlayer, age: 0, ...(magic ? { magic } : {}) });
   }
 
   /**
@@ -44,7 +46,7 @@ export class Projectiles {
     for (let i = this.list.length - 1; i >= 0; i--) {
       const p = this.list[i]!;
       p.age += dt;
-      p.vy -= GRAVITY * dt;
+      if (!p.magic) p.vy -= GRAVITY * dt;
       const steps = Math.max(1, Math.ceil((Math.hypot(p.vx, p.vy, p.vz) * dt) / SUBSTEP));
       let hit: ProjectileHit | null = null;
       for (let s = 0; s < steps && !hit; s++) {

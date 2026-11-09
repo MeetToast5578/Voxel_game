@@ -142,7 +142,7 @@ const highlight = new Highlight(renderer.scene);
 renderer.setViewDistance(viewChunks * CHUNK_SIZE);
 
 const WATER = BLOCKS.typeIndex[BLOCKS.state('water')]!, FLOWING = BLOCKS.typeIndex[BLOCKS.state('flowing_water')]!;
-const LADDER = BLOCKS.typeIndex[BLOCKS.state('ladder')]!, CAMPFIRE = BLOCKS.state('campfire'), ARROW = BLOCKS.state('arrow');
+const LADDER = BLOCKS.typeIndex[BLOCKS.state('ladder')]!, CAMPFIRE = BLOCKS.state('campfire'), ARROW = BLOCKS.state('arrow'), MAGIC_BOLT = BLOCKS.state('ember_crystal');
 const climbAt = (x: number, y: number, z: number) => BLOCKS.typeIndex[world.get(x, y, z)] === LADDER;
 const FLOWING_ID = BLOCKS.state('flowing_water'), LEVELS = 8;
 /** Level of water in a cell for working out flow (a source is full, air is empty, anything else blocks: -1). */
@@ -790,7 +790,8 @@ const loop = new FixedStepLoop(1 / 60, 0.25, timedUpdate, (alpha, frameDt) => {
     }
   }
   const burning=creatures.list.filter(c=>c.burning>0).map(c=>({kind:'fire' as const,x:c.body.x,y:c.body.y+c.body.height*.45,z:c.body.z,size:c.body.height*.7}));
-  effects.update(frameDt,now/1000,[...burning,...emitters]);
+  const bolts=play.projectiles.list.filter(p=>p.magic).map(p=>({kind:'sparks' as const,x:p.x,y:p.y,z:p.z,size:.5}));
+  effects.update(frameDt,now/1000,[...burning,...emitters,...bolts]);
   decorationMeshes.update(play.decorations,world,renderer.camera,lightAt);
   for (const d of creatures.dying) if (!d.puffed) {
     d.puffed = true;
@@ -799,7 +800,7 @@ const loop = new FixedStepLoop(1 / 60, 0.25, timedUpdate, (alpha, frameDt) => {
   creatureMeshes.update(creatures.list, (c) => lightAt(c.body.x, c.body.y + c.body.height * 0.6, c.body.z), now / 1000, creatures.dying);
   // Arrows in flight and bits of broken blocks are drawn like dropped items, smaller.
   const flying = [
-    ...play.projectiles.list.map((p) => ({ state: ARROW, x: p.x, y: p.y, z: p.z, size: 0.4 })),
+    ...play.projectiles.list.map((p) => ({ state: p.magic ? MAGIC_BOLT : ARROW, x: p.x, y: p.y, z: p.z, size: p.magic ? 0.3 : 0.4 })),
     ...play.particles.list.map((p) => ({ state: p.state, x: p.x, y: p.y, z: p.z, size: 0.15 })),
   ].map((f) => ({ stack: { state: f.state, count: 1 }, age: 0, wait: 0,
     body: { x: f.x, y: f.y, z: f.z, vx: 0, vy: 0, vz: 0, halfWidth: f.size / 2, height: f.size, onGround: false } }));

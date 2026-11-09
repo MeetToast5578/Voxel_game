@@ -26,6 +26,8 @@ export const RECIPES: readonly Recipe[] = [
   { pattern: ['C', 'S'], key: { C: ['coal'], S: ['stick'] }, result: ['torch', 4] },
   { pattern: ['G', 'S'], key: { G: ['gel'], S: ['stick'] }, result: ['torch', 3] },
   { pattern: ['GGG', 'GOG', 'GGG'], key: { G: ['gel'], O: ['gold_ingot'] }, result: ['slime_crown', 1] },
+  { pattern: [' LG', ' SL', 'S  '], key: { L: ['lapis'], G: ['gel'], S: ['stick'] }, result: ['spark_wand', 1] },
+  { pattern: [' EG', ' SE', 'S  '], key: { E: ['ember_crystal'], G: ['gold_ingot'], S: ['stick'] }, result: ['ember_staff', 1] },
   { pattern: ['PP', 'PP'], key: { P: ['planks'] }, result: ['crafting_table', 1] },
   { pattern: ['PPP', 'P P', 'PPP'], key: { P: ['planks'] }, result: ['chest', 1] },
   { pattern: ['CCC', 'C C', 'CCC'], key: { C: ['cobblestone'] }, result: ['furnace', 1] },

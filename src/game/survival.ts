@@ -1,11 +1,14 @@
 import {
-  BURN_PER_S, BURN_S, BREATH_S, DROWN_PER_S, HUNGER_PER_S, LAVA_PER_S, MAX_HEALTH, MAX_HUNGER, REGEN_HUNGER, REGEN_PER_S, SAFE_FALL_SPEED_M_S,
+  BURN_PER_S, BURN_S, BREATH_S, MANA_DELAY_S, MANA_PER_S, MAX_MANA, DROWN_PER_S, HUNGER_PER_S, LAVA_PER_S, MAX_HEALTH, MAX_HUNGER, REGEN_HUNGER, REGEN_PER_S, SAFE_FALL_SPEED_M_S,
   SPRINT_HUNGER_PER_S, STARVE_PER_S,
 } from '../config';
 import { BodyTemperature } from './bodyTemperature';
 
 /** Health, hunger and breath, and what changes them. */
 export class Survival {
+  /** Mana for spells: spent by casting, refilling after a moment's rest. */
+  mana = MAX_MANA;
+  private sinceCast = 99;
   /** Raised by life crystals, up to twice the starting maximum. */
   maxHealth = MAX_HEALTH;
   health = MAX_HEALTH;
@@ -30,8 +33,17 @@ export class Survival {
    * One step: hunger falls (faster when sprinting), health regenerates when well fed and drains when starving; breath
    * runs out with the head under water, then drowning hurts; lava burns.
    */
+  /** Spends `cost` mana if there is that much. */
+  cast(cost: number): boolean {
+    if (this.mana < cost) return false;
+    this.mana -= cost;
+    this.sinceCast = 0;
+    return true;
+  }
+
   update(dt: number, s: { sprinting: boolean; headInWater: boolean; inLava: boolean; feltC?: number; inFire?: boolean; inWater?: boolean;
     breath?: number; fireproof?: boolean; regen?: number }): void {
+    if ((this.sinceCast += dt) > MANA_DELAY_S) this.mana = Math.min(MAX_MANA, this.mana + MANA_PER_S * dt);
     this.hunger = Math.max(0, this.hunger - (HUNGER_PER_S + (s.sprinting ? SPRINT_HUNGER_PER_S : 0)) * this.hungerRate * dt);
     if (this.hunger >= REGEN_HUNGER) this.health = Math.min(this.maxHealth, this.health + REGEN_PER_S * (s.regen ?? 1) * dt);
     if (this.hunger <= 0) this.hurt(STARVE_PER_S * dt, 'starved');
@@ -79,6 +91,7 @@ export class Survival {
 
   reset(): void {
     this.health = this.maxHealth;
+    this.mana = MAX_MANA;
     this.hunger = MAX_HUNGER;
     this.air = BREATH_S;
     this.temperature.reset();

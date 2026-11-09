@@ -67,6 +67,8 @@ export interface BlockType {
   /** Armour: the body slot it is worn on (0 head, 1 chest, 2 legs, 3 feet), damage points it stops, °C of cold it
    * keeps off, and how many hits it takes. */
   readonly armour?: { readonly slot: number; readonly protection: number; readonly warmth: number; readonly durability: number };
+  /** A magic weapon: right click casts a bolt of `damage` for `mana`, at most once per `cooldown` seconds. */
+  readonly spell?: { readonly damage: number; readonly mana: number; readonly cooldown: number; readonly speed: number };
   /** Worn in an accessory slot: what it does while worn. */
   readonly accessory?: Accessory;
   /** Seconds it burns in a furnace. */
@@ -371,6 +373,8 @@ function gameplay(): BlockSpec[] {
     item('gel', 'Gel', { fuel: 20 }),
     item('slime_crown', 'Gel Crown', { maxStack: 1 }),
     item('life_crystal', 'Life Crystal', { maxStack: 16 }),
+    item('spark_wand', 'Spark Wand', { maxStack: 1, spell: { damage: 3.5, mana: 2, cooldown: 0.3, speed: 22 } }),
+    item('ember_staff', 'Ember Staff', { maxStack: 1, spell: { damage: 8, mana: 4, cooldown: 0.4, speed: 26 } }),
     item('stick', 'Stick', { fuel: 5 }),
     item('coal', 'Coal', { fuel: 80 }),
     item('iron_ingot', 'Iron ingot'),

@@ -19,6 +19,7 @@ The "3D Terraria" pass (Milestone 18).
   accessories; monsters drop coins, and the trader sells accessories for them.
 - Combat: swords and axes sweep an arc and hit everything in it, with crits, knockback and stagger, damage numbers,
   health bars and a slash trail. A brief moment of safety follows each bite. The held item is drawn in 3D and swings.
+- Magic: the Spark Wand and Ember Staff cast bolts that fly straight, using mana (20, shown while a staff is held).
 - Boss: the Slime King, summoned with a Gel Crown. Bosses show a health bar.
 - Villages: clusters of houses with pitched roofs in clearings. Each house has a farmer, smith or herbalist with their
   own shop, who wanders near home by day and sleeps in their bed at night. Defeated creatures fall over and fade.

@@ -352,10 +352,18 @@ export class Play {
       if (input.placing) this.drawS += dt;
       else if (this.drawS > 0) this.shootArrow(player);
     } else this.drawS = 0;
-    const placeNow = input.consume('place') || (input.placing && this.repeat <= 0);
-    if (placeNow) {
-      this.repeat = REPEAT_S;
-      this.record(() => this.use(player, input.descend));
+    const spell = this.held ? BLOCKS.type(this.held.state).spell : undefined;
+    this.castClock = Math.max(0, this.castClock - dt);
+    if (spell) {
+      // A staff: hold right click to keep casting while mana lasts.
+      const pressed = input.consume('place');
+      if ((pressed || input.placing) && this.castClock <= 0) this.castSpell(player, spell);
+    } else {
+      const placeNow = input.consume('place') || (input.placing && this.repeat <= 0);
+      if (placeNow) {
+        this.repeat = REPEAT_S;
+        this.record(() => this.use(player, input.descend));
+      }
     }
     const clicked = input.consume('break');
     if (clicked && this.creatures && this.attack(b.x, player.eyeY, b.z, dx, dy, dz)) return;
@@ -595,6 +603,23 @@ export class Play {
   }
 
   /** Lets an arrow fly where the player looks, stronger the longer the bow was drawn; uses up an arrow in survival. */
+  /** Seconds until the held staff can cast again. */
+  private castClock = 0;
+
+  /** Casts a magic bolt from the held staff along the view, if there is mana for it. */
+  private castSpell(player: Player, spell: NonNullable<ReturnType<typeof BLOCKS.type>['spell']>): void {
+    if (this.mode === 'survival' && !this.survival.cast(spell.mana)) {
+      this.castClock = 0.25;
+      return;
+    }
+    this.castClock = spell.cooldown;
+    const [dx, dy, dz] = player.direction(), b = player.body;
+    this.projectiles.shoot(b.x + dx * 0.7, player.eyeY - 0.15, b.z + dz * 0.7, dx, dy, dz, toCells(spell.speed), spell.damage, true, true);
+    this.swings++;
+    this.events.sound('place', 0.5);
+    this.version++;
+  }
+
   private shootArrow(player: Player): void {
     const strength = Math.min(1, this.drawS / BOW_DRAW_S);
     this.drawS = 0;
@@ -623,8 +648,9 @@ export class Play {
       : this.mode === 'survival' && !this.survival.dead ? [player.body] : []));
     for (const h of hits) {
       const p = h.p;
+      if (p.magic && this.visualEvents.length < 64) this.visualEvents.push({ kind: 'sparks', x: p.x, y: p.y, z: p.z });
       if (h.kind === 'ground') {
-        if (p.fromPlayer && this.mode === 'survival') this.drops.spawn({ state: ARROW, count: 1 }, p.x, p.y, p.z);
+        if (p.fromPlayer && !p.magic && this.mode === 'survival') this.drops.spawn({ state: ARROW, count: 1 }, p.x, p.y, p.z);
         continue;
       }
       if (!p.fromPlayer) {
@@ -633,6 +659,7 @@ export class Play {
         continue;
       }
       const c = creatures?.list.find((k) => k.body === h.body);
+      if (c && this.hits.length < 32) this.hits.push({ x: c.body.x, y: c.body.y + c.body.height, z: c.body.z, amount: Math.max(1, Math.round(p.damage)), crit: false, age: 0 });
       if (c && creatures!.damage(c, p.damage, p.x - p.vx, p.z - p.vz) && this.mode === 'survival') {
         this.defeated(c);
         for (const loot of lootOf(c)) this.drop(loot, c.body.x, c.body.y, c.body.z);

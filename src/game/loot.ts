@@ -13,11 +13,11 @@ const TABLES: Record<LootTable, { rolls: readonly [number, number]; entries: rea
   ] },
   mine: { rolls: [3, 6], entries: [
     ['coal', 3, 8, 4], ['torch', 4, 10, 3], ['iron_ingot', 1, 4, 4], ['gold_ingot', 1, 3, 2], ['lapis', 2, 6, 2], ['bucket', 1, 1, 1],
-    ['iron_pickaxe', 1, 1, 0.7], ['bone_meal', 2, 5, 1], ['diamond', 1, 1, 0.4], ['ladder', 3, 8, 2], ['swift_anklet', 1, 1, 0.5], ['iron_band', 1, 1, 0.4], ['life_crystal', 1, 1, 0.8],
+    ['iron_pickaxe', 1, 1, 0.7], ['bone_meal', 2, 5, 1], ['diamond', 1, 1, 0.4], ['ladder', 3, 8, 2], ['swift_anklet', 1, 1, 0.5], ['iron_band', 1, 1, 0.4], ['life_crystal', 1, 1, 0.8], ['spark_wand', 1, 1, 0.4],
   ] },
   vault: { rolls: [4, 7], entries: [
     ['diamond', 1, 3, 2], ['gold_ingot', 2, 5, 3], ['iron_ingot', 2, 6, 3], ['iron_chestplate', 1, 1, 1], ['iron_helmet', 1, 1, 1],
-    ['bow', 1, 1, 1.5], ['arrow', 4, 12, 2], ['ember_crystal', 1, 2, 0.6], ['bone_meal', 3, 6, 1], ['lantern', 1, 2, 1], ['cloud_charm', 1, 1, 0.8], ['heart_locket', 1, 1, 0.4], ['life_crystal', 1, 2, 1.5],
+    ['bow', 1, 1, 1.5], ['arrow', 4, 12, 2], ['ember_crystal', 1, 2, 0.6], ['bone_meal', 3, 6, 1], ['lantern', 1, 2, 1], ['cloud_charm', 1, 1, 0.8], ['heart_locket', 1, 1, 0.4], ['life_crystal', 1, 2, 1.5], ['ember_staff', 1, 1, 0.4],
   ] },
   shrine: { rolls: [2, 4], always: [['beacon_shard', 1]], entries: [
     ['ember_crystal', 1, 3, 3], ['diamond', 1, 2, 2], ['gold_ingot', 2, 4, 1], ['ember_ring', 1, 1, 1.5], ['cloud_charm', 1, 1, 0.8], ['life_crystal', 1, 2, 2],

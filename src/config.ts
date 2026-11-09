@@ -426,3 +426,7 @@ export const CRIT_CHANCE = 0.08;
 export const CRIT_FACTOR = 1.5;
 /** Knockback of a hit, as a factor of the base, by weapon kind. */
 export const KNOCKBACK_FACTOR: Readonly<Record<string, number>> = { sword: 1.3, axe: 1.7, hand: 0.7 };
+/** Mana: the most there is, how fast it refills, and the rest after casting before it starts to. */
+export const MAX_MANA = 20;
+export const MANA_PER_S = 4;
+export const MANA_DELAY_S = 0.8;

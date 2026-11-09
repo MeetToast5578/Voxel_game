@@ -168,6 +168,21 @@ describe('play', () => {
     expect(copy.survival.maxHealth).toBe(40);
   });
 
+  it('casts straight-flying magic bolts with a staff while mana lasts', () => {
+    const { play, player, input } = setup('survival');
+    play.inventory.slots[0] = { state: S('ember_staff'), count: 1 };
+    player.pitch = 0.3;
+    (input as { placing: boolean }).placing = true;
+    for (let i = 0; i < 120; i++) play.update(1 / 60, input, player);
+    // 20 mana at 4 a cast: five bolts, then out of mana until it refills.
+    expect(play.projectiles.list.length).toBe(5);
+    expect(play.projectiles.list.every((p) => p.magic)).toBe(true);
+    const p = play.projectiles.list[0]!, vy = p.vy;
+    play.projectiles.update(0.1, () => 0, () => []);
+    expect(p.vy).toBe(vy); // no gravity
+    expect(play.survival.mana).toBeLessThan(4);
+  });
+
   it('sorts the backpack and keeps the last trashed item', () => {
     const { play } = setup('survival');
     play.inventory.slots[0] = { state: S('dirt'), count: 3 };

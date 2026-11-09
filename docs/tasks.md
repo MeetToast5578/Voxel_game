@@ -442,10 +442,10 @@ The owner named all four as bad:
   0.7.0: chance-based rare drops, coins from monsters, gel from slimes.
 
 ### 18.D RPG systems
-- [~] **18.D1 Combat (decided): swing arcs and knockback.** Weapons sweep a visible arc and hit everything in it;
+- [x] **18.D1 Combat (decided): swing arcs and knockback.** Weapons sweep a visible arc and hit everything in it;
   damage numbers, knockback and brief invulnerability; bows and staffs fire projectiles. 0.7.0: sword and axe arcs,
   crits, knockback with stagger, damage numbers, health bars, a slash trail, a 3D swinging held item, and half a
-  second of safety after each bite. Staffs (magic) remain.
+  second of safety after each bite. Magic: Spark Wand and Ember Staff cast mana bolts (mana 20).
 - [~] **18.D2 Gear tiers and rarity:** the material ladder in the art wishlist; item rarity colours. Rarity colours
   done in 0.7.0; the material ladder waits for its ore and tool art.
 - [x] **18.D3 Accessories:** a row of accessory slots with movement and utility effects. Done in 0.7.0: five slots and

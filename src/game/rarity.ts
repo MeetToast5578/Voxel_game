@@ -3,8 +3,8 @@ import type { ItemStack } from './inventory';
 
 export const RARITY_NAMES = ['Common', 'Uncommon', 'Rare', 'Epic', 'Legendary'] as const;
 
-const EPIC = new Set(['life_crystal', 'cloud_charm', 'ember_ring', 'heart_locket', 'slime_crown', 'beacon_shard']);
-const RARE = new Set(['swift_anklet', 'feather_charm', 'iron_band', 'gill_pendant', 'diamond', 'ember_crystal', 'compass', 'map']);
+const EPIC = new Set(['ember_staff', 'life_crystal', 'cloud_charm', 'ember_ring', 'heart_locket', 'slime_crown', 'beacon_shard']);
+const RARE = new Set(['spark_wand', 'swift_anklet', 'feather_charm', 'iron_band', 'gill_pendant', 'diamond', 'ember_crystal', 'compass', 'map']);
 const UNCOMMON = new Set(['gold_ingot', 'lapis', 'lantern', 'bow', 'trade_coin']);
 
 /** How rare an item is, 0 (common) to 4 (legendary): by material and kind, raised by ember upgrades. */
