@@ -55,8 +55,8 @@ h3 small{font-weight:400;color:var(--muted);letter-spacing:0}.section-copy,.help
 .recipe-detail{display:grid;grid-template-columns:auto minmax(0,1fr);gap:4px 12px;margin-top:6px;padding:12px;background:#132326;border:1px solid #2f433d;border-radius:5px}.recipe-detail>img{width:48px;height:48px;image-rendering:pixelated}
 .recipe-detail b{font-size:14px}.recipe-detail small{display:block;font-size:10px;color:var(--muted);min-height:1em}.needs{list-style:none;margin:8px 0 0;padding:0;display:grid;gap:3px;font-size:12px}.needs li{display:flex;align-items:center;gap:6px}.needs img{width:20px;height:20px;image-rendering:pixelated}.needs span{margin-left:auto;font-weight:700;white-space:nowrap}.needs span small{display:inline;font-weight:400;color:var(--muted)}.needs .ok span,.needs .ok{color:#b9d8a5}.needs .short,.needs .short span{color:#e39a86}
 .craft-buttons{grid-column:1/-1;display:flex;gap:8px;margin-top:6px}.craft-buttons .primary{flex:1}
-@media(max-width:1100px){.inventory-screen.kit .inventory-layout{grid-template-columns:auto minmax(0,1fr)}.inventory-screen.kit .crafting{grid-column:1/-1}}
-@media(max-width:700px){.inventory-layout,.inventory-screen.kit .inventory-layout{grid-template-columns:1fr}.character-pane .armour{grid-auto-flow:column}}
+@container(max-width:1060px){.inventory-screen.kit .inventory-layout{grid-template-columns:auto minmax(0,1fr)}.inventory-screen.kit .activity-pane{grid-column:1/-1}}
+@container(max-width:640px){.inventory-layout,.inventory-screen.kit .inventory-layout{grid-template-columns:1fr;gap:10px}.inventory-layout>section{padding:6px;border-width:0}.bag-pane{padding-left:6px}.character-pane .armour{grid-auto-flow:column}.bag-tools{flex-wrap:wrap}}
 .acc-head{margin-top:14px!important}.accessories{display:grid;grid-template-columns:repeat(2,auto);gap:4px}.accessories .slot:last-child{grid-column:1/-1;justify-self:center}.accessories .slot{border-color:#6a5a36}
 @media(max-width:700px){.accessories{grid-auto-flow:column;grid-template-columns:none}.accessories .slot:last-child{grid-column:auto}}
 /* Combat feedback over the view. */
@@ -84,3 +84,4 @@ h3 small{font-weight:400;color:var(--muted);letter-spacing:0}.section-copy,.help
 .bar>span{position:absolute;inset:0;font:700 9px/12px system-ui;text-align:center;color:#fff;text-shadow:0 1px 2px #000}
 .hotbar{border-radius:8px;background:linear-gradient(#152a2de8,#0e1d20e8);box-shadow:0 4px 14px #0006}
 @media(max-width:650px){.bar{width:72px}}
+@container(max-width:400px){.recipe-detail{grid-template-columns:1fr}.recipe-detail>img{width:32px;height:32px}.craft-buttons,.recipe-tools,.needs li{flex-wrap:wrap}.crafting h3{flex-wrap:wrap;gap:4px}.screen .craft-cats button{padding:3px 7px}.crafting,.crafting *{min-width:0}.needs span{white-space:normal}}

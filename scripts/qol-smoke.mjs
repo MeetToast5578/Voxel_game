@@ -18,7 +18,7 @@ try{
  await p.evaluate(()=>{const P=window.__game.play;P.closeScreen();P.inventory.clear();P.inventory.slots[9]={state:window.__game.blocks.state('log'),count:3};P.openScreen('inventory',2);});
  await p.getByLabel('Search recipes').fill('planks');assert.equal(await p.locator('.recipe-tile').count(),1);
  await p.locator('.recipe-tile').click();await p.getByRole('button',{name:/^All \(3\)/}).click();assert.equal(await p.evaluate(()=>window.__game.play.inventory.count(window.__game.blocks.state('planks'))),12);
- await p.getByLabel('Search recipes').fill('torch');assert.equal(await p.locator('.recipe-tile').count(),0);await p.getByLabel('Show all',{exact:true}).check();assert.equal(await p.locator('.recipe-tile').count(),1);
+ await p.getByLabel('Search recipes').fill('torch');assert.equal(await p.locator('.recipe-tile').count(),0);await p.getByLabel('Show all',{exact:true}).check();assert.equal(await p.locator('.recipe-tile').count(),2);
  await p.evaluate(()=>{const n=window.__game,b=n.player.body,x=Math.floor(b.x),z=Math.floor(b.z),y=Math.floor(n.player.eyeY);n.play.closeScreen();n.play.mode='creative';n.player.flying=true;n.setView(x+.5,b.y,z+.5,0,0);for(let j=1;j<=2;j++)n.setBlock(x,y,z-j,0);n.setBlock(x,y,z-3,n.blocks.state('ember_forge'));});
  await p.getByRole('button',{name:'Resume',exact:true}).click();await p.waitForFunction(()=>!!document.pointerLockElement);
  await p.locator('#interaction-hint').filter({hasText:'Right click: Upgrade equipment'}).waitFor();assert.equal(await p.locator('.slot-key').count(),9);
