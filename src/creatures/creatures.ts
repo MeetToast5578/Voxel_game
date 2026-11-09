@@ -61,6 +61,8 @@ const GRAVITY = toCells(GRAVITY_M_S2);
 const STEP = cells(STEP_HEIGHT_M);
 const FALL = cells(CREATURE_FALL_M);
 const THINK_S = 0.25;
+/** Seconds a defeated creature takes to fall over and fade. */
+export const DEATH_S = 0.7;
 /** Seconds between path plans while hunting, and the search budget of one plan. */
 const REPLAN_S = 1;
 const PATH_NODES = 300;
@@ -71,6 +73,8 @@ const PATH_NODES = 300;
  */
 export class Creatures {
   readonly list: Creature[] = [];
+  /** Creatures that just died, for their fall: seconds since, and whether the puff of their passing was shown. */
+  readonly dying: { c: Creature; t: number; puffed: boolean }[] = [];
   private nextId = 1;
   private spawnIn = 0;
 
@@ -85,6 +89,7 @@ export class Creatures {
     }) {}
 
   update(dt: number, ctx: CreatureContext): void {
+    for (let i = this.dying.length - 1; i >= 0; i--) if ((this.dying[i]!.t += dt) > DEATH_S) this.dying.splice(i, 1);
     this.spawnIn -= dt;
     if (this.spawnIn <= 0) {
       this.spawnIn = SPAWN_INTERVAL_S;
@@ -112,7 +117,7 @@ export class Creatures {
       if (c.mode !== 'sleep' && this.rand() < dt / 20) this.events.call?.(c, 'call');
       if (this.burn(c, dt, ctx)) {
         this.events.call?.(c, 'death');
-        this.list.splice(this.list.indexOf(c), 1);
+        this.die(c);
       }
     }
   }
@@ -409,8 +414,13 @@ export class Creatures {
       return false;
     }
     this.events.call?.(c, 'death');
-    this.list.splice(this.list.indexOf(c), 1);
+    this.die(c);
     return true;
+  }
+
+  private die(c: Creature): void {
+    this.list.splice(this.list.indexOf(c), 1);
+    if (this.dying.length < 16) this.dying.push({ c, t: 0, puffed: false });
   }
 
   /** The creature a ray hits first within `reach` cells, and how far along. */

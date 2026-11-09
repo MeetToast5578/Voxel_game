@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { ATTACK_COOLDOWN_S, CREATURE_CAP } from '../config';
-import type { Creature } from '../creatures/creatures';
+import { DEATH_S, type Creature } from '../creatures/creatures';
 import { SPECIES, type Species } from '../creatures/species';
 import { attachWorldFog, type WorldFogUniforms } from './worldFog';
 
@@ -418,9 +418,10 @@ export class ShapeMobs {
     });
   }
 
-  update(list: readonly Creature[], lightAt: (c: Creature) => number, time = 0): void {
+  update(list: readonly Creature[], lightAt: (c: Creature) => number, time = 0, dying: readonly { c: Creature; t: number }[] = []): void {
     this.counts.fill(0);
-    for (const c of list.slice(0, CREATURE_CAP)) {
+    const deadAt = new Map(dying.map((d) => [d.c, d.t]));
+    for (const c of [...list.slice(0, CREATURE_CAP), ...dying.map((d) => d.c)]) {
       const model = MODELS[c.species.key];
       if (!model) continue;
       const b = c.body, h = b.height, speed = Math.hypot(b.vx, b.vz) / Math.max(0.5, c.species.speedM_S / 0.6);
@@ -443,7 +444,21 @@ export class ShapeMobs {
         sx = sz = 1 / Math.sqrt(k);
       }
       if (sleeping && model.plan === 'quad') sy *= 1 + Math.sin(t * 0.9) * 0.015;
+      const dead = deadAt.get(c);
+      if (dead !== undefined) {
+        // Defeated: it tips over onto its side, then shrinks away.
+        const fade = Math.max(0, (dead - DEATH_S * 0.6) / (DEATH_S * 0.4));
+        sx *= 1 - fade;
+        sy *= 1 - fade;
+        sz *= 1 - fade;
+        pose.speed = 0;
+        pose.attack = 0;
+      }
       m.compose(tmpV.set(b.x, b.y + lift * h, b.z), tmpQ.setFromAxisAngle(UP, c.yaw), tmpS.set(h * sx, h * sy, h * sz));
+      if (dead !== undefined && model.plan !== 'slime') {
+        const fall = Math.min(1, dead / (DEATH_S * 0.45));
+        m.multiply(local.makeRotationAxis(FORWARD, (Math.PI / 2) * fall * fall));
+      }
       if (sleeping && model.plan === 'biped') {
         // Lying on one side on the ground.
         m.multiply(local.makeTranslation(0, 0.13, 0)).multiply(local.makeRotationAxis(FORWARD, Math.PI / 2));

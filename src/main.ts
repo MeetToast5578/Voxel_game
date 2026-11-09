@@ -791,7 +791,11 @@ const loop = new FixedStepLoop(1 / 60, 0.25, timedUpdate, (alpha, frameDt) => {
   const burning=creatures.list.filter(c=>c.burning>0).map(c=>({kind:'fire' as const,x:c.body.x,y:c.body.y+c.body.height*.45,z:c.body.z,size:c.body.height*.7}));
   effects.update(frameDt,now/1000,[...burning,...emitters]);
   decorationMeshes.update(play.decorations,world,renderer.camera,lightAt);
-  creatureMeshes.update(creatures.list, (c) => lightAt(c.body.x, c.body.y + c.body.height * 0.6, c.body.z), now / 1000);
+  for (const d of creatures.dying) if (!d.puffed) {
+    d.puffed = true;
+    effects.burst('smoke', d.c.body.x, d.c.body.y + d.c.body.height * 0.4, d.c.body.z, Math.max(0.8, d.c.body.height * 0.8));
+  }
+  creatureMeshes.update(creatures.list, (c) => lightAt(c.body.x, c.body.y + c.body.height * 0.6, c.body.z), now / 1000, creatures.dying);
   // Arrows in flight and bits of broken blocks are drawn like dropped items, smaller.
   const flying = [
     ...play.projectiles.list.map((p) => ({ state: ARROW, x: p.x, y: p.y, z: p.z, size: 0.4 })),
