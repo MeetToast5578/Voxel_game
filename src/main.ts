@@ -22,6 +22,7 @@ import { SPECIES } from './creatures/species';
 import { DecorationMeshes } from './render/decorations';
 import { ShapeMobs } from './render/shapeMobs';
 import { CombatOverlay } from './ui/combatOverlay';
+import { HeldItem } from './render/heldItem';
 import { DropMeshes } from './render/dropMeshes';
 import { BoatMesh } from './render/boatMesh';
 import { FrameGraph } from './ui/frameGraph';
@@ -635,6 +636,8 @@ const hand = document.querySelector<HTMLDivElement>('#hand')!, handImg = hand.qu
 const interactionHint=document.createElement('div');interactionHint.id='interaction-hint';interactionHint.hidden=true;document.body.append(interactionHint);
 let handSwings = 0;
 const combat = new CombatOverlay();
+const heldItem = new HeldItem();
+let heldShown = false;
 /**
  * Automatic resolution: with frames slower than about 45 fps for a couple of seconds, render fewer pixels; with plenty
  * of headroom, more again. Drawing, not the main thread, is what limits most machines.
@@ -653,7 +656,7 @@ function updateHand():void {
   const state=play.held?.state??-1;
   const armour=play.armour[1],key=armour?BLOCKS.type(armour.state).key:'bare';
   const material=key.startsWith('diamond')?'diamond':key.startsWith('iron')?'iron':key.startsWith('leather')?'leather':'bare';
-  hand.style.display=input.playing&&!player.flying&&play.screen==='none'?'':'none';
+  hand.style.display=input.playing&&!player.flying&&play.screen==='none'&&!heldShown?'':'none';
   if(play.swings!==handSwings||(play.breaking>0&&!hand.classList.contains('swing'))){
     handSwings=play.swings;hand.classList.remove('swing');void hand.offsetWidth;hand.classList.add('swing');
   }
@@ -806,6 +809,12 @@ const loop = new FixedStepLoop(1 / 60, 0.25, timedUpdate, (alpha, frameDt) => {
     env.atmosphere.cloudCover, sample?.windSpeed ?? 3, (x, z) => world.column(x >> 4, z >> 4)?.skyTop[((z & 15) << 4) | (x & 15)] ?? -Infinity);
   updateHorizon(cam.x, cam.z);
   renderer.render(now / 1000);
+  heldShown = heldItem.update(frameDt, play.held, {
+    swings: play.swings, slashes: play.slashes, breaking: play.breaking > 0, bob: bobPhase, bobAmount: settings.viewBob ? bobAmount : 0,
+    light: lightAt(player.body.x, player.eyeY, player.body.z), fov: renderer.camera.fov, aspect: renderer.camera.aspect,
+    visible: input.playing && !player.flying && play.screen === 'none' && !play.survival.dead,
+  });
+  heldItem.render(renderer.renderer);
   // The UI redraws when the play state changes, and a few times a second for the survival bars.
   if (!ready && loadingText() === null) {
     // A new world's meta record has no position until its first save, and is not listed until then.

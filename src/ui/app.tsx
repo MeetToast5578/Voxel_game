@@ -96,8 +96,8 @@ function Slot(props: { stack: ItemStack | null; onClick?: (right: boolean, quick
 
 function Bar(props: { value: number; max: number; color: string; label: string }) {
   return (
-    <div class="status-meter"><img class="ui-glyph" alt="" src={artUrl('ui',props.label==='Health'?'status_vitality':props.label==='Hunger'?'status_hunger':'status_breath')} /><div class="bar" title={props.label}>
-      <div style={{ width: `${(100 * Math.max(0, props.value)) / props.max}%`, background: props.color }} />
+    <div class="status-meter"><img class="ui-glyph" alt="" src={artUrl('ui',props.label==='Health'?'status_vitality':props.label==='Hunger'?'status_hunger':'status_breath')} /><div class="bar" title={props.label} role="meter" aria-label={props.label} aria-valuenow={Math.round(props.value)} aria-valuemax={props.max}>
+      <div style={{ width: `${(100 * Math.max(0, props.value)) / props.max}%`, background: props.color }} /><span>{Math.ceil(Math.max(0, props.value))}</span>
     </div></div>
   );
 }

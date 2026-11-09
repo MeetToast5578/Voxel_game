@@ -24,7 +24,7 @@ export class CombatOverlay {
     this.boss.className = 'boss-bar';
     this.boss.innerHTML = '<b></b><div><i></i></div>';
     this.slash.className = 'slash';
-    this.slash.innerHTML = '<svg viewBox="0 0 200 120" aria-hidden="true"><path d="M10 100 Q 100 -30 190 70"/></svg>';
+    this.slash.innerHTML = '<svg viewBox="0 0 200 120" aria-hidden="true"><path d="M190 70 Q 100 -30 10 100"/></svg>';
     this.slash.addEventListener('animationend', () => this.slash.classList.remove('on'));
     this.root.append(this.boss, this.slash);
     document.body.append(this.root);
