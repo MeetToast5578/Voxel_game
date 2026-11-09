@@ -38,3 +38,22 @@ h3 small{font-weight:400;color:var(--muted);letter-spacing:0}.section-copy,.help
 @media(prefers-reduced-motion:reduce){#ui *,#hand{animation:none!important;transition:none!important}}
 .inventory-screen{container-type:inline-size}.newworld label:nth-child(2){grid-column:1/-1}
 @container(max-width:900px){.inventory-layout{grid-template-columns:1fr}.bag-pane{border-left:0;border-top:1px solid var(--line);padding-left:0;padding-top:18px}}
+/* Inventory 2: character, bag and crafting side by side; game-like framed panels. */
+.inventory-screen{width:min(1240px,calc(100vw / var(--gui-scale) - 24px));background:linear-gradient(180deg,#16282b,#0f1c1f);border:2px solid #3f5a4f;box-shadow:0 0 0 1px #0a1416,inset 0 1px 0 #ffffff14,0 24px 90px #000a;border-radius:6px}
+.inventory-layout{grid-template-columns:auto minmax(0,1fr)}.inventory-screen.kit .inventory-layout{grid-template-columns:auto auto minmax(0,1fr)}
+.inventory-layout>section{background:#0b171acc;border:1px solid #2c4039;border-radius:5px;padding:14px;min-width:0}.bag-pane{border-left:1px solid #2c4039;padding-left:14px}
+.bag-pane h3:not(:first-child){margin-top:14px}.bag-pane .grid:first-of-type{padding-bottom:2px}
+.character-pane{display:flex;flex-direction:column;align-items:center}.character-pane .armour{display:grid;gap:4px;padding:0;border:0}.defense{margin:12px 0 0;font-size:11px;color:var(--muted);text-align:center}.defense b{display:block;font:22px Georgia,serif;color:var(--accent)}
+.slot{border-radius:3px;background:linear-gradient(180deg,#0e1c20,#0a1518);border-color:#3e5650;box-shadow:inset 0 2px 4px #000a,inset 0 -1px 0 #ffffff0d}
+.bag-tools{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:12px}.trash{display:flex;align-items:center;gap:8px;font-size:11px;color:var(--muted)}.trash .slot{border-color:#7a4a40;background:#1d1414}
+.crafting{display:flex;flex-direction:column;min-height:0}.station{font-size:11px;padding:2px 8px;border-radius:9px;background:#243937;color:var(--muted)}.station.table{background:#4b3d22;color:var(--accent)}
+.craft-cats{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px}.screen .craft-cats button{padding:4px 10px;font-size:11px;border-radius:12px;background:#132326}.screen .craft-cats button.on{background:var(--accent);color:#182125;border-color:var(--accent);font-weight:700}
+.recipe-grid{display:grid;grid-template-columns:repeat(auto-fill,calc(var(--slot-size) + 4px));gap:4px;max-height:min(220px,30vh);overflow:auto;padding:8px 2px}
+.screen button.recipe-tile{position:relative;width:calc(var(--slot-size) + 4px);height:calc(var(--slot-size) + 4px);padding:3px;background:#0c181d;border:1px solid #2f433d;border-radius:3px}
+.recipe-tile img{width:100%;height:100%;object-fit:contain;image-rendering:pixelated;opacity:.4;filter:grayscale(.7)}.recipe-tile.can img{opacity:1;filter:none}.screen button.recipe-tile.can{border-color:#6f8a6b;background:#13262a}
+.screen button.recipe-tile.on{border:2px solid var(--accent);box-shadow:0 0 10px #dfb87566}.recipe-tile .count{position:absolute;right:3px;bottom:1px;font-size:10px;font-weight:700;text-shadow:1px 1px #000}
+.recipe-detail{display:grid;grid-template-columns:auto minmax(0,1fr);gap:4px 12px;margin-top:6px;padding:12px;background:#132326;border:1px solid #2f433d;border-radius:5px}.recipe-detail>img{width:48px;height:48px;image-rendering:pixelated}
+.recipe-detail b{font-size:14px}.recipe-detail small{display:block;font-size:10px;color:var(--muted);min-height:1em}.needs{list-style:none;margin:8px 0 0;padding:0;display:grid;gap:3px;font-size:12px}.needs li{display:flex;align-items:center;gap:6px}.needs img{width:20px;height:20px;image-rendering:pixelated}.needs span{margin-left:auto;font-weight:700;white-space:nowrap}.needs span small{display:inline;font-weight:400;color:var(--muted)}.needs .ok span,.needs .ok{color:#b9d8a5}.needs .short,.needs .short span{color:#e39a86}
+.craft-buttons{grid-column:1/-1;display:flex;gap:8px;margin-top:6px}.craft-buttons .primary{flex:1}
+@media(max-width:1100px){.inventory-screen.kit .inventory-layout{grid-template-columns:auto minmax(0,1fr)}.inventory-screen.kit .crafting{grid-column:1/-1}}
+@media(max-width:700px){.inventory-layout,.inventory-screen.kit .inventory-layout{grid-template-columns:1fr}.character-pane .armour{grid-auto-flow:column}}

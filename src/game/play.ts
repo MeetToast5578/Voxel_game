@@ -3,12 +3,12 @@ import { lootOf, type Creature, type Creatures } from '../creatures/creatures';
 import { AIR, BLOCKS, SOLID } from '../engine/blocks';
 import type { World } from '../engine/world';
 import { COLLISION, FULL } from './collision';
-import { consumeIngredients, craftResult, takeIngredients, type Recipe } from './crafting';
+import { craft, type Craft, type Station } from './crafting';
 import { Drops } from './drops';
 import { Hints } from './hints';
 import { newFurnace, tickFurnace, type FurnaceState } from './furnace';
 import type { Input } from './input';
-import { clickSlot, Inventory, moveStack, takeOutput, type ItemStack } from './inventory';
+import { clickSlot, HOTBAR_SIZE, insertStack, Inventory, moveStack, takeOutput, type ItemStack } from './inventory';
 import { breakSeconds, dropsOf, wearTool } from './mining';
 import { overlapsSolid } from './physics';
 import type { Player } from './player';
@@ -57,8 +57,7 @@ export class Play {
   readonly survival = new Survival();
   /** First-steps hints in survival, and which are done. */
   readonly hints = new Hints();
-  /** The crafting grid shown in the inventory screen: 2×2, or 3×3 at a table. */
-  readonly craft: (ItemStack | null)[] = new Array(9).fill(null);
+  /** 3 while a workbench is in reach (all recipes), else 2 (hand recipes only). */
   craftSize = 2;
   /** Furnaces by cell key "x,y,z". */
   readonly furnaces = new Map<string, FurnaceState>();
@@ -974,16 +973,22 @@ export class Play {
 
   openScreen(screen: 'inventory' | 'furnace' | 'chest' | WorkshopKind, craftSize = 2): void {
     this.screen = screen;
-    this.craftSize = craftSize;
+    // A workbench within a few steps counts, as in Terraria.
+    this.craftSize = craftSize === 3 || (screen === 'inventory' && this.near(TABLE, 4)) ? 3 : 2;
     this.version++;
   }
 
-  /** Closes any screen; the crafting grid and the cursor go back to the inventory. */
-  closeScreen(): void {
-    for (let i = 0; i < 9; i++) {
-      if (this.craft[i]) this.give(this.craft[i]!, ...this.feet);
-      this.craft[i] = null;
+  /** Whether a block of type `type` (any variant) is within `r` cells of the feet. */
+  private near(type: number, r: number): boolean {
+    const [fx, fy, fz] = this.feet.map(Math.floor) as [number, number, number];
+    for (let y = fy - 2; y <= fy + 3; y++) for (let z = fz - r; z <= fz + r; z++) for (let x = fx - r; x <= fx + r; x++) {
+      if (BLOCKS.type(this.world.get(x, y, z)).id === type) return true;
     }
+    return false;
+  }
+
+  /** Closes any screen; the cursor goes back to the inventory. */
+  closeScreen(): void {
     if (this.cursor) this.give(this.cursor, ...this.feet);
     this.cursor = null;
     this.screen = 'none';
@@ -993,52 +998,41 @@ export class Play {
     this.version++;
   }
 
-  /** Whether the inventory and the grid together hold what `r` needs, and it fits the open grid. */
-  canMake(r: Recipe): boolean {
-    return takeIngredients(r, this.craftSize, [...this.inventory.slots, ...this.craft]) !== null;
+  /** Where crafting happens now: at a workbench (opened from one, or one in reach) or by hand. */
+  get station(): Station {
+    return this.craftSize === 3 ? 'table' : 'hand';
   }
 
-  /** The recipe list: puts the grid back into the inventory, then lays out `r` from it. Returns whether it could. */
-  fillRecipe(r: Recipe): boolean {
-    // Work on a copy: the grid goes back into the inventory first, and nothing changes unless all of it fits.
-    const slots = this.inventory.slots.map((s) => s && { ...s });
-    const back = new Inventory();
-    back.slots.splice(0, back.slots.length, ...slots);
-    if (this.craft.some((c) => c && back.add({ ...c }) > 0)) return false;
-    const grid = takeIngredients(r, this.craftSize, back.slots);
-    if (!grid) return false;
-    this.inventory.slots.splice(0, this.inventory.slots.length, ...back.slots);
-    for (let i = 0; i < 9; i++) this.craft[i] = grid[i] ?? null;
-    this.version++;
-    return true;
-  }
-
-  /** What the grid crafts now. */
-  get craftOutput(): ItemStack | null {
-    const cells = this.craft.slice(0, this.craftSize * this.craftSize);
-    return craftResult(cells, this.craftSize);
-  }
-
-  /** Takes the crafted result onto the cursor (if it fits there) and uses up the ingredients. */
-  takeCraft(quick=false): void {
-    if(quick){
-      if(this.cursor)return;
-      for(let batch=0;batch<64;batch++){
-        const out=this.craftOutput;if(!out)break;
-        const next=new Inventory();this.inventory.slots.forEach((s,i)=>next.slots[i]=s?{...s}:null);
-        if(next.add(out)!==0)break;
-        next.slots.forEach((s,i)=>this.inventory.slots[i]=s);
-        const cells=this.craft.slice(0,this.craftSize*this.craftSize);consumeIngredients(cells);cells.forEach((s,i)=>this.craft[i]=s);
-      }
-      this.version++;return;
+  /** Makes `c` from the inventory, `times` times at most; what does not fit stays unmade. Returns how many were made. */
+  craftItem(c: Craft, times = 1): number {
+    const made = craft(c, this.inventory, this.station, times);
+    if (made) {
+      this.events.sound('place');
+      this.version++;
     }
-    const out = this.craftOutput;
-    if (!out) return;
-    if (this.cursor && (this.cursor.state !== out.state || this.cursor.count + out.count > (BLOCKS.type(out.state).maxStack ?? 64))) return;
-    this.cursor = this.cursor ? { ...this.cursor, count: this.cursor.count + out.count } : out;
-    const cells = this.craft.slice(0, this.craftSize * this.craftSize);
-    consumeIngredients(cells);
-    cells.forEach((c, i) => (this.craft[i] = c));
+    return made;
+  }
+
+  /** The trash slot: what was last thrown away, until something else replaces it. */
+  trash: ItemStack | null = null;
+
+  /** A click on the trash slot: the cursor goes in (destroying what was there), or an empty cursor takes it back. */
+  clickTrash(): void {
+    if (this.cursor) [this.trash, this.cursor] = [this.cursor, null];
+    else [this.cursor, this.trash] = [this.trash, null];
+    this.version++;
+  }
+
+  /** Merges stacks and orders the backpack (not the hotbar) by kind and name: tools, armour, blocks, then items. */
+  sortBackpack(): void {
+    const slots = this.inventory.slots, bag = slots.slice(HOTBAR_SIZE).filter((s): s is ItemStack => s !== null);
+    slots.fill(null, HOTBAR_SIZE);
+    const rank = (s: ItemStack) => {
+      const t = BLOCKS.type(s.state);
+      return t.tool ? 0 : t.armour ? 1 : t.food ? 3 : t.item ? 4 : 2;
+    };
+    bag.sort((a, b) => rank(a) - rank(b) || BLOCKS.type(a.state).name.localeCompare(BLOCKS.type(b.state).name) || a.state - b.state || (a.wear ?? 0) - (b.wear ?? 0));
+    for (const s of bag) insertStack(slots, s, HOTBAR_SIZE);
     this.version++;
   }
 

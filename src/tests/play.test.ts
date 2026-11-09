@@ -7,7 +7,7 @@ import type { Input } from '../game/input';
 import { COLLISION } from '../game/collision';
 import { Play, weaponDamage } from '../game/play';
 import { tickFurnace } from '../game/furnace';
-import { RECIPES } from '../game/crafting';
+import { CRAFTS } from '../game/crafting';
 import { Player } from '../game/player';
 
 const S = (key: string, v = 0) => BLOCKS.state(key, v);
@@ -105,46 +105,52 @@ describe('play', () => {
     expect(play.furnaces.get('3,0,0')!.output).toEqual({ state: S('glass'), count: 1 });
   });
 
-  it('crafts from the grid onto the cursor', () => {
-    const { play } = setup('survival');
-    play.craft[0] = { state: S('log'), count: 2 };
-    play.takeCraft();
-    expect(play.cursor).toEqual({ state: S('planks'), count: 4 });
-    expect(play.craft[0]!.count).toBe(1);
-    play.closeScreen();
-    expect(play.inventory.count(S('planks'))).toBe(4);
-    expect(play.inventory.count(S('log'))).toBe(1);
-  });
-
-  it('lays out a recipe from the inventory, only when everything is there and it fits the grid', () => {
-    const { play } = setup('survival');
-    const recipe = (key: string) => RECIPES.find((r) => r.result[0] === key)!;
-    play.inventory.add({ state: S('planks'), count: 3 });
+  it('crafts from a list: hand recipes anywhere, workbench recipes near a table', () => {
+    const { play, world } = setup('survival');
+    const find = (key: string) => CRAFTS.find((c) => c.result[0] === key)!;
+    play.inventory.add({ state: S('log'), count: 2 });
+    play.openScreen('inventory');
+    expect(play.station).toBe('hand');
+    expect(play.craftItem(find('planks'), 5)).toBe(2);
+    expect(play.inventory.count(S('planks'))).toBe(8);
     play.inventory.add({ state: S('stick'), count: 2 });
-    play.openScreen('inventory', 2);
-    expect(play.canMake(recipe('wooden_pickaxe'))).toBe(false); // 3×3 only
-    play.openScreen('inventory', 3);
-    expect(play.fillRecipe(recipe('wooden_pickaxe'))).toBe(true);
-    expect(play.craftOutput).toEqual({ state: S('wooden_pickaxe'), count: 1 });
-    expect(play.inventory.count(S('planks')) + play.inventory.count(S('stick'))).toBe(0);
-    // Not enough for a chest (eight planks): nothing moves.
-    expect(play.fillRecipe(recipe('chest'))).toBe(false);
-    expect(play.craftOutput).toEqual({ state: S('wooden_pickaxe'), count: 1 });
-    // Another recipe takes the grid back into the inventory first.
-    expect(play.fillRecipe(recipe('stick'))).toBe(true);
-    expect(play.craftOutput).toEqual({ state: S('stick'), count: 4 });
-    expect(play.inventory.count(S('planks'))).toBe(1);
+    expect(play.craftItem(find('wooden_pickaxe'))).toBe(0); // needs a workbench
+    world.set(2, 0, 0, S('crafting_table'));
+    play.openScreen('inventory');
+    expect(play.station).toBe('table');
+    expect(play.craftItem(find('wooden_pickaxe'))).toBe(1);
+    expect(play.inventory.count(S('wooden_pickaxe'))).toBe(1);
+    expect(play.inventory.count(S('planks'))).toBe(5);
+    expect(play.inventory.count(S('stick'))).toBe(0);
+    // Not enough for a chest (eight planks): nothing is used.
+    expect(play.craftItem(find('chest'))).toBe(0);
+    expect(play.inventory.count(S('planks'))).toBe(5);
   });
 
-  it('leaves the grid alone when a recipe is picked with no room to put the grid back', () => {
+  it('keeps the ingredients when the result has no room', () => {
     const { play } = setup('survival');
-    play.openScreen('inventory', 2);
     for (let i = 0; i < 36; i++) play.inventory.slots[i] = { state: S('dirt'), count: 64 };
-    play.inventory.slots[0] = { state: S('planks'), count: 2 };
-    play.craft[0] = { state: S('log'), count: 1 };
-    expect(play.fillRecipe(RECIPES.find((r) => r.result[0] === 'stick')!)).toBe(false);
-    expect(play.craft[0]).toEqual({ state: S('log'), count: 1 });
-    expect(play.drops.list).toHaveLength(0);
+    play.inventory.slots[0] = { state: S('planks'), count: 4 };
+    expect(play.craftItem(CRAFTS.find((c) => c.result[0] === 'stick')!)).toBe(0);
+    expect(play.inventory.slots[0]).toEqual({ state: S('planks'), count: 4 });
+  });
+
+  it('sorts the backpack and keeps the last trashed item', () => {
+    const { play } = setup('survival');
+    play.inventory.slots[0] = { state: S('dirt'), count: 3 };
+    play.inventory.slots[12] = { state: S('dirt'), count: 10 };
+    play.inventory.slots[20] = { state: S('stone_pickaxe'), count: 1, wear: 3 };
+    play.inventory.slots[30] = { state: S('dirt'), count: 5 };
+    play.sortBackpack();
+    expect(play.inventory.slots[0]).toEqual({ state: S('dirt'), count: 3 });
+    expect(play.inventory.slots[9]).toEqual({ state: S('stone_pickaxe'), count: 1, wear: 3 });
+    expect(play.inventory.slots[10]).toEqual({ state: S('dirt'), count: 15 });
+    expect(play.inventory.slots.slice(11).every((s) => s === null)).toBe(true);
+    play.cursor = { state: S('dirt'), count: 15 };
+    play.clickTrash();
+    expect(play.cursor).toBeNull();
+    play.clickTrash();
+    expect(play.cursor).toEqual({ state: S('dirt'), count: 15 });
   });
 
   it('hits hardest with a sword, by tier, and weaker when swinging too fast', () => {

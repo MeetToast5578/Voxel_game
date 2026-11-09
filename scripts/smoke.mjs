@@ -83,8 +83,6 @@ try {
       n.play.inventory.add({ state: S('log'), count: 5 });
       n.play.inventory.add({ state: S('cobblestone'), count: 20 });
       n.play.inventory.add({ state: S('stone_pickaxe'), count: 1, wear: 40 });
-      n.play.craft[0] = { state: S('planks'), count: 2 };
-      n.play.craft[2] = { state: S('planks'), count: 2 };
       n.play.openScreen('inventory', 2);
     });
     await page.waitForTimeout(500);

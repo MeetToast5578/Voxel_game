@@ -39,12 +39,6 @@ describe('inventory quality of life',()=>{
   f.output={state:S('iron_ingot'),count:10};p.cursor={state:S('iron_ingot'),count:63};p.takeFurnaceOutput();expect(p.cursor.count).toBe(64);expect(f.output?.count).toBe(9);
   p.cursor=null;p.takeFurnaceOutput(false,true);expect(f.output).toBeNull();expect(p.inventory.count(S('iron_ingot'))).toBe(9);
  });
- it('bulk crafts full recipes only and leaves ingredients intact when output does not fit',()=>{
-  const p=play();p.craft[0]={state:S('log'),count:3};p.takeCraft(true);expect(p.inventory.count(S('planks'))).toBe(12);expect(p.craft[0]).toBeNull();expect(p.cursor).toBeNull();
-  for(let i=0;i<36;i++)p.inventory.slots[i]={state:S('dirt'),count:64};
-  p.inventory.slots[0]={state:S('planks'),count:62};p.craft[0]={state:S('log'),count:1};p.takeCraft(true);
-  expect(p.craft[0]?.count).toBe(1);expect(p.inventory.count(S('planks'))).toBe(62);
- });
  it('prompts supported interactions while leaving decorative blocks without a false use action',()=>{
   expect(blockInteractionHint(S('sign'))).toContain('Edit sign');expect(blockInteractionHint(S('trading_post'))).toContain('Trade');
   expect(blockInteractionHint(S('stone'))).toBe('Stone');

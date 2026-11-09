@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'preact/hooks';
 import { BLOCK_SIZE_M, BODY_COLD_C, BODY_HOT_C, MAX_HEALTH, MAX_HUNGER, BREATH_S, MAX_VIEW_CHUNKS, MIN_VIEW_CHUNKS } from '../config';
 import { BLOCKS } from '../engine/blocks';
 import { clickSlot, type ItemStack } from '../game/inventory';
-import { fits, RECIPES, type Recipe } from '../game/crafting';
+import { canCraft, CRAFTS, haveFor, timesCraftable } from '../game/crafting';
 import { MILESTONES } from '../game/journal';
 import { version } from '../../package.json';
 import type { Mode, Play } from '../game/play';
@@ -164,16 +164,42 @@ function WorkshopScreen({play}:{play:Play}) {
   </div>;
 }
 
+/** The left column of the survival inventory: worn armour and what it adds up to. */
+function Character({ play }: { play: Play }) {
+  const protection = play.armour.reduce((n, a) => n + (a ? (BLOCKS.type(a.state).armour!.protection + (a.upgrade ?? 0)) * 4 : 0), 0);
+  return <section class="character-pane"><h3>Equipment</h3>
+    <div class="armour">{play.armour.map((a, i) => <Slot key={i} stack={a} title={a ? undefined : ['Helmet', 'Chest armour', 'Leg armour', 'Boots'][i]} onClick={(right) => play.clickArmour(i, right)} />)}</div>
+    <p class="defense" title="Share of harm your armour stops"><b>{Math.min(80, protection)}%</b> defense</p>
+  </section>;
+}
+
 function InventoryScreen({ play }: { play: Play }) {
   const [search,setSearch]=useState('');
   const filtered=PALETTE.filter(state=>tooltip({state,count:1}).split('\n')[0]!.toLowerCase().includes(search.trim().toLowerCase()));
   const inv = play.inventory.slots;
   const furnace = play.screen === 'furnace' && play.openFurnace ? play.furnaces.get(play.openFurnace) : undefined;
   const chest = play.screen === 'chest' && play.openChest ? play.chests.get(play.openChest) : undefined;
+  const survivalKit = !chest && !furnace && play.mode !== 'creative';
   return (
-    <div class="screen inventory-screen" role="dialog" aria-modal="true" aria-label={chest?'Chest':furnace?'Furnace':'Inventory'} onContextMenu={(e) => e.preventDefault()}>
-      <ScreenHead title={chest?'Chest':furnace?'Furnace':play.mode==='creative'?'Builder’s kit':'Inventory'} subtitle={chest?'Store supplies or transfer them to your pack.':furnace?'Add a material and fuel. Collect the finished result.':'Equipment, crafting and supplies for your next journey.'} close={()=>play.closeScreen()}/>
-      <div class="inventory-layout"><section class="activity-pane">
+    <div class={`screen inventory-screen${survivalKit ? ' kit' : ''}`} role="dialog" aria-modal="true" aria-label={chest?'Chest':furnace?'Furnace':'Inventory'} onContextMenu={(e) => e.preventDefault()}>
+      <ScreenHead title={chest?'Chest':furnace?'Furnace':play.mode==='creative'?'Builder’s kit':'Inventory'} subtitle={chest?'Store supplies or transfer them to your pack.':furnace?'Add a material and fuel. Collect the finished result.':play.mode==='creative'?'Every block and item, ready to place.':play.station==='table'?'At a workbench: every recipe is open to you.':'Crafting by hand. Stand near a workbench for more recipes.'} close={()=>play.closeScreen()}/>
+      <div class="inventory-layout">
+      {survivalKit && <Character play={play} />}
+      <section class="bag-pane">
+        <h3>Hotbar <small>1–9 to select</small></h3>
+        <Grid slots={inv} from={0} to={9} play={play} />
+        <h3>Backpack <small>{inv.filter(Boolean).length}/36</small></h3>
+        <Grid slots={inv} from={9} to={36} play={play} />
+        <div class="bag-tools">
+          <button onClick={() => play.sortBackpack()} title="Merge stacks and sort the backpack">Sort</button>
+          <div class="trash" title="Trash: drop an item here to destroy it. Click again to take back the last one.">
+            <Slot stack={play.trash} title={play.trash ? `Trash: ${tooltip(play.trash)}` : 'Trash'} dim onClick={() => play.clickTrash()} /><span>Trash</span>
+          </div>
+        </div>
+        <p class="hint">Shift-click to transfer · Right-click to split or place one</p>
+        {play.cursor && <div class="hint">Holding {BLOCKS.type(play.cursor.state).name} × {play.cursor.count}. E or Esc closes.</div>}
+      </section>
+      <section class="activity-pane">
       {chest ? (
         <><h3>Storage</h3><Grid slots={chest} from={0} to={chest.length} play={play} /></>
       ) : furnace ? (
@@ -192,26 +218,9 @@ function InventoryScreen({ play }: { play: Play }) {
         <div class="palette">
           {filtered.map((s) => <Slot key={s} stack={{ state: s, count: 1 }} onClick={() => { play.cursor = { state: s, count: BLOCKS.type(s).maxStack ?? 64 }; play.version++; }} />)}
         </div>{filtered.length===0&&<p role="status">No matching blocks or items.</p>}</>
-      ) : (
-        <>
-          <h3>Equipment &amp; crafting</h3><div class="row">
-            <div class="col armour" title="Armour: head, chest, legs, feet">
-              {play.armour.map((a, i) => <Slot key={i} stack={a} title={a?undefined:['Helmet','Chest armour','Leg armour','Boots'][i]} onClick={(right) => play.clickArmour(i, right)} />)}
-            </div>
-            <Grid slots={play.craft} from={0} to={play.craftSize * play.craftSize} play={play} cols={play.craftSize} />
-            <span class="arrow">→</span>
-            <Slot big stack={play.craftOutput} onClick={(_r,q) => play.takeCraft(q)} />
-          </div>
-          <RecipeList play={play} />
-        </>
-      )}
-      </section><section class="bag-pane"><h3>Backpack <small>{inv.filter(Boolean).length}/36 slots</small></h3>
-      <Grid slots={inv} from={9} to={36} play={play} />
-      <h3>Quick access</h3>
-      <Grid slots={inv} from={0} to={9} play={play} />
-      <p class="hint">Shift-click to transfer · Right-click to split or place one · Shift+Enter for keyboard transfer</p>
-      {play.cursor && <div class="hint">Holding {BLOCKS.type(play.cursor.state).name} × {play.cursor.count}. E or Esc closes.</div>}
-      </section></div>
+      ) : <CraftingPanel play={play} />}
+      </section>
+      </div>
     </div>
   );
 }
@@ -350,19 +359,47 @@ const CONTROLS = `WASD move · Space jump / swim · Shift down (flying) · Ctrl 
   T skip an hour · +/− view distance · F3 debug text. Creative building: B marks a corner, B again fills the box with
   the held block; G does the same to clear it; Ctrl+Z undo, Ctrl+Y redo.`;
 
-/** Ingredients of a recipe, for its tooltip: '3 × Planks, 2 × Stick'. */
-function ingredients(r: Recipe): string {
-  const counts = new Map<string, number>();
-  for (const row of r.pattern) for (const ch of row) if (ch !== ' ') counts.set(ch, (counts.get(ch) ?? 0) + 1);
-  return [...counts].map(([ch, n]) => `${n} × ${r.key[ch]!.map((k) => BLOCKS.type(BLOCKS.state(k)).name).join(' or ')}`).join(', ');
+const CATEGORIES = ['All', 'Tools', 'Armour', 'Building', 'Furniture', 'Items'] as const;
+const FURNITURE = new Set(['crafting_table', 'furnace', 'chest', 'campfire', 'bed', 'trading_post', 'ember_forge', 'beacon', 'sign', 'item_frame', 'lantern', 'torch', 'door', 'ladder']);
+function category(key: string): (typeof CATEGORIES)[number] {
+  const t = BLOCKS.byName(key);
+  return t.tool || ['bow', 'arrow', 'fishing_rod', 'bucket'].includes(key) ? 'Tools' : t.armour ? 'Armour' : FURNITURE.has(key) ? 'Furniture' : t.item ? 'Items' : 'Building';
 }
 
-/** Every recipe; those you can make now are bright, and a click lays one out in the grid. */
-function RecipeList({ play }: { play: Play }) {
-  const [search,setSearch]=useState(''),[available,setAvailable]=useState(false);
-  const recipes=RECIPES.filter(r=>BLOCKS.byName(r.result[0]).name.toLowerCase().includes(search.trim().toLowerCase())&&(!available||play.canMake(r)));
-  return <section class="recipes"><h3>Recipe book <small>{recipes.length} recipes</small></h3><div class="recipe-tools"><input type="search" aria-label="Search recipes" placeholder="Find a recipe…" value={search} onInput={e=>setSearch(e.currentTarget.value)}/><label class="check"><input type="checkbox" checked={available} onChange={e=>setAvailable(e.currentTarget.checked)}/>Craftable</label></div>
-    <div class="recipe-list">{recipes.map(r=>{const out={state:BLOCKS.state(r.result[0]),count:r.result[1]},can=play.canMake(r),small=!fits(r,play.craftSize);return <button key={r.result[0]+':'+r.pattern.join('/')+':'+Object.values(r.key).flat().join('/')} class={'recipe-card'+(can?' available':'')} title={ingredients(r)} onClick={()=>play.fillRecipe(r)}><img alt="" src={stackIconUrl(out)}/><span><b>{BLOCKS.type(out.state).name}{out.count>1?' × '+out.count:''}</b><small>{ingredients(r)}</small></span><em>{small?'Workbench':can?'Prepare':'Missing items'}</em></button>;})}</div>{recipes.length===0&&<p class="empty-state" role="status">No matching recipes.</p>}<p class="hint">Choose a recipe to prepare its ingredients, then collect the result above.</p>
+/** Terraria-style crafting: what you can make from what you carry, by category; pick one to see it and make it. */
+function CraftingPanel({ play }: { play: Play }) {
+  const [search, setSearch] = useState(''), [cat, setCat] = useState<(typeof CATEGORIES)[number]>('All');
+  const [all, setAll] = useState(false), [picked, setPicked] = useState<string | null>(null);
+  const slots = play.inventory.slots, q = search.trim().toLowerCase();
+  const list = CRAFTS.filter((c) => (cat === 'All' || category(c.result[0]) === cat) && BLOCKS.byName(c.result[0]).name.toLowerCase().includes(q))
+    .map((c) => ({ c, can: canCraft(c, slots, play.station) }))
+    .filter((e) => all || e.can)
+    .sort((a, b) => Number(b.can) - Number(a.can));
+  const sel = list.find((e) => e.c.id === picked) ?? list[0];
+  const times = sel ? (canCraft(sel.c, slots, play.station) ? timesCraftable(sel.c, slots) : 0) : 0;
+  const out = sel && { state: BLOCKS.state(sel.c.result[0]), count: sel.c.result[1] };
+  return <section class="crafting">
+    <h3>Crafting <small class={`station ${play.station}`}>{play.station === 'table' ? '⚒ Workbench' : '✋ By hand'}</small></h3>
+    <div class="craft-cats" role="tablist">{CATEGORIES.map((k) => <button key={k} role="tab" aria-selected={cat === k} class={cat === k ? 'on' : ''} onClick={() => setCat(k)}>{k}</button>)}</div>
+    <div class="recipe-tools"><input type="search" aria-label="Search recipes" placeholder="Find a recipe…" value={search} onInput={(e) => setSearch(e.currentTarget.value)} />
+      <label class="check"><input type="checkbox" checked={all} onChange={(e) => setAll(e.currentTarget.checked)} />Show all</label></div>
+    <div class="recipe-grid">{list.map(({ c, can }) => <button key={c.id} class={`recipe-tile${can ? ' can' : ''}${sel?.c.id === c.id ? ' on' : ''}`} title={BLOCKS.byName(c.result[0]).name}
+      onClick={(e) => { setPicked(c.id); if (e.shiftKey && can) play.craftItem(c, timesCraftable(c, slots)); }}
+      onDblClick={() => can && play.craftItem(c)}>
+      <img alt="" src={stackIconUrl({ state: BLOCKS.state(c.result[0]), count: 1 })} />{c.result[1] > 1 && <span class="count">{c.result[1]}</span>}</button>)}</div>
+    {list.length === 0 && <p class="empty-state" role="status">{all || q ? 'No matching recipes.' : 'Nothing to craft from what you carry yet. Chop a tree for logs, or tick Show all.'}</p>}
+    {sel && out && <div class="recipe-detail">
+      <img alt="" src={stackIconUrl(out)} />
+      <div><b>{BLOCKS.type(out.state).name}{out.count > 1 ? ` × ${out.count}` : ''}</b>
+        <small>{tooltip(out).split('\n').slice(1).join(' · ')}</small>
+        <ul class="needs">{sel.c.needs.map((n, i) => { const have = haveFor(slots, n.keys); return <li key={i} class={have >= n.count ? 'ok' : 'short'}>
+          <img alt="" src={iconUrl(BLOCKS.state(n.keys[0]!))} />{n.keys.map((k) => BLOCKS.byName(k).name).join(' or ')}<span>{n.count} <small>· have {have}</small></span></li>; })}
+          {sel.c.station === 'table' && <li class={play.station === 'table' ? 'ok' : 'short'}>⚒ Workbench nearby</li>}</ul></div>
+      <div class="craft-buttons">
+        <button class="primary" disabled={times < 1} onClick={() => play.craftItem(sel.c)}>Craft</button>
+        <button disabled={times < 2} onClick={() => play.craftItem(sel.c, times)} title="Craft as many as you can">All ({times})</button>
+      </div>
+    </div>}
   </section>;
 }
 
