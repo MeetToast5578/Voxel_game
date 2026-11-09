@@ -923,14 +923,16 @@ export class Play {
       this.version++;
       return;
     }
-    if (heldType.key === 'slime_crown' && this.creatures) {
-      // Calls the Slime King: it drops in a little way off, ready to fight. One at a time.
+    if ((heldType.key === 'slime_crown' || heldType.key === 'moth_lure') && this.creatures) {
+      // Calls a boss: it arrives a little way off, ready to fight. One at a time; the Matriarch only comes at night.
+      const moth = heldType.key === 'moth_lure';
       if (this.creatures.list.some((c) => c.species.boss)) this.toast('A boss is already here', 3);
+      else if (moth && this.daylight > 0.35) this.toast('The lure only draws her out at night', 3);
       else {
-        const king = SPECIES_BY_KEY.get('king_slime')!, [x, y, z] = this.feet, a = Math.random() * Math.PI * 2;
-        this.creatures.add(king, x + Math.cos(a) * 9, y + 6, z + Math.sin(a) * 9, king.health);
+        const boss = SPECIES_BY_KEY.get(moth ? 'gloom_matriarch' : 'king_slime')!, [x, y, z] = this.feet, a = Math.random() * Math.PI * 2;
+        this.creatures.add(boss, x + Math.cos(a) * 9, y + (moth ? 10 : 6), z + Math.sin(a) * 9, boss.health);
         if (this.mode === 'survival') this.inventory.useHeld();
-        this.toast('The Slime King has awoken!', 4);
+        this.toast(moth ? 'The Gloom Matriarch descends!' : 'The Slime King has awoken!', 4);
       }
       return;
     }
@@ -1157,6 +1159,9 @@ export class Play {
     }
     return made;
   }
+
+  /** How light the sky is, 0 (night) to 1 (day); kept up to date by the game loop. */
+  daylight = 1;
 
   /** The trash slot: what was last thrown away, until something else replaces it. */
   trash: ItemStack | null = null;

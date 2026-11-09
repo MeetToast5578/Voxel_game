@@ -164,6 +164,25 @@ function bat(): Model {
   ]) };
 }
 
+/** A moth: a furry body and head, feathery antennae, glowing eyes and two pairs of patterned wings. */
+function moth(s: Species): Model {
+  const c = (v: readonly number[]) => (v[0]! << 16) | (v[1]! << 8) | v[2]!;
+  const fur = c(s.colours.body), dark = c(s.colours.head), glow = c(s.colours.legs);
+  const wing = (side: number, back: boolean) => joint('wing', [side * 0.08, 0.04, back ? 0.08 : -0.04], [
+    ball([side * 0.3, 0, back ? 0.12 : -0.02], [0.56, 0.02, back ? 0.36 : 0.44], fur, [0, side * (back ? -0.5 : 0.4), 0]),
+    ball([side * 0.34, 0.012, back ? 0.14 : -0.04], [0.2, 0.02, 0.16], glow, undefined, true),
+    ball([side * 0.3, 0.014, back ? 0.12 : -0.02], [0.1, 0.02, 0.08], dark),
+  ], [], { side });
+  const head = joint('head', [0, 0.04, -0.2], [
+    ball([0, 0, 0], [0.18, 0.16, 0.16], fur),
+    ...[-1, 1].map((sd) => ball([sd * 0.06, 0.02, -0.07], [0.07, 0.07, 0.05], glow, undefined, true)),
+    ...[-1, 1].map((sd) => cone([sd * 0.05, 0.13, -0.05], [0.06, 0.2, 0.02], dark, [-0.5, 0, -sd * 0.4])),
+  ]);
+  return { plan: 'bat', restDrop: 0, root: joint('root', [0, 0.5, 0], [
+    ball([0, 0, 0.12], [0.18, 0.18, 0.4], fur), ball([0, 0.01, -0.06], [0.2, 0.2, 0.18], 0xe8e0d0),
+  ], [head, wing(-1, false), wing(1, false), wing(-1, true), wing(1, true)]) };
+}
+
 /** A fish: a long body, a beating tail fin, a back fin and eyes. */
 function fish(s: Species): Model {
   const c = (v: readonly number[]) => (v[0]! << 16) | (v[1]! << 8) | v[2]!;
@@ -301,6 +320,7 @@ const MODELS: Record<string, Model> = {
 };
 for (const s of SPECIES) if (s.hops) MODELS[s.key] = slime(s);
 for (const m of [MODELS.rabbit]) m!.hop = true;
+for (const key of ['gloom_moth', 'gloom_matriarch']) MODELS[key] = moth(SPECIES.find((s) => s.key === key)!);
 
 export function hasShapeModel(key: string): boolean { return key in MODELS; }
 

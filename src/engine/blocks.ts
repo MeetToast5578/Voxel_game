@@ -373,6 +373,7 @@ function gameplay(): BlockSpec[] {
     item('gel', 'Gel', { fuel: 20 }),
     item('slime_crown', 'Gel Crown', { maxStack: 1 }),
     item('life_crystal', 'Life Crystal', { maxStack: 16 }),
+    item('moth_lure', 'Moth Lure', { maxStack: 1 }),
     item('spark_wand', 'Spark Wand', { maxStack: 1, spell: { damage: 3.5, mana: 2, cooldown: 0.3, speed: 22 } }),
     item('ember_staff', 'Ember Staff', { maxStack: 1, spell: { damage: 8, mana: 4, cooldown: 0.4, speed: 26 } }),
     item('stick', 'Stick', { fuel: 5 }),

@@ -9,6 +9,23 @@ type Icon = readonly [palette: Readonly<Record<string, string>>, rows: readonly 
 
 const GOLD = { g: '#e8b84a', G: '#fff0a8', o: '#a8742a' };
 const ICONS: Readonly<Record<string, Icon>> = {
+  moth_lure: [{ p: '#7a60a0', P: '#b8a0e0', y: '#e8ff90', Y: '#ffffff', w: '#8a6040', ...GOLD }, [
+    '.......gg.......',
+    '......g..g......',
+    '.......gg.......',
+    '......gGgg......',
+    '.....pPPPPp.....',
+    '....pPyyyyPp....',
+    '....pyYYYyyp....',
+    '....pyYyyyyp....',
+    '....pyyyyyyp....',
+    '.....pyyyyp.....',
+    '......gggg......',
+    '......gGgg......',
+    '.......ww.......',
+    '................',
+    '................',
+    '................']],
   spark_wand: [{ w: '#8a6040', W: '#b88a5a', b: '#4a8ae0', B: '#c0e4ff', y: '#fff6a0' }, [
     '................',
     '...........y....',

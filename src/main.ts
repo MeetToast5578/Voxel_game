@@ -767,6 +767,7 @@ const loop = new FixedStepLoop(1 / 60, 0.25, timedUpdate, (alpha, frameDt) => {
   const atmosphereCamera = renderer.camera.position;
   renderer.setAtmosphere(env.frame(frameDt, atmosphereCamera.x, atmosphereCamera.y, atmosphereCamera.z, world));
   const daylight = renderer.uniforms.daylight!.value as number;
+  play.daylight = daylight;
   /** Brightness (0..1) of a cell for things drawn outside the terrain. */
   const lightAt = (cx: number, cy: number, cz: number) => {
     const x = Math.floor(cx), y = Math.floor(cy), z = Math.floor(cz);

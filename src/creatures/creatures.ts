@@ -429,9 +429,9 @@ export class Creatures {
       c.mode = 'flee';
       c.goal = [c.body.x + (dx / len) * toCells(12), c.body.z + (dz / len) * toCells(12)];
     }
-    if (c.health > 0 && c.species.key === 'king_slime' && this.rand() < 0.4 && this.list.length < CREATURE_CAP) {
-      // The Slime King sheds little slimes as it is struck.
-      const small = SPECIES_BY_KEY.get('slime')!;
+    if (c.health > 0 && c.species.boss && this.rand() < 0.4 && this.list.length < CREATURE_CAP) {
+      // Bosses call their brood as they are struck: the Slime King sheds slimes, the Matriarch calls moths.
+      const small = SPECIES_BY_KEY.get(c.species.key === 'king_slime' ? 'slime' : 'gloom_moth')!;
       this.add(small, c.body.x + (this.rand() - 0.5) * 2, c.body.y + 1, c.body.z + (this.rand() - 0.5) * 2, small.health);
     }
     if (c.health > 0) {
