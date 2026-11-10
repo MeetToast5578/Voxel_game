@@ -397,6 +397,8 @@ export const PROJECTILE_LIFE_S = 8;
 export const ARCHER_NEAR_M = 7;
 export const ARCHER_FAR_M = 15;
 export const ARCHER_SHOT_S = 2.5;
+/** Archers stop and draw for this long before each shot, so the player can see it coming and step aside. */
+export const ARCHER_AIM_S = 0.7;
 export const BOLT_SPEED_M_S = 30;
 /** Hostiles get tougher with depth: this much more health per 100 m below sea level. */
 export const DEPTH_TOUGHNESS_PER_100M = 0.5;

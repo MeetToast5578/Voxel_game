@@ -71,6 +71,9 @@ export interface BlockType {
   readonly spell?: { readonly damage: number; readonly mana: number; readonly cooldown: number; readonly speed: number };
   /** Worn in an accessory slot: what it does while worn. */
   readonly accessory?: Accessory;
+  /** A potion, drunk with right click: a status effect for some seconds (see game/effects.ts), health back at once, or
+   * poison and bleeding cured. */
+  readonly potion?: { readonly text: string; readonly effect?: string; readonly seconds?: number; readonly heal?: number; readonly cures?: boolean };
   /** Seconds it burns in a furnace. */
   readonly fuel?: number;
   /** What is left when it is used up as fuel or emptied (a bucket). */
@@ -225,6 +228,16 @@ export interface Accessory {
   readonly regen?: number;
 }
 
+/** Potions: [key, name, what it does]. Made at an alchemy table from a glass bottle and two ingredients. */
+export const POTIONS: readonly [string, string, NonNullable<BlockType['potion']>][] = [
+  ['healing_potion', 'Healing Potion', { text: 'Restores 8 health at once', heal: 8 }],
+  ['regeneration_potion', 'Regeneration Potion', { text: 'Heals slowly for 45 s', effect: 'regeneration', seconds: 45 }],
+  ['swiftness_potion', 'Swiftness Potion', { text: '30% faster for 90 s', effect: 'swiftness', seconds: 90 }],
+  ['fire_resistance_potion', 'Fire Resistance Potion', { text: 'Fire and lava do not burn for 120 s', effect: 'fire_resistance', seconds: 120 }],
+  ['water_breathing_potion', 'Water Breathing Potion', { text: 'Breathe under water for 120 s', effect: 'water_breathing', seconds: 120 }],
+  ['antidote', 'Antidote', { text: 'Cures poison and bleeding; keeps them off for 60 s', effect: 'antidote', seconds: 60, cures: true }],
+];
+
 const ACCESSORIES: readonly [string, string, Accessory][] = [
   ['swift_anklet', 'Swiftstep Anklet', { effect: '20% faster on foot', speed: 0.2 }],
   ['cloud_charm', 'Cloud Charm', { effect: 'Jump once more in mid-air', jumps: 1 }],
@@ -342,6 +355,9 @@ function gameplay(): BlockSpec[] {
       front: 'ancient_chest_front', variants: 4, hardness: 5, density: 2600, mineWith: 'pickaxe', drops: 'obsidian' },
     { key: 'crafting_table', name: 'Crafting table', tiles: { top: 'crafting_table_top', side: 'crafting_table_side', bottom: 'planks' },
       hardness: 2.5, density: 600, ...wood },
+    // Potions are made beside it.
+    { key: 'alchemy_table', name: 'Alchemy table', tiles: { top: 'alchemy_table_top', side: 'alchemy_table_side', bottom: 'planks' },
+      hardness: 2.5, density: 600, ...wood },
     stone('furnace', 'Furnace', { tiles: { top: 'furnace_top', side: 'furnace_side', bottom: 'furnace_top' }, front: 'furnace_front', variants: 4, hardness: 3.5 }),
     stone('lit_furnace', 'Lit furnace', { tiles: { top: 'furnace_top', side: 'furnace_side', bottom: 'furnace_top' }, front: 'furnace_front_lit',
       variants: 4, hardness: 3.5, lightEmission: 13, drops: 'furnace' }),
@@ -416,6 +432,8 @@ function gameplay(): BlockSpec[] {
         maxStack: 1, armour: { slot, protection: a.protection[slot]!, warmth: a.warmth[slot]!, durability: a.durability },
       }))),
     ...ACCESSORIES.map(([key, name, accessory]) => item(key, name, { maxStack: 1, accessory })),
+    item('glass_bottle', 'Glass Bottle'),
+    ...POTIONS.map(([key, name, potion]) => item(key, name, { maxStack: 8, potion })),
     item('bucket', 'Bucket', { maxStack: 16 }),
     item('water_bucket', 'Water bucket', { maxStack: 1, emptiesTo: 'bucket' }),
     item('lava_bucket', 'Lava bucket', { maxStack: 1, emptiesTo: 'bucket', fuel: 200 }),

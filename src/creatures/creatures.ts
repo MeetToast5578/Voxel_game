@@ -1,5 +1,5 @@
 import {
-  BREED_COOLDOWN_S, FED_S, FOLLOW_M, GROW_UP_S, ARCHER_FAR_M, ARCHER_NEAR_M, ARCHER_SHOT_S, ATTACK_COOLDOWN_S, ATTACK_REACH_M, BLOCK_SIZE_M, BURN_PER_S, BURN_S, DEPTH_TOUGHNESS_PER_100M, SAFE_LIGHT, CREATURE_CAP, CREATURE_FALL_M, DESPAWN_M, FLEE_M, GRAVITY_M_S2, HOSTILE_CAP, HUNT_M,
+  BREED_COOLDOWN_S, FED_S, FOLLOW_M, GROW_UP_S, ARCHER_AIM_S, ARCHER_FAR_M, ARCHER_NEAR_M, ARCHER_SHOT_S, ATTACK_COOLDOWN_S, ATTACK_REACH_M, BLOCK_SIZE_M, BURN_PER_S, BURN_S, DEPTH_TOUGHNESS_PER_100M, SAFE_LIGHT, CREATURE_CAP, CREATURE_FALL_M, DESPAWN_M, FLEE_M, GRAVITY_M_S2, HOSTILE_CAP, HUNT_M,
   KNOCKBACK_M_S, RUN_FACTOR, SPAWN_INTERVAL_S, SPAWN_MAX_M, SPAWN_MIN_M, STEP_HEIGHT_M, cells, toCells,
 } from '../config';
 import { columnIndex, localIndex, toChunk, toLocal } from '../core/coords';
@@ -82,7 +82,7 @@ export class Creatures {
 
   constructor(private readonly world: World, private readonly rand: () => number,
     private readonly events: {
-      bite(damage: number, by: string): void;
+      bite(damage: number, by: string, species?: Species): void;
       sound(name: 'break' | 'place' | 'step', volume: number): void;
       /** A creature calls, is hurt or dies (for its sound). */
       call?(c: Creature, kind: 'call' | 'hurt' | 'death'): void;
@@ -256,9 +256,15 @@ export class Creatures {
       goal = d < toCells(ARCHER_NEAR_M) ? [b.x - (t.x - b.x), b.z - (t.z - b.z)] : d > toCells(ARCHER_FAR_M) ? this.waypoint(c, t, dt, ctx) ?? [t.x, t.z] : null;
       c.yaw = Math.atan2(-(t.x - b.x), -(t.z - b.z));
       const eye = b.y + b.height * 0.85;
-      if (c.cooldown <= 0 && d < toCells(ARCHER_FAR_M + 4) && this.sees(b.x, eye, b.z, t.x, t.y + t.height * 0.8, t.z, ctx)) {
-        c.cooldown = ARCHER_SHOT_S;
-        this.events.shoot?.(c, b.x, eye, b.z);
+      const sees = d < toCells(ARCHER_FAR_M + 4) && this.sees(b.x, eye, b.z, t.x, t.y + t.height * 0.8, t.z, ctx);
+      // The draw: it stands still for the last ARCHER_AIM_S, and holds the draw until it sees the player.
+      if (!sees) c.cooldown = Math.max(c.cooldown, ARCHER_AIM_S);
+      else if (c.cooldown <= ARCHER_AIM_S) {
+        goal = null;
+        if (c.cooldown <= 0) {
+          c.cooldown = ARCHER_SHOT_S;
+          this.events.shoot?.(c, b.x, eye, b.z);
+        }
       }
     } else if (c.mode === 'hunt' && c.target) {
       const t = c.target === 'player' ? ctx.player : c.target.body;
@@ -268,7 +274,7 @@ export class Creatures {
       const level = s.flies ? Math.abs(t.y + t.height * 0.6 - b.y) < 1.6 : Math.abs(t.y - b.y) < b.height;
       if (Math.hypot(t.x - b.x, t.z - b.z) < reach && level && c.cooldown <= 0) {
         c.cooldown = ATTACK_COOLDOWN_S;
-        if (c.target === 'player') this.events.bite(s.attack, s.name);
+        if (c.target === 'player') this.events.bite(s.attack, s.name, s);
         else this.damage(c.target, s.attack, b.x, b.z);
       }
     }

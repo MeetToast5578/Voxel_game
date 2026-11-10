@@ -31,6 +31,8 @@ export interface Species {
   loot?: readonly (readonly [string, number, number?])[];
   /** Food it follows a player holding, and breeds when fed. */
   food?: readonly string[];
+  /** A bite may also start a status effect on the player: [effect (game/effects.ts, or 'burning'), seconds, chance]. */
+  inflicts?: readonly [effect: string, seconds: number, chance: number];
   /** Keeps its distance and shoots bolts instead of biting. */
   ranged?: boolean;
   /** Climbs straight up walls. */
@@ -92,22 +94,22 @@ export const SPECIES: readonly Species[] = [
   { ...BASE, key: 'skulker', name: 'Skulker', halfWidthM: 0.25, heightM: 1.7, speedM_S: 1.6, health: 14, hostile: true, nocturnal: true,
     ranged: true, attack: 3, biomes: ['dark'], group: [1, 1], colours: { body: [70, 64, 82], head: [200, 196, 176], legs: [50, 46, 60] },
     meat: 0, loot: [['feather', 2], ['arrow', 3, 0.5], ['feather_charm', 1, 0.02]], voice: 0.55 },
-  { ...BASE, key: 'crawler', name: 'Cave crawler', halfWidthM: 0.45, heightM: 0.6, speedM_S: 2.4, health: 10, hostile: true, nocturnal: true,
+  { ...BASE, key: 'crawler', name: 'Cave crawler', halfWidthM: 0.45, heightM: 0.6, speedM_S: 2.4, health: 10, hostile: true, nocturnal: true, inflicts: ['poisoned', 6, 0.5],
     climbs: true, attack: 2, biomes: ['cave'], group: [1, 3], colours: { body: [44, 40, 38], head: [120, 30, 30], legs: [36, 32, 30] },
     meat: 0, loot: [['string', 2], ['swift_anklet', 1, 0.015]], voice: 0.85 },
-  { ...BASE, key: 'brute', name: 'Frost brute', halfWidthM: 0.5, heightM: 2.2, speedM_S: 1.1, health: 40, hostile: true, nocturnal: true,
+  { ...BASE, key: 'brute', name: 'Frost brute', halfWidthM: 0.5, heightM: 2.2, speedM_S: 1.1, health: 40, hostile: true, nocturnal: true, inflicts: ['slowed', 4, 0.6],
     attack: 7, biomes: ['deep', 'tundra', 'snowy_taiga', 'glacier', 'snowcapped_peaks'], group: [1, 1],
     colours: { body: [170, 196, 214], head: [210, 226, 236], legs: [120, 140, 160] }, meat: 0, loot: [['bone', 3], ['iron_band', 1, 0.04]], voice: 0.1 },
   { ...BASE, key: 'warden', name: 'Ember Warden', halfWidthM: 0.55, heightM: 2.5, speedM_S: 1.3, health: 160, hostile: true, guardian: true,
     attack: 8, biomes: [], group: [1, 1], colours: { body: [58, 40, 44], head: [255, 120, 40], legs: [40, 30, 34] }, meat: 0,
     loot: [['ember_crystal', 3], ['diamond', 2], ['life_crystal', 3], ['ember_ring', 1], ['heart_locket', 1, 0.5]], voice: 0.05 },
-  { ...BASE, key: 'desert_stalker', name: 'Dune Stalker', halfWidthM:.48, heightM:.8, speedM_S:2.4, health:24,
+  { ...BASE, key: 'desert_stalker', name: 'Dune Stalker', halfWidthM:.48, heightM:.8, speedM_S:2.4, health:24, inflicts: ['bleeding', 6, 0.35],
     hostile:true, nocturnal:true, attack:4, biomes:['desert','badlands'], group:[1,2], meat:0, loot:[['iron_ingot',1],['swift_anklet',1,0.04]],
     colours:{body:[186,145,75],head:[210,174,98],legs:[144,106,53]}, voice:.65 },
-  { ...BASE, key:'swamp_hollow', name:'Mire Hollow', halfWidthM:.4, heightM:2.1, speedM_S:1.3, health:32,
+  { ...BASE, key:'swamp_hollow', name:'Mire Hollow', halfWidthM:.4, heightM:2.1, speedM_S:1.3, health:32, inflicts: ['poisoned', 8, 0.5],
     hostile:true, nocturnal:true, attack:5, biomes:['swamp'], group:[1,2], meat:0, loot:[['moss',3],['bone',1],['gill_pendant',1,0.05]],
     colours:{body:[72,95,44],head:[80,110,48],legs:[64,78,36]}, voice:.25 },
-  { ...BASE, key:'snow_prowler', name:'Snow Prowler', halfWidthM:.38, heightM:1.15, speedM_S:2.8, health:26,
+  { ...BASE, key:'snow_prowler', name:'Snow Prowler', halfWidthM:.38, heightM:1.15, speedM_S:2.8, health:26, inflicts: ['slowed', 3, 0.5],
     hostile:true, nocturnal:true, attack:4, biomes:['snowy_taiga','tundra','glacier','snowcapped_peaks'], group:[1,2],meat:0,
     loot:[['leather',2],['bone',1],['feather_charm',1,0.03]],colours:{body:[223,234,239],head:[238,244,248],legs:[193,213,226]},voice:.4 },
   { ...BASE, key:'trader',name:'Traveling Trader',halfWidthM:.28,heightM:1.8,speedM_S:.8,health:30,trader:true,
@@ -120,7 +122,7 @@ export const SPECIES: readonly Species[] = [
   { ...BASE, key: 'cave_slime', name: 'Cave Slime', halfWidthM: 0.35, heightM: 0.65, speedM_S: 2.4, health: 14, hostile: true, hops: true,
     attack: 3, biomes: ['cave'], group: [1, 2], colours: { body: [80, 140, 230], head: [44, 90, 180], legs: [20, 40, 80] },
     meat: 0, loot: [['gel', 3], ['iron_ingot', 1, 0.2], ['iron_band', 1, 0.015]], voice: 0.85 },
-  { ...BASE, key: 'ember_slime', name: 'Ember Slime', halfWidthM: 0.4, heightM: 0.75, speedM_S: 2.6, health: 22, hostile: true, hops: true, fireproof: true,
+  { ...BASE, key: 'ember_slime', name: 'Ember Slime', halfWidthM: 0.4, heightM: 0.75, speedM_S: 2.6, health: 22, hostile: true, hops: true, fireproof: true, inflicts: ['burning', 3, 0.5],
     attack: 5, biomes: ['deep'], group: [1, 2], colours: { body: [240, 120, 40], head: [200, 60, 20], legs: [255, 220, 120] },
     meat: 0, loot: [['gel', 3], ['ember_crystal', 1, 0.25], ['ember_ring', 1, 0.02]], voice: 0.7 },
   ...(['farmer', 'smith', 'herbalist'] as const).map((job): Species => ({ ...BASE, key: job, name: job[0]!.toUpperCase() + job.slice(1),
@@ -138,7 +140,7 @@ export const SPECIES: readonly Species[] = [
   { ...BASE, key: 'bat', name: 'Cave Bat', halfWidthM: 0.2, heightM: 0.4, speedM_S: 3.2, health: 4, hostile: true, flies: true,
     attack: 1, biomes: ['cave'], group: [1, 3], colours: { body: [70, 56, 52], head: [86, 68, 60], legs: [50, 40, 40] },
     meat: 0, loot: [['leather', 1, 0.3], ['cloud_charm', 1, 0.015]], voice: 1 },
-  { ...BASE, key: 'skeleton', name: 'Skeleton', halfWidthM: 0.28, heightM: 1.8, speedM_S: 1.7, health: 22, hostile: true, nocturnal: true,
+  { ...BASE, key: 'skeleton', name: 'Skeleton', halfWidthM: 0.28, heightM: 1.8, speedM_S: 1.7, health: 22, hostile: true, nocturnal: true, ranged: true,
     attack: 4, biomes: ['cave', 'deep'], group: [1, 2], colours: { body: [226, 220, 200], head: [236, 232, 214], legs: [200, 194, 176] },
     meat: 0, loot: [['bone', 2], ['arrow', 2, 0.4], ['iron_ingot', 1, 0.2], ['iron_band', 1, 0.02]], voice: 0.6 },
 ];

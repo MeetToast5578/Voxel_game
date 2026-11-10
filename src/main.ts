@@ -233,18 +233,15 @@ const urlDifficulty = params.get('difficulty');
 if (urlDifficulty && urlDifficulty in DIFFICULTY) play.difficulty = urlDifficulty as Difficulty;
 let lastBite = -Infinity;
 const creatures = new Creatures(world, mulberry32(seed ^ 0xc0ffee), {
-  bite: (damage, by) => {
+  bite: (damage, by, species) => {
     // A moment of safety after each bite, so a crowd cannot take the player down all at once.
     if (performance.now() - lastBite < 500) return;
     lastBite = performance.now();
-    if (play.mode === 'survival' && !play.survival.dead) {
-      play.survival.hurt(play.protect(damage * DIFFICULTY[play.difficulty].damage), `killed by a ${by.toLowerCase()}`);
-      sounds.play('break', 0.6);
-      play.version++;
-    }
+    if (play.mode === 'survival' && !play.survival.dead) sounds.play('break', 0.6);
+    play.bitten(damage, by, species);
   },
   sound: (name, volume) => sounds.play(name, volume),
-  shoot: (c, x, y, z) => play.shootAtPlayer(x, y, z, player, c.species.attack),
+  shoot: (c, x, y, z) => play.shootAtPlayer(x, y, z, player, c.species.attack, c.species.name),
   // Calls carry 32 m; pitch follows the species' voice.
   call: (c, kind) => {
     const near = 1 - Math.hypot(c.body.x - player.body.x, c.body.y - player.body.y, c.body.z - player.body.z) * BLOCK_SIZE_M / 32;

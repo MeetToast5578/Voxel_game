@@ -52,13 +52,13 @@ Every task also passes `npm run check`, `npm run benchmark -- --assert` and `npm
 
 ## R2. Combat that has depth
 
-- [ ] **R2.1 Enemies that shoot (M).** Skeletons draw and loose arrows that the player can see and dodge. The draw is
+- [x] **R2.1 Enemies that shoot (M).** Done in 0.7.2 for skeletons (arrows sticking in blocks not yet). Skeletons draw and loose arrows that the player can see and dodge. The draw is
   telegraphed (they pause and aim). Arrows stick in blocks for a while.
   **Done when:** a test has a skeleton hit a standing player and miss a moving one.
 - [ ] **R2.2 Telegraphed attacks (M).** Every hostile winds up before it strikes: a crouch, a flash, a sound. Bosses
   get two or three named attacks each, plus a second phase below half health.
   **Done when:** the shape gallery shows each wind-up and a test sees a boss change phase.
-- [ ] **R2.3 Status effects (M).** Five effects, each with an icon on the HUD and a timer:
+- [x] **R2.3 Status effects (M).** Done in 0.7.2 (a list with timers rather than icons). Five effects, each with an icon on the HUD and a timer:
   - poisoned (cave spiders, venom slimes);
   - burning (ember enemies, lava);
   - slowed (snow enemies);
@@ -66,7 +66,7 @@ Every task also passes `npm run check`, `npm run benchmark -- --assert` and `npm
   - well fed (cooked food, which gives slow regeneration).
 
   **Done when:** each effect starts, ticks and ends in a test.
-- [ ] **R2.4 Potions and an alchemy table (M).** The table is a new station, crafted from planks, glass and a
+- [x] **R2.4 Potions and an alchemy table (M).** Done in 0.7.2: six potions; night vision is not done yet. The table is a new station, crafted from planks, glass and a
   cauldron. Potions:
   - healing (instant);
   - regeneration;

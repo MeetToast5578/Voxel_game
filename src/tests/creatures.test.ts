@@ -196,3 +196,33 @@ describe('nothing gets stuck', () => {
     expect(cs.list.includes(king)).toBe(false);
   });
 });
+
+describe('archers', () => {
+  it('skeletons stop and draw before each shot', () => {
+    const world = plain();
+    const shots: number[] = [];
+    const cs = new Creatures(world, mulberry32(5), { bite: () => undefined, sound: () => undefined, shoot: (c) => shots.push(Math.hypot(c.body.vx, c.body.vz)) });
+    const skel = cs.add(SPECIES_BY_KEY.get('skeleton')!, 18.5, 0, 0.5, 22);
+    for (let i = 0; i < 60 * 12; i++) cs.update(1 / 60, ctx(world, player(), true, false));
+    expect(skel.mode).toBe('hunt');
+    expect(shots.length).toBeGreaterThanOrEqual(3);
+    // Standing still at the moment of release: the draw is the warning.
+    for (const v of shots) expect(v).toBeLessThan(0.2);
+  });
+
+  it('an arrow hits a player who stands still and misses one who steps aside', async () => {
+    const { Projectiles, aimAt } = await import('../game/projectiles');
+    const { toCells, BOLT_SPEED_M_S } = await import('../config');
+    const fly = (sidestep: number) => {
+      const p = new Projectiles(), body = { ...player(), x: 0.5, z: 0.5 }, speed = toCells(BOLT_SPEED_M_S);
+      p.shoot(18.5, 2.5, 0.5, ...aimAt(18.5, 2.5, 0.5, body.x, body.y + body.height * 0.7, body.z, speed), speed, 4, false);
+      for (let t = 0; t < 3; t += 1 / 60) {
+        body.z += sidestep / 60;
+        if (p.update(1 / 60, (_x, y) => (y < 0 ? 1 : 0), () => [body]).some((h) => h.kind === 'body')) return true;
+      }
+      return false;
+    };
+    expect(fly(0)).toBe(true);
+    expect(fly(toCells(4.5))).toBe(false);
+  });
+});

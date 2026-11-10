@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { ATTACK_COOLDOWN_S, CREATURE_CAP } from '../config';
+import { ARCHER_AIM_S, ATTACK_COOLDOWN_S, CREATURE_CAP } from '../config';
 import { DEATH_S, type Creature } from '../creatures/creatures';
 import { SPECIES, type Species } from '../creatures/species';
 import { attachWorldFog, type WorldFogUniforms } from './worldFog';
@@ -466,7 +466,9 @@ export class ShapeMobs {
       const b = c.body, h = b.height, speed = Math.hypot(b.vx, b.vz) / Math.max(0.5, c.species.speedM_S / 0.6);
       const t = time + c.id * 1.7, sleeping = c.mode === 'sleep';
       // Attack: 1 just as the bite starts, falling to 0 over 0.4 s.
-      const attack = c.mode === 'hunt' ? Math.max(0, (c.cooldown - (ATTACK_COOLDOWN_S - 0.4)) / 0.4) : 0;
+      // Archers instead raise their arms through the draw before a shot.
+      const attack = c.mode !== 'hunt' ? 0 : c.species.ranged ? Math.max(0, Math.min(1, 1 - c.cooldown / ARCHER_AIM_S))
+        : Math.max(0, (c.cooldown - (ATTACK_COOLDOWN_S - 0.4)) / 0.4);
       // Grazers lower their heads to eat now and then while standing.
       const graze = c.species.grazer && c.mode === 'idle' ? Math.max(0, Math.min(1, Math.sin(t * 0.35) * 3 - 1)) : 0;
       const pose: Pose = { phase: c.walk, time: t, speed, sleeping, attack, hurt: Math.min(1, c.hurt / 0.3), graze, air: b.onGround ? 0 : 1, plan: model.plan };

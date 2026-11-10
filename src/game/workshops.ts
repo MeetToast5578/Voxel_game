@@ -41,6 +41,8 @@ export const SHOPS: Readonly<Record<string, readonly TradeOffer[]>> = {
     offer('Buy cooked fish', ['trade_coin', 2], ['cooked_fish', 3]), offer('Buy a Gill Pendant', ['trade_coin', 25], ['gill_pendant', 1]),
     offer('Buy a Featherfall Charm', ['trade_coin', 30], ['feather_charm', 1]), offer('Buy a Heart Locket', ['trade_coin', 45], ['heart_locket', 1]),
     offer('Buy a Life Crystal', ['trade_coin', 55], ['life_crystal', 1]), offer('Buy a Gel Crown', ['trade_coin', 18], ['slime_crown', 1]),
+    offer('Buy glass bottles', ['trade_coin', 2], ['glass_bottle', 3]), offer('Buy a Healing Potion', ['trade_coin', 6], ['healing_potion', 1]),
+    offer('Buy an Antidote', ['trade_coin', 5], ['antidote', 1]),
   ],
 };
 const copy = (inv: Inventory) => {const other=new Inventory();inv.slots.forEach((s,i)=>other.slots[i]=s?{...s}:null);other.selected=inv.selected;return other;};

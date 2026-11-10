@@ -1,6 +1,6 @@
 import { TIER_DAMAGE, ARMOUR_CAP, ARMOUR_PER_POINT, MAX_HEALTH, ACCESSORY_SLOTS, AXE_ARC_RAD, CRIT_CHANCE, CRIT_FACTOR, KNOCKBACK_FACTOR, SWORD_ARC_RAD, LIGHTNING_DAMAGE, LIGHTNING_REACH_M, FISH_MAX_S, FISH_MIN_S, BLOCK_SIZE_M, ARROW_DAMAGE, ARROW_SPEED_M_S, BOLT_SPEED_M_S, BOW_DRAW_S, AXE_DAMAGE, BUILD_CELLS_PER_TICK, CAMPFIRE_COOK_S, CAMPFIRE_SLOTS, DIFFICULTY, PLAYER_ATTACK_COOLDOWN_S, SWORD_DAMAGE, type Difficulty, BUILD_MAX_M, DROP_PICKUP_DELAY_S, DROP_THROW_M_S, HAND_DAMAGE, REACH_M, REPEAT_S, TOOL_DAMAGE, UNDO_STEPS, cells, toCells } from '../config';
 import { lootOf, type Creature, type Creatures } from '../creatures/creatures';
-import { AIR, BLOCKS, SOLID } from '../engine/blocks';
+import { AIR, BLOCKS, SOLID, type BlockType } from '../engine/blocks';
 import type { World } from '../engine/world';
 import { COLLISION, FULL } from './collision';
 import { craft, type Craft, type Station } from './crafting';
@@ -14,6 +14,7 @@ import { overlapsSolid } from './physics';
 import type { Player } from './player';
 import { raycast, TARGET, type RayHit } from './raycast';
 import { Survival } from './survival';
+import { isEffect, POTION_SICKNESS_S, SLOWED_SPEED, SWIFT_SPEED } from './effects';
 import { Particles } from './particles';
 import { lootTableFor, rollLoot, type LootTable } from './loot';
 import { Journal, type Stats } from './journal';
@@ -33,7 +34,9 @@ const BEACON = S('beacon'), LIT_BEACON = S('lit_beacon');
 /** The beacon must be lit at least this high (m), under open sky. */
 export const BEACON_MIN_M = 150;
 export const CHEST_SLOTS = 27;
-const TABLE = S('crafting_table'), TORCH = S('torch'), GRASS = S('grass'), DIRT = S('dirt'), CAMPFIRE = S('campfire'), FARMLAND = S('farmland');
+/** Cooked meals that leave the player well fed, and for how long. */
+const WELL_FED_FOODS = new Set(['cooked_meat', 'cooked_fish', 'baked_potato']), WELL_FED_S = 90;
+const TABLE = S('crafting_table'), ALCHEMY = S('alchemy_table'), TORCH = S('torch'), GRASS = S('grass'), DIRT = S('dirt'), CAMPFIRE = S('campfire'), FARMLAND = S('farmland');
 const ROD = S('fishing_rod'), FISH = S('raw_fish'), BOAT = S('boat');
 const WARDEN = SPECIES_BY_KEY.get('warden')!;
 /** What a lightning strike turns the ground it hits into. */
@@ -144,6 +147,12 @@ export class Play {
       b.fireproof ||= a.fireproof ?? false;
       b.regen *= a.regen ?? 1;
     }
+    // Potions and other status effects add to what is worn.
+    const fx = this.survival;
+    if (fx.has('swiftness')) b.speed += SWIFT_SPEED;
+    if (fx.has('slowed')) b.speed += SLOWED_SPEED;
+    b.fireproof ||= fx.has('fire_resistance');
+    if (fx.has('water_breathing')) b.breath = Infinity;
     return b;
   }
 
@@ -387,7 +396,8 @@ export class Play {
     if (arc) {
       victims = this.creatures!.list.filter((c) => {
         const cx = c.body.x - ox, cy = c.body.y + c.body.height * 0.5 - oy, cz = c.body.z - oz, d = Math.hypot(cx, cy, cz);
-        if (d - c.body.halfWidth > reach || d > wall) return false;
+        // Measured to the creature's near side, as the crosshair prompt is: big creatures are not hidden by their own size.
+        if (d - c.body.halfWidth > reach || d - c.body.halfWidth > wall) return false;
         return d < c.body.halfWidth + 0.6 || Math.acos(Math.max(-1, Math.min(1, (cx * dx + cy * dy + cz * dz) / d))) <= arc;
       });
       // Swinging at nothing still slashes the air, when no block is in reach to dig.
@@ -636,10 +646,10 @@ export class Play {
   }
 
   /** A creature shoots a bolt at the player's chest from (x, y, z). */
-  shootAtPlayer(x: number, y: number, z: number, player: Player, damage: number): void {
+  shootAtPlayer(x: number, y: number, z: number, player: Player, damage: number, by = 'Skulker'): void {
     const b = player.body, speed = toCells(BOLT_SPEED_M_S);
     const [dx, dy, dz] = aimAt(x, y, z, b.x, b.y + b.height * 0.7, b.z, speed);
-    this.projectiles.shoot(x, y, z, dx, dy, dz, speed, damage, false);
+    this.projectiles.shoot(x, y, z, dx, dy, dz, speed, damage, false, false, by);
   }
 
   /** Flies every arrow and bolt; hits hurt creatures or the player, and the player's arrows that miss can be picked up. */
@@ -655,7 +665,7 @@ export class Play {
         continue;
       }
       if (!p.fromPlayer) {
-        this.survival.hurt(this.protect(p.damage * DIFFICULTY[this.difficulty].damage), 'shot by a skulker');
+        this.survival.hurt(this.protect(p.damage * DIFFICULTY[this.difficulty].damage), `shot by a ${(p.by ?? 'skulker').toLowerCase()}`);
         this.version++;
         continue;
       }
@@ -915,6 +925,10 @@ export class Play {
       this.wear(held);
       return;
     }
+    if (heldType.potion) {
+      this.drink(heldType.potion);
+      return;
+    }
     if (heldType.key === 'life_crystal') {
       if (this.survival.growHeart()) {
         if (this.mode === 'survival') this.inventory.useHeld();
@@ -966,6 +980,8 @@ export class Play {
       const ground = t ? this.world.get(t.x, t.y, t.z) : AIR;
       const planting = heldType.variantTiles !== undefined && t !== null && t.ny === 1 && (ground === GRASS || ground === DIRT || ground === FARMLAND);
       if (!planting && this.survival.eat(heldType.food)) {
+        // A cooked meal leaves the player well fed: health comes back faster for a while.
+        if (WELL_FED_FOODS.has(heldType.key)) this.survival.addEffect('well_fed', WELL_FED_S);
         this.events.sound('eat');
         this.consumeHeld();
         return;
@@ -973,6 +989,39 @@ export class Play {
     }
     if (!t || heldType.item) return;
     this.place(t, held, player);
+  }
+
+  /** A creature's bite lands: its damage through armour, and maybe the status effect it carries. */
+  bitten(damage: number, by: string, s?: { inflicts?: readonly [string, number, number] }, rand = Math.random): void {
+    if (this.mode !== 'survival' || this.survival.dead) return;
+    this.survival.hurt(this.protect(damage * DIFFICULTY[this.difficulty].damage), `killed by a ${by.toLowerCase()}`);
+    const [effect, seconds, chance] = s?.inflicts ?? ['', 0, 0];
+    if (rand() < chance) {
+      if (effect === 'burning') { if (!this.bonus.fireproof) this.survival.burning = Math.max(this.survival.burning, seconds); }
+      else if (isEffect(effect)) this.survival.addEffect(effect, seconds);
+    }
+    this.version++;
+  }
+
+  /** Drinks the held potion. A healing potion brings Potion sickness, and none is drunk while it lasts. */
+  private drink(p: NonNullable<BlockType['potion']>): void {
+    const s = this.survival;
+    if (p.heal && s.has('potion_sickness')) {
+      this.toast(`Too soon for another: ${Math.ceil(s.effects.potion_sickness!)} s of potion sickness left`, 3);
+      return;
+    }
+    if (p.heal) {
+      s.health = Math.min(s.maxHealth, s.health + p.heal);
+      s.addEffect('potion_sickness', POTION_SICKNESS_S);
+    }
+    if (p.cures) {
+      delete s.effects.poisoned;
+      delete s.effects.bleeding;
+    }
+    if (p.effect && isEffect(p.effect)) s.addEffect(p.effect, p.seconds ?? 30);
+    if (this.mode === 'survival') this.inventory.useHeld();
+    this.events.sound('eat');
+    this.version++;
   }
 
   /** Right click with an animal's food on the animal in view: it eats it and is ready to breed. */
@@ -1123,6 +1172,7 @@ export class Play {
     this.screen = screen;
     // A workbench within a few steps counts, as in Terraria.
     this.craftSize = craftSize === 3 || (screen === 'inventory' && this.near(TABLE, 4)) ? 3 : 2;
+    this.alchemy = screen === 'inventory' && this.near(ALCHEMY, 4);
     this.version++;
   }
 
@@ -1150,10 +1200,16 @@ export class Play {
   get station(): Station {
     return this.craftSize === 3 ? 'table' : 'hand';
   }
+  /** An alchemy table within a few steps when the inventory opened: potions can be made. */
+  alchemy = false;
+  /** Every station at hand: the workbench (or hand) and the alchemy table. */
+  get stations(): Station[] {
+    return this.alchemy ? [this.station, 'alchemy'] : [this.station];
+  }
 
   /** Makes `c` from the inventory, `times` times at most; what does not fit stays unmade. Returns how many were made. */
   craftItem(c: Craft, times = 1): number {
-    const made = craft(c, this.inventory, this.station, times);
+    const made = craft(c, this.inventory, this.stations, times);
     if (made) {
       this.events.sound('place');
       this.version++;
@@ -1234,7 +1290,7 @@ export class Play {
     const s = (st: ItemStack | null) => (st ? [BLOCKS.stateName(st.state), st.count] : null);
     return {
       decorations: this.decorations.save(), mode: this.mode, difficulty: this.difficulty, hints: this.hints.save(), inventory: this.inventory.save(), selected: this.inventory.selected, drops: this.drops.save(),
-      health: this.survival.health, maxHealth: this.survival.maxHealth, hunger: this.survival.hunger, air: this.survival.air, bodyC: this.survival.temperature.coreC, spawn: this.spawn,
+      health: this.survival.health, maxHealth: this.survival.maxHealth, hunger: this.survival.hunger, air: this.survival.air, effects: { ...this.survival.effects }, burning: this.survival.burning, bodyC: this.survival.temperature.coreC, spawn: this.spawn,
       furnaces: [...this.furnaces].map(([k, f]) => [k, s(f.input), s(f.fuel), s(f.output), f.burn, f.progress]),
       journal: this.journal.save(), stats: this.stats, biomesSeen: [...this.biomesSeen], deepestM: this.deepestM, found: [...this.found], beaconLit: this.beaconLit, endingSeen: this.endingSeen, boating: this.boating,
       armour: this.armour.map((a) => (a ? [BLOCKS.stateName(a.state), 1, a.wear ?? 0, a.upgrade ?? 0] : null)),
@@ -1261,6 +1317,9 @@ export class Play {
     this.survival.health = Math.min(this.survival.maxHealth, num(p.health, this.survival.health));
     this.survival.hunger = num(p.hunger, this.survival.hunger);
     this.survival.air = num(p.air, this.survival.air);
+    this.survival.burning = Math.max(0, num(p.burning, 0));
+    this.survival.effects = {};
+    if (typeof p.effects === 'object' && p.effects !== null) for (const [k, v] of Object.entries(p.effects)) if (isEffect(k) && num(v, 0) > 0) this.survival.effects[k] = num(v, 0);
     this.survival.temperature.coreC = Math.max(30, Math.min(42, num(p.bodyC, this.survival.temperature.coreC)));
     if (Array.isArray(p.spawn) && p.spawn.length === 3 && p.spawn.every((v) => typeof v === 'number')) this.spawn = p.spawn as [number, number, number];
     const stack = (e: unknown): ItemStack | null => {

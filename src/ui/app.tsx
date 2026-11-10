@@ -1,12 +1,13 @@
 import { render, type ComponentChildren } from 'preact';
 import { useEffect, useRef, useState } from 'preact/hooks';
-import { BLOCK_SIZE_M, BODY_COLD_C, BODY_HOT_C, MAX_HUNGER, MAX_MANA, BREATH_S, MAX_VIEW_CHUNKS, MIN_VIEW_CHUNKS } from '../config';
+import { ARMOUR_PER_POINT, BLOCK_SIZE_M, BODY_COLD_C, BODY_HOT_C, MAX_HUNGER, MAX_MANA, BREATH_S, MAX_VIEW_CHUNKS, MIN_VIEW_CHUNKS } from '../config';
 import { BLOCKS } from '../engine/blocks';
 import { clickSlot, type ItemStack } from '../game/inventory';
 import { canCraft, CRAFTS, haveFor, timesCraftable } from '../game/crafting';
 import { MILESTONES } from '../game/journal';
 import { version } from '../../package.json';
-import type { Mode, Play } from '../game/play';
+import { armourFactor, type Mode, type Play } from '../game/play';
+import { EFFECTS, type Effect } from '../game/effects';
 import { BINDINGS, DEFAULT_KEYS, keyLabel, type Binding, type Settings } from '../storage/settings';
 import type { Difficulty } from '../config';
 import type { WorldMeta } from '../storage/store';
@@ -71,8 +72,9 @@ export function tooltip(s: ItemStack): string {
   if (t.food) lines.push(`Food: restores ${t.food} hunger`);
   if (t.tool) lines.push(`${TIERS[t.tool.tier] ?? ''} ${t.tool.kind}, ${Math.floor(t.tool.durability * (1+(s.upgrade??0)*.5)) - (s.wear ?? 0)} of ${Math.floor(t.tool.durability*(1+(s.upgrade??0)*.5))} uses left`);
   if (t.mineWith && t.needsTier !== undefined) lines.push(`Needs a ${TIERS[t.needsTier]} ${t.mineWith} or better`);
-  if (t.armour) lines.push(`Armour: stops ${(t.armour.protection+(s.upgrade??0)) * 4}% of harm, ${t.armour.warmth+(s.upgrade??0)} °C warmer, ${Math.floor(t.armour.durability*(1+(s.upgrade??0)*.5)) - (s.wear ?? 0)} hits left`);
+  if (t.armour) lines.push(`Armour: stops ${Math.round((t.armour.protection+(s.upgrade??0)) * ARMOUR_PER_POINT * 100)}% of harm, ${t.armour.warmth+(s.upgrade??0)} °C warmer, ${Math.floor(t.armour.durability*(1+(s.upgrade??0)*.5)) - (s.wear ?? 0)} hits left`);
   if (t.accessory) lines.push(`Accessory: ${t.accessory.effect}`);
+  if (t.potion) lines.push(`Potion: ${t.potion.text} (right click to drink)`);
   if (t.spell) lines.push(`Magic: ${t.spell.damage} damage, ${t.spell.mana} mana a cast (hold right click)`);
   if (t.fuel) lines.push(`Fuel: burns ${t.fuel} s`);
   if (t.smeltsTo) lines.push(`Smelts into ${BLOCKS.type(BLOCKS.state(t.smeltsTo)).name}`);
@@ -125,10 +127,19 @@ function Hud({ play, hideKey }: { play: Play; hideKey: string }) {
           <Thermometer coreC={s.temperature.coreC} feltC={s.feltC} />
         </div>
       )}
+      {play.mode === 'survival' && <Effects s={s} />}
       <div class="hotbar">{inv.slots.slice(0, 9).map((st, i) => <Slot key={i} stack={st} shortcut={i+1} selected={i === inv.selected} />)}</div>
       {play.breaking > 0 && <div class="progress"><div style={{ width: `${play.breaking * 100}%` }} /></div>}
     </div>
   );
+}
+
+/** Status effects with the seconds left of each, harmful ones marked. */
+function Effects({ s }: { s: Play['survival'] }) {
+  const list: [string, number, boolean][] = (Object.entries(s.effects) as [Effect, number][]).map(([k, left]) => [EFFECTS[k].name, left, !!EFFECTS[k].bad]);
+  if (s.burning > 0) list.unshift(['Burning', s.burning, true]);
+  if (!list.length) return null;
+  return <ul class="effects" aria-label="Status effects">{list.map(([name, left, bad]) => <li key={name} class={bad ? 'bad' : 'good'}>{name} <small>{Math.ceil(left)} s</small></li>)}</ul>;
 }
 
 function Grid({ slots, from, to, play, cols = 9 }: { slots: (ItemStack | null)[]; from: number; to: number; play: Play; cols?: number }) {
@@ -171,10 +182,10 @@ function WorkshopScreen({play}:{play:Play}) {
 
 /** The left column of the survival inventory: worn armour and what it adds up to. */
 function Character({ play }: { play: Play }) {
-  const protection = play.armour.reduce((n, a) => n + (a ? (BLOCKS.type(a.state).armour!.protection + (a.upgrade ?? 0)) * 4 : 0), 0);
+  const points = play.armour.reduce((n, a) => n + (a ? BLOCKS.type(a.state).armour!.protection + (a.upgrade ?? 0) : 0), play.bonus.protection);
   return <section class="character-pane"><h3>Equipment</h3>
     <div class="armour">{play.armour.map((a, i) => <Slot key={i} stack={a} title={a ? undefined : ['Helmet', 'Chest armour', 'Leg armour', 'Boots'][i]} onClick={(right) => play.clickArmour(i, right)} />)}</div>
-    <p class="defense" title="Share of harm your armour stops"><b>{Math.min(80, protection + play.bonus.protection * 4)}%</b> defense</p>
+    <p class="defense" title="Share of harm your armour stops"><b>{Math.round((1 - armourFactor(points)) * 100)}%</b> defense</p>
     <h3 class="acc-head">Accessories</h3>
     <div class="accessories">{play.accessories.map((a, i) => <Slot key={i} stack={a} title={a ? undefined : 'Accessory: charms, rings and anklets'} onClick={(right) => play.clickAccessory(i, right)} />)}</div>
   </section>;
@@ -371,11 +382,11 @@ const CONTROLS = `WASD move · Space jump / swim · Shift down (flying) · Ctrl 
   T skip an hour · +/− view distance · F3 debug text. Creative building: B marks a corner, B again fills the box with
   the held block; G does the same to clear it; Ctrl+Z undo, Ctrl+Y redo.`;
 
-const CATEGORIES = ['All', 'Tools', 'Armour', 'Building', 'Furniture', 'Items'] as const;
-const FURNITURE = new Set(['crafting_table', 'furnace', 'chest', 'campfire', 'bed', 'trading_post', 'ember_forge', 'beacon', 'sign', 'item_frame', 'lantern', 'torch', 'door', 'ladder']);
+const CATEGORIES = ['All', 'Tools', 'Armour', 'Building', 'Furniture', 'Potions', 'Items'] as const;
+const FURNITURE = new Set(['crafting_table', 'alchemy_table', 'furnace', 'chest', 'campfire', 'bed', 'trading_post', 'ember_forge', 'beacon', 'sign', 'item_frame', 'lantern', 'torch', 'door', 'ladder']);
 function category(key: string): (typeof CATEGORIES)[number] {
   const t = BLOCKS.byName(key);
-  return t.tool || ['bow', 'arrow', 'fishing_rod', 'bucket'].includes(key) ? 'Tools' : t.armour ? 'Armour' : FURNITURE.has(key) ? 'Furniture' : t.item ? 'Items' : 'Building';
+  return t.tool || ['bow', 'arrow', 'fishing_rod', 'bucket'].includes(key) ? 'Tools' : t.armour ? 'Armour' : t.potion || key === 'glass_bottle' ? 'Potions' : FURNITURE.has(key) ? 'Furniture' : t.item ? 'Items' : 'Building';
 }
 
 /** Terraria-style crafting: what you can make from what you carry, by category; pick one to see it and make it. */
@@ -384,14 +395,14 @@ function CraftingPanel({ play }: { play: Play }) {
   const [all, setAll] = useState(false), [picked, setPicked] = useState<string | null>(null);
   const slots = play.inventory.slots, q = search.trim().toLowerCase();
   const list = CRAFTS.filter((c) => (cat === 'All' || category(c.result[0]) === cat) && BLOCKS.byName(c.result[0]).name.toLowerCase().includes(q))
-    .map((c) => ({ c, can: canCraft(c, slots, play.station) }))
+    .map((c) => ({ c, can: canCraft(c, slots, play.stations) }))
     .filter((e) => all || e.can)
     .sort((a, b) => Number(b.can) - Number(a.can));
   const sel = list.find((e) => e.c.id === picked) ?? list[0];
-  const times = sel ? (canCraft(sel.c, slots, play.station) ? timesCraftable(sel.c, slots) : 0) : 0;
+  const times = sel ? (canCraft(sel.c, slots, play.stations) ? timesCraftable(sel.c, slots) : 0) : 0;
   const out = sel && { state: BLOCKS.state(sel.c.result[0]), count: sel.c.result[1] };
   return <section class="crafting">
-    <h3>Crafting <small class={`station ${play.station}`}>{play.station === 'table' ? '⚒ Workbench' : '✋ By hand'}</small></h3>
+    <h3>Crafting <small class={`station ${play.station}`}>{play.station === 'table' ? '⚒ Workbench' : '✋ By hand'}</small>{play.alchemy && <small class="station alchemy">⚗ Alchemy</small>}</h3>
     <div class="craft-cats" role="tablist">{CATEGORIES.map((k) => <button key={k} role="tab" aria-selected={cat === k} class={cat === k ? 'on' : ''} onClick={() => setCat(k)}>{k}</button>)}</div>
     <div class="recipe-tools"><input type="search" aria-label="Search recipes" placeholder="Find a recipe…" value={search} onInput={(e) => setSearch(e.currentTarget.value)} />
       <label class="check"><input type="checkbox" checked={all} onChange={(e) => setAll(e.currentTarget.checked)} />Show all</label></div>
@@ -406,7 +417,8 @@ function CraftingPanel({ play }: { play: Play }) {
         <small>{tooltip(out).split('\n').slice(1).join(' · ')}</small>
         <ul class="needs">{sel.c.needs.map((n, i) => { const have = haveFor(slots, n.keys); return <li key={i} class={have >= n.count ? 'ok' : 'short'}>
           <img alt="" src={iconUrl(BLOCKS.state(n.keys[0]!))} />{n.keys.map((k) => BLOCKS.byName(k).name).join(' or ')}<span>{n.count} <small>· have {have}</small></span></li>; })}
-          {sel.c.station === 'table' && <li class={play.station === 'table' ? 'ok' : 'short'}>⚒ Workbench nearby</li>}</ul></div>
+          {sel.c.station === 'table' && <li class={play.station === 'table' ? 'ok' : 'short'}>⚒ Workbench nearby</li>}
+          {sel.c.station === 'alchemy' && <li class={play.alchemy ? 'ok' : 'short'}>⚗ Alchemy table nearby</li>}</ul></div>
       <div class="craft-buttons">
         <button class="primary" disabled={times < 1} onClick={() => play.craftItem(sel.c)}>Craft</button>
         <button disabled={times < 2} onClick={() => play.craftItem(sel.c, times)} title="Craft as many as you can">All ({times})</button>

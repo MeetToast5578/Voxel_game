@@ -232,6 +232,69 @@ const ICONS: Readonly<Record<string, Icon>> = {
     '................']],
 };
 
+/** One bottle, filled with each potion's colour: L liquid, l its shine, D its shade. */
+const BOTTLE = [
+  '................',
+  '.......cc.......',
+  '.......cc.......',
+  '......gGGg......',
+  '.......gg.......',
+  '.......gg.......',
+  '......gLLg......',
+  '.....gLlLLg.....',
+  '....gLlLLLLg....',
+  '....gLlLLLLg....',
+  '....gLLLLLLg....',
+  '....gLLLLLDg....',
+  '.....gLLLDg.....',
+  '......gggg......',
+  '................',
+  '................'];
+const POTION_COLOURS: Readonly<Record<string, [string, string, string]>> = {
+  healing_potion: ['#e0303c', '#ff9aa0', '#8a1020'], regeneration_potion: ['#f070b0', '#ffc0e0', '#a03070'],
+  swiftness_potion: ['#40c8f0', '#c0f0ff', '#1a7aa0'], fire_resistance_potion: ['#f08020', '#ffd090', '#a04010'],
+  water_breathing_potion: ['#3060e0', '#a0c0ff', '#183890'], antidote: ['#60c040', '#c8f0a0', '#2e7a20'],
+  glass_bottle: ['#d6ecf4', '#ffffff', '#a8c8d4'],
+};
+for (const [key, [L, l, D]] of Object.entries(POTION_COLOURS)) (ICONS as Record<string, Icon>)[key] = [{ c: '#8a6040', g: '#b8d4e0', G: '#ffffff', L, l, D }, BOTTLE];
+
+/** Whole-face tiles for the alchemy table: a dark slate top with bottles and a bowl, plank sides with a drawer. */
+const WOOD = { w: '#9a6a3c', W: '#b88452', d: '#6a4424' };
+(ICONS as Record<string, Icon>).alchemy_table_top = [{ ...WOOD, s: '#3c4450', S: '#4c5664', r: '#e0303c', b: '#3060e0', n: '#60c040', g: '#cfe6f0', k: '#8a8a8a' }, [
+  'dddddddddddddddd',
+  'dWWWWWWWWWWWWWWd',
+  'dWssssssssssssWd',
+  'dWsSSgsssgSSssWd',
+  'dWsSgrgsgbgSssWd',
+  'dWssgrgsgbgsssWd',
+  'dWssgggsgggsssWd',
+  'dWssssssssssssWd',
+  'dWssskkkkksSssWd',
+  'dWsskknnnkkSssWd',
+  'dWsskknnnkkSssWd',
+  'dWssskkkkksSssWd',
+  'dWssssssssssssWd',
+  'dWWWWWWWWWWWWWWd',
+  'dwwwwwwwwwwwwwwd',
+  'dddddddddddddddd']];
+(ICONS as Record<string, Icon>).alchemy_table_side = [{ ...WOOD, k: '#e8b84a' }, [
+  'dddddddddddddddd',
+  'dWWWWWWWWWWWWWWd',
+  'dwwwwwwwwwwwwwwd',
+  'dddddddddddddddd',
+  'dWddddddddddddWd',
+  'dWdWWWWWWWWWWdWd',
+  'dWdwwwwkkwwwwdWd',
+  'dWdwwwwkkwwwwdWd',
+  'dWddddddddddddWd',
+  'dWwwwwwwwwwwwwWd',
+  'dWwwwwwwwwwwwwWd',
+  'dWddddddddddddWd',
+  'dWwwwwwwwwwwwwWd',
+  'dWwwwwwwwwwwwwWd',
+  'dwwwwwwwwwwwwwwd',
+  'dddddddddddddddd']];
+
 const hex = (c: string): number[] => [1, 3, 5].map((i) => parseInt(c.slice(i, i + 2), 16)).concat(255);
 
 /** Art made by recolouring other art: [source tile, hue in degrees given to its blue-green gem colours]. */

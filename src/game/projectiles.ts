@@ -16,6 +16,8 @@ export interface Projectile {
   age: number;
   /** A magic bolt: flies straight, and leaves nothing where it lands. */
   magic?: boolean;
+  /** The name of the creature that shot it, for the death message. */
+  by?: string;
 }
 
 /** What a projectile ran into this step. */
@@ -32,9 +34,9 @@ const inside = (b: Body, x: number, y: number, z: number, pad: number) =>
 export class Projectiles {
   readonly list: Projectile[] = [];
 
-  shoot(x: number, y: number, z: number, dx: number, dy: number, dz: number, speedCells: number, damage: number, fromPlayer: boolean, magic = false): void {
+  shoot(x: number, y: number, z: number, dx: number, dy: number, dz: number, speedCells: number, damage: number, fromPlayer: boolean, magic = false, by?: string): void {
     const len = Math.hypot(dx, dy, dz) || 1;
-    this.list.push({ x, y, z, vx: (dx / len) * speedCells, vy: (dy / len) * speedCells, vz: (dz / len) * speedCells, damage, fromPlayer, age: 0, ...(magic ? { magic } : {}) });
+    this.list.push({ x, y, z, vx: (dx / len) * speedCells, vy: (dy / len) * speedCells, vz: (dz / len) * speedCells, damage, fromPlayer, age: 0, ...(magic ? { magic } : {}), ...(by ? { by } : {}) });
   }
 
   /**

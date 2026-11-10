@@ -3,6 +3,22 @@
 The newest version comes first. `npm run check` fails if the version at the top here is not the one in
 `package.json`, so the two are changed together.
 
+## 0.7.2 — 2026-11-10
+
+Combat with more to it (roadmap R2.1, R2.3, R2.4).
+
+- Skeletons are archers: they keep their distance, stop and raise their arms to draw, then shoot. Step aside during the
+  draw and the arrow misses. Death messages name the shooter.
+- Status effects, listed at the top left with the seconds left: poisoned, bleeding, slowed, burning, well fed, and the
+  potion effects. Cave crawlers and Mire Hollows can poison, Frost brutes and Snow Prowlers slow, Dune Stalkers cause
+  bleeding, Ember Slimes set you alight. A cooked meal leaves you well fed (health returns faster for 90 s).
+- Potions, made at a new alchemy table (two glass bottles over three planks) from a glass bottle and two ingredients:
+  Healing (red mushroom, gel), Regeneration (poppy, gel), Swiftness (dandelion, feather), Fire Resistance (ember
+  crystal, coal), Water Breathing (raw fish, reed) and Antidote (brown mushroom, bone meal). Right click drinks one.
+  A healing potion brings 30 s of potion sickness. Glass makes bottles; the herbalist sells bottles, healing potions and
+  antidotes, and chests hold potions.
+- The inventory's defense figure and armour tooltips use the new armour numbers.
+
 ## 0.7.1 — 2026-11-10
 
 Checks that the game works end to end, and the fixes they found (roadmap R1).

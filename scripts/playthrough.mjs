@@ -277,9 +277,10 @@ try {
     await hold('jade_sword');
     // Fight the summoned king where it stands.
     for (let i = 0; i < 200; i++) {
-      const c = await game(() => { const c = window.__game.creatures.list.find((c) => c.species.key === 'king_slime' && c.health > 0); return c && { x: c.body.x, y: c.body.y + c.body.height / 2, z: c.body.z }; });
+      const c = await game(() => { const c = window.__game.creatures.list.find((c) => c.species.key === 'king_slime' && c.health > 0); return c && { x: c.body.x, y: c.body.y + c.body.height / 2, z: c.body.z, feet: c.body.y }; });
       if (!c) break;
-      await game((c) => { const n = window.__game, b = n.player.body, d = Math.hypot(c.x - b.x, c.z - b.z); if (d > 4) Object.assign(b, { x: c.x + ((b.x - c.x) / d) * 3.5, z: c.z + ((b.z - c.z) / d) * 3.5 }); n.play.survival.health = n.play.survival.maxHealth; }, c);
+      // Follow it, up a tree too if it hops onto one.
+      await game((c) => { const n = window.__game, b = n.player.body, d = Math.hypot(c.x - b.x, c.z - b.z); if (d > 4 || Math.abs(c.feet - b.y) > 2) Object.assign(b, { x: c.x + ((b.x - c.x) / (d || 1)) * 3.5, y: Math.max(b.y, c.feet), z: c.z + ((b.z - c.z) / (d || 1)) * 3.5, vy: 0 }); n.play.survival.health = n.play.survival.maxHealth; }, c);
       await aim(c.x, c.y, c.z);
       await page.mouse.click(640, 360);
       await page.waitForTimeout(260);

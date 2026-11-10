@@ -85,3 +85,7 @@ h3 small{font-weight:400;color:var(--muted);letter-spacing:0}.section-copy,.help
 .hotbar{border-radius:8px;background:linear-gradient(#152a2de8,#0e1d20e8);box-shadow:0 4px 14px #0006}
 @media(max-width:650px){.bar{width:72px}}
 @container(max-width:400px){.recipe-detail{grid-template-columns:1fr}.recipe-detail>img{width:32px;height:32px}.craft-buttons,.recipe-tools,.needs li{flex-wrap:wrap}.crafting h3{flex-wrap:wrap;gap:4px}.screen .craft-cats button{padding:3px 7px}.crafting,.crafting *{min-width:0}.needs span{white-space:normal}}
+.station.alchemy{background:#2c2446;color:#c8b4ff;margin-left:6px}
+.effects{position:fixed;left:16px;top:16px;display:flex;flex-direction:column;gap:4px;list-style:none;margin:0;padding:0;pointer-events:none}
+.effects li{font-size:12px;padding:3px 9px;border-radius:4px;background:#102024de;border:1px solid var(--line);color:#cfe8d4}
+.effects li.bad{color:#ffb0a0;border-color:#6a2a24}.effects small{color:var(--muted);margin-left:4px}

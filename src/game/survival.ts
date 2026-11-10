@@ -3,6 +3,7 @@ import {
   SPRINT_HUNGER_PER_S, STARVE_PER_S,
 } from '../config';
 import { BodyTemperature } from './bodyTemperature';
+import { EFFECTS, type Effect } from './effects';
 
 /** Health, hunger and breath, and what changes them. */
 export class Survival {
@@ -24,6 +25,18 @@ export class Survival {
   burning = 0;
   /** The temperature the player last felt, for the HUD. */
   feltC = 20;
+  /** Status effects: seconds left of each. */
+  effects: Partial<Record<Effect, number>> = {};
+
+  /** Starts `effect` for `seconds`, or extends it; an antidote keeps poison and bleeding off. */
+  addEffect(effect: Effect, seconds: number): void {
+    if (this.effects.antidote && (effect === 'poisoned' || effect === 'bleeding')) return;
+    this.effects[effect] = Math.max(this.effects[effect] ?? 0, seconds);
+  }
+
+  has(effect: Effect): boolean {
+    return (this.effects[effect] ?? 0) > 0;
+  }
 
   get dead(): boolean {
     return this.health <= 0;
@@ -45,7 +58,16 @@ export class Survival {
     breath?: number; fireproof?: boolean; regen?: number }): void {
     if ((this.sinceCast += dt) > MANA_DELAY_S) this.mana = Math.min(MAX_MANA, this.mana + MANA_PER_S * dt);
     this.hunger = Math.max(0, this.hunger - (HUNGER_PER_S + (s.sprinting ? SPRINT_HUNGER_PER_S : 0)) * this.hungerRate * dt);
-    if (this.hunger >= REGEN_HUNGER) this.health = Math.min(this.maxHealth, this.health + REGEN_PER_S * (s.regen ?? 1) * dt);
+    let regen = s.regen ?? 1, blocked = false;
+    for (const [key, left] of Object.entries(this.effects) as [Effect, number][]) {
+      const e = EFFECTS[key];
+      if (e.harm) this.hurt(e.harm * dt, e.cause!);
+      if (e.heal) this.health = Math.min(this.maxHealth, this.health + e.heal * dt);
+      if (e.regen) regen *= e.regen;
+      blocked ||= !!e.stopsRegen;
+      if ((this.effects[key] = left - dt) <= 0) delete this.effects[key];
+    }
+    if (this.hunger >= REGEN_HUNGER && !blocked) this.health = Math.min(this.maxHealth, this.health + REGEN_PER_S * regen * dt);
     if (this.hunger <= 0) this.hurt(STARVE_PER_S * dt, 'starved');
     if (s.headInWater) {
       this.air = Math.max(0, this.air - dt / (s.breath ?? 1));

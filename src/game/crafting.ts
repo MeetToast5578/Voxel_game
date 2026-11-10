@@ -9,7 +9,19 @@ export interface Recipe {
   pattern: readonly string[];
   key: Readonly<Record<string, readonly string[]>>;
   result: readonly [key: string, count: number];
+  /** Where it is made, when not decided by size (2×2 by hand, 3×3 at a workbench). */
+  station?: Station;
 }
+
+/** Potions: a bottle and two ingredients, at an alchemy table. */
+const BREWS: readonly [potion: string, a: readonly string[], b: readonly string[]][] = [
+  ['healing_potion', ['red_mushroom'], ['gel']],
+  ['regeneration_potion', ['poppy'], ['gel']],
+  ['swiftness_potion', ['dandelion'], ['feather']],
+  ['fire_resistance_potion', ['ember_crystal'], ['coal']],
+  ['water_breathing_potion', ['raw_fish'], ['reed']],
+  ['antidote', ['brown_mushroom'], ['bone_meal']],
+];
 
 /** Any rock dug from the ground counts as stone for tools and furnaces: many places have granite or basalt, not stone. */
 const ROCK = ['cobblestone', 'granite', 'diorite', 'andesite', 'limestone', 'slate', 'basalt', 'deepslate'];
@@ -32,6 +44,9 @@ export const RECIPES: readonly Recipe[] = [
   { pattern: [' LG', ' SL', 'S  '], key: { L: ['lapis'], G: ['gel'], S: ['stick'] }, result: ['spark_wand', 1] },
   { pattern: [' EG', ' SE', 'S  '], key: { E: ['ember_crystal'], G: ['gold_ingot'], S: ['stick'] }, result: ['ember_staff', 1] },
   { pattern: ['PP', 'PP'], key: { P: ['planks'] }, result: ['crafting_table', 1] },
+  { pattern: ['G G', 'PPP'], key: { G: ['glass_bottle'], P: ['planks'] }, result: ['alchemy_table', 1] },
+  { pattern: ['G G', ' G '], key: { G: ['glass'] }, result: ['glass_bottle', 3] },
+  ...BREWS.map(([potion, a, b]) => ({ pattern: ['ABG'], key: { A: a, B: b, G: ['glass_bottle'] }, result: [potion, 1] as const, station: 'alchemy' as const })),
   { pattern: ['PPP', 'P P', 'PPP'], key: { P: ['planks'] }, result: ['chest', 1] },
   { pattern: ['CCC', 'C C', 'CCC'], key: { C: ROCK }, result: ['furnace', 1] },
   { pattern: ['WWW', 'PPP'], key: { W: ['wool', 'wheat'], P: ['planks'] }, result: ['bed', 1] },
@@ -94,8 +109,9 @@ export function fits(r: Recipe, size: number): boolean {
   return r.pattern.length <= size && r.pattern.every((row) => row.length <= size);
 }
 
-/** Where a recipe can be made: anywhere, or with a workbench in reach (recipes that need the 3×3 grid). */
-export type Station = 'hand' | 'table';
+/** Where a recipe can be made: anywhere, with a workbench in reach (recipes that need the 3×3 grid), or beside an
+ * alchemy table (potions). */
+export type Station = 'hand' | 'table' | 'alchemy';
 
 /** A recipe as a list entry: so many of each ingredient, no layout. */
 export interface Craft {
@@ -113,7 +129,7 @@ export const CRAFTS: readonly Craft[] = (() => {
     for (const row of r.pattern) for (const ch of row) if (ch !== ' ') counts.set(ch, (counts.get(ch) ?? 0) + 1);
     const needs = [...counts].map(([ch, count]) => ({ keys: r.key[ch]!, count }));
     const id = `${r.result[0]}:${needs.map((n) => `${n.keys.join('|')}*${n.count}`).join(',')}`;
-    if (!seen.has(id)) seen.set(id, { id, result: r.result, needs, station: fits(r, 2) ? 'hand' : 'table' });
+    if (!seen.has(id)) seen.set(id, { id, result: r.result, needs, station: r.station ?? (fits(r, 2) ? 'hand' : 'table') });
   }
   return [...seen.values()];
 })();
@@ -130,9 +146,9 @@ export function haveFor(slots: readonly (ItemStack | null)[], keys: readonly str
   return slots.reduce((n, s) => n + (usable(s, keys) ? s.count : 0), 0);
 }
 
-/** Whether `c` can be made now from `slots` at `station`. */
-export function canCraft(c: Craft, slots: readonly (ItemStack | null)[], station: Station): boolean {
-  return (c.station === 'hand' || station === 'table') && c.needs.every((n) => haveFor(slots, n.keys) >= n.count);
+/** Whether `c` can be made now from `slots` with the stations at hand (a workbench, an alchemy table, or neither). */
+export function canCraft(c: Craft, slots: readonly (ItemStack | null)[], at: Station | readonly Station[]): boolean {
+  return (c.station === 'hand' || at === c.station || (Array.isArray(at) && at.includes(c.station))) && c.needs.every((n) => haveFor(slots, n.keys) >= n.count);
 }
 
 /** How many times `c` could be made from `slots` (ingredients are never shared between needs). */
@@ -145,7 +161,7 @@ export function timesCraftable(c: Craft, slots: readonly (ItemStack | null)[]): 
  * result does not fit stops it, ingredients untouched. Wooden results take the species of the most plentiful log or
  * plank used. Returns how many batches were made.
  */
-export function craft(c: Craft, inv: Inventory, station: Station, times = 1): number {
+export function craft(c: Craft, inv: Inventory, station: Station | readonly Station[], times = 1): number {
   let made = 0;
   for (; made < times && canCraft(c, inv.slots, station); made++) {
     const next = new Inventory();
