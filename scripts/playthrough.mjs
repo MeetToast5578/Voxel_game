@@ -114,12 +114,12 @@ async function fight(key, metres = 2.4) {
   }, [key, metres]);
   let boss = false;
   for (let i = 0; i < 120; i++) {
-    const c = await game((id) => { const c = window.__game.creatures.list.find((c) => c.id === id); return c && c.health > 0 ? { x: c.body.x, y: c.body.y + c.body.height / 2, z: c.body.z } : null; }, id);
+    const c = await game((id) => { const c = window.__game.creatures.list.find((c) => c.id === id); return c && c.health > 0 ? { x: c.body.x, y: c.body.y + c.body.height / 2, z: c.body.z, feet: c.body.y } : null; }, id);
     if (!c) return boss;
-    // Keep the creature within sword reach, as a player would by stepping in.
+    // Keep the creature within sword reach and on its level, as a player would by stepping in (archers back away).
     await game((c) => {
       const n = window.__game, b = n.player.body, d = Math.hypot(c.x - b.x, c.z - b.z);
-      if (d > 3) Object.assign(b, { x: c.x + ((b.x - c.x) / d) * 2.5, z: c.z + ((b.z - c.z) / d) * 2.5 });
+      if (d > 3 || Math.abs(c.feet - b.y) > 1.5) Object.assign(b, { x: c.x + ((b.x - c.x) / (d || 1)) * 2.5, y: c.feet, z: c.z + ((b.z - c.z) / (d || 1)) * 2.5, vy: 0 });
       n.play.survival.health = n.play.survival.maxHealth;
     }, c);
     await aim(c.x, c.y, c.z);

@@ -397,6 +397,13 @@ export const PROJECTILE_LIFE_S = 8;
 export const ARCHER_NEAR_M = 7;
 export const ARCHER_FAR_M = 15;
 export const ARCHER_SHOT_S = 2.5;
+/** World events: the share of nights with a red moon and of days with slime rain (from this day on), the slimes to
+ * defeat before the Slime King comes, and seconds between falling slimes. */
+export const RED_NIGHT_CHANCE = 1 / 8;
+export const SLIME_RAIN_CHANCE = 1 / 10;
+export const EVENTS_FROM_DAY = 2;
+export const SLIME_RAIN_KILLS = 25;
+export const SLIME_RAIN_EVERY_S = 3;
 /** Grappling hook: how far it reaches (m), how fast it pulls (m/s), and how close it holds the player to its point (m). */
 export const HOOK_RANGE_M = 14;
 export const HOOK_PULL_M_S = 13;

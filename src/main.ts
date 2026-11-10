@@ -363,7 +363,7 @@ function update(dt: number): void {
   play.tickProjectiles(dt, boxAt, player);
   play.particles.update(dt);
   creatures.update(dt, {
-    player: player.body, survival: play.mode === 'survival', day: env.atmosphere.sun[1] > -0.05, hostiles: DIFFICULTY[play.difficulty].hostiles, boxAt, waterAt,
+    player: player.body, survival: play.mode === 'survival', day: env.atmosphere.sun[1] > -0.05, hostiles: DIFFICULTY[play.difficulty].hostiles * (play.event === 'red_night' ? 2 : 1), boxAt, waterAt,
     playerHolds: play.held ? BLOCKS.type(play.held.state).key : null,
   });
   if (play.drops.update(dt, dropBoxAt, play.survival.dead ? null : player.body, play.inventory)) play.version++;
@@ -373,6 +373,7 @@ function update(dt: number): void {
     play.wakeGuardians(player);
     play.wakeVillagers(player);
     play.noteSeen(player.body.x, player.body.z);
+    play.tickEvent(exposureClock, player);
     exposureClock = 0;
   }
   if (play.mode === 'survival' && !play.survival.dead) {
@@ -410,6 +411,7 @@ function update(dt: number): void {
     // The journal: a day survived at each dawn, the deepest point, biomes walked in, then milestones.
     const night = env.clock.dayTime > 1 - NIGHT_BEFORE || env.clock.dayTime < NIGHT_BEFORE;
     if (wasNight && !night) play.stats.days++;
+    if (wasNight !== night) play.turnOfDay(night);
     wasNight = night;
     play.deepestM = Math.min(play.deepestM, player.body.y * BLOCK_SIZE_M);
     const column = world.column(Math.floor(player.body.x) >> 4, Math.floor(player.body.z) >> 4);
@@ -811,6 +813,9 @@ const loop = new FixedStepLoop(1 / 60, 0.25, timedUpdate, (alpha, frameDt) => {
   // Real drops first: when over the cap, arrows and bits are what is left out.
   const drawn = flying.length ? [...play.drops.list, ...flying].slice(0, DROP_CAP) : play.drops.list;
   if (Math.hypot(player.body.vx, player.body.vz) > 0.5) boatYaw = Math.atan2(-player.body.vx, -player.body.vz);
+  // A red moon colours the night sky and the fog with it, fading in and out.
+  const redMoon = renderer.sky.redMoon + ((play.event === 'red_night' ? 1 : 0) - renderer.sky.redMoon) * Math.min(1, frameDt * 0.5);
+  renderer.sky.redMoon = redMoon;
   rope.visible = player.hook !== null;
   if (player.hook) {
     const at = rope.geometry.getAttribute('position') as THREE.BufferAttribute, cam = renderer.camera;

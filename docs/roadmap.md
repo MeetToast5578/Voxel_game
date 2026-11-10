@@ -103,7 +103,7 @@ Every task also passes `npm run check`, `npm run benchmark -- --assert` and `npm
   pillars. Using a summon item away from an altar asks the player to find one, or works with a weaker reward
   (**Decide**). The fight closes the arena with a temporary barrier.
   **Done when:** a test summons at an altar, and the barrier lifts on a win or on death.
-- [ ] **R3.2 Treasure bags (S).** Each boss drops one bag with its unique loot, so nothing is lost in lava. The bag
+- [x] **R3.2 Treasure bags (S).** Done in 0.7.6 (no trophy block yet). Each boss drops one bag with its unique loot, so nothing is lost in lava. The bag
   holds a trophy block for display.
   **Done when:** opening a bag gives the listed loot.
 - [ ] **R3.3 New bosses (L, one at a time).**
@@ -114,7 +114,7 @@ Every task also passes `npm run check`, `npm run benchmark -- --assert` and `npm
 
   Each has its own summon item, arena and loot.
   **Done when:** each boss passes the R2.2 phase test and its loot test.
-- [ ] **R3.4 Night events (M).**
+- [x] **R3.4 Night events (M).** Done in 0.7.6 (zombies do not open doors yet).
   - **Red Night:** a red moon, about 1 night in 8. Twice the monsters, zombies open doors, and more loot.
   - **Slime Rain:** slimes fall from the sky by day, and a big slime ends it.
 

@@ -13,6 +13,8 @@ export function skyColors(sunY: number, cloud: number, zenith: THREE.Color, hori
   horizon.lerp(new THREE.Color(grey * 1.05, grey * 1.05, grey * 1.1), cloud * 0.7);
 }
 
+const RED_ZENITH = new THREE.Color(0.16, 0.01, 0.02), RED_HORIZON = new THREE.Color(0.45, 0.05, 0.04);
+
 const DOME_VERTEX = /* glsl */ `
 out vec3 vDir;
 void main() {
@@ -113,12 +115,19 @@ export class Sky {
    * Places everything around `camera` for a sun direction (unit), moon phase (0 new, 0.5 full), cloud cover and a
    * lightning flash (0..1), and updates `zenith` and `horizon`.
    */
+  /** 0..1: how far the night sky is turned red by a red moon (eased by the game). */
+  redMoon = 0;
+
   update(camera: THREE.Camera, distance: number, sun: [number, number, number], moonPhase: number, cloud: number,
     flash: number, starAngle: number, underground = 0): void {
     this.domeUniforms.underground!.value = underground;
     this.group.position.copy(camera.position);
     this.dome.scale.setScalar(distance);
     skyColors(sun[1], cloud, this.zenith, this.horizon);
+    if (this.redMoon > 0) {
+      this.zenith.lerp(RED_ZENITH, this.redMoon * 0.6);
+      this.horizon.lerp(RED_HORIZON, this.redMoon * 0.7);
+    }
     this.domeUniforms.sunDir!.value.set(sun[0], sun[1], sun[2]);
     this.domeUniforms.dusk!.value = Math.max(0, 1 - Math.abs(sun[1]) / 0.25) * (1 - cloud);
     this.domeUniforms.flash!.value = flash;

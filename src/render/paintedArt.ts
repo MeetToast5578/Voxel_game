@@ -275,6 +275,27 @@ const POTION_COLOURS: Readonly<Record<string, [string, string, string]>> = {
 };
 for (const [key, [L, l, D]] of Object.entries(POTION_COLOURS)) (ICONS as Record<string, Icon>)[key] = [{ c: '#8a6040', g: '#b8d4e0', G: '#ffffff', L, l, D }, BOTTLE];
 
+/** A tied sack in each boss's colours: B cloth, b its shade, t the tie, g the gold showing at the neck. */
+const BAG = [
+  '................',
+  '......tt.tt.....',
+  '.......ttt......',
+  '......gGgg......',
+  '.......tt.......',
+  '.....BBBBBB.....',
+  '....BBBBBBBb....',
+  '...BBBBBBBBbb...',
+  '..BBBBBBBBBBbb..',
+  '..BBBBBBBBBBbb..',
+  '..BBBBBBBBBbbb..',
+  '..BBBBBBBBBbbb..',
+  '...BBBBBBBbbb...',
+  '....bbbbbbbb....',
+  '................',
+  '................'];
+for (const [key, B, b, t] of [['king_slime_bag', '#4a8ae0', '#2a5ab8', '#e8b84a'], ['gloom_matriarch_bag', '#8a70b0', '#5a4880', '#e8ff90'],
+  ['warden_bag', '#c04a20', '#7a2a10', '#ffb050']] as const) (ICONS as Record<string, Icon>)[key] = [{ B, b, t, ...GOLD }, BAG];
+
 /** Whole-face tiles for the alchemy table: a dark slate top with bottles and a bowl, plank sides with a drawer. */
 const WOOD = { w: '#9a6a3c', W: '#b88452', d: '#6a4424' };
 (ICONS as Record<string, Icon>).alchemy_table_top = [{ ...WOOD, s: '#3c4450', S: '#4c5664', r: '#e0303c', b: '#3060e0', n: '#60c040', g: '#cfe6f0', k: '#8a8a8a' }, [

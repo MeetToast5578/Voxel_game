@@ -73,6 +73,8 @@ export interface BlockType {
   readonly accessory?: Accessory;
   /** A potion, drunk with right click: a status effect for some seconds (see game/effects.ts), health back at once, or
    * poison and bleeding cured. */
+  /** A boss's treasure bag: right click opens it for the loot of that species (its key). */
+  readonly bag?: string;
   readonly potion?: { readonly text: string; readonly effect?: string; readonly seconds?: number; readonly heal?: number; readonly cures?: boolean };
   /** Seconds it burns in a furnace. */
   readonly fuel?: number;
@@ -441,6 +443,8 @@ function gameplay(): BlockSpec[] {
     ...ACCESSORIES.map(([key, name, accessory]) => item(key, name, { maxStack: 1, accessory })),
     item('glass_bottle', 'Glass Bottle'),
     item('grappling_hook', 'Grappling Hook', { maxStack: 1 }),
+    ...([['king_slime', 'Slime King'], ['gloom_matriarch', 'Gloom Matriarch'], ['warden', 'Ember Warden']] as const)
+      .map(([key, name]) => item(`${key}_bag`, `Treasure Bag (${name})`, { maxStack: 8, bag: key })),
     ...POTIONS.map(([key, name, potion]) => item(key, name, { maxStack: 8, potion })),
     item('bucket', 'Bucket', { maxStack: 16 }),
     item('water_bucket', 'Water bucket', { maxStack: 1, emptiesTo: 'bucket' }),

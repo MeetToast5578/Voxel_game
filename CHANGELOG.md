@@ -3,6 +3,17 @@
 The newest version comes first. `npm run check` fails if the version at the top here is not the one in
 `package.json`, so the two are changed together.
 
+## 0.7.6 — 2026-11-10
+
+Events and boss rewards (roadmap R3.2, R3.4).
+
+- Red Night: from the third day, about one night in eight brings a red moon. The sky and fog turn red, twice as many
+  monsters come, and they often drop extra coins. It ends at dawn.
+- Slime Rain: about one day in ten, slimes fall from the sky around you. Beat 25 and the Slime King comes for you.
+- Bosses (the Slime King, the Gloom Matriarch, the Ember Warden) leave one treasure bag instead of scattered loot, so
+  nothing is lost in lava or water. Right click opens it.
+- Neither event happens on peaceful.
+
 ## 0.7.5 — 2026-11-10
 
 Towns the player builds (roadmap R5.1, R5.2).

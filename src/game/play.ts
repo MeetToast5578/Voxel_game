@@ -1,5 +1,5 @@
-import { HOOK_RANGE_M, TIER_DAMAGE, ARMOUR_CAP, ARMOUR_PER_POINT, MAX_HEALTH, ACCESSORY_SLOTS, AXE_ARC_RAD, CRIT_CHANCE, CRIT_FACTOR, KNOCKBACK_FACTOR, SWORD_ARC_RAD, LIGHTNING_DAMAGE, LIGHTNING_REACH_M, FISH_MAX_S, FISH_MIN_S, BLOCK_SIZE_M, ARROW_DAMAGE, ARROW_SPEED_M_S, BOLT_SPEED_M_S, BOW_DRAW_S, AXE_DAMAGE, BUILD_CELLS_PER_TICK, CAMPFIRE_COOK_S, CAMPFIRE_SLOTS, DIFFICULTY, PLAYER_ATTACK_COOLDOWN_S, SWORD_DAMAGE, type Difficulty, BUILD_MAX_M, DROP_PICKUP_DELAY_S, DROP_THROW_M_S, HAND_DAMAGE, REACH_M, REPEAT_S, TOOL_DAMAGE, UNDO_STEPS, cells, toCells } from '../config';
-import { lootOf, type Creature, type Creatures } from '../creatures/creatures';
+import { EVENTS_FROM_DAY, RED_NIGHT_CHANCE, SLIME_RAIN_CHANCE, SLIME_RAIN_EVERY_S, SLIME_RAIN_KILLS, HOOK_RANGE_M, TIER_DAMAGE, ARMOUR_CAP, ARMOUR_PER_POINT, MAX_HEALTH, ACCESSORY_SLOTS, AXE_ARC_RAD, CRIT_CHANCE, CRIT_FACTOR, KNOCKBACK_FACTOR, SWORD_ARC_RAD, LIGHTNING_DAMAGE, LIGHTNING_REACH_M, FISH_MAX_S, FISH_MIN_S, BLOCK_SIZE_M, ARROW_DAMAGE, ARROW_SPEED_M_S, BOLT_SPEED_M_S, BOW_DRAW_S, AXE_DAMAGE, BUILD_CELLS_PER_TICK, CAMPFIRE_COOK_S, CAMPFIRE_SLOTS, DIFFICULTY, PLAYER_ATTACK_COOLDOWN_S, SWORD_DAMAGE, type Difficulty, BUILD_MAX_M, DROP_PICKUP_DELAY_S, DROP_THROW_M_S, HAND_DAMAGE, REACH_M, REPEAT_S, TOOL_DAMAGE, UNDO_STEPS, cells, toCells } from '../config';
+import { bagLoot, lootOf, type Creature, type Creatures } from '../creatures/creatures';
 import { AIR, BLOCKS, POTIONS, SET_BONUSES, SOLID, type BlockType } from '../engine/blocks';
 import type { World } from '../engine/world';
 import { COLLISION, FULL } from './collision';
@@ -14,6 +14,7 @@ import { overlapsSolid } from './physics';
 import type { Player } from './player';
 import { raycast, TARGET, type RayHit } from './raycast';
 import { Survival } from './survival';
+import { hash2 } from '../core/random';
 import { checkRoom } from './housing';
 import { isEffect, POTION_SICKNESS_S, SLOWED_SPEED, SWIFT_SPEED } from './effects';
 import { Particles } from './particles';
@@ -518,7 +519,17 @@ export class Play {
     const entry = this.bestiary.get(c.species.key) ?? { kills: 0, drops: new Set<string>() };
     this.bestiary.set(c.species.key, entry);
     entry.kills++;
-    for (const loot of lootOf(c)) {
+    // Event rewards: red nights pay in coins; enough slimes beaten in slime rain bring their king.
+    if (this.event === 'red_night' && c.species.hostile && Math.random() < 0.5) this.drop({ state: BLOCKS.state('trade_coin'), count: 1 + Math.floor(Math.random() * 2) }, c.body.x, c.body.y, c.body.z);
+    if (this.event === 'slime_rain' && c.species.key === 'slime' && ++this.eventKills >= SLIME_RAIN_KILLS) {
+      this.event = null;
+      const king = SPECIES_BY_KEY.get('king_slime')!;
+      this.creatures?.add(king, c.body.x, c.body.y + toCells(8), c.body.z, king.health);
+      this.toast('The slimes stop falling... the Slime King has come!', 5);
+    }
+    // A boss leaves one treasure bag, so nothing it drops is lost in lava or water.
+    const loots = c.species.boss || c.species.guardian ? [{ state: BLOCKS.state(`${c.species.key}_bag`), count: 1 }] : lootOf(c);
+    for (const loot of loots) {
       entry.drops.add(BLOCKS.type(loot.state).key);
       this.drop(loot, c.body.x, c.body.y, c.body.z);
     }
@@ -569,6 +580,37 @@ export class Play {
       c.home = [bx + 1.5, bed, bz + 0.5];
     }
     this.wakeHomes(player);
+  }
+
+  /** A world event under way: a red night (twice the monsters, more coins) or slime rain (slimes fall by day until
+   * enough are beaten, then the Slime King comes). */
+  event: 'red_night' | 'slime_rain' | null = null;
+  private eventKills = 0;
+  private eventClock = 0;
+
+  /** Night falls (`night`) or day breaks: an event may start, by the world seed and the day, and the last one ends. */
+  turnOfDay(night: boolean): void {
+    const ended = this.event;
+    this.event = null;
+    if (ended === 'red_night') this.toast('The red moon sets.', 3);
+    if (this.mode !== 'survival' || this.difficulty === 'peaceful' || this.stats.days < EVENTS_FROM_DAY) return;
+    const roll = hash2(this.seed ^ 0x5eed, this.stats.days, night ? 1 : 0);
+    if (night && roll < RED_NIGHT_CHANCE) {
+      this.event = 'red_night';
+      this.toast('A red moon rises. Monsters swarm tonight!', 5);
+    } else if (!night && roll < SLIME_RAIN_CHANCE) {
+      this.event = 'slime_rain';
+      this.eventKills = 0;
+      this.toast('It is raining slimes!', 5);
+    }
+  }
+
+  /** Slime rain drops a slime somewhere near the player every few seconds. */
+  tickEvent(dt: number, player: Player): void {
+    if (this.event !== 'slime_rain' || !this.creatures || (this.eventClock += dt) < SLIME_RAIN_EVERY_S) return;
+    this.eventClock = 0;
+    const a = Math.random() * Math.PI * 2, r = toCells(6 + Math.random() * 14), slime = SPECIES_BY_KEY.get('slime')!;
+    this.creatures.add(slime, player.body.x + Math.cos(a) * r, player.body.y + toCells(14), player.body.z + Math.sin(a) * r, slime.health);
   }
 
   /** Homes made by placing a bed, by the bed head's cell: who lives there (null until someone moves in). */
@@ -1016,6 +1058,15 @@ export class Play {
       this.drink(heldType.potion);
       return;
     }
+    if (heldType.bag) {
+      const s = SPECIES_BY_KEY.get(heldType.bag)!;
+      if (this.mode === 'survival') this.inventory.useHeld();
+      for (const loot of bagLoot(s)) this.give(loot, ...this.feet);
+      this.toast(`The ${s.name}'s treasure!`, 3);
+      this.events.sound('place');
+      this.version++;
+      return;
+    }
     if (heldType.key === 'life_crystal') {
       if (this.survival.growHeart()) {
         if (this.mode === 'survival') this.inventory.useHeld();
@@ -1408,7 +1459,7 @@ export class Play {
       decorations: this.decorations.save(), mode: this.mode, difficulty: this.difficulty, hints: this.hints.save(), inventory: this.inventory.save(), selected: this.inventory.selected, drops: this.drops.save(),
       health: this.survival.health, maxHealth: this.survival.maxHealth, hunger: this.survival.hunger, air: this.survival.air, effects: { ...this.survival.effects }, burning: this.survival.burning, bodyC: this.survival.temperature.coreC, spawn: this.spawn,
       furnaces: [...this.furnaces].map(([k, f]) => [k, s(f.input), s(f.fuel), s(f.output), f.burn, f.progress]),
-      homes: [...this.homes.values()].map((h) => [h.x, h.y, h.z, h.yaw, h.who]), journal: this.journal.save(), seen: [...this.seen], bestiary: [...this.bestiary].map(([k, e]) => [k, e.kills, [...e.drops]]), stats: this.stats, biomesSeen: [...this.biomesSeen], deepestM: this.deepestM, found: [...this.found], beaconLit: this.beaconLit, endingSeen: this.endingSeen, boating: this.boating,
+      event: this.event, eventKills: this.eventKills, homes: [...this.homes.values()].map((h) => [h.x, h.y, h.z, h.yaw, h.who]), journal: this.journal.save(), seen: [...this.seen], bestiary: [...this.bestiary].map(([k, e]) => [k, e.kills, [...e.drops]]), stats: this.stats, biomesSeen: [...this.biomesSeen], deepestM: this.deepestM, found: [...this.found], beaconLit: this.beaconLit, endingSeen: this.endingSeen, boating: this.boating,
       armour: this.armour.map((a) => (a ? [BLOCKS.stateName(a.state), 1, a.wear ?? 0, a.upgrade ?? 0] : null)),
       accessories: this.accessories.map((a) => (a ? [BLOCKS.stateName(a.state), 1] : null)),
       campfires: [...this.campfires].map(([k, c]) => [k, c.map(([st, left]) => [BLOCKS.stateName(st), left])]),
@@ -1434,6 +1485,8 @@ export class Play {
     this.survival.hunger = num(p.hunger, this.survival.hunger);
     this.survival.air = num(p.air, this.survival.air);
     this.survival.burning = Math.max(0, num(p.burning, 0));
+    if (p.event === 'red_night' || p.event === 'slime_rain') this.event = p.event;
+    this.eventKills = Math.max(0, Math.floor(num(p.eventKills, 0)));
     if (Array.isArray(p.homes)) for (const h of p.homes) {
       if (!Array.isArray(h) || !h.slice(0, 4).every((v) => typeof v === 'number' && Number.isFinite(v))) continue;
       const who = typeof h[4] === 'string' && SPECIES_BY_KEY.get(h[4])?.villager ? h[4] : null;

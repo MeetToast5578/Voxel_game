@@ -586,6 +586,12 @@ export function meatOf(c: Creature): { state: number; count: number } | null {
 }
 
 /** Everything a dead creature leaves: meat, leather from hides, and its own loot. */
+/** What a boss's treasure bag holds when opened: its loot (rare things by chance) and coins. */
+export function bagLoot(s: Species, rand: () => number = Math.random): { state: number; count: number }[] {
+  return [...(s.loot ?? []).filter(([, , chance]) => chance === undefined || rand() < chance).map(([key, count]) => ({ state: BLOCKS.state(key), count })),
+    { state: BLOCKS.state('trade_coin'), count: 25 }];
+}
+
 export function lootOf(c: Creature, rand: () => number = Math.random): { state: number; count: number }[] {
   const meat = meatOf(c);
   const s = c.species;

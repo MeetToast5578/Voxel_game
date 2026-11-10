@@ -27,6 +27,8 @@ export function sourcesOf(key: string): string[] {
   if (key === 'wheat') out.push('found in tall grass');
   if (key === 'sapling') out.push('dropped by leaves');
   if (key === 'raw_fish') out.push('caught with a fishing rod');
+  const bag = BLOCKS.byName(key).bag;
+  if (bag) out.push(`dropped by the ${SPECIES.find((s) => s.key === bag)?.name ?? bag}`);
   if (key === 'water_bucket' || key === 'lava_bucket') out.push('scooped up with a bucket');
   const by = SPECIES.filter((s) => s.loot?.some(([k]) => k === key) || (key === 'raw_meat' && s.meat > 0)).map((s) => s.name);
   if (by.length) out.push(`dropped by ${unique(by).slice(0, 4).join(', ')}${by.length > 4 ? ' and more' : ''}`);
