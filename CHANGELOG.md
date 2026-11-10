@@ -3,6 +3,16 @@
 The newest version comes first. `npm run check` fails if the version at the top here is not the one in
 `package.json`, so the two are changed together.
 
+## 0.7.4 — 2026-11-10
+
+Getting around and dressing for it (roadmap R6.4, R6.2).
+
+- Grappling Hook (three iron ingots and two string, at a workbench): right click throws it at a block up to 14 m away
+  and pulls you there, then holds you against it. Jump to let go with a hop (air jumps come back); right click again
+  takes it back. It lets go if the block breaks. A rope shows where it holds.
+- Full armour sets add a bonus, shown in the tooltip and under Equipment: leather 10% faster on foot, iron 6% more
+  harm stopped, diamond 10% more critical hits, jade hurts whatever bites you for 3.
+
 ## 0.7.3 — 2026-11-10
 
 Reasons to keep going (roadmap R7.1–R7.3).

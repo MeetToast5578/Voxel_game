@@ -1,3 +1,4 @@
+import * as THREE from 'three';
 import { REACH_M, DROP_CAP, NIGHT_BEFORE, AUTOSAVE_S, BLOCK_SIZE_M, CAVE_AIR_C, CHUNK_SIZE, DAY_LENGTH_S, DIFFICULTY, HEAT_REACH_M, HEAT_SOURCES_C, cells, type Difficulty, HORIZON_RECENTER_M, MAX_VIEW_CHUNKS, MIN_VIEW_CHUNKS, SIM_HZ, toCells } from './config';
 import { Sounds } from './audio/sounds';
 import { Ambience, type Surroundings } from './audio/ambience';
@@ -233,12 +234,12 @@ const urlDifficulty = params.get('difficulty');
 if (urlDifficulty && urlDifficulty in DIFFICULTY) play.difficulty = urlDifficulty as Difficulty;
 let lastBite = -Infinity;
 const creatures = new Creatures(world, mulberry32(seed ^ 0xc0ffee), {
-  bite: (damage, by, species) => {
+  bite: (damage, by, species, biter) => {
     // A moment of safety after each bite, so a crowd cannot take the player down all at once.
     if (performance.now() - lastBite < 500) return;
     lastBite = performance.now();
     if (play.mode === 'survival' && !play.survival.dead) sounds.play('break', 0.6);
-    play.bitten(damage, by, species);
+    play.bitten(damage, by, species, Math.random, biter);
   },
   sound: (name, volume) => sounds.play(name, volume),
   shoot: (c, x, y, z) => play.shootAtPlayer(x, y, z, player, c.species.attack, c.species.name),
@@ -254,6 +255,10 @@ const creatureMeshes = new ShapeMobs(renderer.scene, renderer.uniforms);
 const effects = new WorldEffects(renderer.scene, renderer.uniforms);
 const decorationMeshes = new DecorationMeshes(renderer.scene, renderer.uniforms);
 const boatMesh = new BoatMesh(renderer.scene, renderer.uniforms);
+// The grappling hook's rope: from just below and right of the eye to where the hook holds.
+const rope = new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3()]), new THREE.LineBasicMaterial({ color: 0x3a2818 }));
+rope.frustumCulled = false;
+renderer.scene.add(rope);
 /** The boat turns to where it is going, not where the rider looks. */
 let boatYaw = 0;
 const dropMeshes = new DropMeshes(renderer.scene, renderer.uniforms.tiles!.value as ConstructorParameters<typeof DropMeshes>[1], renderer.uniforms);
@@ -806,6 +811,14 @@ const loop = new FixedStepLoop(1 / 60, 0.25, timedUpdate, (alpha, frameDt) => {
   // Real drops first: when over the cap, arrows and bits are what is left out.
   const drawn = flying.length ? [...play.drops.list, ...flying].slice(0, DROP_CAP) : play.drops.list;
   if (Math.hypot(player.body.vx, player.body.vz) > 0.5) boatYaw = Math.atan2(-player.body.vx, -player.body.vz);
+  rope.visible = player.hook !== null;
+  if (player.hook) {
+    const at = rope.geometry.getAttribute('position') as THREE.BufferAttribute, cam = renderer.camera;
+    const hand = new THREE.Vector3(0.35, -0.4, -0.6).applyQuaternion(cam.quaternion).add(cam.position);
+    at.setXYZ(0, hand.x, hand.y, hand.z);
+    at.setXYZ(1, ...player.hook);
+    at.needsUpdate = true;
+  }
   boatMesh.update(player.boating, player.body.x, player.body.y, player.body.z, boatYaw, lightAt(player.body.x, player.body.y + 0.5, player.body.z));
   dropMeshes.update(drawn, now / 1000, (d) => lightAt(d.body.x, d.body.y + d.body.height / 2, d.body.z));
   cull();

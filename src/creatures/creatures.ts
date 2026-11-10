@@ -82,7 +82,7 @@ export class Creatures {
 
   constructor(private readonly world: World, private readonly rand: () => number,
     private readonly events: {
-      bite(damage: number, by: string, species?: Species): void;
+      bite(damage: number, by: string, species?: Species, biter?: Creature): void;
       sound(name: 'break' | 'place' | 'step', volume: number): void;
       /** A creature calls, is hurt or dies (for its sound). */
       call?(c: Creature, kind: 'call' | 'hurt' | 'death'): void;
@@ -274,7 +274,7 @@ export class Creatures {
       const level = s.flies ? Math.abs(t.y + t.height * 0.6 - b.y) < 1.6 : Math.abs(t.y - b.y) < b.height;
       if (Math.hypot(t.x - b.x, t.z - b.z) < reach && level && c.cooldown <= 0) {
         c.cooldown = ATTACK_COOLDOWN_S;
-        if (c.target === 'player') this.events.bite(s.attack, s.name, s);
+        if (c.target === 'player') this.events.bite(s.attack, s.name, s, c);
         else this.damage(c.target, s.attack, b.x, b.z);
       }
     }

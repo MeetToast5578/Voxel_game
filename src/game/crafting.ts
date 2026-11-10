@@ -46,6 +46,7 @@ export const RECIPES: readonly Recipe[] = [
   { pattern: ['PP', 'PP'], key: { P: ['planks'] }, result: ['crafting_table', 1] },
   { pattern: ['G G', 'PPP'], key: { G: ['glass_bottle'], P: ['planks'] }, result: ['alchemy_table', 1] },
   { pattern: ['G G', ' G '], key: { G: ['glass'] }, result: ['glass_bottle', 3] },
+  { pattern: [' II', ' SI', 'S  '], key: { I: ['iron_ingot'], S: ['string'] }, result: ['grappling_hook', 1] },
   ...BREWS.map(([potion, a, b]) => ({ pattern: ['ABG'], key: { A: a, B: b, G: ['glass_bottle'] }, result: [potion, 1] as const, station: 'alchemy' as const })),
   { pattern: ['PPP', 'P P', 'PPP'], key: { P: ['planks'] }, result: ['chest', 1] },
   { pattern: ['CCC', 'C C', 'CCC'], key: { C: ROCK }, result: ['furnace', 1] },

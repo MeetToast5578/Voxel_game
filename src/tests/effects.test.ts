@@ -129,3 +129,29 @@ describe('brewing', () => {
     expect(play.stations).toContain('alchemy');
   });
 });
+
+describe('armour sets', () => {
+  it('a full set adds its bonus; a mixed set adds none', () => {
+    const { play } = setup();
+    const wear = (m: string) => ['helmet', 'chestplate', 'leggings', 'boots'].forEach((p, i) => (play.armour[i] = { state: S(`${m}_${p}`), count: 1 }));
+    wear('leather');
+    expect(play.armourSet).toBe('leather');
+    expect(play.bonus.speed).toBeCloseTo(0.1);
+    wear('iron');
+    expect(play.bonus.protection).toBe(2);
+    play.armour[0] = { state: S('leather_helmet'), count: 1 };
+    expect(play.armourSet).toBeNull();
+    expect(play.bonus.protection).toBe(0);
+  });
+
+  it('jade armour hurts whatever bites', async () => {
+    const { world, play } = setup();
+    const { Creatures } = await import('../creatures/creatures');
+    const cs = new Creatures(world, () => 0.5, { bite: () => undefined, sound: () => undefined });
+    play.creatures = cs;
+    ['helmet', 'chestplate', 'leggings', 'boots'].forEach((p, i) => (play.armour[i] = { state: S(`jade_${p}`), count: 1 }));
+    const zombie = cs.add(SPECIES_BY_KEY.get('zombie')!, 2, 0, 0.5, 20);
+    play.bitten(3, 'Zombie', zombie.species, () => 1, zombie);
+    expect(zombie.health).toBe(17);
+  });
+});

@@ -330,6 +330,13 @@ export const TOOL_KINDS: readonly ToolKind[] = ['pickaxe', 'axe', 'shovel', 'swo
 const DURABILITY = [60, 132, 251, 1561, 2400];
 /** Armour materials and pieces: protection per piece (head, chest, legs, feet), warmth per piece, and hits it takes. */
 export const ARMOUR_PIECES = ['helmet', 'chestplate', 'leggings', 'boots'] as const;
+/** What a full set of one material adds, beyond its pieces. */
+export const SET_BONUSES: Readonly<Record<string, { text: string; speed?: number; protection?: number; crit?: number; thorns?: number }>> = {
+  leather: { text: '10% faster on foot', speed: 0.1 },
+  iron: { text: 'Stops 6% more harm', protection: 2 },
+  diamond: { text: '10% more critical hits', crit: 0.1 },
+  jade: { text: 'Biters take 3 damage back', thorns: 3 },
+};
 export const ARMOUR_MATERIALS = {
   leather: { protection: [1, 3, 2, 1], warmth: [3, 6, 4, 2], durability: 80 },
   iron: { protection: [2, 6, 5, 2], warmth: [0, 1, 1, 0], durability: 240 },
@@ -433,6 +440,7 @@ function gameplay(): BlockSpec[] {
       }))),
     ...ACCESSORIES.map(([key, name, accessory]) => item(key, name, { maxStack: 1, accessory })),
     item('glass_bottle', 'Glass Bottle'),
+    item('grappling_hook', 'Grappling Hook', { maxStack: 1 }),
     ...POTIONS.map(([key, name, potion]) => item(key, name, { maxStack: 8, potion })),
     item('bucket', 'Bucket', { maxStack: 16 }),
     item('water_bucket', 'Water bucket', { maxStack: 1, emptiesTo: 'bucket' }),

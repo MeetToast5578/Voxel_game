@@ -1,6 +1,6 @@
-import { TIER_DAMAGE, ARMOUR_CAP, ARMOUR_PER_POINT, MAX_HEALTH, ACCESSORY_SLOTS, AXE_ARC_RAD, CRIT_CHANCE, CRIT_FACTOR, KNOCKBACK_FACTOR, SWORD_ARC_RAD, LIGHTNING_DAMAGE, LIGHTNING_REACH_M, FISH_MAX_S, FISH_MIN_S, BLOCK_SIZE_M, ARROW_DAMAGE, ARROW_SPEED_M_S, BOLT_SPEED_M_S, BOW_DRAW_S, AXE_DAMAGE, BUILD_CELLS_PER_TICK, CAMPFIRE_COOK_S, CAMPFIRE_SLOTS, DIFFICULTY, PLAYER_ATTACK_COOLDOWN_S, SWORD_DAMAGE, type Difficulty, BUILD_MAX_M, DROP_PICKUP_DELAY_S, DROP_THROW_M_S, HAND_DAMAGE, REACH_M, REPEAT_S, TOOL_DAMAGE, UNDO_STEPS, cells, toCells } from '../config';
+import { HOOK_RANGE_M, TIER_DAMAGE, ARMOUR_CAP, ARMOUR_PER_POINT, MAX_HEALTH, ACCESSORY_SLOTS, AXE_ARC_RAD, CRIT_CHANCE, CRIT_FACTOR, KNOCKBACK_FACTOR, SWORD_ARC_RAD, LIGHTNING_DAMAGE, LIGHTNING_REACH_M, FISH_MAX_S, FISH_MIN_S, BLOCK_SIZE_M, ARROW_DAMAGE, ARROW_SPEED_M_S, BOLT_SPEED_M_S, BOW_DRAW_S, AXE_DAMAGE, BUILD_CELLS_PER_TICK, CAMPFIRE_COOK_S, CAMPFIRE_SLOTS, DIFFICULTY, PLAYER_ATTACK_COOLDOWN_S, SWORD_DAMAGE, type Difficulty, BUILD_MAX_M, DROP_PICKUP_DELAY_S, DROP_THROW_M_S, HAND_DAMAGE, REACH_M, REPEAT_S, TOOL_DAMAGE, UNDO_STEPS, cells, toCells } from '../config';
 import { lootOf, type Creature, type Creatures } from '../creatures/creatures';
-import { AIR, BLOCKS, SOLID, type BlockType } from '../engine/blocks';
+import { AIR, BLOCKS, SET_BONUSES, SOLID, type BlockType } from '../engine/blocks';
 import type { World } from '../engine/world';
 import { COLLISION, FULL } from './collision';
 import { craft, type Craft, type Station } from './crafting';
@@ -143,9 +143,22 @@ export class Play {
   /** Worn accessories; each kind at most once. */
   readonly accessories: (ItemStack | null)[] = new Array(ACCESSORY_SLOTS).fill(null);
 
-  /** What the worn accessories add up to. */
-  get bonus(): { speed: number; jumps: number; featherfall: boolean; protection: number; breath: number; fireproof: boolean; regen: number } {
-    const b = { speed: 0, jumps: 0, featherfall: false, protection: 0, breath: 1, fireproof: false, regen: 1 };
+  /** The material of a full set of worn armour (all four pieces alike), or null. */
+  get armourSet(): string | null {
+    const keys = this.armour.map((a) => (a ? BLOCKS.type(a.state).key.split('_')[0]! : null));
+    return keys[0] && keys.every((k) => k === keys[0]) ? keys[0] : null;
+  }
+
+  /** What the worn accessories (and a full armour set, and status effects) add up to. */
+  get bonus(): { speed: number; jumps: number; featherfall: boolean; protection: number; breath: number; fireproof: boolean; regen: number; crit: number; thorns: number } {
+    const b = { speed: 0, jumps: 0, featherfall: false, protection: 0, breath: 1, fireproof: false, regen: 1, crit: 0, thorns: 0 };
+    const set = this.armourSet && SET_BONUSES[this.armourSet];
+    if (set) {
+      b.speed += set.speed ?? 0;
+      b.protection += set.protection ?? 0;
+      b.crit += set.crit ?? 0;
+      b.thorns += set.thorns ?? 0;
+    }
     for (const s of this.accessories) {
       const a = s && BLOCKS.type(s.state).accessory;
       if (!a) continue;
@@ -343,6 +356,8 @@ export class Play {
   }
 
   update(dt: number, input: Input, player: Player, roll = Math.random()): void {
+    // The hook lets go when the block it holds is gone.
+    if (player.hook && this.hookCell && COLLISION[this.world.get(...this.hookCell)] === 0) player.hook = null;
     if (this.mode === 'creative') {
       this.build(input);
       this.drainQueue();
@@ -425,7 +440,7 @@ export class Play {
     // Quick swings land weaker blows: the hit's strength recovers over the cooldown.
     const strength = Math.max(0.2, Math.min(1, this.sinceAttack / PLAYER_ATTACK_COOLDOWN_S));
     this.sinceAttack = 0;
-    const crit = Math.random() < CRIT_CHANCE, damage = strength * weaponDamage(held) * (crit ? CRIT_FACTOR : 1);
+    const crit = Math.random() < CRIT_CHANCE + this.bonus.crit, damage = strength * weaponDamage(held) * (crit ? CRIT_FACTOR : 1);
     const knock = (KNOCKBACK_FACTOR[tool?.kind ?? 'hand'] ?? 1) * (0.5 + strength * 0.5);
     if (arc) this.slashes++;
     for (const c of victims) {
@@ -949,6 +964,10 @@ export class Play {
       this.wear(held);
       return;
     }
+    if (heldType.key === 'grappling_hook') {
+      this.fireHook(player);
+      return;
+    }
     if (heldType.potion) {
       this.drink(heldType.potion);
       return;
@@ -1016,15 +1035,39 @@ export class Play {
   }
 
   /** A creature's bite lands: its damage through armour, and maybe the status effect it carries. */
-  bitten(damage: number, by: string, s?: { inflicts?: readonly [string, number, number] }, rand = Math.random): void {
+  bitten(damage: number, by: string, s?: { inflicts?: readonly [string, number, number] }, rand = Math.random, biter?: Creature): void {
     if (this.mode !== 'survival' || this.survival.dead) return;
     this.survival.hurt(this.protect(damage * DIFFICULTY[this.difficulty].damage), `killed by a ${by.toLowerCase()}`);
+    // Jade armour bites back.
+    const thorns = this.bonus.thorns;
+    if (thorns && biter && biter.health > 0 && this.creatures?.damage(biter, thorns, this.feet[0], this.feet[2], 0.5)) this.defeated(biter);
     const [effect, seconds, chance] = s?.inflicts ?? ['', 0, 0];
     if (rand() < chance) {
       if (effect === 'burning') { if (!this.bonus.fireproof) this.survival.burning = Math.max(this.survival.burning, seconds); }
       else if (isEffect(effect)) this.survival.addEffect(effect, seconds);
     }
     this.version++;
+  }
+
+  /** The block the grappling hook holds. */
+  private hookCell: [number, number, number] | null = null;
+  /** Throws the grappling hook at the solid block in view within reach, or takes it back if it is out. */
+  private fireHook(player: Player): void {
+    if (player.hook) {
+      player.hook = null;
+      return;
+    }
+    const [dx, dy, dz] = player.direction(), b = player.body;
+    const hit = raycast(b.x, player.eyeY, b.z, dx, dy, dz, toCells(HOOK_RANGE_M), (x, y, z) => COLLISION[this.world.get(x, y, z)]!);
+    if (!hit) {
+      this.toast('Nothing in reach to hook onto', 2);
+      return;
+    }
+    // Just outside the face it hit, so the point is in open air and the player is pulled flat against the block.
+    const d = hit.distance - 0.05;
+    player.hook = [b.x + dx * d, player.eyeY + dy * d, b.z + dz * d];
+    this.hookCell = [hit.x, hit.y, hit.z];
+    this.events.sound('place', 0.5);
   }
 
   /** Drinks the held potion. A healing potion brings Potion sickness, and none is drunk while it lasts. */

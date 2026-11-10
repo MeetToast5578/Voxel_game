@@ -221,7 +221,7 @@ Every task also passes `npm run check`, `npm run benchmark -- --assert` and `npm
   tools, a sword, a spear, a hammer, armour and arrows. Gold gets real gear (fast but weak) instead of being only a
   trade good.
   **Done when:** the balance sheet (R1.2) shows each tier clearly better than the last.
-- [ ] **R6.2 Armour set bonuses (S).** Wearing a full set gives a bonus, for example:
+- [x] **R6.2 Armour set bonuses (S).** Done in 0.7.4 (leather: speed instead of gold, which has no armour yet). Wearing a full set gives a bonus, for example:
   - iron: +2 defense;
   - gold: +10% speed;
   - diamond: +5% crit;
@@ -233,7 +233,7 @@ Every task also passes `npm run check`, `npm run benchmark -- --assert` and `npm
   Heavy (+knockback), Swift (+speed), Sturdy (+defense). At an anvil the player can pay coins to roll again. The
   modifier shows in the name and the rarity colour.
   **Done when:** rolls are seeded and saved, and a reforge test passes.
-- [ ] **R6.4 Grappling hook (M).** Fire a hook at a block and get pulled to it. Release in mid-air to swing. It is the
+- [x] **R6.4 Grappling hook (M).** Done in 0.7.4: pull and hold; swinging on release is not done. Fire a hook at a block and get pulled to it. Release in mid-air to swing. It is the
   most "3D Terraria" movement tool.
   **Done when:** a test pulls the player up a cliff.
 - [ ] **R6.5 Late movement (M).**

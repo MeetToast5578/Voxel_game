@@ -1,7 +1,7 @@
 import { render, type ComponentChildren } from 'preact';
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { ARMOUR_PER_POINT, BLOCK_SIZE_M, BODY_COLD_C, BODY_HOT_C, MAX_HUNGER, MAX_MANA, BREATH_S, MAX_VIEW_CHUNKS, MIN_VIEW_CHUNKS } from '../config';
-import { BLOCKS } from '../engine/blocks';
+import { BLOCKS, SET_BONUSES } from '../engine/blocks';
 import { clickSlot, type ItemStack } from '../game/inventory';
 import { canCraft, CRAFTS, haveFor, timesCraftable } from '../game/crafting';
 import { MILESTONES } from '../game/journal';
@@ -75,6 +75,7 @@ export function tooltip(s: ItemStack): string {
   if (t.tool) lines.push(`${TIERS[t.tool.tier] ?? ''} ${t.tool.kind}, ${Math.floor(t.tool.durability * (1+(s.upgrade??0)*.5)) - (s.wear ?? 0)} of ${Math.floor(t.tool.durability*(1+(s.upgrade??0)*.5))} uses left`);
   if (t.mineWith && t.needsTier !== undefined) lines.push(`Needs a ${TIERS[t.needsTier]} ${t.mineWith} or better`);
   if (t.armour) lines.push(`Armour: stops ${Math.round((t.armour.protection+(s.upgrade??0)) * ARMOUR_PER_POINT * 100)}% of harm, ${t.armour.warmth+(s.upgrade??0)} °C warmer, ${Math.floor(t.armour.durability*(1+(s.upgrade??0)*.5)) - (s.wear ?? 0)} hits left`);
+  if (t.armour && SET_BONUSES[t.key.split('_')[0]!]) lines.push(`Full set: ${SET_BONUSES[t.key.split('_')[0]!]!.text}`);
   if (t.accessory) lines.push(`Accessory: ${t.accessory.effect}`);
   if (t.potion) lines.push(`Potion: ${t.potion.text} (right click to drink)`);
   if (t.spell) lines.push(`Magic: ${t.spell.damage} damage, ${t.spell.mana} mana a cast (hold right click)`);
@@ -192,6 +193,7 @@ function Character({ play }: { play: Play }) {
   return <section class="character-pane"><h3>Equipment</h3>
     <div class="armour">{play.armour.map((a, i) => <Slot key={i} stack={a} title={a ? undefined : ['Helmet', 'Chest armour', 'Leg armour', 'Boots'][i]} onClick={(right) => play.clickArmour(i, right)} />)}</div>
     <p class="defense" title="Share of harm your armour stops"><b>{Math.round((1 - armourFactor(points)) * 100)}%</b> defense</p>
+    {play.armourSet && SET_BONUSES[play.armourSet] && <p class="set-bonus">Full {play.armourSet} set: {SET_BONUSES[play.armourSet]!.text}</p>}
     <h3 class="acc-head">Accessories</h3>
     <div class="accessories">{play.accessories.map((a, i) => <Slot key={i} stack={a} title={a ? undefined : 'Accessory: charms, rings and anklets'} onClick={(right) => play.clickAccessory(i, right)} />)}</div>
   </section>;
