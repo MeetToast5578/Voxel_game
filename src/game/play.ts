@@ -1,4 +1,4 @@
-import { MAX_HEALTH, ACCESSORY_SLOTS, AXE_ARC_RAD, CRIT_CHANCE, CRIT_FACTOR, KNOCKBACK_FACTOR, SWORD_ARC_RAD, LIGHTNING_DAMAGE, LIGHTNING_REACH_M, FISH_MAX_S, FISH_MIN_S, BLOCK_SIZE_M, ARROW_DAMAGE, ARROW_SPEED_M_S, BOLT_SPEED_M_S, BOW_DRAW_S, AXE_DAMAGE, BUILD_CELLS_PER_TICK, CAMPFIRE_COOK_S, CAMPFIRE_SLOTS, DIFFICULTY, PLAYER_ATTACK_COOLDOWN_S, SWORD_DAMAGE, type Difficulty, BUILD_MAX_M, DROP_PICKUP_DELAY_S, DROP_THROW_M_S, HAND_DAMAGE, REACH_M, REPEAT_S, TOOL_DAMAGE, UNDO_STEPS, cells, toCells } from '../config';
+import { TIER_DAMAGE, ARMOUR_CAP, ARMOUR_PER_POINT, MAX_HEALTH, ACCESSORY_SLOTS, AXE_ARC_RAD, CRIT_CHANCE, CRIT_FACTOR, KNOCKBACK_FACTOR, SWORD_ARC_RAD, LIGHTNING_DAMAGE, LIGHTNING_REACH_M, FISH_MAX_S, FISH_MIN_S, BLOCK_SIZE_M, ARROW_DAMAGE, ARROW_SPEED_M_S, BOLT_SPEED_M_S, BOW_DRAW_S, AXE_DAMAGE, BUILD_CELLS_PER_TICK, CAMPFIRE_COOK_S, CAMPFIRE_SLOTS, DIFFICULTY, PLAYER_ATTACK_COOLDOWN_S, SWORD_DAMAGE, type Difficulty, BUILD_MAX_M, DROP_PICKUP_DELAY_S, DROP_THROW_M_S, HAND_DAMAGE, REACH_M, REPEAT_S, TOOL_DAMAGE, UNDO_STEPS, cells, toCells } from '../config';
 import { lootOf, type Creature, type Creatures } from '../creatures/creatures';
 import { AIR, BLOCKS, SOLID } from '../engine/blocks';
 import type { World } from '../engine/world';
@@ -381,7 +381,8 @@ export class Play {
   private attack(ox: number, oy: number, oz: number, dx: number, dy: number, dz: number): boolean {
     const held = this.held, tool = held ? BLOCKS.type(held.state).tool : undefined;
     const arc = tool?.kind === 'sword' ? SWORD_ARC_RAD : tool?.kind === 'axe' ? AXE_ARC_RAD : 0, reach = toCells(REACH_M);
-    const wall = this.target ? this.target.distance + 0.5 : Infinity;
+    // Only a solid block shields creatures behind it: a swing goes through grass and flowers.
+    const t = this.target, wall = t && BLOCKS.type(this.world.get(t.x, t.y, t.z)).solid ? t.distance + 0.5 : Infinity;
     let victims: Creature[];
     if (arc) {
       victims = this.creatures!.list.filter((c) => {
@@ -398,7 +399,7 @@ export class Play {
       }
     } else {
       const hit = this.creatures!.raycast(ox, oy, oz, dx, dy, dz, reach);
-      victims = hit && !(this.target && this.target.distance < hit.distance) ? [hit.creature] : [];
+      victims = hit && hit.distance < wall ? [hit.creature] : [];
     }
     if (!victims.length) return false;
     // Quick swings land weaker blows: the hit's strength recovers over the cooldown.
@@ -667,7 +668,7 @@ export class Play {
     }
   }
 
-  /** Damage left after worn armour (each protection point stops 4%, at most 80%); every hit wears each piece. */
+  /** Damage left after worn armour (see `armourFactor`); every hit wears each piece. */
   protect(damage: number): number {
     let points = this.bonus.protection;
     this.armour.forEach((a, i) => {
@@ -678,7 +679,7 @@ export class Play {
       if (a.wear >= def.durability * (1 + (a.upgrade ?? 0) * .5)) this.armour[i] = null;
     });
     this.version++;
-    return damage * (1 - Math.min(0.8, points * 0.04));
+    return damage * armourFactor(points);
   }
 
   /** °C of cold the worn armour keeps off. */
@@ -1198,6 +1199,10 @@ export class Play {
       const t=BLOCKS.type(s.state),field=t.smeltsTo?'input':t.fuel?'fuel':null;
       if(field){const box=[f[field]];moveStack(slots,index,box);f[field]=box[0]!;this.version++;return;}
     }
+    // With no container open, armour and accessories go on: armour swaps with what is worn.
+    const t=BLOCKS.type(s.state),free=this.accessories.findIndex((a)=>!a);
+    if(t.armour){slots[index]=this.armour[t.armour.slot]??null;this.armour[t.armour.slot]=s;this.version++;return;}
+    if(t.accessory&&free>=0&&!this.accessories.some((a)=>a?.state===s.state)){this.accessories[free]=s;slots[index]=null;this.version++;return;}
     moveStack(slots,index,slots,index<9?9:0,index<9?36:9);this.version++;
   }
   takeFurnaceOutput(right=false,quick=false):void {
@@ -1316,8 +1321,11 @@ export class Play {
 }
 
 /** Damage of one full-strength hit with `held` (or a bare hand): swords best, then axes, then other tools; more per tier. */
+/** The share of a hit that gets through `points` of armour. */
+export const armourFactor = (points: number): number => 1 - Math.min(ARMOUR_CAP, points * ARMOUR_PER_POINT);
+
 export function weaponDamage(held: ItemStack | null): number {
   const tool = held ? BLOCKS.type(held.state).tool : undefined;
   if (!tool) return HAND_DAMAGE;
-  return (tool.kind === 'sword' ? SWORD_DAMAGE : tool.kind === 'axe' ? AXE_DAMAGE : TOOL_DAMAGE) + tool.tier + (held?.upgrade ?? 0);
+  return (tool.kind === 'sword' ? SWORD_DAMAGE : tool.kind === 'axe' ? AXE_DAMAGE : TOOL_DAMAGE) + (TIER_DAMAGE[tool.tier] ?? tool.tier) + (held?.upgrade ?? 0);
 }

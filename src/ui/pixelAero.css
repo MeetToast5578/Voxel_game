@@ -65,7 +65,7 @@ h3 small{font-weight:400;color:var(--muted);letter-spacing:0}.section-copy,.help
 #combat .hit-number.crit{color:#ffd040;font-size:22px}
 #combat .mob-bar{position:absolute;left:0;top:0;width:44px;height:6px;background:#1a0e0ecc;border:1px solid #000;border-radius:2px}
 #combat .mob-bar i{display:block;height:100%;background:linear-gradient(#ff7a6a,#c8282c);border-radius:1px}
-#combat .boss-bar{position:absolute;left:50%;top:16px;transform:translateX(-50%);width:min(520px,70vw);text-align:center;color:#ffe6c0;text-shadow:0 2px 3px #000}
+#combat .boss-bar{position:absolute;left:50%;top:72px;transform:translateX(-50%);width:min(520px,70vw);text-align:center;color:#ffe6c0;text-shadow:0 2px 3px #000}
 #combat .boss-bar b{font:600 15px Georgia,serif;letter-spacing:.06em}#combat .boss-bar div{height:12px;margin-top:4px;background:#1a0e0edd;border:2px solid #4a2a20;border-radius:6px;overflow:hidden}
 #combat .boss-bar i{display:block;height:100%;background:linear-gradient(#ff9a50,#c83a1c);transition:width .2s}
 #combat .slash{position:absolute;left:50%;top:50%;width:min(46vw,520px);transform:translate(-40%,-55%) rotate(-12deg);opacity:0}

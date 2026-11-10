@@ -175,3 +175,24 @@ describe('path-finding', () => {
     expect(findPath(flat(boxed), 0, 0, 0, 9, 0, 0, limits)).toEqual([]);
   });
 });
+
+describe('nothing gets stuck', () => {
+  it('never spawns a creature inside a block, even among close pillars', () => {
+    const world = plain();
+    // Stone pillars on every other cell: only every other cell is open to stand in.
+    for (let x = -60; x <= 60; x++) for (let z = -60; z <= 60; z++) if ((x + z) & 1) for (let y = 0; y < 4; y++) world.set(x, y, z, BLOCKS.state('stone'));
+    const cs = new Creatures(world, mulberry32(7), { bite: () => undefined, sound: () => undefined });
+    for (let i = 0; i < 60 * 120; i++) cs.update(1 / 60, ctx(world, player(), true, false));
+    expect(cs.list.length).toBeGreaterThan(3);
+    for (const c of cs.list) expect(COLLISION[world.get(Math.floor(c.body.x), Math.floor(c.body.y), Math.floor(c.body.z))], c.species.key).toBe(0);
+  });
+
+  it('lets a boss go once the player is far away', () => {
+    const world = plain();
+    const cs = new Creatures(world, mulberry32(3), { bite: () => undefined, sound: () => undefined });
+    const king = cs.add(SPECIES_BY_KEY.get('king_slime')!, 10, 0, 10, 240);
+    const far = { ...player(), x: 2000, z: 2000 };
+    cs.update(1 / 60, ctx(world, far, true, true));
+    expect(cs.list.includes(king)).toBe(false);
+  });
+});

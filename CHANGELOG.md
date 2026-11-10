@@ -3,6 +3,24 @@
 The newest version comes first. `npm run check` fails if the version at the top here is not the one in
 `package.json`, so the two are changed together.
 
+## 0.7.1 — 2026-11-10
+
+Checks that the game works end to end, and the fixes they found (roadmap R1).
+
+- Any rock makes stone tools and a furnace: granite, basalt, slate and the other stones count as cobblestone. Worlds
+  that start on granite could not make stone tools before.
+- Sword hits pass through grass and flowers; only solid blocks shield a creature.
+- Shift-click puts on armour (swapping what is worn) and accessories.
+- Gear tiers are felt more: swords hit for 4, 5, 7, 10 and 13 from wood to jade (was 4 to 8). Armour stops 3% per
+  point, up to 85% (was 4%, up to 80%), so jade armour now protects better than diamond.
+- Monsters in a group never spawn inside a block, and dropped items rest at the edge of unloaded ground instead of
+  falling through it.
+- The boss health bar sits below the hint banner instead of over it. With an item held, the flat hand picture no longer
+  flashes beside the 3D item.
+- `npm run playthrough` plays a new survival world with real mouse and keys (trees, crafting, digging, fights, the
+  Slime King, a trade, save and reload) and writes a screenshot report; CI runs it. `docs/balance.md` is a generated
+  table of hits and bites per tier.
+
 ## 0.7.0 — 2026-11-09
 
 The "3D Terraria" pass (Milestone 18).

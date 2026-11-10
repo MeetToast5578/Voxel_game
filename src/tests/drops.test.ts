@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { DROP_LIFETIME_S, DROP_PICKUP_M, toCells } from '../config';
 import { BLOCKS } from '../engine/blocks';
 import { Drops } from '../game/drops';
-import { FULL } from '../game/collision';
+import { FULL, loadedBoxAt } from '../game/collision';
+import { World } from '../engine/world';
 import { Inventory } from '../game/inventory';
 import type { Body } from '../game/physics';
 
@@ -17,6 +18,13 @@ function run(drops: Drops, seconds: number, p: Body | null, inv = new Inventory(
 }
 
 describe('drops', () => {
+  it('rest on the edge of unloaded ground instead of falling into it', () => {
+    const drops = new Drops(), boxAt = loadedBoxAt(new World());
+    drops.spawn({ state: S('dirt'), count: 1 }, 0.5, 4, 0.5);
+    for (let t = 0; t < 3; t += 0.05) drops.update(0.05, boxAt, null, new Inventory());
+    expect(drops.list[0]!.body.y).toBeGreaterThan(3);
+  });
+
   it('fall to the ground and slide to a stop', () => {
     const drops = new Drops();
     drops.spawn({ state: S('dirt'), count: 3 }, 0.5, 4, 0.5, 6, 0, 0);

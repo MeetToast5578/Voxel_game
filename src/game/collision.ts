@@ -33,3 +33,7 @@ for (const t of BLOCKS.types) {
 
 /** Collision box set of the cell (x, y, z), an index into BOX_SETS; 0 for none. */
 export type BoxAt = (x: number, y: number, z: number) => number;
+
+/** Collision of a world's cells where a cell not loaded yet counts as solid, so nothing falls into the unloaded void. */
+export const loadedBoxAt = (world: { get(x: number, y: number, z: number): number; isLoaded(x: number, y: number, z: number): boolean }): BoxAt =>
+  (x, y, z) => (world.isLoaded(x, y, z) ? COLLISION[world.get(x, y, z)]! : FULL);

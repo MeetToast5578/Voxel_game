@@ -8,7 +8,7 @@ import { LightEngine } from './engine/light';
 import { Streamer } from './engine/streaming';
 import { ALL_CONNECTED, visibleChunks } from './engine/visibility';
 import { World } from './engine/world';
-import { COLLISION } from './game/collision';
+import { COLLISION, loadedBoxAt } from './game/collision';
 import { Input } from './game/input';
 import { blockInteractionHint } from './game/interactionHint';
 import { Play, type Mode } from './game/play';
@@ -170,6 +170,7 @@ const currentAt = (x: number, y: number, z: number): [number, number, number] | 
   return len ? [fx / len, 0, fz / len] : null;
 };
 const boxAt = (x: number, y: number, z: number) => COLLISION[world.get(x, y, z)]!;
+const dropBoxAt = loadedBoxAt(world);
 const waterAt = (x: number, y: number, z: number) => {
   const t = BLOCKS.typeIndex[world.get(x, y, z)];
   return t === WATER || t === FLOWING;
@@ -363,7 +364,7 @@ function update(dt: number): void {
     player: player.body, survival: play.mode === 'survival', day: env.atmosphere.sun[1] > -0.05, hostiles: DIFFICULTY[play.difficulty].hostiles, boxAt, waterAt,
     playerHolds: play.held ? BLOCKS.type(play.held.state).key : null,
   });
-  if (play.drops.update(dt, boxAt, play.survival.dead ? null : player.body, play.inventory)) play.version++;
+  if (play.drops.update(dt, dropBoxAt, play.survival.dead ? null : player.body, play.inventory)) play.version++;
   exposureClock += dt;
   if (exposureClock >= 0.5) {
     updateExposure(exposureClock);
@@ -642,7 +643,6 @@ const interactionHint=document.createElement('div');interactionHint.id='interact
 let handSwings = 0;
 const combat = new CombatOverlay();
 const heldItem = new HeldItem();
-let heldShown = false;
 /**
  * Automatic resolution: with frames slower than about 45 fps for a couple of seconds, render fewer pixels; with plenty
  * of headroom, more again. Drawing, not the main thread, is what limits most machines.
@@ -661,7 +661,7 @@ function updateHand():void {
   const state=play.held?.state??-1;
   const armour=play.armour[1],key=armour?BLOCKS.type(armour.state).key:'bare';
   const material=key.startsWith('diamond')?'diamond':key.startsWith('iron')?'iron':key.startsWith('leather')?'leather':'bare';
-  hand.style.display=input.playing&&!player.flying&&play.screen==='none'&&!heldShown?'':'none';
+  hand.style.display=input.playing&&!player.flying&&play.screen==='none'&&!play.held?'':'none';
   if(play.swings!==handSwings||(play.breaking>0&&!hand.classList.contains('swing'))){
     handSwings=play.swings;hand.classList.remove('swing');void hand.offsetWidth;hand.classList.add('swing');
   }
@@ -820,7 +820,8 @@ const loop = new FixedStepLoop(1 / 60, 0.25, timedUpdate, (alpha, frameDt) => {
     env.atmosphere.cloudCover, sample?.windSpeed ?? 3, (x, z) => world.column(x >> 4, z >> 4)?.skyTop[((z & 15) << 4) | (x & 15)] ?? -Infinity);
   updateHorizon(cam.x, cam.z);
   renderer.render(now / 1000);
-  heldShown = heldItem.update(frameDt, play.held, {
+  // A held item is drawn in 3D; the flat hand picture shows only for an empty hand (decided above, in the same frame).
+  heldItem.update(frameDt, play.held, {
     swings: play.swings, slashes: play.slashes, breaking: play.breaking > 0, bob: bobPhase, bobAmount: settings.viewBob ? bobAmount : 0,
     light: lightAt(player.body.x, player.eyeY, player.body.z), fov: renderer.camera.fov, aspect: renderer.camera.aspect,
     visible: input.playing && !player.flying && play.screen === 'none' && !play.survival.dead,

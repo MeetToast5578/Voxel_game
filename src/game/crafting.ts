@@ -11,7 +11,9 @@ export interface Recipe {
   result: readonly [key: string, count: number];
 }
 
-const TOOL_HEADS = { wooden: ['planks'], stone: ['cobblestone'], iron: ['iron_ingot'], diamond: ['diamond'], jade: ['jade'] } as const;
+/** Any rock dug from the ground counts as stone for tools and furnaces: many places have granite or basalt, not stone. */
+const ROCK = ['cobblestone', 'granite', 'diorite', 'andesite', 'limestone', 'slate', 'basalt', 'deepslate'];
+const TOOL_HEADS = { wooden: ['planks'], stone: ROCK, iron: ['iron_ingot'], diamond: ['diamond'], jade: ['jade'] } as const;
 const ARMOUR_PATTERNS = [['MMM', 'M M'], ['M M', 'MMM', 'MMM'], ['MMM', 'M M', 'M M'], ['M M', 'M M']] as const;
 const ARMOUR_FROM = { leather: 'leather', iron: 'iron_ingot', diamond: 'diamond', jade: 'jade' } as const;
 const TOOL_PATTERNS = { pickaxe: ['MMM', ' S ', ' S '], axe: ['MM', 'MS', ' S'], shovel: ['M', 'S', 'S'], sword: ['M', 'M', 'S'], hoe: ['MM', ' S', ' S'] } as const;
@@ -31,7 +33,7 @@ export const RECIPES: readonly Recipe[] = [
   { pattern: [' EG', ' SE', 'S  '], key: { E: ['ember_crystal'], G: ['gold_ingot'], S: ['stick'] }, result: ['ember_staff', 1] },
   { pattern: ['PP', 'PP'], key: { P: ['planks'] }, result: ['crafting_table', 1] },
   { pattern: ['PPP', 'P P', 'PPP'], key: { P: ['planks'] }, result: ['chest', 1] },
-  { pattern: ['CCC', 'C C', 'CCC'], key: { C: ['cobblestone'] }, result: ['furnace', 1] },
+  { pattern: ['CCC', 'C C', 'CCC'], key: { C: ROCK }, result: ['furnace', 1] },
   { pattern: ['WWW', 'PPP'], key: { W: ['wool', 'wheat'], P: ['planks'] }, result: ['bed', 1] },
   { pattern: ['PP', 'PP', 'PP'], key: { P: ['planks'] }, result: ['door', 1] },
   { pattern: ['SS', 'SS'], key: { S: ['sand'] }, result: ['sandstone', 1] },

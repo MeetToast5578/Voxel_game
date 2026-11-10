@@ -229,7 +229,7 @@ const ACCESSORIES: readonly [string, string, Accessory][] = [
   ['swift_anklet', 'Swiftstep Anklet', { effect: '20% faster on foot', speed: 0.2 }],
   ['cloud_charm', 'Cloud Charm', { effect: 'Jump once more in mid-air', jumps: 1 }],
   ['feather_charm', 'Featherfall Charm', { effect: 'No fall damage; hold jump to glide', featherfall: true }],
-  ['iron_band', 'Ironskin Band', { effect: 'Stops 12% more harm', protection: 3 }],
+  ['iron_band', 'Ironskin Band', { effect: 'Stops 9% more harm', protection: 3 }],
   ['gill_pendant', 'Gill Pendant', { effect: 'Breath lasts four times longer', breath: 4 }],
   ['ember_ring', 'Ember Ring', { effect: 'Lava and fire do not burn you', fireproof: true }],
   ['heart_locket', 'Heart Locket', { effect: 'Health returns twice as fast', regen: 2 }],

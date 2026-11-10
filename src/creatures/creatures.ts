@@ -509,7 +509,7 @@ export class Creatures {
     const options = SPECIES.filter((s) => (water ? s.medium === 'water' : s.medium === 'land' && (s.hostile
       ? room && (dark || s.daytime) && (s.biomes.includes('dark') || s.biomes.includes(biome))
       : s.biomes.includes(biome))));
-    this.spawnGroup(options, x, y, z);
+    this.spawnGroup(options, x, y, z, ctx.boxAt);
   }
 
   /** A monster in a dark cave cell near (x, z), within a few meters up or down of the player. */
@@ -522,16 +522,23 @@ export class Creatures {
     const [sky, block] = this.lightAt(x, y, z);
     if (sky > 0 || block >= SAFE_LIGHT) return;
     const deep = y * BLOCK_SIZE_M < -60;
-    this.spawnGroup(SPECIES.filter((s) => s.hostile && (s.biomes.includes('dark') || s.biomes.includes('cave') || (deep && s.biomes.includes('deep')))), x, y, z);
+    this.spawnGroup(SPECIES.filter((s) => s.hostile && (s.biomes.includes('dark') || s.biomes.includes('cave') || (deep && s.biomes.includes('deep')))), x, y, z, ctx.boxAt);
   }
 
-  private spawnGroup(options: readonly Species[], x: number, y: number, z: number): void {
+  private spawnGroup(options: readonly Species[], x: number, y: number, z: number, boxAt: CreatureContext['boxAt']): void {
     if (options.length === 0) return;
     const s = options[Math.floor(this.rand() * options.length)]!;
+    const tall = Math.ceil(toCells(s.heightM)), clear = (cx: number, cz: number) => {
+      for (let h = 0; h < tall; h++) if (boxAt(cx, y + h, cz) !== 0) return false;
+      return true;
+    };
     const n = s.group[0] + Math.floor(this.rand() * (s.group[1] - s.group[0] + 1));
     const tough = s.hostile ? 1 + Math.max(0, -y * BLOCK_SIZE_M) / 100 * DEPTH_TOUGHNESS_PER_100M : 1;
     for (let k = 0; k < n && this.list.length < CREATURE_CAP; k++) {
-      this.add(s, x + 0.5 + (this.rand() - 0.5) * 3, y, z + 0.5 + (this.rand() - 0.5) * 3, Math.round(s.health * tough));
+      // Group members spread out, but only onto open cells: otherwise they share the first one's spot.
+      let px = x + 0.5 + (this.rand() - 0.5) * 3, pz = z + 0.5 + (this.rand() - 0.5) * 3;
+      if (!clear(Math.floor(px), Math.floor(pz))) [px, pz] = [x + 0.5, z + 0.5];
+      this.add(s, px, y, pz, Math.round(s.health * tough));
     }
   }
 

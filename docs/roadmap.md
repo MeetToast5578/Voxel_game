@@ -21,7 +21,8 @@ Every task also passes `npm run check`, `npm run benchmark -- --assert` and `npm
 
 ## R1. Make sure what exists works (do first)
 
-- [ ] **R1.1 Scripted play-through (M).** A headless browser script plays a new survival world from start to finish:
+- [x] **R1.1 Scripted play-through (M).** Done in 0.7.1: `npm run playthrough`, report in
+  `screenshots/playthrough/report.html`, run in CI. It found the bugs fixed in 0.7.1. A headless browser script plays a new survival world from start to finish:
   1. punch a tree, craft planks, a workbench and tools;
   2. dig down, smelt iron;
   3. fight slimes and a skeleton;
@@ -31,7 +32,8 @@ Every task also passes `npm run check`, `npm run benchmark -- --assert` and `npm
 
   It fails on any console error or a stuck step. Screenshots at each step go into one HTML report for the owner.
   **Done when:** the script passes in CI and the report shows each step.
-- [ ] **R1.2 Balance sheet (S).** A generated table showing:
+- [x] **R1.2 Balance sheet (S).** Done in 0.7.1: `docs/balance.md`; swords and armour rebalanced. Time to reach
+  each tier is not measured yet. A generated table showing:
   - how many hits each weapon tier needs to kill each creature;
   - how many bites each creature needs to kill the player in each armour tier;
   - how long each tier takes to reach.
@@ -39,7 +41,8 @@ Every task also passes `npm run check`, `npm run benchmark -- --assert` and `npm
   Fix any outliers.
   **Done when:** the table is in `docs/balance.md`, a test regenerates it, and no fight is a one-hit kill either way
   unless meant to be.
-- [ ] **R1.3 Stuck and lost checks (S).** Check these in tests:
+- [~] **R1.3 Stuck and lost checks (S).** 0.7.1 tests spawning, a boss leaving and drops at unloaded ground.
+  Villagers reaching their bed is not tested yet. Check these in tests:
   - creatures never spawn inside blocks;
   - bosses despawn or leave at day if they are unfought;
   - villagers can always reach their bed;
