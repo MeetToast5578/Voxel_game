@@ -9,6 +9,8 @@ iron, real danger, places worth finding and an end point. Onboarding, sound and 
 **New direction (owner, 2026-11-04):** a 3D Terraria: an adventure RPG with many creatures and their loot, gear tiers,
 bosses and NPC towns, not a Minecraft copy. Milestone 18 is the plan; feel comes first. Art requests: `docs/art-wishlist.md`.
 
+**Roadmap after 0.7.0 (2026-11-10):** every open idea and task, in order: [`roadmap.md`](roadmap.md).
+
 **How to use this list**
 - Milestones are in order. Inside a milestone, tasks are in order unless they say otherwise.
 - Each task ends with **Done when**. Every task also passes `npm run check`, `npm run benchmark -- --assert` and
