@@ -1,6 +1,6 @@
 import { HOOK_RANGE_M, TIER_DAMAGE, ARMOUR_CAP, ARMOUR_PER_POINT, MAX_HEALTH, ACCESSORY_SLOTS, AXE_ARC_RAD, CRIT_CHANCE, CRIT_FACTOR, KNOCKBACK_FACTOR, SWORD_ARC_RAD, LIGHTNING_DAMAGE, LIGHTNING_REACH_M, FISH_MAX_S, FISH_MIN_S, BLOCK_SIZE_M, ARROW_DAMAGE, ARROW_SPEED_M_S, BOLT_SPEED_M_S, BOW_DRAW_S, AXE_DAMAGE, BUILD_CELLS_PER_TICK, CAMPFIRE_COOK_S, CAMPFIRE_SLOTS, DIFFICULTY, PLAYER_ATTACK_COOLDOWN_S, SWORD_DAMAGE, type Difficulty, BUILD_MAX_M, DROP_PICKUP_DELAY_S, DROP_THROW_M_S, HAND_DAMAGE, REACH_M, REPEAT_S, TOOL_DAMAGE, UNDO_STEPS, cells, toCells } from '../config';
 import { lootOf, type Creature, type Creatures } from '../creatures/creatures';
-import { AIR, BLOCKS, SET_BONUSES, SOLID, type BlockType } from '../engine/blocks';
+import { AIR, BLOCKS, POTIONS, SET_BONUSES, SOLID, type BlockType } from '../engine/blocks';
 import type { World } from '../engine/world';
 import { COLLISION, FULL } from './collision';
 import { craft, type Craft, type Station } from './crafting';
@@ -14,6 +14,7 @@ import { overlapsSolid } from './physics';
 import type { Player } from './player';
 import { raycast, TARGET, type RayHit } from './raycast';
 import { Survival } from './survival';
+import { checkRoom } from './housing';
 import { isEffect, POTION_SICKNESS_S, SLOWED_SPEED, SWIFT_SPEED } from './effects';
 import { Particles } from './particles';
 import { lootTableFor, rollLoot, type LootTable } from './loot';
@@ -51,6 +52,8 @@ const BUCKET = S('bucket'), BOW = S('bow'), ARROW = S('arrow'), BONE_MEAL = S('b
 /** Cells a door is tall: 2.1 m at 0.6 m cells rounds up to 4. */
 export const DOOR_CELLS = 4;
 const FACING_OFFSET = [[1, 0], [-1, 0], [0, 1], [0, -1]] as const;
+/** A home the player made: the bed head's cell, which way its sleeper lies, and who lives there. */
+export interface Home { x: number; y: number; z: number; yaw: number; who: string | null }
 
 /** Everything one player can do with the world: break, place, use blocks, carry and craft. Ported from the old game. */
 export class Play {
@@ -564,6 +567,47 @@ export class Play {
       const species = SPECIES_BY_KEY.get(professionAt(this.seed, site.x, site.z))!;
       const c = creatures.add(species, site.x + 0.5, bed, site.z + 0.5, species.health);
       c.home = [bx + 1.5, bed, bz + 0.5];
+    }
+    this.wakeHomes(player);
+  }
+
+  /** Homes made by placing a bed, by the bed head's cell: who lives there (null until someone moves in). */
+  readonly homes = new Map<string, Home>();
+
+  /** The room check for a home's bed: from the open cell just above the bed head. */
+  private roomOf(h: Home) {
+    return checkRoom((x, y, z) => (this.world.isLoaded(x, y, z) ? this.world.get(x, y, z) : 0), h.x, h.y + 1, h.z);
+  }
+
+  /** Who moves into the next new home: the first townsfolk whose time has come and who has no home yet, else a villager. */
+  private nextArrival(): string {
+    const housed = new Set([...this.homes.values()].map((h) => h.who));
+    const potions = POTIONS.some(([k]) => this.hasItem(k)) || this.hasItem('glass_bottle') || this.hasItem('alchemy_table');
+    const ready: [string, boolean][] = [['guide', true], ['merchant', this.inventory.count(BLOCKS.state('trade_coin')) >= 20], ['nurse', this.survival.maxHealth > MAX_HEALTH],
+      ['alchemist', potions]];
+    return ready.find(([who, ok]) => ok && !housed.has(who))?.[0] ?? ['farmer', 'smith', 'herbalist'][this.homes.size % 3]!;
+  }
+
+  /**
+   * Player-built homes near the player (call about once a second): a home whose bed is gone is no more; one whose room
+   * is a home and whose resident is not about gets them back (or a new arrival), by the bed.
+   */
+  private wakeHomes(player: Player): void {
+    const creatures = this.creatures!;
+    for (const [key, h] of this.homes) {
+      if (Math.hypot(h.x - player.body.x, h.z - player.body.z) > 64 || !this.world.isLoaded(h.x, h.y, h.z)) continue;
+      if (BLOCKS.type(this.world.get(h.x, h.y, h.z)) !== BED) {
+        this.homes.delete(key);
+        continue;
+      }
+      const at: [number, number, number] = [h.x + 0.5, h.y, h.z + 0.5];
+      if (creatures.list.some((c) => c.home && c.home[0] === at[0] && c.home[1] === at[1] && c.home[2] === at[2]) || !this.roomOf(h).ok) continue;
+      const arriving = h.who === null;
+      h.who ??= this.nextArrival();
+      const species = SPECIES_BY_KEY.get(h.who)!, c = creatures.add(species, at[0], h.y + 1, at[2], species.health);
+      c.home = at;
+      c.homeYaw = h.yaw;
+      if (arriving) this.toast(`The ${species.name.toLowerCase()} has moved in!`, 4);
     }
   }
 
@@ -1168,6 +1212,11 @@ export class Play {
       this.setBlock(x + ox, y, z + oz, BED.id + facing + 4);
       this.consumeHeld(true);
       this.events.sound('place');
+      // A bed makes a home: someone moves in once the room around it is one.
+      const home: Home = { x: x + ox, y, z: z + oz, yaw: Math.PI + Math.atan2(-oz, ox), who: null };
+      this.homes.set(`${home.x},${home.y},${home.z}`, home);
+      const room = this.roomOf(home);
+      this.toast(room.ok ? 'A fine home: someone will move in soon.' : `Not a home yet: it needs ${room.missing.join(', ')}.`, 5);
       return;
     }
     // A ladder goes on the side of a wall, hanging on the face that was clicked.
@@ -1359,7 +1408,7 @@ export class Play {
       decorations: this.decorations.save(), mode: this.mode, difficulty: this.difficulty, hints: this.hints.save(), inventory: this.inventory.save(), selected: this.inventory.selected, drops: this.drops.save(),
       health: this.survival.health, maxHealth: this.survival.maxHealth, hunger: this.survival.hunger, air: this.survival.air, effects: { ...this.survival.effects }, burning: this.survival.burning, bodyC: this.survival.temperature.coreC, spawn: this.spawn,
       furnaces: [...this.furnaces].map(([k, f]) => [k, s(f.input), s(f.fuel), s(f.output), f.burn, f.progress]),
-      journal: this.journal.save(), seen: [...this.seen], bestiary: [...this.bestiary].map(([k, e]) => [k, e.kills, [...e.drops]]), stats: this.stats, biomesSeen: [...this.biomesSeen], deepestM: this.deepestM, found: [...this.found], beaconLit: this.beaconLit, endingSeen: this.endingSeen, boating: this.boating,
+      homes: [...this.homes.values()].map((h) => [h.x, h.y, h.z, h.yaw, h.who]), journal: this.journal.save(), seen: [...this.seen], bestiary: [...this.bestiary].map(([k, e]) => [k, e.kills, [...e.drops]]), stats: this.stats, biomesSeen: [...this.biomesSeen], deepestM: this.deepestM, found: [...this.found], beaconLit: this.beaconLit, endingSeen: this.endingSeen, boating: this.boating,
       armour: this.armour.map((a) => (a ? [BLOCKS.stateName(a.state), 1, a.wear ?? 0, a.upgrade ?? 0] : null)),
       accessories: this.accessories.map((a) => (a ? [BLOCKS.stateName(a.state), 1] : null)),
       campfires: [...this.campfires].map(([k, c]) => [k, c.map(([st, left]) => [BLOCKS.stateName(st), left])]),
@@ -1385,6 +1434,11 @@ export class Play {
     this.survival.hunger = num(p.hunger, this.survival.hunger);
     this.survival.air = num(p.air, this.survival.air);
     this.survival.burning = Math.max(0, num(p.burning, 0));
+    if (Array.isArray(p.homes)) for (const h of p.homes) {
+      if (!Array.isArray(h) || !h.slice(0, 4).every((v) => typeof v === 'number' && Number.isFinite(v))) continue;
+      const who = typeof h[4] === 'string' && SPECIES_BY_KEY.get(h[4])?.villager ? h[4] : null;
+      this.homes.set(`${h[0]},${h[1]},${h[2]}`, { x: h[0], y: h[1], z: h[2], yaw: h[3], who });
+    }
     if (Array.isArray(p.seen)) for (const k of p.seen) if (typeof k === 'string' && SPECIES_BY_KEY.has(k)) this.seen.add(k);
     if (Array.isArray(p.bestiary)) for (const e of p.bestiary) {
       if (!Array.isArray(e) || typeof e[0] !== 'string' || !SPECIES_BY_KEY.has(e[0])) continue;

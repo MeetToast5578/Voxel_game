@@ -125,7 +125,7 @@ export const SPECIES: readonly Species[] = [
   { ...BASE, key: 'ember_slime', name: 'Ember Slime', halfWidthM: 0.4, heightM: 0.75, speedM_S: 2.6, health: 22, hostile: true, hops: true, fireproof: true, inflicts: ['burning', 3, 0.5],
     attack: 5, biomes: ['deep'], group: [1, 2], colours: { body: [240, 120, 40], head: [200, 60, 20], legs: [255, 220, 120] },
     meat: 0, loot: [['gel', 3], ['ember_crystal', 1, 0.25], ['ember_ring', 1, 0.02]], voice: 0.7 },
-  ...(['farmer', 'smith', 'herbalist'] as const).map((job): Species => ({ ...BASE, key: job, name: job[0]!.toUpperCase() + job.slice(1),
+  ...(['farmer', 'smith', 'herbalist', 'guide', 'merchant', 'nurse', 'alchemist'] as const).map((job): Species => ({ ...BASE, key: job, name: job[0]!.toUpperCase() + job.slice(1),
     halfWidthM: 0.28, heightM: 1.8, speedM_S: 0.9, health: 30, trader: true, villager: true, shop: job, biomes: [], group: [1, 1], meat: 0,
     colours: { body: [80, 110, 70], head: [207, 162, 116], legs: [70, 60, 50] }, voice: 0.5 })),
   { ...BASE, key: 'king_slime', name: 'Slime King', halfWidthM: 1.0, heightM: 1.7, speedM_S: 2.8, health: 240, hostile: true, daytime: true, hops: true,

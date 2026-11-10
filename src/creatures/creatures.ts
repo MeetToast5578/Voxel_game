@@ -43,6 +43,8 @@ export interface Creature {
   maxHealth: number;
   /** A villager's bed: where it goes at night and stays near by day. */
   home?: readonly [number, number, number];
+  /** Which way it lies in its bed (default: head toward +x, as in village houses). */
+  homeYaw?: number;
 }
 
 /** What creatures need to know about the world and the player each tick. */
@@ -149,7 +151,7 @@ export class Creatures {
           c.mode = 'sleep';
           c.goal = null;
           // Head on the pillow (+x), lying along the bed.
-          c.yaw = Math.PI;
+          c.yaw = c.homeYaw ?? Math.PI;
         } else {
           c.mode = 'wander';
           c.goal = [hx, hz];

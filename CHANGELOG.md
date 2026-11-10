@@ -3,6 +3,18 @@
 The newest version comes first. `npm run check` fails if the version at the top here is not the one in
 `package.json`, so the two are changed together.
 
+## 0.7.5 — 2026-11-10
+
+Towns the player builds (roadmap R5.1, R5.2).
+
+- A bed you place makes a home once its room is one: closed all round (walls, floor and roof), at least 24 cells of
+  space, with a door, a light, and a table or workbench. Placing the bed says what the room still needs. When it is a
+  home, someone moves in and sleeps in that bed at night; they come back while the bed stands.
+- Four new townsfolk with their own shops, each arriving when the time is right: the Guide (from the start: torches,
+  seeds, a map and compass), the Merchant (once you carry 20 coins: arrows, a bucket, string, a Grappling Hook; buys
+  gold and diamonds), the Nurse (after a Life Crystal: healing potions, antidotes, Life Crystals) and the Alchemist
+  (once you have a bottle or potion: ingredients and potions). After them, farmers, smiths and herbalists move in.
+
 ## 0.7.4 — 2026-11-10
 
 Getting around and dressing for it (roadmap R6.4, R6.2).

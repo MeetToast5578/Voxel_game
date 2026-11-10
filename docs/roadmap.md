@@ -181,7 +181,8 @@ Every task also passes `npm run check`, `npm run benchmark -- --assert` and `npm
 
 ## R5. Towns the player builds
 
-- [ ] **R5.1 Housing check (M)** (18.D5 rest). A room counts as a home when it:
+- [x] **R5.1 Housing check (M)** (18.D5 rest). Done in 0.7.5; placing a bed reports what the room lacks (no
+  separate House? tool). A room counts as a home when it:
   - is enclosed;
   - is lit;
   - has a door, a bed and a table or workbench;
@@ -189,7 +190,8 @@ Every task also passes `npm run check`, `npm run benchmark -- --assert` and `npm
 
   A homeless villager moves into a valid home. A **House?** tool shows whether a room is valid and why not.
   **Done when:** a test builds a room and a villager moves in.
-- [ ] **R5.2 More townsfolk (M).** Each arrives when a condition is met:
+- [~] **R5.2 More townsfolk (M).** 0.7.5: Guide, Merchant, Nurse and Alchemist; Tinkerer and Explorer remain,
+  and the Guide does not explain recipes yet. Each arrives when a condition is met:
   - Guide: from the start; gives tips and explains recipes.
   - Nurse: after a Life Crystal; heals for coins.
   - Tinkerer: after the first boss; combines accessories.
