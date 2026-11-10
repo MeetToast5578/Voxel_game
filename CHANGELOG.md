@@ -13,6 +13,8 @@ Events and boss rewards (roadmap R3.2, R3.4).
 - Bosses (the Slime King, the Gloom Matriarch, the Ember Warden) leave one treasure bag instead of scattered loot, so
   nothing is lost in lava or water. Right click opens it.
 - Neither event happens on peaceful.
+- Mouse look ignores the sudden jumps of half the window some browsers report under pointer lock, which could spin
+  the view on a click.
 
 ## 0.7.5 — 2026-11-10
 

@@ -11,6 +11,7 @@ mkdirSync(OUT, { recursive: true });
 const server = await preview({ preview: { port: 4178, strictPort: true } });
 const browser = await chromium.launch({ ...(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {}), args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
 const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
+if (process.env.THROTTLE) await (await page.context().newCDPSession(page)).send('Emulation.setCPUThrottlingRate', { rate: Number(process.env.THROTTLE) });
 const errors = [], steps = [];
 page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
 page.on('pageerror', (e) => errors.push(String(e)));
@@ -39,6 +40,9 @@ async function lock() {
   if (await resume.isVisible().catch(() => false)) await resume.click();
   else await page.mouse.click(640, 360);
   await until(() => !!document.pointerLockElement, null, 'pointer lock');
+  // Park the mouse in the middle now: a later jump there would read as looking around and turn the view off target.
+  await page.mouse.move(640, 360);
+  await frames(2);
 }
 
 /** Turns the view to a point and waits until the game targets the expected block (if one is given). */
@@ -48,7 +52,7 @@ async function aim(x, y, z, block) {
     n.player.yaw = Math.atan2(-dx, -dz);
     n.player.pitch = Math.atan2(dy, Math.hypot(dx, dz));
   }, [x, y, z]);
-  if (block) await page.waitForFunction(([x, y, z]) => { const t = window.__game.play.target; return t && t.x === x && t.y === y && t.z === z; }, block, { timeout: 5000, polling: 100 }).catch(async () => {
+  if (block) await page.waitForFunction(([x, y, z]) => { const t = window.__game.play.target; return t && t.x === x && t.y === y && t.z === z; }, block, { timeout: 20_000, polling: 100 }).catch(async () => {
     const got = await game(() => { const t = window.__game.play.target, p = window.__game.player; return { target: t && [t.x, t.y, t.z], at: [p.body.x, p.body.y, p.body.z].map((v) => +v.toFixed(2)) }; });
     throw new Error(`aim at ${block}: ${JSON.stringify(got)}`);
   });
@@ -61,7 +65,10 @@ async function dig(x, y, z) {
   const p = await game(([x, y, z]) => { const n = window.__game, d = [n.player.body.x - x - 0.5, n.player.eyeY - y - 0.5, n.player.body.z - z - 0.5], a = d.map(Math.abs), k = Math.hypot(d[0], d[2]) < 0.3 ? 1 : a[0] >= a[2] ? 0 : 2; return [0, 1, 2].map((i) => [x, y, z][i] + 0.5 + (i === k ? Math.sign(d[i]) * 0.49 : 0)); }, [x, y, z]);
   await aim(...p, [x, y, z]);
   await page.mouse.down();
-  await until(([x, y, z]) => window.__game.world.get(x, y, z) === 0, [x, y, z], `dig ${x},${y},${z}`, 20_000).finally(() => page.mouse.up());
+  await page.waitForFunction(([x, y, z]) => window.__game.world.get(x, y, z) === 0, [x, y, z], { timeout: 90_000, polling: 100 }).catch(async () => {
+    const state = await game(() => { const n = window.__game, t = n.play.target; return { locked: !!document.pointerLockElement, screen: n.play.screen, breaking: n.play.breaking, target: t && [t.x, t.y, t.z], fps: n.fps, dead: n.play.survival.dead }; });
+    throw new Error(`dig ${x},${y},${z} timed out: ${JSON.stringify(state)}`);
+  }).finally(() => page.mouse.up());
 }
 
 /** Walks over to each drop within 12 cells, as a player would, until all are in the inventory. */
@@ -71,7 +78,9 @@ async function collect() {
     const left = await near();
     if (!left.length) return;
     await game((d) => { const n = window.__game; Object.assign(n.player.body, { x: d[0], y: d[1], z: d[2] + 0.4, vx: 0, vy: 0, vz: 0 }); }, left[0]);
+    // Real frames as well as time: on a slow machine the game runs fewer steps per second.
     await page.waitForTimeout(250);
+    await frames(10);
   }
   throw new Error(`${(await near()).length} drops not picked up`);
 }
@@ -86,7 +95,7 @@ async function hold(key) {
   }, key);
   if (slot < 0) throw new Error(`no ${key} to hold`);
   await page.keyboard.press(`Digit${slot + 1}`);
-  await until((k) => { const n = window.__game, h = n.play.inventory.slots[n.play.inventory.selected]; return h && n.blocks.type(h.state).key === k; }, key, `hold ${key}`, 3000);
+  await until((k) => { const n = window.__game, h = n.play.inventory.slots[n.play.inventory.selected]; return h && n.blocks.type(h.state).key === k; }, key, `hold ${key}`, 20_000);
 }
 
 /** Crafts `name` from the crafting panel, `all` for as many as possible. */
@@ -98,7 +107,7 @@ async function craft(name, all = false) {
 
 async function openInventory() {
   await page.keyboard.press('KeyE');
-  await page.getByLabel('Search recipes').waitFor({ timeout: 5000 });
+  await page.getByLabel('Search recipes').waitFor({ timeout: 20_000 });
 }
 async function closeScreen() {
   await page.keyboard.press('Escape');
@@ -126,6 +135,7 @@ async function fight(key, metres = 2.4) {
     await page.mouse.click(640, 360);
     boss ||= await game(() => !document.querySelector('.boss-bar').hidden);
     await page.waitForTimeout(260);
+    await frames(2);
   }
   throw new Error(`${key} still alive after 120 swings`);
 }
@@ -205,7 +215,7 @@ try {
     table = spot;
     await aim(spot[0] + 0.5, spot[1] + 1, spot[2] + 0.5, spot);
     await page.mouse.click(640, 360, { button: 'right' });
-    await until(([x, y, z]) => window.__game.blocks.type(window.__game.world.get(x, y + 1, z)).key === 'crafting_table', spot, 'table placed', 5000);
+    await until(([x, y, z]) => window.__game.blocks.type(window.__game.world.get(x, y + 1, z)).key === 'crafting_table', spot, 'table placed', 20_000);
     await openInventory();
     await craft('Wooden pickaxe');
     await page.waitForTimeout(300);
@@ -272,7 +282,7 @@ try {
     await hold('slime_crown');
     await game(() => { window.__game.player.pitch = 0.4; });
     await page.mouse.click(640, 360, { button: 'right' });
-    await until(() => window.__game.creatures.list.some((c) => c.species.key === 'king_slime'), null, 'Slime King appears', 5000);
+    await until(() => window.__game.creatures.list.some((c) => c.species.key === 'king_slime'), null, 'Slime King appears', 20_000);
     await game(() => { const n = window.__game; n.play.inventory.add({ state: n.blocks.state('jade_sword'), count: 1 }); });
     await hold('jade_sword');
     // Fight the summoned king where it stands.
@@ -297,7 +307,7 @@ try {
     const c = await game((id) => { const c = window.__game.creatures.list.find((c) => c.id === id); c.home = undefined; return { x: c.body.x, y: c.body.y + c.body.height * 0.6, z: c.body.z }; }, id);
     await aim(c.x, c.y, c.z);
     await page.mouse.click(640, 360, { button: 'right' });
-    await page.locator('.trade-list').waitFor({ timeout: 5000 });
+    await page.locator('.trade-list').waitFor({ timeout: 20_000 });
     const before = await count('trade_coin');
     await page.locator('.trade-list button:not([disabled])').first().click();
     if ((await count('trade_coin')) >= before) throw new Error('no coins spent');
