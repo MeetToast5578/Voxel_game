@@ -25,29 +25,29 @@ export interface JournalFacts {
 
 const anyOf = (f: JournalFacts, ...keys: string[]) => keys.some((k) => f.has(k));
 
-/** The milestones of a world, in rough order of play. */
-export const MILESTONES: readonly { id: string; name: string; done(f: JournalFacts): boolean }[] = [
-  { id: 'wood', name: 'Got wood', done: (f) => anyOf(f, 'log', 'planks') },
-  { id: 'table', name: 'Built a crafting table', done: (f) => f.has('crafting_table') },
-  { id: 'stone', name: 'Made stone tools', done: (f) => anyOf(f, 'stone_pickaxe', 'stone_axe', 'stone_sword') },
-  { id: 'night', name: 'Survived a night', done: (f) => f.stats.days >= 1 },
-  { id: 'cooked', name: 'Cooked a meal', done: (f) => anyOf(f, 'cooked_meat', 'baked_potato') },
-  { id: 'iron', name: 'Made iron tools', done: (f) => anyOf(f, 'iron_pickaxe', 'iron_axe', 'iron_sword') },
-  { id: 'armour', name: 'Put on armour', done: (f) => f.armour },
-  { id: 'bow', name: 'Made a bow', done: (f) => f.has('bow') },
-  { id: 'deep50', name: 'Went 50 m below sea level', done: (f) => f.deepestM <= -50 },
-  { id: 'deep150', name: 'Went 150 m below sea level', done: (f) => f.deepestM <= -150 },
-  { id: 'biomes', name: 'Visited five biomes', done: (f) => f.biomes >= 5 },
-  { id: 'surface', name: 'Found a ruin or a camp', done: (f) => f.found.has('surface') },
-  { id: 'mine', name: 'Found an old mine', done: (f) => f.found.has('mine') },
-  { id: 'vault', name: 'Found a deep vault', done: (f) => f.found.has('vault') },
-  { id: 'diamond', name: 'Found a diamond', done: (f) => f.has('diamond') },
-  { id: 'shrine', name: 'Found an ember shrine', done: (f) => f.found.has('shrine') },
-  { id: 'ember', name: 'Mined an ember crystal', done: (f) => f.has('ember_crystal') },
-  { id: 'warden', name: 'Defeated an Ember Warden', done: (f) => f.stats.wardens >= 1 },
-  { id: 'hunter', name: 'Defeated 25 creatures', done: (f) => f.stats.killed >= 25 },
-  { id: 'week', name: 'Survived seven nights', done: (f) => f.stats.days >= 7 },
-  { id: 'beacon', name: 'Lit the beacon', done: (f) => f.beacon },
+/** The milestones of a world, in rough order of play, each with a reward given when it is reached. */
+export const MILESTONES: readonly { id: string; name: string; done(f: JournalFacts): boolean; reward: readonly [key: string, count: number] }[] = [
+  { id: 'wood', name: 'Got wood', done: (f) => anyOf(f, 'log', 'planks'), reward: ['torch', 4] },
+  { id: 'table', name: 'Built a crafting table', done: (f) => f.has('crafting_table'), reward: ['cooked_meat', 2] },
+  { id: 'stone', name: 'Made stone tools', done: (f) => anyOf(f, 'stone_pickaxe', 'stone_axe', 'stone_sword'), reward: ['torch', 8] },
+  { id: 'night', name: 'Survived a night', done: (f) => f.stats.days >= 1, reward: ['healing_potion', 1] },
+  { id: 'cooked', name: 'Cooked a meal', done: (f) => anyOf(f, 'cooked_meat', 'baked_potato'), reward: ['bone_meal', 4] },
+  { id: 'iron', name: 'Made iron tools', done: (f) => anyOf(f, 'iron_pickaxe', 'iron_axe', 'iron_sword'), reward: ['bucket', 1] },
+  { id: 'armour', name: 'Put on armour', done: (f) => f.armour, reward: ['healing_potion', 2] },
+  { id: 'bow', name: 'Made a bow', done: (f) => f.has('bow'), reward: ['arrow', 16] },
+  { id: 'deep50', name: 'Went 50 m below sea level', done: (f) => f.deepestM <= -50, reward: ['lantern', 2] },
+  { id: 'deep150', name: 'Went 150 m below sea level', done: (f) => f.deepestM <= -150, reward: ['life_crystal', 1] },
+  { id: 'biomes', name: 'Visited five biomes', done: (f) => f.biomes >= 5, reward: ['map', 1] },
+  { id: 'surface', name: 'Found a ruin or a camp', done: (f) => f.found.has('surface'), reward: ['trade_coin', 10] },
+  { id: 'mine', name: 'Found an old mine', done: (f) => f.found.has('mine'), reward: ['iron_ingot', 4] },
+  { id: 'vault', name: 'Found a deep vault', done: (f) => f.found.has('vault'), reward: ['diamond', 2] },
+  { id: 'diamond', name: 'Found a diamond', done: (f) => f.has('diamond'), reward: ['life_crystal', 1] },
+  { id: 'shrine', name: 'Found an ember shrine', done: (f) => f.found.has('shrine'), reward: ['fire_resistance_potion', 2] },
+  { id: 'ember', name: 'Mined an ember crystal', done: (f) => f.has('ember_crystal'), reward: ['ember_crystal', 1] },
+  { id: 'warden', name: 'Defeated an Ember Warden', done: (f) => f.stats.wardens >= 1, reward: ['heart_locket', 1] },
+  { id: 'hunter', name: 'Defeated 25 creatures', done: (f) => f.stats.killed >= 25, reward: ['swift_anklet', 1] },
+  { id: 'week', name: 'Survived seven nights', done: (f) => f.stats.days >= 7, reward: ['trade_coin', 25] },
+  { id: 'beacon', name: 'Lit the beacon', done: (f) => f.beacon, reward: ['jade', 3] },
 ];
 
 /** Which milestones are reached (saved per world). `update` returns the names of the ones reached just now. */

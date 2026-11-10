@@ -367,6 +367,7 @@ function update(dt: number): void {
     updateExposure(exposureClock);
     play.wakeGuardians(player);
     play.wakeVillagers(player);
+    play.noteSeen(player.body.x, player.body.z);
     exposureClock = 0;
   }
   if (play.mode === 'survival' && !play.survival.dead) {

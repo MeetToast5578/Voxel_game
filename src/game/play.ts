@@ -17,7 +17,7 @@ import { Survival } from './survival';
 import { isEffect, POTION_SICKNESS_S, SLOWED_SPEED, SWIFT_SPEED } from './effects';
 import { Particles } from './particles';
 import { lootTableFor, rollLoot, type LootTable } from './loot';
-import { Journal, type Stats } from './journal';
+import { Journal, MILESTONES, type Stats } from './journal';
 import { aimAt, Projectiles } from './projectiles';
 import type { BoxAt } from './collision';
 import { HOUSE_BED, professionAt, sitesNear, undergroundFloor } from '../worldgen/structures';
@@ -128,6 +128,16 @@ export class Play {
   fishingS = 0;
   /** Seconds the bow has been drawn, while right click is held with it. */
   drawS = 0;
+  /** The bestiary: kinds of creature seen near the player, and for each one killed, how many and what it dropped. */
+  readonly seen = new Set<string>();
+  readonly bestiary = new Map<string, { kills: number; drops: Set<string> }>();
+  /** Writes every creature within 24 cells of the player in the bestiary as seen. */
+  noteSeen(x: number, z: number): void {
+    for (const c of this.creatures?.list ?? []) if (!this.seen.has(c.species.key) && Math.hypot(c.body.x - x, c.body.z - z) < 24) {
+      this.seen.add(c.species.key);
+      this.version++;
+    }
+  }
   /** Worn armour: head, chest, legs, feet. */
   readonly armour: (ItemStack | null)[] = [null, null, null, null];
   /** Worn accessories; each kind at most once. */
@@ -424,7 +434,6 @@ export class Play {
       if (this.hits.length < 32) this.hits.push({ x: c.body.x, y: top, z: c.body.z, amount: Math.max(1, Math.round(damage)), crit, age: 0 });
       if (this.creatures!.damage(c, damage, ox, oz, knock) && this.mode === 'survival') {
         this.defeated(c);
-        for (const loot of lootOf(c)) this.drop(loot, c.body.x, c.body.y, c.body.z);
       }
     }
     if (held && tool && this.mode === 'survival' && !wearTool(held)) this.inventory.slots[this.inventory.selected] = null;
@@ -434,13 +443,21 @@ export class Play {
     return true;
   }
 
-  /** Marks milestones reached since last time, with a message for each. */
+  /** Marks milestones reached since last time, with a message for each, and gives their rewards. */
   checkJournal(): void {
+    const before = new Set(this.journal.done);
     const fresh = this.journal.update({
       has: (k) => this.hasItem(k), stats: this.stats, deepestM: this.deepestM, biomes: this.biomesSeen.size, found: this.found,
       armour: this.armour.some((a) => a !== null), beacon: this.beaconLit,
     });
-    if (fresh.length) this.toast(`Milestone: ${fresh.join(', ')}`);
+    if (!fresh.length) return;
+    const gifts: string[] = [];
+    for (const m of MILESTONES) {
+      if (before.has(m.id) || !this.journal.done.has(m.id)) continue;
+      this.give({ state: BLOCKS.state(m.reward[0]), count: m.reward[1] }, ...this.feet);
+      gifts.push(`${m.reward[1]} ${BLOCKS.byName(m.reward[0]).name}`);
+    }
+    this.toast(`Milestone: ${fresh.join(', ')} · reward: ${gifts.join(', ')}`, 5);
   }
 
   /** The line is out: a fish bites after a while, unless the rod was put away. */
@@ -477,8 +494,16 @@ export class Play {
   }
 
   /** Counts a creature the player defeated. */
+  /** A creature killed by the player: counted, its loot dropped, and both written in the bestiary. */
   private defeated(c: Creature): void {
     this.stats.killed++;
+    const entry = this.bestiary.get(c.species.key) ?? { kills: 0, drops: new Set<string>() };
+    this.bestiary.set(c.species.key, entry);
+    entry.kills++;
+    for (const loot of lootOf(c)) {
+      entry.drops.add(BLOCKS.type(loot.state).key);
+      this.drop(loot, c.body.x, c.body.y, c.body.z);
+    }
     if (c.species.guardian) {
       this.stats.wardens++;
       this.toast('The Ember Warden falls. The shrine is yours.', 4);
@@ -673,7 +698,6 @@ export class Play {
       if (c && this.hits.length < 32) this.hits.push({ x: c.body.x, y: c.body.y + c.body.height, z: c.body.z, amount: Math.max(1, Math.round(p.damage)), crit: false, age: 0 });
       if (c && creatures!.damage(c, p.damage, p.x - p.vx, p.z - p.vz) && this.mode === 'survival') {
         this.defeated(c);
-        for (const loot of lootOf(c)) this.drop(loot, c.body.x, c.body.y, c.body.z);
       }
     }
   }
@@ -1292,7 +1316,7 @@ export class Play {
       decorations: this.decorations.save(), mode: this.mode, difficulty: this.difficulty, hints: this.hints.save(), inventory: this.inventory.save(), selected: this.inventory.selected, drops: this.drops.save(),
       health: this.survival.health, maxHealth: this.survival.maxHealth, hunger: this.survival.hunger, air: this.survival.air, effects: { ...this.survival.effects }, burning: this.survival.burning, bodyC: this.survival.temperature.coreC, spawn: this.spawn,
       furnaces: [...this.furnaces].map(([k, f]) => [k, s(f.input), s(f.fuel), s(f.output), f.burn, f.progress]),
-      journal: this.journal.save(), stats: this.stats, biomesSeen: [...this.biomesSeen], deepestM: this.deepestM, found: [...this.found], beaconLit: this.beaconLit, endingSeen: this.endingSeen, boating: this.boating,
+      journal: this.journal.save(), seen: [...this.seen], bestiary: [...this.bestiary].map(([k, e]) => [k, e.kills, [...e.drops]]), stats: this.stats, biomesSeen: [...this.biomesSeen], deepestM: this.deepestM, found: [...this.found], beaconLit: this.beaconLit, endingSeen: this.endingSeen, boating: this.boating,
       armour: this.armour.map((a) => (a ? [BLOCKS.stateName(a.state), 1, a.wear ?? 0, a.upgrade ?? 0] : null)),
       accessories: this.accessories.map((a) => (a ? [BLOCKS.stateName(a.state), 1] : null)),
       campfires: [...this.campfires].map(([k, c]) => [k, c.map(([st, left]) => [BLOCKS.stateName(st), left])]),
@@ -1318,6 +1342,11 @@ export class Play {
     this.survival.hunger = num(p.hunger, this.survival.hunger);
     this.survival.air = num(p.air, this.survival.air);
     this.survival.burning = Math.max(0, num(p.burning, 0));
+    if (Array.isArray(p.seen)) for (const k of p.seen) if (typeof k === 'string' && SPECIES_BY_KEY.has(k)) this.seen.add(k);
+    if (Array.isArray(p.bestiary)) for (const e of p.bestiary) {
+      if (!Array.isArray(e) || typeof e[0] !== 'string' || !SPECIES_BY_KEY.has(e[0])) continue;
+      this.bestiary.set(e[0], { kills: Math.max(0, Math.floor(num(e[1], 0))), drops: new Set(Array.isArray(e[2]) ? e[2].filter((d: unknown) => typeof d === 'string') : []) });
+    }
     this.survival.effects = {};
     if (typeof p.effects === 'object' && p.effects !== null) for (const [k, v] of Object.entries(p.effects)) if (isEffect(k) && num(v, 0) > 0) this.survival.effects[k] = num(v, 0);
     this.survival.temperature.coreC = Math.max(30, Math.min(42, num(p.bodyC, this.survival.temperature.coreC)));

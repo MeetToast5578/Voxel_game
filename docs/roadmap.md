@@ -254,13 +254,13 @@ Every task also passes `npm run check`, `npm run benchmark -- --assert` and `npm
 
 ## R7. Goals and an end game
 
-- [ ] **R7.1 Rewards for the journal (S)** (13.5). Each milestone gives something useful: torches, a map, a Life
+- [x] **R7.1 Rewards for the journal (S)** (13.5). Done in 0.7.3. Each milestone gives something useful: torches, a map, a Life
   Crystal, a recipe.
   **Done when:** reaching a milestone puts its reward in the inventory.
-- [ ] **R7.2 Bestiary (M).** A journal tab with every creature: seen or not, kills, health, drops discovered so far,
+- [x] **R7.2 Bestiary (M).** Done in 0.7.3 (in the pause menu). A journal tab with every creature: seen or not, kills, health, drops discovered so far,
   and where it lives. After 25 kills it shows the drop chances.
   **Done when:** the tab fills in from kills in a test.
-- [ ] **R7.3 Recipe and item guide (S).** From any item: "used in" and "comes from" (craft, drop, chest, trade).
+- [x] **R7.3 Recipe and item guide (S).** Done in 0.7.3 (in item tooltips). From any item: "used in" and "comes from" (craft, drop, chest, trade).
   **Done when:** every item has at least one source listed.
 - [ ] **R7.4 The second act (L, Decide).** Lighting the beacon starts the next stage:
   - harder monsters;

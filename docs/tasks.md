@@ -313,7 +313,7 @@ All of it stays procedural: no asset files.
 - [~] **13.4 Monsters by biome and a harder night.** Three biome monsters built in 0.6.0; increasing danger by world age remains open. One new monster each for deserts, swamps and snow; nights get a
   little harder the longer the world runs, capped by difficulty.
   **Done when:** each biome spawns its monster in a test, and day 20 spawns more than day 1.
-- [ ] **13.5 Rewards for the journal.** Each milestone gives something useful (a map, a stack of torches, a recipe).
+- [x] **13.5 Rewards for the journal.** Done in 0.7.3. Each milestone gives something useful (a map, a stack of torches, a recipe).
   **Done when:** reaching a milestone puts its reward in the inventory.
 
 ## 14. More ideas (not decided)

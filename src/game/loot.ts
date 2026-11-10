@@ -24,6 +24,14 @@ const TABLES: Record<LootTable, { rolls: readonly [number, number]; entries: rea
   ] },
 };
 
+/** Every item each table can hold, for the item guide. */
+export const LOOT_ITEMS: Readonly<Record<LootTable, readonly string[]>> = {
+  surface: keysOf('surface'), mine: keysOf('mine'), vault: keysOf('vault'), shrine: keysOf('shrine'),
+};
+function keysOf(t: LootTable): string[] {
+  return [...(TABLES[t].always ?? []).map(([key]) => key), ...TABLES[t].entries.map(([key]) => key)];
+}
+
 /** The table of a generated container: ancient chests are shrines'; otherwise by depth (y in cells). */
 export function lootTableFor(blockKey: string, y: number): LootTable {
   if (blockKey === 'ancient_chest') return 'shrine';

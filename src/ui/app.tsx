@@ -8,6 +8,8 @@ import { MILESTONES } from '../game/journal';
 import { version } from '../../package.json';
 import { armourFactor, type Mode, type Play } from '../game/play';
 import { EFFECTS, type Effect } from '../game/effects';
+import { sourcesOf, usesOf } from '../game/guide';
+import { SPECIES } from '../creatures/species';
 import { BINDINGS, DEFAULT_KEYS, keyLabel, type Binding, type Settings } from '../storage/settings';
 import type { Difficulty } from '../config';
 import type { WorldMeta } from '../storage/store';
@@ -78,6 +80,10 @@ export function tooltip(s: ItemStack): string {
   if (t.spell) lines.push(`Magic: ${t.spell.damage} damage, ${t.spell.mana} mana a cast (hold right click)`);
   if (t.fuel) lines.push(`Fuel: burns ${t.fuel} s`);
   if (t.smeltsTo) lines.push(`Smelts into ${BLOCKS.type(BLOCKS.state(t.smeltsTo)).name}`);
+  // The item guide: where it comes from and what it goes into.
+  const from = sourcesOf(t.key), uses = usesOf(t.key);
+  if (from.length) lines.push(`From: ${from.join('; ')}`);
+  if (uses.length) lines.push(`Used in: ${uses.slice(0, 5).join(', ')}${uses.length > 5 ? ` and ${uses.length - 5} more` : ''}`);
   return lines.join('\n');
 }
 
@@ -429,8 +435,9 @@ function CraftingPanel({ play }: { play: Play }) {
 
 function Menu({ m }: { m: UiModel }) {
   const [tab,setTab]=useState('Journey');
-  return <MenuShell title="Paused" subtitle={m.worldName??'Your adventure'} tabs={['Journey','Settings','Worlds','Controls']} active={tab} select={setTab} action={<button class="primary" onClick={m.resume}>Resume</button>}>
+  return <MenuShell title="Paused" subtitle={m.worldName??'Your adventure'} tabs={['Journey','Bestiary','Settings','Worlds','Controls']} active={tab} select={setTab} action={<button class="primary" onClick={m.resume}>Resume</button>}>
     <section class="menu-panel" hidden={tab!=='Journey'}><span class="eyebrow">TAKE A BREATHER</span><h2>Your journey</h2><p class="section-copy">Your world will be here when you’re ready.</p><div class="journey-summary"><span>World<strong>{m.worldName}</strong></span><span>Mode<strong>{m.play.mode}</strong></span><span>Milestones<strong>{m.play.journal.done.size} / {MILESTONES.length}</strong></span></div>{m.play.mode==='survival'&&<><label>Difficulty<DifficultySelect value={m.play.difficulty} onChange={m.setDifficulty}/></label><Journal play={m.play}/></>}<StatsList play={m.play}/><button onClick={()=>m.exportWorld(m.worldName!)}>Export this world</button><button class="quiet" onClick={m.quitToTitle}>Save and quit to title</button></section>
+    <section class="menu-panel" hidden={tab!=='Bestiary'}><span class="eyebrow">FIELD NOTES</span><h2>Bestiary</h2><Bestiary play={m.play}/></section>
     <section class="menu-panel" hidden={tab!=='Settings'}><span class="eyebrow">MAKE IT YOURS</span><h2>Settings</h2><SettingsSection m={m}/></section>
     <section class="menu-panel" hidden={tab!=='Worlds'}><span class="eyebrow">YOUR COLLECTION</span><h2>Saved worlds</h2><WorldsSection m={m}/></section>
     <section class="menu-panel" hidden={tab!=='Controls'}><span class="eyebrow">FIND YOUR RHYTHM</span><h2>Controls</h2><p class="section-copy">{CONTROLS}</p><KeyBindings m={m}/></section>
@@ -468,14 +475,34 @@ function StatsList({ play }: { play: Play }) {
   );
 }
 
+/** Kills before a creature's drop chances are shown. */
+const STUDIED_KILLS = 25;
+
+/** Every creature: unknown until seen; then where it lives and how strong it is; kills and the drops found so far. */
+function Bestiary({ play }: { play: Play }) {
+  const list = SPECIES.filter((s) => !s.villager && !s.shop);
+  return <>
+    <p class="section-copy">{play.seen.size} of {list.length} creatures seen. Drops show once found; their chances after {STUDIED_KILLS} kills.</p>
+    <ul class="bestiary">{list.map((s) => {
+      const e = play.bestiary.get(s.key), seen = play.seen.has(s.key) || !!e;
+      if (!seen) return <li key={s.key} class="unknown"><b>???</b><small>Not seen yet</small></li>;
+      const studied = (e?.kills ?? 0) >= STUDIED_KILLS;
+      const drops = (s.loot ?? []).filter(([k]) => studied || e?.drops.has(k)).map(([k, , chance]) => `${BLOCKS.byName(k).name}${studied ? ` (${Math.round((chance ?? 1) * 100)}%)` : ''}`);
+      const where = s.boss ? 'summoned' : s.guardian ? 'ember shrines' : s.biomes.slice(0, 3).map((b) => b.replaceAll('_', ' ')).join(', ') + (s.biomes.length > 3 ? ' …' : '');
+      return <li key={s.key} class={s.hostile ? 'hostile' : ''}><b>{s.name}</b>
+        <small>{s.health} health{s.attack ? ` · ${s.attack} attack` : ''} · {where}</small>
+        <small>Defeated {e?.kills ?? 0}{drops.length ? ` · drops ${drops.join(', ')}` : ''}</small></li>;
+    })}</ul>
+  </>;
+}
+
 function Journal({ play }: { play: Play }) {
   return (
     <details class="journal">
       <summary>Journal: {play.journal.done.size} of {MILESTONES.length} milestones</summary>
       <ul class="milestones">
-        {MILESTONES.map((ms) => <li class={play.journal.done.has(ms.id) ? 'done' : ''}>{play.journal.done.has(ms.id) ? '✔' : '·'} {ms.name}</li>)}
+        {MILESTONES.map((ms) => <li class={play.journal.done.has(ms.id) ? 'done' : ''}>{play.journal.done.has(ms.id) ? '✔' : '·'} {ms.name} <small>· {ms.reward[1]} {BLOCKS.byName(ms.reward[0]).name}</small></li>)}
       </ul>
-      <StatsList play={play} />
     </details>
   );
 }

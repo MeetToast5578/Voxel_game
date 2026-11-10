@@ -3,6 +3,18 @@
 The newest version comes first. `npm run check` fails if the version at the top here is not the one in
 `package.json`, so the two are changed together.
 
+## 0.7.3 — 2026-11-10
+
+Reasons to keep going (roadmap R7.1–R7.3).
+
+- Every journal milestone gives a reward, shown beside it in the journal: torches for the first wood and stone tools,
+  potions, a bucket, arrows, lanterns, a map, coins, Life Crystals, diamonds, a Heart Locket and more.
+- A Bestiary tab in the pause menu: every creature, unknown until seen; then its health, attack and home, how many you
+  have defeated, and the drops found so far. After 25 kills it shows each drop's chance.
+- Item tooltips say where an item comes from (crafted, smelted, dug up, dropped by, found in chests, sold by, a
+  milestone reward) and what it is used in. A test checks that every item can be got in survival.
+- The journal no longer shows the stats line twice.
+
 ## 0.7.2 — 2026-11-10
 
 Combat with more to it (roadmap R2.1, R2.3, R2.4).
