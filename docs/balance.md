@@ -24,6 +24,7 @@ full-strength hits, no crits, 20 health.
 | **Gloom Matriarch** | 320 | 80 | 64 | 46 | 32 | 25 | 19 |
 | **Frost Colossus** | 420 | 105 | 84 | 60 | 42 | 33 | 25 |
 | **Sandmaw** | 380 | 95 | 76 | 55 | 38 | 30 | 23 |
+| Spore Slime | 16 | 4 | 4 | 3 | 2 | 2 | 1 |
 | **The Deep Heart** | 540 | 135 | 108 | 78 | 54 | 42 | 32 |
 | Jungle Hornet | 9 | 3 | 2 | 2 | 1 | 1 | 1 |
 | **Hive Mother** | 360 | 90 | 72 | 52 | 36 | 28 | 22 |
@@ -52,6 +53,7 @@ full-strength hits, no crits, 20 health.
 | **Gloom Matriarch** | 7 | 3 | 4 | 6 | 8 | 11 | 18 |
 | **Frost Colossus** | 9 | 3 | 3 | 5 | 6 | 8 | 14 |
 | **Sandmaw** | 8 | 3 | 4 | 5 | 7 | 9 | 16 |
+| Spore Slime | 3 | 7 | 9 | 13 | 17 | 24 | 42 |
 | **The Deep Heart** | 11 | 2 | 3 | 4 | 5 | 7 | 12 |
 | Jungle Hornet | 3 | 7 | 9 | 13 | 17 | 24 | 42 |
 | **Hive Mother** | 7 | 3 | 4 | 6 | 8 | 11 | 18 |

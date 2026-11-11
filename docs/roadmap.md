@@ -126,7 +126,7 @@ Every task also passes `npm run check`, `npm run benchmark -- --assert` and `npm
 
 ## R4. A world worth exploring
 
-- [ ] **R4.1 Cave biomes (L).** Underground regions with their own blocks, light, music, creatures and ore:
+- [x] **R4.1 Cave biomes (L).** Done in 0.11.0 (no cave music yet; flooded caves have no fish of their own). Underground regions with their own blocks, light, music, creatures and ore:
   - glowing mushroom caverns;
   - crystal geodes;
   - flooded caves with fish and the gill pendant;

@@ -665,10 +665,23 @@ export class Creatures {
     const [sky, block] = this.lightAt(x, y, z);
     if (sky > 0 || block >= SAFE_LIGHT) return;
     const deep = y * BLOCK_SIZE_M < -60;
-    // The Ember Depths have creatures of their own.
-    const depths = y * BLOCK_SIZE_M < DEPTHS_TOP_M;
+    // The Ember Depths have creatures of their own, and so do cave biomes: crawlers in spider nests, spore slimes among
+    // glowing mushrooms, bats in crystal geodes.
+    const depths = y * BLOCK_SIZE_M < DEPTHS_TOP_M, nest = this.caveBiomeNear(x, y, z);
+    if (nest && this.rand() < 0.75) return this.spawnGroup(SPECIES.filter((s) => s.key === nest), x, y, z, ctx.boxAt);
     this.spawnGroup(SPECIES.filter((s) => s.hostile && (depths ? s.biomes.includes('depths')
       : s.biomes.includes('dark') || s.biomes.includes('cave') || (deep && s.biomes.includes('deep')))), x, y, z, ctx.boxAt);
+  }
+
+  /** The creature a cave biome around (x, y, z) breeds, judged by what grows there; null in a plain cave. */
+  private caveBiomeNear(x: number, y: number, z: number): string | null {
+    for (let dy = -1; dy <= 2; dy++) for (let dz = -3; dz <= 3; dz++) for (let dx = -3; dx <= 3; dx++) {
+      const k = BLOCKS.type(this.world.get(x + dx, y + dy, z + dz)).key;
+      if (k === 'cobweb') return 'crawler';
+      if (k === 'glow_mushroom') return 'spore_slime';
+      if (k === 'cave_crystal') return 'bat';
+    }
+    return null;
   }
 
   private spawnGroup(options: readonly Species[], x: number, y: number, z: number, boxAt: CreatureContext['boxAt']): void {

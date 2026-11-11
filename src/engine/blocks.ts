@@ -336,6 +336,10 @@ const BASE: BlockSpec[] = [
   plant('brown_mushroom', 'Brown mushroom'),
   plant('red_mushroom', 'Red mushroom'),
   plant('reed', 'Reed'),
+  // Cave biomes: glowing mushrooms, crystals that grow from floors and ceilings, and cobwebs that slow you.
+  plant('glow_mushroom', 'Glowing mushroom', { lightEmission: 10 }),
+  plant('cave_crystal', 'Cave crystal', { lightEmission: 8, needsSupport: false, hardness: 1, mineWith: 'pickaxe', drops: 'crystal_shard' }),
+  plant('cobweb', 'Cobweb', { needsSupport: false, hardness: 0.6, mineWith: 'sword', drops: 'string' }),
   thin('lily_pad', 'Lily pad'),
   thin('moss', 'Moss'),
   thin('leaf_litter', 'Leaf litter'),
@@ -445,6 +449,7 @@ function gameplay(): BlockSpec[] {
     item('frost_shard', 'Frost Shard'),
     item('stinger', 'Stinger'),
     item('dune_fang', 'Dune Fang'),
+    item('crystal_shard', 'Crystal shard'),
     item('heart_of_embers', 'Heart of Embers', { maxStack: 1 }),
     item('sand_totem', 'Sand Totem', { maxStack: 1 }),
     item('royal_bait', 'Royal Bait', { maxStack: 1 }),

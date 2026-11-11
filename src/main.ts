@@ -150,6 +150,7 @@ renderer.setViewDistance(viewChunks * CHUNK_SIZE);
 const WATER = BLOCKS.typeIndex[BLOCKS.state('water')]!, FLOWING = BLOCKS.typeIndex[BLOCKS.state('flowing_water')]!;
 const LADDER = BLOCKS.typeIndex[BLOCKS.state('ladder')]!, CAMPFIRE = BLOCKS.state('campfire'), ARROW = BLOCKS.state('arrow'), MAGIC_BOLT = BLOCKS.state('ember_crystal');
 const climbAt = (x: number, y: number, z: number) => BLOCKS.typeIndex[world.get(x, y, z)] === LADDER;
+const COBWEB = BLOCKS.typeIndex[BLOCKS.state('cobweb')];
 const FLOWING_ID = BLOCKS.state('flowing_water'), LEVELS = 8;
 /** Level of water in a cell for working out flow (a source is full, air is empty, anything else blocks: -1). */
 const levelAt = (x: number, y: number, z: number) => {
@@ -395,7 +396,10 @@ function update(dt: number): void {
   if (play.mode === 'survival') player.flying = false;
   else if (!active) input.consume('fly');
   const falling = -player.body.vy, bonus = play.bonus;
-  player.speedBonus = bonus.speed;
+  // Cobwebs hold the player: a quarter of the speed, and a slow fall.
+  const pb = player.body, webbed = [pb.y + 0.1, pb.y + pb.height / 2].some((y) => BLOCKS.typeIndex[world.get(Math.floor(pb.x), Math.floor(y), Math.floor(pb.z))] === COBWEB);
+  if (webbed) pb.vy = Math.max(pb.vy, -toCells(1));
+  player.speedBonus = webbed ? -0.75 : bonus.speed;
   player.airJumps = bonus.jumps;
   player.glide = bonus.featherfall;
   player.dash = bonus.dash;

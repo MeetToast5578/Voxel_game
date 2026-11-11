@@ -192,6 +192,9 @@ export const LAVA_DEPTH_M = -100;
  * pools only below a lava sea (DEPTHS_LAVA_M, varying a few metres), so there is air to explore above it.
  */
 export const DEPTHS_TOP_M = -220;
+/** Cave biomes: the size of their regions, and the band of depth they decorate (from a little below the surface to the Depths). */
+export const CAVE_BIOME_M = 90;
+export const CAVE_BIOME_TOP_M = -12;
 export const DEPTHS_LAVA_M = -250;
 
 // ---- Trees and features ----

@@ -3,7 +3,7 @@ import {
   BARE_ROCK_AMP_M, BEACH_BAND_M, BIOME_JITTER_C, BIOME_JITTER_MM, BLOCK_SIZE_M, BOULDER_DENSITY_PER_M2, BOULDER_RADIUS_M, CHUNK_AREA, CHUNK_SIZE,
   COLUMN_CACHE, DEEP_SEA_FLOOR_M, DETAIL_H_M, DETAIL_V_M, FALLEN_LOG_DENSITY_PER_M2, FALLEN_LOG_MAX_M,
   FALLEN_LOG_MIN_M, FERN_CHANCE, FLOWER_CHANCE, LILY_PAD_CHANCE, MUSHROOM_CHANCE, REED_CHANCE, SEA_LEVEL_M, SECONDARY_TREE_CHANCE,
-  SHORE_CAVE_BAND_M, SHORE_ROOF_CELLS, STONY_SHORE_M, SOIL_DEPTH_M, SPAWN_SEARCH_M, TALL_GRASS_CHANCE, TREE_DENSITY_PER_M2, TREE_REACH_CELLS, cells,
+  SHORE_CAVE_BAND_M, SHORE_ROOF_CELLS, STONY_SHORE_M, SOIL_DEPTH_M, SPAWN_SEARCH_M, TALL_GRASS_CHANCE, TREE_DENSITY_PER_M2, TREE_REACH_CELLS, cells, CAVE_BIOME_TOP_M, DEPTHS_TOP_M,
 } from '../config';
 import { hash2, mulberry32 } from '../core/random';
 import { BLOCKS, BLOCKS_SKY, FLUID_LEVELS } from '../engine/blocks';
@@ -25,6 +25,7 @@ const WATER = S('water'), LOG = S('log'), LEAVES = S('leaves'), COBBLE = S('cobb
 const LEAF_TYPE = BLOCKS.typeIndex[LEAVES];
 const REED = S('reed'), LILY = S('lily_pad'), LAVA = S('lava');
 /** Flowing water at full level, resting and falling (variants: level - 1, plus FLUID_LEVELS when falling). */
+const GLOW_MUSHROOM = BLOCKS.state('glow_mushroom'), CRYSTAL = BLOCKS.state('cave_crystal'), COBWEB = BLOCKS.state('cobweb');
 const SPILL = BLOCKS.state('flowing_water', FLUID_LEVELS - 1), FALLING = BLOCKS.state('flowing_water', 2 * FLUID_LEVELS - 1);
 const N4 = [[1, 0], [-1, 0], [0, 1], [0, -1]] as const;
 /** How far below an opened surface cell the cave floor is looked for. */
@@ -364,6 +365,7 @@ export class Generator {
     }
     this.fill(col, cx, cy, cz, out);
     this.underground.placeOres(cx, cy, cz, out);
+    this.decorateCaves(col, cx, cy, cz, out);
     // Trees, boulders and logs last, so they sit on finished ground.
     const f = col.features;
     for (let k = 0; k < f.length; k += 3) {
@@ -375,13 +377,40 @@ export class Generator {
     return -1;
   }
 
+  /**
+   * Cave biomes dress their caves: glowing mushrooms on mushroom cavern floors, crystals on geode floors and ceilings,
+   * cobwebs strung through spider nests. Only well under the surface and above the Ember Depths.
+   */
+  private decorateCaves(col: ColumnData, cx: number, cy: number, cz: number, out: Uint16Array): void {
+    const y0 = cy * N;
+    if ((y0 + N) * B < DEPTHS_TOP_M || y0 * B > CAVE_BIOME_TOP_M) return;
+    for (let lz = 0; lz < N; lz++) for (let lx = 0; lx < N; lx++) {
+      const i = lz * N + lx, x = cx * N + lx, z = cz * N + lz, kind = this.underground.caveBiome(x, z);
+      if (kind === 'none' || kind === 'flooded') continue;
+      for (let ly = 1; ly < N; ly++) {
+        const y = y0 + ly, ym = y * B;
+        if (ym > CAVE_BIOME_TOP_M || ym < DEPTHS_TOP_M || y > col.top[i]! - 4) continue;
+        const idx = (ly * N + lz) * N + lx, below = idx - N * N, s = out[idx]!, h = hash2(this.seed + 913 + y, x, z);
+        if (s !== AIR) {
+          // A ceiling over air: crystals hang from it.
+          if (kind === 'crystal' && out[below] === AIR && BLOCKS.isSolid(s) && h < 0.18) out[below] = CRYSTAL;
+          continue;
+        }
+        const floor = BLOCKS.isSolid(out[below]!);
+        if (floor && kind === 'mushroom' && h < 0.3) out[idx] = GLOW_MUSHROOM;
+        else if (floor && kind === 'crystal' && h < 0.14) out[idx] = CRYSTAL;
+        else if (kind === 'spider' && h < (floor ? 0.1 : 0.035)) out[idx] = COBWEB;
+      }
+    }
+  }
+
   private fill(col: ColumnData, cx: number, cy: number, cz: number, out: Uint16Array): void {
     const ug = this.underground;
     for (let lz = 0; lz < N; lz++) {
       for (let lx = 0; lx < N; lx++) {
         const i = lz * N + lx, x = cx * N + lx, z = cz * N + lz;
         const top = col.top[i]!, offset = col.offset[i]!, amp = col.amp[i]!, surface = col.surface[i]!, soil = col.soil[i]!;
-        const water = col.water[i]!, caveTop = this.caveTop(top, water), warp = col.warp[i]!;
+        const water = col.water[i]!, caveTop = this.caveTop(top, water), warp = col.warp[i]!, flooded = ug.caveBiome(x, z) === 'flooded';
         let cover = AIR;
         if (top + 1 >= water && !col.open[i]) {
           // Reeds at the water's edge, plants on grass, lily pads on lakes.
@@ -395,7 +424,7 @@ export class Generator {
           if (y > top || !this.solid(x, y, z, offset, amp)) {
             s = y < water ? WATER : y === top + 1 ? cover : lily && y === water ? LILY : AIR;
           }
-          else if (y <= caveTop && ug.isCave(x, y, z, (top - y) * B)) s = ug.caveFill(x, y, z, WATER, LAVA, AIR);
+          else if (y <= caveTop && ug.isCave(x, y, z, (top - y) * B)) s = ug.caveFill(x, y, z, WATER, LAVA, AIR, flooded);
           else {
             const depth = top - y;
             s = depth === 0 ? (surface === GRASS && y + 1 < SEA_CELL ? DIRT : surface) : depth < SOIL_CELLS ? soil : ug.rockAt(y, warp);

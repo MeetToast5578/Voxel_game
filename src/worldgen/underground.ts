@@ -4,9 +4,9 @@ import {
   CAVE_CHEESE_THRESHOLD, CAVE_NOODLE_ROOF_M, CAVE_NOODLE_SCALE_H_M, CAVE_NOODLE_SCALE_V_M, CAVE_NOODLE_STRETCH,
   CAVE_NOODLE_THRESHOLD, CAVE_SCALE_H_M, CAVE_SCALE_V_M, CAVE_THRESHOLD, CHUNK_SIZE, DEEPSLATE_DEPTH_M,
   GEOLOGY_LAYER_M, GEOLOGY_WARP_M, RAVINE_BAND, RAVINE_DEPTH_M, RAVINE_ROOF_M, RAVINE_SCALE_M, AQUIFER_AMPLITUDE_M,
-  AQUIFER_LEVEL_M, AQUIFER_SCALE_M, LAVA_DEPTH_M, DEPTHS_LAVA_M, DEPTHS_TOP_M,
+  AQUIFER_LEVEL_M, AQUIFER_SCALE_M, LAVA_DEPTH_M, DEPTHS_LAVA_M, DEPTHS_TOP_M, CAVE_BIOME_M,
 } from '../config';
-import { mulberry32 } from '../core/random';
+import { hash2, mulberry32 } from '../core/random';
 import { BLOCKS } from '../engine/blocks';
 
 const B = BLOCK_SIZE_M;
@@ -40,6 +40,10 @@ const ORES = [
   { key: 'emberite_ore', topM: DEPTHS_TOP_M - 20, bottomM: -1e6, per1000M3: 0.15, cells: 3 },
 ].map((o) => ({ ...o, state: BLOCKS.state(o.key) }));
 
+/** Cave biomes: plain caves, glowing mushroom caverns, crystal geodes, spider nests, and flooded caves. */
+export type CaveBiome = 'none' | 'mushroom' | 'crystal' | 'spider' | 'flooded';
+const CAVE_KINDS: readonly CaveBiome[] = ['mushroom', 'crystal', 'spider', 'flooded'];
+
 /** Rock layers, caves and ores: everything below the surface. Pure and deterministic per seed. */
 export class Underground {
   private readonly warp: NoiseFunction2D;
@@ -61,6 +65,13 @@ export class Underground {
     this.spagB = n3(4);
     this.ravine = createNoise2D(mulberry32(seed + 503));
     this.aquifer = createNoise2D(mulberry32(seed + 504));
+  }
+
+  /** The cave biome under column (x, z): regions about CAVE_BIOME_M across with wavy edges; two in five are plain. */
+  caveBiome(x: number, z: number): CaveBiome {
+    const r = CAVE_BIOME_M / B, w = this.warp((x * B) / 37, (z * B) / 37) * 0.3 * r;
+    const h = hash2(this.seed + 911, Math.floor((x + w) / r), Math.floor((z - w) / r));
+    return h < 0.4 ? 'none' : CAVE_KINDS[Math.min(3, Math.floor((h - 0.4) / 0.15))]!;
   }
 
   /** Warp of the rock layers at a column cell, in [-1, 1]. */
@@ -111,8 +122,10 @@ export class Underground {
    * What fills a carved cave cell: groundwater below the local water table, lava deep down, or air. In the Ember Depths
    * lava pools only below the lava sea, so its caverns have air above lakes of lava.
    */
-  caveFill(x: number, y: number, z: number, water: number, lava: number, air: number): number {
+  caveFill(x: number, y: number, z: number, water: number, lava: number, air: number, flooded = false): number {
     const ym = (y + 0.5) * B;
+    // Flooded caves are full of water from a little below the surface down to the lava.
+    if (flooded && ym < -15 && ym >= LAVA_DEPTH_M) return water;
     if (ym < DEPTHS_TOP_M) return ym < DEPTHS_LAVA_M + 6 * this.aquifer((x * B) / AQUIFER_SCALE_M, (z * B) / AQUIFER_SCALE_M) ? lava : air;
     if (ym < LAVA_DEPTH_M) return lava;
     const table = AQUIFER_LEVEL_M + AQUIFER_AMPLITUDE_M * this.aquifer((x * B) / AQUIFER_SCALE_M, (z * B) / AQUIFER_SCALE_M);

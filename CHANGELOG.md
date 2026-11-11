@@ -3,6 +3,20 @@
 The newest version comes first. `npm run check` fails if the version at the top here is not the one in
 `package.json`, so the two are changed together.
 
+## 0.11.0 — 2026-11-11
+
+Caves with character (roadmap R4.1).
+
+- Underground regions about 90 m across, from a little below the surface down to the Ember Depths, are cave biomes
+  (two in five caves stay plain):
+  - **Glowing mushroom caverns**: blue mushrooms light the floors. **Spore Slimes** (poisonous) live there.
+  - **Crystal geodes**: violet crystals grow from floors and hang from ceilings, lighting the cave. Mining them gives
+    crystal shards. Cave bats gather there.
+  - **Spider nests**: cobwebs strung through the air hold you (a quarter of the speed, a slow fall); swords cut them
+    for string. Cave crawlers live there.
+  - **Flooded caves**: full of water from 15 m down; bring a Gill Pendant or a water breathing potion.
+- Seed 1 has every kind within 300 m of spawn.
+
 ## 0.10.1 — 2026-11-11
 
 The final boss (roadmap R4.2, R3.3).
