@@ -323,7 +323,7 @@ Every task also passes `npm run check`, `npm run benchmark -- --assert` and `npm
 ## R9. Sound and music
 
 - [x] **R9.1 Creature voices (S).** Done earlier: every species calls, is hurt and dies in its own pitch. A synthesised idle, hurt and death sound for each species.
-- [~] **R9.2 Footsteps and impacts (S).** Steps for each material exist; landings and hits do not yet. Steps, landings and hits for each material.
+- [x] **R9.2 Footsteps and impacts (S).** Done: steps (earlier), landings and block hits (0.12.5). Steps, landings and hits for each material.
 - [x] **R9.3 Music for each place (M).** Done in 0.12.5. Separate synthesised themes for:
   - day and night;
   - caves, the Depths and towns;

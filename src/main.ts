@@ -17,7 +17,7 @@ import { World } from './engine/world';
 import { COLLISION, loadedBoxAt } from './game/collision';
 import { Input } from './game/input';
 import { blockInteractionHint } from './game/interactionHint';
-import { Play, type Mode, CHALLENGES, type ChallengeGoal } from './game/play';
+import { Play, type Mode, CHALLENGES, type ChallengeGoal, materialPitch } from './game/play';
 import { Player } from './game/player';
 import { Highlight } from './render/highlight';
 import { Renderer } from './render/renderer';
@@ -234,7 +234,7 @@ player.flying = usePosition ? params.get('fly') === '1' : saved.flying;
 let placed = Number.isFinite(player.body.y);
 if (!placed) player.body.y = toCells(60);
 const play = new Play(world, (x, y, z, s) => setBlock(x, y, z, s, true), {
-  sound: (name, volume) => sounds.play(name, volume),
+  sound: (name, volume, pitch) => sounds.play(name, volume, pitch),
   // Sleeping: only at night, and the night passes.
   sleep: () => {
     const night = env.clock.dayTime < 0.23 || env.clock.dayTime > 0.77;
@@ -456,6 +456,9 @@ function update(dt: number): void {
   }
   if (play.mode === 'survival' && !play.survival.dead) {
     if (player.body.onGround && falling > 0 && player.submerged < 0.2 && !bonus.featherfall) play.survival.land(falling * BLOCK_SIZE_M);
+    // A landing from a jump or a fall thumps on the ground's material, louder the harder it is.
+    if (player.body.onGround && falling > toCells(4) && player.submerged < 0.2)
+      sounds.play('step', Math.min(3, falling / toCells(4)), 0.7 * materialPitch(world.get(Math.floor(player.body.x), Math.floor(player.body.y - 0.05), Math.floor(player.body.z))));
     const eye = world.get(Math.floor(player.body.x), Math.floor(player.eyeY), Math.floor(player.body.z));
     const feet = world.get(Math.floor(player.body.x), Math.floor(player.body.y + 0.2), Math.floor(player.body.z));
 

@@ -79,6 +79,12 @@ export const clock = (t: number) => {
   return h ? `${h}:${String(m).padStart(2, '0')}:${ss}` : `${m}:${ss}`;
 };
 
+/** How a block sounds when struck: stone rings bright, wood knocks, earth and plants thud, sand and snow hiss soft. */
+export function materialPitch(state: number): number {
+  const t = BLOCKS.type(state);
+  return t.key === 'snow' ? 0.6 : t.falls ? 1.1 : t.mineWith === 'pickaxe' ? 1.8 : t.mineWith === 'axe' ? 1.3 : 0.8;
+}
+
 /** Places a treasure map can show, by name. */
 const MAP_PLACES = { ice_cave: 'An ice cave', shipwreck: 'A shipwreck', pyramid: 'A pyramid', temple: 'An overgrown temple', sky_island: 'A sky island', altar: 'A boss altar', shrine: 'An ember shrine', tower: 'A watchtower', cabin: 'A cabin' } as const;
 
@@ -232,7 +238,7 @@ export class Play {
   readonly campfires = new Map<string, [number, number][]>();
 
   constructor(private readonly world: World, setBlock: (x: number, y: number, z: number, s: number) => void,
-    private readonly events: { sound(name: 'break' | 'place' | 'eat', volume?: number): void; sleep(): boolean; fertilise?(x: number, y: number, z: number): boolean }, mode: Mode = 'creative') {
+    private readonly events: { sound(name: 'break' | 'place' | 'eat', volume?: number, pitch?: number): void; sleep(): boolean; fertilise?(x: number, y: number, z: number): boolean }, mode: Mode = 'creative') {
     this.mode = mode;
     // Every change the player makes is recorded for undo while a group is open.
     this.setBlock = (x, y, z, s) => {
@@ -1152,7 +1158,7 @@ export class Play {
     if (this.chipClock <= 0 && this.breaking < 1) {
       this.chipClock = 0.2;
       this.particles.burst(state, t.x + 0.5, t.y + 0.5, t.z + 0.5, 3);
-      this.events.sound('break', 0.35);
+      this.events.sound('break', 0.35, materialPitch(state));
       this.swings++;
     }
     if (this.breaking >= 1) {
@@ -1188,7 +1194,7 @@ export class Play {
     this.particles.burst(state, x + 0.5, y + 0.5, z + 0.5);
     this.swings++;
     this.setBlock(x, y, z, AIR);
-    this.events.sound('break');
+    this.events.sound('break', 1, materialPitch(state));
     this.version++;
   }
 

@@ -5,13 +5,15 @@ The newest version comes first. `npm run check` fails if the version at the top 
 
 ## 0.12.5 — 2026-11-11
 
-Music for each place (roadmap R9.3).
+Music for each place, and the sound of materials (roadmap R9.3, R9.2).
 
 - Each place has its own synthesised theme: bright by day, softer at night, low and slow in caves, dark and uneasy in
   the Ember Depths, lively in towns (yours or a village).
 - A boss fight starts fast, low music at once, and it keeps coming back until the fight ends.
 - Beating a boss plays a short rising fanfare.
 - The music volume setting covers all of it.
+- Landings thump and struck blocks sound by material: stone rings, wood knocks, earth thuds, sand and snow hiss
+  (R9.2).
 
 ## 0.12.4 — 2026-11-11
 
