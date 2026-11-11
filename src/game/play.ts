@@ -65,6 +65,20 @@ const BUCKET = S('bucket'), BOW = S('bow'), ARROW = S('arrow'), BONE_MEAL = S('b
 export const DOOR_CELLS = 4;
 const FACING_OFFSET = [[1, 0], [-1, 0], [0, 1], [0, -1]] as const;
 /** A home the player made: the bed head's cell, which way its sleeper lies, and who lives there. */
+/** Challenge runs: a goal to reach as fast as possible, with a timer. */
+export const CHALLENGES = {
+  boss: { name: 'Beat a boss', met: (p: Play) => [...p.bestiary.keys()].some((k) => SPECIES_BY_KEY.get(k)?.boss) },
+  depths: { name: 'Reach the Ember Depths', met: (p: Play) => p.deepestM <= DEPTHS_TOP_M },
+  beacon: { name: 'Light the beacon', met: (p: Play) => p.beaconLit },
+  deep_heart: { name: 'Defeat the Deep Heart', met: (p: Play) => p.bestiary.has('deep_heart') },
+} as const;
+export type ChallengeGoal = keyof typeof CHALLENGES;
+/** Seconds as m:ss (or h:mm:ss). */
+export const clock = (t: number) => {
+  const s = Math.floor(t), h = Math.floor(s / 3600), m = Math.floor(s / 60) % 60, ss = String(s % 60).padStart(2, '0');
+  return h ? `${h}:${String(m).padStart(2, '0')}:${ss}` : `${m}:${ss}`;
+};
+
 /** Places a treasure map can show, by name. */
 const MAP_PLACES = { ice_cave: 'An ice cave', shipwreck: 'A shipwreck', pyramid: 'A pyramid', temple: 'An overgrown temple', sky_island: 'A sky island', altar: 'A boss altar', shrine: 'An ember shrine', tower: 'A watchtower', cabin: 'A cabin' } as const;
 
@@ -684,6 +698,20 @@ export class Play {
     return false;
   }
   private mapGen?: Generator;
+
+  /** A challenge run: its goal, seconds played, and the time it was met in (saved). */
+  challenge: { goal: ChallengeGoal; time: number; done?: number } | null = null;
+
+  /** Counts a challenge's time while the player lives, and notes the moment its goal is met (call each tick). */
+  tickChallenge(dt: number): void {
+    const c = this.challenge;
+    if (!c || c.done !== undefined || this.survival.dead) return;
+    c.time += dt;
+    if (CHALLENGES[c.goal].met(this)) {
+      c.done = c.time;
+      this.toast(`Challenge complete: ${CHALLENGES[c.goal].name} in ${clock(c.time)}!`, 8);
+    }
+  }
 
   /** Raiders still standing in a raid on the player's town: the raid is won when none are left. */
   raidLeft = 0;
@@ -1835,7 +1863,7 @@ export class Play {
   save(): unknown {
     const s = (st: ItemStack | null) => (st ? [BLOCKS.stateName(st.state), st.count] : null);
     return {
-      decorations: this.decorations.save(), mode: this.mode, difficulty: this.difficulty, hints: this.hints.save(), inventory: this.inventory.save(), selected: this.inventory.selected, drops: this.drops.save(),
+      challenge: this.challenge, decorations: this.decorations.save(), mode: this.mode, difficulty: this.difficulty, hints: this.hints.save(), inventory: this.inventory.save(), selected: this.inventory.selected, drops: this.drops.save(),
       health: this.survival.health, maxHealth: this.survival.maxHealth, hunger: this.survival.hunger, air: this.survival.air, effects: { ...this.survival.effects }, burning: this.survival.burning, bodyC: this.survival.temperature.coreC, spawn: this.spawn,
       furnaces: [...this.furnaces].map(([k, f]) => [k, s(f.input), s(f.fuel), s(f.output), f.burn, f.progress]),
       chestNames: [...this.chestNames], waystones: [...this.waystones], markers: this.markers, quests: [...this.quests], questsDone: [...this.questsDone], event: this.event, eventKills: this.eventKills, wardenHealth: [...this.wardenHealth], homes: [...this.homes.values()].map((h) => [h.x, h.y, h.z, h.yaw, h.who]), journal: this.journal.save(), seen: [...this.seen], bestiary: [...this.bestiary].map(([k, e]) => [k, e.kills, [...e.drops]]), stats: this.stats, biomesSeen: [...this.biomesSeen], deepestM: this.deepestM, found: [...this.found], beaconLit: this.beaconLit, endingSeen: this.endingSeen, boating: this.boating,
@@ -1875,6 +1903,8 @@ export class Play {
     if (Array.isArray(p.questsDone)) for (const id of p.questsDone) if (known(id)) this.questsDone.add(id);
     if (Array.isArray(p.wardenHealth)) for (const e of p.wardenHealth) if (Array.isArray(e) && typeof e[0] === 'string' && num(e[1], 0) > 0) this.wardenHealth.set(e[0], num(e[1], 0));
     this.eventKills = Math.max(0, Math.floor(num(p.eventKills, 0)));
+    const ch = p.challenge as { goal?: unknown; time?: unknown; done?: unknown } | null | undefined;
+    if (ch && typeof ch.goal === 'string' && ch.goal in CHALLENGES) this.challenge = { goal: ch.goal as ChallengeGoal, time: num(ch.time, 0), ...(typeof ch.done === 'number' ? { done: ch.done } : {}) };
     if (Array.isArray(p.homes)) for (const h of p.homes) {
       if (!Array.isArray(h) || !h.slice(0, 4).every((v) => typeof v === 'number' && Number.isFinite(v))) continue;
       const who = typeof h[4] === 'string' && SPECIES_BY_KEY.get(h[4])?.villager ? h[4] : null;

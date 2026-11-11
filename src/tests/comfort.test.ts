@@ -122,3 +122,20 @@ describe('light in the dark', () => {
     expect(BLOCKS.type(S('night_vision_potion')).potion!.effect).toBe('night_vision');
   });
 });
+
+describe('challenge runs', () => {
+  it('time the run until the goal is met, and keep the time in saves', () => {
+    const { play, world } = setup();
+    play.challenge = { goal: 'depths', time: 0 };
+    play.tickChallenge(5);
+    expect(play.challenge.done).toBeUndefined();
+    play.deepestM = -230;
+    play.tickChallenge(5);
+    expect(play.challenge.done).toBe(10);
+    play.tickChallenge(5);
+    expect(play.challenge.time).toBe(10);
+    const back = new Play(world, () => undefined, { sound: () => undefined, sleep: () => true }, 'survival');
+    back.load(JSON.parse(JSON.stringify(play.save())));
+    expect(back.challenge).toEqual({ goal: 'depths', time: 10, done: 10 });
+  });
+});

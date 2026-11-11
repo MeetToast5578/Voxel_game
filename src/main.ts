@@ -16,7 +16,7 @@ import { World } from './engine/world';
 import { COLLISION, loadedBoxAt } from './game/collision';
 import { Input } from './game/input';
 import { blockInteractionHint } from './game/interactionHint';
-import { Play, type Mode } from './game/play';
+import { Play, type Mode, CHALLENGES, type ChallengeGoal } from './game/play';
 import { Player } from './game/player';
 import { Highlight } from './render/highlight';
 import { Renderer } from './render/renderer';
@@ -244,6 +244,9 @@ const play = new Play(world, (x, y, z, s) => setBlock(x, y, z, s, true), {
 }, (params.get('mode') as Mode | null) ?? 'survival');
 const urlDifficulty = params.get('difficulty');
 if (urlDifficulty && urlDifficulty in DIFFICULTY) play.difficulty = urlDifficulty as Difficulty;
+// A new challenge world starts its timer at zero; a saved one brings its own back when loaded.
+const urlChallenge = params.get('challenge');
+if (urlChallenge && urlChallenge in CHALLENGES) play.challenge = { goal: urlChallenge as ChallengeGoal, time: 0 };
 let lastBite = -Infinity;
 /** What a boss's named attacks are called on screen, with the way to dodge. */
 const BOSS_CALLS = { slam: 'Slam! Jump or step away', dive: 'Dive! Step aside', stomp: 'Stomp! Step back', boulder: 'Boulder! Dodge it', spit: 'Venom! Dodge it', burrow: 'It burrows! Keep moving', flame: 'Ember bolt! Dodge it' } as const;
@@ -443,6 +446,7 @@ function update(dt: number): void {
     play.wakeVillagers(player);
     play.noteSeen(player.body.x, player.body.z);
     play.tickEvent(exposureClock, player);
+    play.tickChallenge(exposureClock);
     exposureClock = 0;
   }
   if (play.mode === 'survival' && !play.survival.dead) {

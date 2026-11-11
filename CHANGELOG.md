@@ -3,6 +3,14 @@
 The newest version comes first. `npm run check` fails if the version at the top here is not the one in
 `package.json`, so the two are changed together.
 
+## 0.12.3 — 2026-11-11
+
+Challenge runs (roadmap R7.6).
+
+- A new world can have a **goal**: beat a boss, reach the Ember Depths, light the beacon, or defeat the Deep Heart. A
+  timer in the top right counts the time played (not paused time) and stops with a tick when the goal is met. The
+  time is kept in the save, so a run can be shared by its seed and goal.
+
 ## 0.12.2 — 2026-11-11
 
 The last two biome dungeons (roadmap R4.4).

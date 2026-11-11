@@ -278,7 +278,7 @@ Every task also passes `npm run check`, `npm run benchmark -- --assert` and `npm
   **Done when:** the second act is triggered and the final boss can be beaten.
 - [x] **R7.5 Harder nights over time (S)** (13.4 rest). Done in 0.8.3. Day 20 spawns more than day 1, capped by difficulty.
   **Done when:** the test in `tasks.md` passes.
-- [~] **R7.6 Hardcore and challenge seeds (S each)** (idea 14). 0.8.3: hardcore; challenge seeds remain. Hardcore has one life. Challenge seeds have a goal
+- [x] **R7.6 Hardcore and challenge seeds (S each)** (idea 14). Done: hardcore (0.8.3), challenge goals with a timer (0.12.3). Hardcore has one life. Challenge seeds have a goal
   and a timer.
   **Done when:** a hardcore death deletes the world after a confirmation.
 
