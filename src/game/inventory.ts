@@ -1,3 +1,4 @@
+import { modFromIndex, modIndex } from './modifiers';
 import { BLOCKS } from '../engine/blocks';
 
 /** Items in one slot: a block or item state, how many, and for tools how many uses are spent. */
@@ -7,6 +8,8 @@ export interface ItemStack {
   wear?: number;
   /** Ember forge upgrade level, 0–3. */
   upgrade?: number;
+  /** A weapon's modifier (see modifiers.ts). */
+  mod?: string;
 }
 
 export const HOTBAR_SIZE = 9;
@@ -111,8 +114,8 @@ export class Inventory {
   }
 
   /** For saving: [stateName, count, wear] per slot, or null. */
-  save(): ([string, number, number, number] | null)[] {
-    return this.slots.map((s) => (s ? [BLOCKS.stateName(s.state), s.count, s.wear ?? 0, s.upgrade ?? 0] : null));
+  save(): ([string, number, number, number, number] | null)[] {
+    return this.slots.map((s) => (s ? [BLOCKS.stateName(s.state), s.count, s.wear ?? 0, s.upgrade ?? 0, modIndex(s.mod)] : null));
   }
 
   /** Restores a saved inventory; anything unknown or malformed is dropped. */
@@ -125,7 +128,7 @@ export class Inventory {
       const count = Math.floor(Number(e[1]));
       if (state === null || !(count > 0)) return;
       const wear = Math.max(0, Math.floor(Number(e[2]) || 0));
-      this.slots[i] = { state, count: Math.min(count, maxStack(state)), ...(wear ? { wear } : {}), ...(Number(e[3]) > 0 ? { upgrade: Math.min(3, Math.floor(Number(e[3]))) } : {}) };
+      this.slots[i] = { state, count: Math.min(count, maxStack(state)), ...(wear ? { wear } : {}), ...(Number(e[3]) > 0 ? { upgrade: Math.min(3, Math.floor(Number(e[3]))) } : {}), ...(modFromIndex(e[4]) ? { mod: modFromIndex(e[4]) } : {}) };
     });
   }
 }

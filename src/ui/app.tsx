@@ -6,7 +6,8 @@ import { clickSlot, type ItemStack } from '../game/inventory';
 import { canCraft, CRAFTS, haveFor, timesCraftable } from '../game/crafting';
 import { MILESTONES } from '../game/journal';
 import { version } from '../../package.json';
-import { armourFactor, type Mode, type Play } from '../game/play';
+import { armourFactor, REFORGE_COINS, WAYSTONE_COINS, type Mode, type Play } from '../game/play';
+import { modifierOf, takesModifier } from '../game/modifiers';
 import { EFFECTS, type Effect } from '../game/effects';
 import { sourcesOf, usesOf } from '../game/guide';
 import { QUESTS } from '../game/townsfolk';
@@ -66,13 +67,17 @@ export interface UiModel extends WorldsModel {
 const PALETTE = BLOCKS.types.filter((t) => t.layer !== 'none' && !['flowing_water', 'flowing_lava', 'lit_furnace', 'bedrock'].includes(t.key)).flatMap((t) => t.variantFaces ? Array.from({length:t.variants},(_,v)=>t.id+v).filter(s=>t.key!=='leaves'||(s-t.id)%2===0) : [t.id]);
 
 const TIERS = ['wooden', 'stone', 'iron', 'diamond', 'jade'];
+/** Rarity as a shape as well as a colour, for players who cannot tell the colours apart. */
+const RARITY_MARKS = ['', '•', '◆', '★', '✦'];
 
 /** A slot's tooltip: the item's name, then what it is good for and how worn it is. */
 export function tooltip(s: ItemStack): string {
   const t = BLOCKS.type(s.state);
   const wood=t.key==='sapling'?SAPLING_SPECIES[BLOCKS.variant(s.state)]:t.variantFaces&&['log','leaves','planks'].includes(t.key)?WOOD_SPECIES[t.key==='leaves'?Math.floor(BLOCKS.variant(s.state)/2):BLOCKS.variant(s.state)]:null;
   const r = rarity(s);
-  const lines = [`${wood?`${wood.replaceAll('_',' ')} ${t.name}`:t.name}${r ? ` · ${RARITY_NAMES[r]}` : ''}`];
+  const mod = modifierOf(s.mod);
+  const lines = [`${mod ? `${mod.name} ` : ''}${wood?`${wood.replaceAll('_',' ')} ${t.name}`:t.name}${r ? ` · ${RARITY_NAMES[r]}` : ''}`];
+  if (mod) lines.push(`Modifier: ${[mod.damage && `${mod.damage > 1 ? '+' : ''}${Math.round((mod.damage - 1) * 100)}% damage`, mod.crit && `+${mod.crit * 100}% crit`, mod.knock && `+${Math.round((mod.knock - 1) * 100)}% knockback`, mod.speed && `+${Math.round((mod.speed - 1) * 100)}% swing speed`].filter(Boolean).join(', ')}`);
   if(s.upgrade)lines.push(`Ember upgrade ${s.upgrade}/3 · faster, stronger and more durable`);
   if (t.food) lines.push(`Food: restores ${t.food} hunger`);
   if (t.tool) lines.push(`${TIERS[t.tool.tier] ?? ''} ${t.tool.kind}, ${Math.floor(t.tool.durability * (1+(s.upgrade??0)*.5)) - (s.wear ?? 0)} of ${Math.floor(t.tool.durability*(1+(s.upgrade??0)*.5))} uses left`);
@@ -102,6 +107,7 @@ function Slot(props: { stack: ItemStack | null; onClick?: (right: boolean, quick
       {props.shortcut&&<span class="slot-key" aria-hidden="true">{props.shortcut}</span>}
       {s && <img alt="" src={stackIconUrl(s)} draggable={false} />}
       {s && s.count > 1 && <span class="count">{s.count}</span>}
+      {s && rarity(s) > 0 && <span class="rarity-mark" aria-hidden="true">{RARITY_MARKS[rarity(s)]}</span>}
       {s && tool && s.wear ? <span class="wear" style={{ width: `${100 * (1 - s.wear / (tool.durability*(1+(s.upgrade??0)*.5)))}%` }} /> : null}
     </div>
   );
@@ -190,13 +196,16 @@ function WorkshopScreen({play}:{play:Play}) {
   const w=play.workshop;
   const [text,setText]=useState(w?play.decorations.signs.get(w.key)??'':'');
   if(!w)return null;
-  const title={trade:'Trading',forge:'Ember Forge',sign:'Edit sign',frame:'Item frame'}[w.kind];
+  const title={trade:'Trading',forge:'Ember Forge',sign:'Edit sign',frame:'Item frame',waystone:'Waystone'}[w.kind];
   return <div class="screen workshop" role="dialog" aria-modal="true" aria-label={title}>
     <ScreenHead title={title} subtitle={w.kind==='forge'?'Strengthen the equipment you carry. Each level adds speed, protection and durability.':'Supplies for the journey ahead.'} close={()=>play.closeScreen()}/>
     <p class="pack-summary">{play.inventory.slots.filter(Boolean).length}/36 pack slots · {play.inventory.count(BLOCKS.state('trade_coin'))} coins · {play.inventory.count(BLOCKS.state('ember_crystal'))} ember · {play.inventory.count(BLOCKS.state('iron_ingot'))} iron</p>
     {w.kind==='trade'&&<TownsfolkTalk play={play}/>}
     {w.kind==='trade'&&<div class="trade-list">{play.offers.map((o,i)=>{const owned=play.inventory.count(BLOCKS.state(o.cost[0]));return <button key={i} disabled={owned<o.cost[1]} onClick={()=>play.performTrade(i)}><span class="offer-item"><img alt="" src={iconUrl(BLOCKS.state(o.gives[0]))}/><b>{o.gives[1]} {BLOCKS.byName(o.gives[0]).name}</b></span><span class="offer-cost"><img alt="" src={iconUrl(BLOCKS.state(o.cost[0]))}/>{o.cost[1]} {BLOCKS.byName(o.cost[0]).name}<small>You have {owned}</small></span></button>;})}</div>}
-    {w.kind==='forge'&&<div class="equipment-list">{play.inventory.slots.map((s,i)=>s&&(BLOCKS.type(s.state).tool||BLOCKS.type(s.state).armour)&&<button title={tooltip(s)} disabled={(s.upgrade??0)>=3} onClick={()=>play.performForge(i)}><img alt="" src={stackIconUrl(s)}/>{BLOCKS.type(s.state).name}<span>Level {s.upgrade??0}/3</span><span>{upgradeCost(s)} ember + 2 iron</span></button>)}</div>}
+    {w.kind==='waystone'&&<div class="trade-list">{[...play.waystones].filter((k)=>k!==w.key).map((k)=>{const [x,,z]=k.split(',').map(Number) as [number,number,number],[fx,,fz]=w.key.split(',').map(Number) as [number,number,number];
+      return <button key={k} onClick={()=>play.travel(k)}><span class="offer-item"><b>Waystone at {Math.round(x*BLOCK_SIZE_M)}, {Math.round(z*BLOCK_SIZE_M)}</b></span><span class="offer-cost">{Math.round(Math.hypot(x-fx,z-fz)*BLOCK_SIZE_M)} m away<small>{play.mode==='survival'?`${WAYSTONE_COINS} coins`:'free'}</small></span></button>;})}
+      {play.waystones.size<2&&<p class="help">Touch another waystone to travel between them. They stand by cabins, towers and camps.</p>}</div>}
+    {w.kind==='forge'&&<div class="equipment-list">{play.inventory.slots.map((s,i)=>s&&takesModifier(s.state)&&<button key={'r'+i} title={tooltip(s)} onClick={()=>play.reforge(i)}><img alt="" src={stackIconUrl(s)}/>Reforge {BLOCKS.type(s.state).name}<span>{modifierOf(s.mod)?.name ?? 'No modifier'}</span><span>{REFORGE_COINS} coins</span></button>)}{play.inventory.slots.map((s,i)=>s&&(BLOCKS.type(s.state).tool||BLOCKS.type(s.state).armour)&&<button title={tooltip(s)} disabled={(s.upgrade??0)>=3} onClick={()=>play.performForge(i)}><img alt="" src={stackIconUrl(s)}/>{BLOCKS.type(s.state).name}<span>Level {s.upgrade??0}/3</span><span>{upgradeCost(s)} ember + 2 iron</span></button>)}</div>}
     {w.kind==='sign'&&<><label>Up to four lines, 24 characters per line<textarea aria-label="Sign text" maxLength={96} value={text} onInput={e=>setText(e.currentTarget.value)}/></label><button onClick={()=>{if(play.writeSign(text))play.closeScreen();}}>Save sign</button></>}
     {w.kind==='frame'&&<><p class="help">Choose an inventory item to display. Replacing it returns the old item.</p><div class="equipment-list">{play.inventory.slots.map((s,i)=>s&&<button title={tooltip(s)} onClick={()=>play.frameItem(i)}><img alt="" src={stackIconUrl(s)}/>{BLOCKS.type(s.state).name}</button>)}</div><button onClick={()=>play.frameItem(null)}>Take displayed item</button></>}
     {play.message&&<p role="status">{play.message}</p>}
@@ -235,6 +244,7 @@ function InventoryScreen({ play }: { play: Play }) {
         <Grid slots={inv} from={9} to={36} play={play} />
         <div class="bag-tools">
           <button onClick={() => play.sortBackpack()} title="Merge stacks and sort the backpack">Sort</button>
+          {play.mode === 'survival' && <button onClick={() => play.quickStack()} title="Put backpack items into nearby chests that already hold them">Quick stack</button>}
           <div class="trash" title="Trash: drop an item here to destroy it. Click again to take back the last one.">
             <Slot stack={play.trash} title={play.trash ? `Trash: ${tooltip(play.trash)}` : 'Trash'} dim onClick={() => play.clickTrash()} /><span>Trash</span>
           </div>
@@ -244,7 +254,10 @@ function InventoryScreen({ play }: { play: Play }) {
       </section>
       <section class="activity-pane">
       {chest ? (
-        <><h3>Storage</h3><Grid slots={chest} from={0} to={chest.length} play={play} /></>
+        <><h3>Storage</h3>
+          <input class="chest-name" aria-label="Chest name" placeholder="Name this chest…" maxLength={24} value={play.chestNames.get(play.openChest!) ?? ''} onChange={(e) => play.nameChest(e.currentTarget.value)} />
+          <Grid slots={chest} from={0} to={chest.length} play={play} />
+          <div class="bag-tools"><button onClick={() => play.takeAll()}>Take all</button><button onClick={() => play.depositAll()} title="The whole backpack into this chest">Deposit all</button><button onClick={() => play.sortChest()}>Sort</button></div></>
       ) : furnace ? (
         <div class="row">
           <div class="col"><h3>Material</h3>
@@ -298,6 +311,9 @@ function SettingsSection({ m }: { m: WorldsModel }) {
       </label>
       <label class="check"><input type="checkbox" checked={s.invertY} onChange={(e) => set({ invertY: (e.target as HTMLInputElement).checked })} /> Invert mouse Y</label>
       <label class="check"><input type="checkbox" checked={s.viewBob} onChange={(e) => set({ viewBob: (e.target as HTMLInputElement).checked })} /> View bob and sprint widening</label>
+      <label class="check"><input type="checkbox" checked={s.subtitles} onChange={(e) => set({ subtitles: (e.target as HTMLInputElement).checked })} /> Subtitles for sounds</label>
+      <label class="check"><input type="checkbox" checked={s.reduceMotion} onChange={(e) => set({ reduceMotion: (e.target as HTMLInputElement).checked })} /> Reduce motion (no view kick, softer flashes)</label>
+      <label class="check"><input type="checkbox" checked={s.toggleKeys} onChange={(e) => set({ toggleKeys: (e.target as HTMLInputElement).checked })} /> Sprint and crouch toggle instead of hold</label>
       <label class="check"><input type="checkbox" checked={s.hints} onChange={(e) => set({ hints: (e.target as HTMLInputElement).checked })} /> Show hints</label>
       </fieldset>
     </div>
@@ -456,7 +472,7 @@ function CraftingPanel({ play }: { play: Play }) {
 function Menu({ m }: { m: UiModel }) {
   const [tab,setTab]=useState('Journey');
   return <MenuShell title="Paused" subtitle={m.worldName??'Your adventure'} tabs={['Journey','Bestiary','Settings','Worlds','Controls']} active={tab} select={setTab} action={<button class="primary" onClick={m.resume}>Resume</button>}>
-    <section class="menu-panel" hidden={tab!=='Journey'}><span class="eyebrow">TAKE A BREATHER</span><h2>Your journey</h2><p class="section-copy">Your world will be here when you’re ready.</p><div class="journey-summary"><span>World<strong>{m.worldName}</strong></span><span>Mode<strong>{m.play.mode}</strong></span><span>Milestones<strong>{m.play.journal.done.size} / {MILESTONES.length}</strong></span></div>{m.play.mode==='survival'&&<>{m.play.difficulty==='hardcore'?<p class="help">Hardcore: one life. This world ends when you die.</p>:<label>Difficulty<DifficultySelect value={m.play.difficulty} onChange={m.setDifficulty}/></label>}<Journal play={m.play}/></>}<StatsList play={m.play}/><button onClick={()=>m.exportWorld(m.worldName!)}>Export this world</button><button class="quiet" onClick={m.quitToTitle}>Save and quit to title</button></section>
+    <section class="menu-panel" hidden={tab!=='Journey'}><span class="eyebrow">TAKE A BREATHER</span><h2>Your journey</h2><p class="section-copy">Your world will be here when you’re ready.</p><div class="journey-summary"><span>World<strong>{m.worldName}</strong></span><span>Mode<strong>{m.play.mode}</strong></span><span>Milestones<strong>{m.play.journal.done.size} / {MILESTONES.length}</strong></span></div>{m.play.mode==='survival'&&<>{m.play.difficulty==='hardcore'?<p class="help">Hardcore: one life. This world ends when you die.</p>:<label>Difficulty<DifficultySelect value={m.play.difficulty} onChange={m.setDifficulty}/></label>}<Journal play={m.play}/></>}<Markers play={m.play}/><StatsList play={m.play}/><button onClick={()=>m.exportWorld(m.worldName!)}>Export this world</button><button class="quiet" onClick={m.quitToTitle}>Save and quit to title</button></section>
     <section class="menu-panel" hidden={tab!=='Bestiary'}><span class="eyebrow">FIELD NOTES</span><h2>Bestiary</h2><Bestiary play={m.play}/></section>
     <section class="menu-panel" hidden={tab!=='Settings'}><span class="eyebrow">MAKE IT YOURS</span><h2>Settings</h2><SettingsSection m={m}/></section>
     <section class="menu-panel" hidden={tab!=='Worlds'}><span class="eyebrow">YOUR COLLECTION</span><h2>Saved worlds</h2><WorldsSection m={m}/></section>
@@ -493,6 +509,16 @@ function StatsList({ play }: { play: Play }) {
     <p class="help">Days survived {s.days} · walked {(s.walkedM / 1000).toFixed(1)} km · creatures defeated {s.killed} ·
       blocks mined {s.mined} · deaths {s.deaths}</p>
   );
+}
+
+/** Places pinned by the player: the compass points to the last one. */
+function Markers({ play }: { play: Play }) {
+  const [name, setName] = useState('');
+  return <details class="journal"><summary>Markers: {play.markers.length} · the compass points to the last</summary>
+    <div class="marker-add"><input aria-label="Marker name" placeholder="Name this spot…" maxLength={24} value={name} onInput={(e) => setName(e.currentTarget.value)} />
+      <button onClick={() => { play.mark(name); setName(''); }}>Mark this spot</button></div>
+    <ul class="milestones">{play.markers.map((mk, i) => <li key={i}>{mk.name} <small>{Math.round(mk.x * BLOCK_SIZE_M)}, {Math.round(mk.y * BLOCK_SIZE_M)}, {Math.round(mk.z * BLOCK_SIZE_M)} m</small> <button class="quiet" onClick={() => play.unmark(i)}>Remove</button></li>)}</ul>
+  </details>;
 }
 
 /** Kills before a creature's drop chances are shown. */

@@ -35,11 +35,14 @@ async function step(name, note, fn) {
 
 /** Captures the pointer as a player would: a click on the view, or Resume when the pause menu is up. */
 async function lock() {
-  if (await game(() => !!document.pointerLockElement)) return;
-  const resume = page.getByRole('button', { name: 'Resume', exact: true });
-  if (await resume.isVisible().catch(() => false)) await resume.click();
-  else await page.mouse.click(640, 360);
-  await until(() => !!document.pointerLockElement, null, 'pointer lock');
+  // The pause menu can come and go while the pointer is caught: try a few times, whichever way is open.
+  for (let tries = 0; tries < 5 && !(await game(() => !!document.pointerLockElement)); tries++) {
+    const resume = page.getByRole('button', { name: 'Resume', exact: true });
+    if (await resume.isVisible().catch(() => false)) await resume.click({ timeout: 3000 }).catch(() => undefined);
+    else await page.mouse.click(640, 360);
+    await page.waitForFunction(() => !!document.pointerLockElement, null, { timeout: 4000, polling: 100 }).catch(() => undefined);
+  }
+  await until(() => !!document.pointerLockElement, null, 'pointer lock', 5000);
   // Park the mouse in the middle now: a later jump there would read as looking around and turn the view off target.
   await page.mouse.move(640, 360);
   await frames(2);
@@ -102,7 +105,15 @@ async function hold(key) {
 /** Crafts `name` from the crafting panel, `all` for as many as possible. */
 async function craft(name, all = false) {
   await page.getByLabel('Search recipes').fill(name);
-  await page.locator(`.recipe-tile[title="${name}"]`).first().click();
+  const tile = page.locator(`.recipe-tile[title="${name}"]`).first();
+  // The workbench is noticed when the inventory opens: if the recipe is missing, open it again once.
+  if (!(await tile.isVisible({ timeout: 3000 }).catch(() => false))) {
+    await page.keyboard.press('Escape');
+    await lock();
+    await openInventory();
+    await page.getByLabel('Search recipes').fill(name);
+  }
+  await tile.click({ timeout: 15_000 });
   await page.locator('.craft-buttons button', { hasText: all ? /^All/ : /^Craft$/ }).click();
 }
 
@@ -303,6 +314,7 @@ try {
 
   await step('Trade with a villager', 'A farmer stands by; the right button opens the shop and an offer is bought with coins (given).', async () => {
     await game(() => { const n = window.__game; n.play.inventory.add({ state: n.blocks.state('trade_coin'), count: 30 }); });
+    await goToOpenGround();
     const id = await game(() => { const n = window.__game, b = n.player.body, [dx, , dz] = n.player.direction(), x = b.x + dx * 3, z = b.z + dz * 3; return n.spawnMob('farmer', x, n.world.surfaceAt(Math.floor(x), Math.floor(z)) + 1, z); });
     await hold('jade_sword');
     // The farmer wanders: look at where it is now and ask again, up to three times.

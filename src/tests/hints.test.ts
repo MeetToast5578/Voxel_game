@@ -21,7 +21,8 @@ describe('hints', () => {
   it('passes over steps the player already got past', () => {
     const h = new Hints();
     h.update(0.25, facts({ walkedM: 10, items: ['stone_pickaxe'] }), key);
-    expect(h.current).toBeNull();
+    // Past stone tools, the next step is torches.
+    expect(h.current?.id).toBe('torch');
     expect([...h.done]).toEqual(expect.arrayContaining(['move', 'log', 'planks', 'pickaxe', 'stone']));
   });
 

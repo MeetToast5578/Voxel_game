@@ -119,6 +119,9 @@ export function structureCells(seed: number, kind: StructureKind, x: number, z: 
     });
     put(2, base + 1, 2, S('chest', 1));
     put(-2, base + 1, 2, S('crafting_table'));
+    // A waystone by the door.
+    put(2, base + 1, -5, S('waystone'));
+    put(2, base, -5, COBBLE);
   } else if (kind === 'tower') {
     // A 5×5 cobblestone watchtower 12 cells high, a ladder up the inside and a chest on the platform.
     box(2, base - 2, base - 1, () => COBBLE);
@@ -132,6 +135,8 @@ export function structureCells(seed: number, kind: StructureKind, x: number, z: 
     });
     put(1, base + 12, 1, S('chest', 1));
     put(1, base + 12, -1, TORCH);
+    put(0, base, -4, S('waystone'));
+    put(0, base - 1, -4, COBBLE);
   } else if (kind === 'camp') {
     // A campfire ring with log seats and a chest.
     put(0, base, 0, S('campfire'));

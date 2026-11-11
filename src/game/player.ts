@@ -1,7 +1,7 @@
 import {
   AIR_ACCEL, AIR_JUMP_FACTOR, EYE_HEIGHT_M, GLIDE_FALL_M_S, FALL_GRAVITY_FACTOR, JUMP_CUT, FLY_FAST_FACTOR, FLY_SPEED_M_S, GRAVITY_M_S2, GROUND_ACCEL, JUMP_SPEED_M_S, JUMP_GRACE_S, JUMP_BUFFER_S, PLAYER_DENSITY,
   PLAYER_HALF_WIDTH_M, PLAYER_HEIGHT_M, SPRINT_SPEED_M_S, STEP_HEIGHT_M, STEP_SMOOTH_S, SWIM_THRUST_M_S2, SWIM_UP_M_S2,
-  TERMINAL_SPEED_M_S, WALK_SPEED_M_S, BOAT_SPEED_M_S, WATER_DENSITY, WATER_DRAG_PER_M, toCells, BLOCK_SIZE_M, CROUCH_FACTOR, CLIMB_SPEED_M_S, CURRENT_ACCEL_M_S2, HOOK_HOLD_M, HOOK_PULL_M_S, HOOK_RANGE_M, DASH_COOLDOWN_S, DASH_SPEED_M_S, DASH_TAP_S
+  TERMINAL_SPEED_M_S, WALK_SPEED_M_S, BOAT_SPEED_M_S, WATER_DENSITY, WATER_DRAG_PER_M, toCells, BLOCK_SIZE_M, CROUCH_FACTOR, CLIMB_SPEED_M_S, CURRENT_ACCEL_M_S2, HOOK_HOLD_M, HOOK_PULL_M_S, HOOK_RANGE_M, DASH_COOLDOWN_S, DASH_SPEED_M_S, DASH_TAP_S, WINGS_FALL_M_S, WINGS_SPEED, ROCKET_FUEL_S, ROCKET_SPEED_M_S
 } from '../config';
 import type { BoxAt } from './collision';
 import type { Input } from './input';
@@ -52,6 +52,11 @@ export class Player {
   airJumps = 0;
   glide = false;
   private airJumpsUsed = 0;
+  /** Glider Wings: a slow, fast-moving glide while jump is held. Rocket Boots: holding jump in the air, with no jumps
+   * left, thrusts upward while the fuel lasts (seconds; refilled on the ground). */
+  wings = false;
+  rocket = false;
+  fuel = ROCKET_FUEL_S;
   /** Dash Boots: a double tap of a direction dashes that way. `dashed` is set when it happens (the game clears it). */
   dash = false;
   dashed = false;
@@ -215,7 +220,9 @@ export class Player {
       this.move(dt, boxAt, toCells(STEP_HEIGHT_M));
     } else {
       this.crouching = input.descend && b.onGround;
-      const speed = toCells(input.sprint && !this.crouching ? SPRINT_SPEED_M_S : WALK_SPEED_M_S) * (this.crouching ? CROUCH_FACTOR : 1) * (1 + this.speedBonus);
+      const gliding = this.wings && !b.onGround && input.jump && b.vy < 0;
+      const speed = toCells(input.sprint && !this.crouching ? SPRINT_SPEED_M_S : WALK_SPEED_M_S) * (this.crouching ? CROUCH_FACTOR : 1) * (1 + this.speedBonus) * (gliding ? WINGS_SPEED : 1);
+      if (b.onGround) this.fuel = ROCKET_FUEL_S;
       const blend = Math.min(1, (b.onGround ? GROUND_ACCEL : AIR_ACCEL) * dt);
       this.tryDash(wx, wz, dt);
       if ((this.dashLeft -= dt) <= 0) {
@@ -250,6 +257,12 @@ export class Player {
         if (b.vy <= 0) this.jumping = false;
         b.vy = Math.max(-toCells(TERMINAL_SPEED_M_S), b.vy - GRAVITY * (b.vy < 0 ? FALL_GRAVITY_FACTOR : 1) * dt);
         if (this.glide && input.jump && b.vy < -toCells(GLIDE_FALL_M_S)) b.vy = -toCells(GLIDE_FALL_M_S);
+        if (gliding && b.vy < -toCells(WINGS_FALL_M_S)) b.vy = -toCells(WINGS_FALL_M_S);
+        // Rocket Boots: once the jumps are spent and the rise is over, holding jump burns fuel to climb.
+        if (this.rocket && input.jump && !b.onGround && !this.jumping && this.airJumpsUsed >= this.airJumps && this.fuel > 0) {
+          this.fuel -= dt;
+          b.vy = Math.max(b.vy, toCells(ROCKET_SPEED_M_S));
+        }
       }
       this.move(dt, boxAt, toCells(STEP_HEIGHT_M));
     }

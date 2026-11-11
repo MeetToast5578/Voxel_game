@@ -222,6 +222,9 @@ export interface Accessory {
   readonly featherfall?: boolean;
   /** A double tap of a direction dashes. */
   readonly dash?: boolean;
+  /** Glider wings, or rocket boots (see Player). */
+  readonly wings?: boolean;
+  readonly rocket?: boolean;
   /** Armour points (3% of harm each). */
   readonly protection?: number;
   /** Breath lasts this many times longer. */
@@ -251,6 +254,9 @@ const ACCESSORIES: readonly [string, string, Accessory][] = [
   ['ember_ring', 'Ember Ring', { effect: 'Lava and fire do not burn you', fireproof: true }],
   ['heart_locket', 'Heart Locket', { effect: 'Health returns twice as fast', regen: 2 }],
   ['dash_boots', 'Dash Boots', { effect: 'Double-tap a direction to dash', dash: true }],
+  ['glider_wings', 'Glider Wings', { effect: 'Hold jump while falling to glide far and fast', wings: true, featherfall: true }],
+  ['rocket_boots', 'Rocket Boots', { effect: 'Hold jump in the air to fly up for a moment', rocket: true }],
+  ['storm_charm', 'Storm Charm', { effect: 'Jump once more in mid-air, no fall damage', jumps: 1, featherfall: true }],
   ['scarab_charm', 'Scarab Charm', { effect: '10% faster; stops 6% more harm', speed: 0.1, protection: 2 }],
   ['jungle_idol', 'Jungle Idol', { effect: 'Health returns 50% faster; breath lasts twice as long', regen: 1.5, breath: 2 }],
 ];
@@ -309,6 +315,8 @@ const BASE: BlockSpec[] = [
   // Ember ore: deep down in deepslate near the lava, glowing faintly; only a diamond pickaxe gets its crystals.
   stone('ember_ore', 'Ember ore', { hardness: 6, needsTier: 3, drops: 'ember_crystal', lightEmission: 5 }),
   // Verdant jade: the deepest gem, past diamond; its tools and armour are the best there are.
+  // Meteorite: fallen from the sky after a boss is beaten; hot to stand on, and only iron or better digs it.
+  stone('meteorite', 'Meteorite', { hardness: 5, needsTier: 2, drops: 'meteor_shard', lightEmission: 6 }),
   stone('jade_ore', 'Verdant jade ore', { hardness: 7, needsTier: 3, drops: 'jade' }),
   { key: 'cactus', name: 'Cactus', tiles: { top: 'saguaro_top', side: 'saguaro_side', bottom: 'saguaro_top' }, hardness: 0.5, density: 700 },
   // Tall grass sometimes gives wheat seeds (handled where blocks are broken).
@@ -374,6 +382,9 @@ function gameplay(): BlockSpec[] {
     // Fire: burns what it touches and spreads (see sim/simulation.ts); its variant is its age.
     { key: 'fire', name: 'Fire', tiles: all('fire_block'), shape: 'cross', layer: 'cutout', solid: false, opaque: false, blocksSky: false,
       hardness: 0, drops: '', lightEmission: 13, variants: 4, supports: false },
+    // A waystone: once touched, it lets the player travel to any other touched waystone.
+    { key: 'waystone', name: 'Waystone', tiles: { top: 'waystone_top', side: 'waystone_side', bottom: 'waystone_top' }, hardness: 30, density: 2600,
+      mineWith: 'pickaxe', needsTier: 3, lightEmission: 7 },
     // Potions are made beside it.
     { key: 'alchemy_table', name: 'Alchemy table', tiles: { top: 'alchemy_table_top', side: 'alchemy_table_side', bottom: 'planks' },
       hardness: 2.5, density: 600, ...wood },
@@ -422,6 +433,8 @@ function gameplay(): BlockSpec[] {
     item('moth_lure', 'Moth Lure', { maxStack: 1 }),
     item('spark_wand', 'Spark Wand', { maxStack: 1, spell: { damage: 3.5, mana: 2, cooldown: 0.3, speed: 22 } }),
     item('ember_staff', 'Ember Staff', { maxStack: 1, spell: { damage: 8, mana: 4, cooldown: 0.4, speed: 26 } }),
+    item('star_staff', 'Star Staff', { maxStack: 1, spell: { damage: 12, mana: 5, cooldown: 0.35, speed: 30 } }),
+    item('meteor_shard', 'Meteor Shard'),
     item('stick', 'Stick', { fuel: 5 }),
     item('coal', 'Coal', { fuel: 80 }),
     item('iron_ingot', 'Iron ingot'),

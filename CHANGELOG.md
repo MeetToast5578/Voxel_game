@@ -3,6 +3,36 @@
 The newest version comes first. `npm run check` fails if the version at the top here is not the one in
 `package.json`, so the two are changed together.
 
+## 0.8.5 — 2026-11-11
+
+Easier to play, and something from the sky (roadmap R8.6, R8.7, R4.10).
+
+- Accessibility settings: subtitles for sounds (with the direction of creature calls), reduce motion (no view kick and
+  softer hurt flashes), and sprint and crouch that toggle on a press. Item rarity shows as a mark (• ◆ ★ ✦) as well as
+  a colour.
+- The first-steps hints go on further: torches, a furnace and iron, and building a first home.
+- Meteors: once you have beaten a boss, a meteor sometimes falls at night 40–80 cells away. Its crater holds meteorite,
+  hot to stand on, that only an iron pickaxe or better digs; the compass points to it. Meteor shards make the Star
+  Staff (12 damage bolts) or sell to the merchant.
+
+## 0.8.4 — 2026-11-11
+
+Comfort and choices (roadmap R8.4, R6.3, R4.6, R6.5, R6.7).
+
+- Chests: Take all, Deposit all (the whole backpack), Sort, and a name for each chest. Quick stack (in the inventory)
+  puts backpack items into every chest within six cells that already holds that kind of item.
+- Weapon modifiers: swords, axes, spears and hammers come out of crafting and chests with one — Keen (+10% crit),
+  Heavy (more knockback), Swift (faster swings), Mighty (+15% damage) or, sometimes, Dull (−15%). The ember forge
+  reforges a weapon for 5 coins. The modifier shows in the name and the tooltip.
+- Waystones stand by cabins and towers. Touch one to wake it; at any woken waystone, travel to another for 2 coins.
+- Markers: pin a spot by name from the pause menu (Journey); the compass points to the latest marker.
+- A flower or a tuft of grass in front of a villager or an animal no longer stops trading with or feeding it.
+- Glider Wings (found on sky islands): hold jump while falling to glide slowly and fast. Rocket Boots (leather boots,
+  two ember crystals and gold): with your jumps spent, hold jump to climb for a moment. The Storm Charm combines the
+  Cloud and Featherfall Charms.
+- Pets: feed a wolf a bone and it follows you, fights monsters near you, catches up if left behind, and stays with
+  you across saves. Your swings pass it by.
+
 ## 0.8.3 — 2026-11-11
 
 Towns with something to say, and worlds that get harder (roadmap R5.3, R5.4, R5.5, R7.5, R7.6).

@@ -83,7 +83,11 @@ export class Sounds {
     this.play('step', material === 'stone' ? 1.2 : 1, f);
   }
 
+  /** Told of every sound effect played, for subtitles. */
+  onPlay: ((name: SoundName) => void) | null = null;
+
   play(name: SoundName, volume = 1, pitch = 1): void {
+    this.onPlay?.(name);
     const ctx = this.ctx;
     if (!ctx || !this.noise || ctx.state !== 'running' || this.volume <= 0) return;
     const p = PRESETS[name];

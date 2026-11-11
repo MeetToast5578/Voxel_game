@@ -95,3 +95,20 @@ describe('places to find', () => {
     expect(play.found.has('sky')).toBe(true);
   });
 });
+
+describe('meteors', () => {
+  it('a meteor digs a crater with meteorite in its floor and marks it for the compass', () => {
+    const world = new World();
+    for (let cx = -6; cx <= 6; cx++) for (let cz = -6; cz <= 6; cz++) for (let cy = -1; cy <= 0; cy++) {
+      const col = world.add(new Chunk(cx, cy, cz, cy < 0 ? S('stone') : 0));
+      col.surface.fill(-1);
+    }
+    const play = new Play(world, (x, y, z, s) => world.set(x, y, z, s), { sound: () => undefined, sleep: () => true }, 'survival');
+    let seq = 0;
+    expect(play.meteor(() => [0, 0][seq++] ?? 0.5)).toBe(true);
+    let meteorite = 0;
+    for (let x = 30; x < 50; x++) for (let z = -10; z < 10; z++) for (let y = -6; y < 2; y++) if (BLOCKS.type(world.get(x, y, z)).key === 'meteorite') meteorite++;
+    expect(meteorite).toBeGreaterThan(5);
+    expect(play.markers.at(-1)?.name).toBe('Fallen meteor');
+  });
+});

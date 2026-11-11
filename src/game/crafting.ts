@@ -1,5 +1,6 @@
 import { ARMOUR_PIECES, BLOCKS } from '../engine/blocks';
 import { Inventory, type ItemStack } from './inventory';
+import { rollModifier, takesModifier } from './modifiers';
 
 /**
  * A shaped recipe: rows of `pattern`, each letter one of the keys in `key` (block or item keys), a space an empty cell.
@@ -57,6 +58,9 @@ export const RECIPES: readonly Recipe[] = [
   { pattern: ['M', 'A'], key: { M: ['ember_crystal'], A: ['arrow'] }, result: ['ember_arrow', 8] },
   { pattern: ['M', 'A'], key: { M: ['jade'], A: ['arrow'] }, result: ['jade_arrow', 8] },
   { pattern: ['L L', 'F F'], key: { L: ['leather'], F: ['feather'] }, result: ['dash_boots', 1] },
+  { pattern: ['CF'], key: { C: ['cloud_charm'], F: ['feather_charm'] }, result: ['storm_charm', 1] },
+  { pattern: [' MM', ' SM', 'S  '], key: { M: ['meteor_shard'], S: ['stick'] }, result: ['star_staff', 1] },
+  { pattern: ['E E', 'BGB'], key: { E: ['ember_crystal'], B: ['leather_boots'], G: ['gold_ingot'] }, result: ['rocket_boots', 1] },
   ...BREWS.map(([potion, a, b]) => ({ pattern: ['ABG'], key: { A: a, B: b, G: ['glass_bottle'] }, result: [potion, 1] as const, station: 'alchemy' as const })),
   { pattern: ['PPP', 'P P', 'PPP'], key: { P: ['planks'] }, result: ['chest', 1] },
   { pattern: ['CCC', 'C C', 'CCC'], key: { C: ROCK }, result: ['furnace', 1] },
@@ -193,7 +197,9 @@ export function craft(c: Craft, inv: Inventory, station: Station | readonly Stat
       }
     }
     const key = c.result[0];
-    const out = { state: BLOCKS.state(key, key === 'planks' && variant < 14 ? variant : 0), count: c.result[1] };
+    const state = BLOCKS.state(key, key === 'planks' && variant < 14 ? variant : 0);
+    // A weapon comes out with a modifier, good or (sometimes) bad.
+    const out = { state, count: c.result[1], ...(takesModifier(state) ? { mod: rollModifier(Math.random) } : {}) };
     if (next.add(out) !== 0) break;
     next.slots.forEach((s, i) => (inv.slots[i] = s));
   }

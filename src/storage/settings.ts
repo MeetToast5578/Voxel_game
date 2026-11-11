@@ -30,6 +30,10 @@ export interface Settings {
   hints: boolean;
   /** The view bobs while walking and widens while sprinting. */
   viewBob: boolean;
+  /** Accessibility: captions for sounds; no kick of the view when hurt; sprint and crouch toggle on a press. */
+  subtitles: boolean;
+  reduceMotion: boolean;
+  toggleKeys: boolean;
   /** Rendering resolution as a share of the screen's (0.5..1), or 0 for automatic: lowered while frames are slow. */
   renderScale: number;
   /** KeyboardEvent.code per binding. */
@@ -39,7 +43,7 @@ export interface Settings {
 const KEY = 'voxel-next-settings';
 export const DEFAULT_SETTINGS: Settings = {
   viewChunks: DEFAULT_VIEW_CHUNKS, mouseSensitivity: MOUSE_SENSITIVITY, fov: 70, effectsVolume: 1, musicVolume: 0.5, invertY: false, guiScale: 1,
-  hints: true, viewBob: true, renderScale: 0, keys: { ...DEFAULT_KEYS },
+  hints: true, viewBob: true, subtitles: false, reduceMotion: false, toggleKeys: false, renderScale: 0, keys: { ...DEFAULT_KEYS },
 };
 
 const clampNum = (v: unknown, min: number, max: number, fallback: number) =>
@@ -60,6 +64,7 @@ export function parseSettings(value: unknown): Settings {
     guiScale: clampNum(s.guiScale, 0.75, 1.5, DEFAULT_SETTINGS.guiScale),
     hints: typeof s.hints === 'boolean' ? s.hints : DEFAULT_SETTINGS.hints,
     viewBob: typeof s.viewBob === 'boolean' ? s.viewBob : DEFAULT_SETTINGS.viewBob,
+    subtitles: s.subtitles === true, reduceMotion: s.reduceMotion === true, toggleKeys: s.toggleKeys === true,
     renderScale: s.renderScale === 0 ? 0 : clampNum(s.renderScale, 0.5, 1, DEFAULT_SETTINGS.renderScale),
     keys: Object.fromEntries((Object.keys(DEFAULT_KEYS) as Binding[]).map((b) => [b, code(keys[b], DEFAULT_KEYS[b])])) as Record<Binding, string>,
   };

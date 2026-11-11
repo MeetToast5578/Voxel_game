@@ -1,4 +1,4 @@
-import { NIGHT_GROWTH_MAX, NIGHT_GROWTH_PER_DAY, ARROW_KINDS, BOOMERANG_DAMAGE, BOOMERANG_OUT_S, BOOMERANG_SPEED_M_S, EMBER_BURN_S, HAMMER_DAMAGE, HAMMER_SLOW, KNIFE_DAMAGE, KNIFE_SPEED_M_S, SPEAR_ARC_RAD, SPEAR_DAMAGE, SPEAR_REACH, EVENTS_FROM_DAY, RED_NIGHT_CHANCE, SLIME_RAIN_CHANCE, SLIME_RAIN_EVERY_S, SLIME_RAIN_KILLS, HOOK_RANGE_M, TIER_DAMAGE, ARMOUR_CAP, ARMOUR_PER_POINT, MAX_HEALTH, ACCESSORY_SLOTS, AXE_ARC_RAD, CRIT_CHANCE, CRIT_FACTOR, KNOCKBACK_FACTOR, SWORD_ARC_RAD, LIGHTNING_DAMAGE, LIGHTNING_REACH_M, FISH_MAX_S, FISH_MIN_S, BLOCK_SIZE_M, ARROW_DAMAGE, ARROW_SPEED_M_S, BOLT_SPEED_M_S, BOW_DRAW_S, AXE_DAMAGE, BUILD_CELLS_PER_TICK, CAMPFIRE_COOK_S, CAMPFIRE_SLOTS, DIFFICULTY, PLAYER_ATTACK_COOLDOWN_S, SWORD_DAMAGE, type Difficulty, BUILD_MAX_M, DROP_PICKUP_DELAY_S, DROP_THROW_M_S, HAND_DAMAGE, REACH_M, REPEAT_S, TOOL_DAMAGE, UNDO_STEPS, cells, toCells } from '../config';
+import { METEOR_CHANCE, NIGHT_GROWTH_MAX, NIGHT_GROWTH_PER_DAY, ARROW_KINDS, BOOMERANG_DAMAGE, BOOMERANG_OUT_S, BOOMERANG_SPEED_M_S, EMBER_BURN_S, HAMMER_DAMAGE, HAMMER_SLOW, KNIFE_DAMAGE, KNIFE_SPEED_M_S, SPEAR_ARC_RAD, SPEAR_DAMAGE, SPEAR_REACH, EVENTS_FROM_DAY, RED_NIGHT_CHANCE, SLIME_RAIN_CHANCE, SLIME_RAIN_EVERY_S, SLIME_RAIN_KILLS, HOOK_RANGE_M, TIER_DAMAGE, ARMOUR_CAP, ARMOUR_PER_POINT, MAX_HEALTH, ACCESSORY_SLOTS, AXE_ARC_RAD, CRIT_CHANCE, CRIT_FACTOR, KNOCKBACK_FACTOR, SWORD_ARC_RAD, LIGHTNING_DAMAGE, LIGHTNING_REACH_M, FISH_MAX_S, FISH_MIN_S, BLOCK_SIZE_M, ARROW_DAMAGE, ARROW_SPEED_M_S, BOLT_SPEED_M_S, BOW_DRAW_S, AXE_DAMAGE, BUILD_CELLS_PER_TICK, CAMPFIRE_COOK_S, CAMPFIRE_SLOTS, DIFFICULTY, PLAYER_ATTACK_COOLDOWN_S, SWORD_DAMAGE, type Difficulty, BUILD_MAX_M, DROP_PICKUP_DELAY_S, DROP_THROW_M_S, HAND_DAMAGE, REACH_M, REPEAT_S, TOOL_DAMAGE, UNDO_STEPS, cells, toCells } from '../config';
 import { bagLoot, lootOf, type Creature, type Creatures } from '../creatures/creatures';
 import { AIR, BLOCKS, POTIONS, SET_BONUSES, SOLID, type BlockType } from '../engine/blocks';
 import type { World } from '../engine/world';
@@ -17,6 +17,7 @@ import { Survival } from './survival';
 import { hash2 } from '../core/random';
 import { canIgnite, FIRE } from '../sim/simulation';
 import { checkRoom } from './housing';
+import { modIndex, modifierOf, rollModifier, takesModifier } from './modifiers';
 import { QUESTS, talkLine, type Quest } from './townsfolk';
 import { isEffect, POTION_SICKNESS_S, SLOWED_SPEED, SWIFT_SPEED } from './effects';
 import { Particles } from './particles';
@@ -40,8 +41,13 @@ export const BEACON_MIN_M = 150;
 export const CHEST_SLOTS = 27;
 /** Cooked meals that leave the player well fed, and for how long. */
 const WELL_FED_FOODS = new Set(['cooked_meat', 'cooked_fish', 'baked_potato']), WELL_FED_S = 90;
+/** Coins a trip between waystones costs. */
+export const WAYSTONE_COINS = 2;
+/** Coins a reforge costs. */
+export const REFORGE_COINS = 5;
 /** The share of eligible chests that are mimics. */
 const MIMIC_CHANCE = 0.15;
+const METEORITE = S('meteorite');
 const TABLE = S('crafting_table'), ALCHEMY = S('alchemy_table'), TORCH = S('torch'), GRASS = S('grass'), DIRT = S('dirt'), CAMPFIRE = S('campfire'), FARMLAND = S('farmland');
 const ROD = S('fishing_rod'), FISH = S('raw_fish'), BOAT = S('boat');
 const WARDEN = SPECIES_BY_KEY.get('warden')!;
@@ -158,8 +164,8 @@ export class Play {
   }
 
   /** What the worn accessories (and a full armour set, and status effects) add up to. */
-  get bonus(): { speed: number; jumps: number; featherfall: boolean; protection: number; breath: number; fireproof: boolean; regen: number; crit: number; thorns: number; dash: boolean } {
-    const b = { speed: 0, jumps: 0, featherfall: false, protection: 0, breath: 1, fireproof: false, regen: 1, crit: 0, thorns: 0, dash: false };
+  get bonus(): { speed: number; jumps: number; featherfall: boolean; protection: number; breath: number; fireproof: boolean; regen: number; crit: number; thorns: number; dash: boolean; wings: boolean; rocket: boolean } {
+    const b = { speed: 0, jumps: 0, featherfall: false, protection: 0, breath: 1, fireproof: false, regen: 1, crit: 0, thorns: 0, dash: false, wings: false, rocket: false };
     const set = this.armourSet && SET_BONUSES[this.armourSet];
     if (set) {
       b.speed += set.speed ?? 0;
@@ -174,6 +180,8 @@ export class Play {
       b.jumps += a.jumps ?? 0;
       b.featherfall ||= a.featherfall ?? false;
       b.dash ||= a.dash ?? false;
+      b.wings ||= a.wings ?? false;
+      b.rocket ||= a.rocket ?? false;
       b.protection += a.protection ?? 0;
       b.breath *= a.breath ?? 1;
       b.fireproof ||= a.fireproof ?? false;
@@ -438,6 +446,7 @@ export class Play {
     let victims: Creature[];
     if (arc) {
       victims = this.creatures!.list.filter((c) => {
+        if (c.tame) return false;
         const cx = c.body.x - ox, cy = c.body.y + c.body.height * 0.5 - oy, cz = c.body.z - oz, d = Math.hypot(cx, cy, cz);
         // Measured to the creature's near side, as the crosshair prompt is: big creatures are not hidden by their own size.
         if (d - c.body.halfWidth > reach || d - c.body.halfWidth > wall) return false;
@@ -456,10 +465,11 @@ export class Play {
     }
     if (!victims.length) return false;
     // Quick swings land weaker blows: the hit's strength recovers over the cooldown.
-    const strength = Math.max(0.2, Math.min(1, this.sinceAttack / (PLAYER_ATTACK_COOLDOWN_S * (kind === 'hammer' ? HAMMER_SLOW : 1))));
+    const mod = modifierOf(held?.mod);
+    const strength = Math.max(0.2, Math.min(1, this.sinceAttack / (PLAYER_ATTACK_COOLDOWN_S * (kind === 'hammer' ? HAMMER_SLOW : 1) / (mod?.speed ?? 1))));
     this.sinceAttack = 0;
-    const crit = Math.random() < CRIT_CHANCE + this.bonus.crit, damage = strength * weaponDamage(held) * (crit ? CRIT_FACTOR : 1);
-    const knock = (KNOCKBACK_FACTOR[tool?.kind ?? 'hand'] ?? 1) * (0.5 + strength * 0.5);
+    const crit = Math.random() < CRIT_CHANCE + this.bonus.crit + (mod?.crit ?? 0), damage = strength * weaponDamage(held) * (mod?.damage ?? 1) * (crit ? CRIT_FACTOR : 1);
+    const knock = (KNOCKBACK_FACTOR[tool?.kind ?? 'hand'] ?? 1) * (0.5 + strength * 0.5) * (mod?.knock ?? 1);
     if (arc && kind !== 'spear') this.slashes++;
     for (const c of victims) {
       const top = c.body.y + c.body.height;
@@ -624,6 +634,8 @@ export class Play {
     if (ended === 'red_night') this.toast('The red moon sets.', 3);
     if (this.mode !== 'survival' || this.difficulty === 'peaceful' || this.stats.days < EVENTS_FROM_DAY) return;
     const roll = hash2(this.seed ^ 0x5eed, this.stats.days, night ? 1 : 0);
+    // Once any boss has fallen, a meteor may come down somewhere near.
+    if (night && [...this.bestiary].some(([k]) => SPECIES_BY_KEY.get(k)?.boss || SPECIES_BY_KEY.get(k)?.guardian) && hash2(this.seed ^ 0x3e7, this.stats.days, 7) < METEOR_CHANCE) this.meteor();
     if (night && roll < RED_NIGHT_CHANCE) {
       this.event = 'red_night';
       this.toast('A red moon rises. Monsters swarm tonight!', 5);
@@ -632,6 +644,23 @@ export class Play {
       this.eventKills = 0;
       this.toast('It is raining slimes!', 5);
     }
+  }
+
+  /** A meteor lands 40 to 80 cells from the player: a crater with meteorite in its floor and fires around it. */
+  meteor(rand = Math.random): boolean {
+    const [fx, , fz] = this.feet, a = rand() * Math.PI * 2, r = 40 + rand() * 40;
+    const cx = Math.floor(fx + Math.cos(a) * r), cz = Math.floor(fz + Math.sin(a) * r), top = this.world.surfaceAt(cx, cz);
+    if (top === undefined || !this.world.isLoaded(cx, top - 4, cz) || !this.world.isLoaded(cx, top + 4, cz)) return false;
+    for (let dx = -4; dx <= 4; dx++) for (let dz = -4; dz <= 4; dz++) for (let dy = -3; dy <= 4; dy++) {
+      const d = Math.hypot(dx, dy * 1.4, dz), x = cx + dx, y = top + dy, z = cz + dz;
+      if (!this.world.isLoaded(x, y, z)) continue;
+      if (d < 3.6) this.setBlock(x, y, z, AIR);
+      else if (d < 4.4 && dy <= 0 && rand() < 0.7) this.setBlock(x, y, z, METEORITE);
+    }
+    for (let k = 0; k < 6; k++) this.ignite(cx + Math.round((rand() - 0.5) * 10), top + 1, cz + Math.round((rand() - 0.5) * 10));
+    this.markers.push({ name: 'Fallen meteor', x: cx + 0.5, y: top, z: cz + 0.5 });
+    this.toast('A meteor has fallen nearby! The compass points to it.', 5);
+    return true;
   }
 
   /** Slime rain drops a slime somewhere near the player every few seconds. */
@@ -824,6 +853,12 @@ export class Play {
     this.projectiles.shoot(b.x + dx * 0.6, player.eyeY - 0.2, b.z + dz * 0.6, dx, dy, dz, toCells(ARROW_SPEED_M_S) * strength, ARROW_DAMAGE * strength * (ARROW_KINDS[kind] ?? 1), true);
     this.projectiles.list.at(-1)!.item = kind;
     this.version++;
+  }
+
+  /** How far away the targeted block is, if it is solid: plants and flowers never stand between the player and a creature. */
+  private wallDistance(): number {
+    const t = this.target;
+    return t && BLOCKS.type(this.world.get(t.x, t.y, t.z)).solid ? t.distance : Infinity;
   }
 
   /** Starts a fire at (x, y, z) if it can burn there. */
@@ -1079,7 +1114,7 @@ export class Play {
     if(this.creatures){
       const [dx,dy,dz]=player.direction(),b=player.body;
       const hit=this.creatures.raycast(b.x,player.eyeY,b.z,dx,dy,dz,toCells(REACH_M));
-      if(hit?.creature.species.trader&&(!this.target||hit.distance<this.target.distance)){
+      if(hit?.creature.species.trader&&hit.distance<this.wallDistance()){
         this.openWorkshop('trade',`mob:${hit.creature.id}`);return;
       }
     }
@@ -1097,7 +1132,13 @@ export class Play {
     if (t) {
       const state = this.world.get(t.x, t.y, t.z), type = BLOCKS.type(state);
       const workshop = WORKSHOP_BLOCKS[type.key];
-      if(workshop){this.openWorkshop(workshop,`${t.x},${t.y},${t.z}`);return;}
+      if(workshop){
+        if (workshop === 'waystone' && !this.waystones.has(`${t.x},${t.y},${t.z}`)) {
+          this.waystones.add(`${t.x},${t.y},${t.z}`);
+          this.toast('The waystone hums awake: you can travel here from any other.', 4);
+        }
+        this.openWorkshop(workshop,`${t.x},${t.y},${t.z}`);return;
+      }
       if (type === DOOR) {
         const v = BLOCKS.variant(state), next = DOOR.id + (v < 4 ? v + 4 : v - 4);
         for (const [x, y, z] of this.doorCells(t.x, t.y, t.z)) this.setBlock(x, y, z, next);
@@ -1297,7 +1338,14 @@ export class Play {
     if (!held || !this.creatures) return false;
     const key = BLOCKS.type(held.state).key, [dx, dy, dz] = player.direction(), b = player.body;
     const hit = this.creatures.raycast(b.x, player.eyeY, b.z, dx, dy, dz, toCells(REACH_M));
-    if (!hit || (this.target && this.target.distance < hit.distance) || !hit.creature.species.food?.includes(key)) return false;
+    // A bone tames a wolf: it follows the player from now on and fights for them.
+    if (hit && key === 'bone' && hit.creature.species.key === 'wolf' && !hit.creature.tame && hit.distance < this.wallDistance()) {
+      hit.creature.tame = true;
+      this.consumeHeld();
+      this.toast('The wolf is yours now. It will follow you and fight for you.', 4);
+      return true;
+    }
+    if (!hit || this.wallDistance() < hit.distance || !hit.creature.species.food?.includes(key)) return false;
     if (!this.creatures.feed(hit.creature)) return false;
     this.consumeHeld();
     return true;
@@ -1480,6 +1528,20 @@ export class Play {
   performTrade(offer:number):boolean {
     const ok=this.workshopValid('trade')&&trade(this.inventory,offer,this.offers);this.toast(ok?'Trade completed.':'Trade unavailable: check payment, space and reach.',2);this.version++;return ok;
   }
+  /** At the ember forge: a weapon gets a new random modifier for REFORGE_COINS coins. */
+  reforge(slot: number): boolean {
+    const s = this.inventory.slots[slot], coin = BLOCKS.state('trade_coin');
+    if (!this.workshopValid('forge') || !s || !takesModifier(s.state) || this.inventory.count(coin) < REFORGE_COINS) {
+      this.toast(`Reforging needs a weapon and ${REFORGE_COINS} coins`, 2);
+      return false;
+    }
+    let left = REFORGE_COINS;
+    this.inventory.slots.forEach((c, i) => { if (c?.state === coin && left > 0) { const t = Math.min(left, c.count); left -= t; if ((c.count -= t) <= 0) this.inventory.slots[i] = null; } });
+    s.mod = rollModifier(Math.random);
+    this.toast(`Reforged: ${modifierOf(s.mod)!.name} ${BLOCKS.type(s.state).name}`, 3);
+    this.version++;
+    return true;
+  }
   performForge(slot:number):boolean {
     const ok=this.workshopValid('forge')&&forge(this.inventory,slot);this.toast(ok?'Ember upgrade applied.':'Needs ember crystals, two iron ingots and eligible equipment (maximum level 3).',3);this.version++;return ok;
   }
@@ -1554,14 +1616,97 @@ export class Play {
 
   /** Merges stacks and orders the backpack (not the hotbar) by kind and name: tools, armour, blocks, then items. */
   sortBackpack(): void {
-    const slots = this.inventory.slots, bag = slots.slice(HOTBAR_SIZE).filter((s): s is ItemStack => s !== null);
-    slots.fill(null, HOTBAR_SIZE);
+    this.sortSlots(this.inventory.slots, HOTBAR_SIZE);
+  }
+
+  /** The open chest, sorted the same way. */
+  sortChest(): void {
+    const chest = this.openChest && this.chests.get(this.openChest);
+    if (chest) this.sortSlots(chest, 0);
+  }
+
+  /** Everything in the open chest into the inventory, as much as fits. */
+  takeAll(): void {
+    const chest = this.openChest && this.chests.get(this.openChest);
+    if (chest) chest.forEach((_, i) => moveStack(chest, i, this.inventory.slots));
+    this.version++;
+  }
+
+  /** The whole backpack (not the hotbar) into the open chest, as much as fits. */
+  depositAll(): void {
+    const chest = this.openChest && this.chests.get(this.openChest);
+    if (chest) for (let i = HOTBAR_SIZE; i < this.inventory.slots.length; i++) moveStack(this.inventory.slots, i, chest);
+    this.version++;
+  }
+
+  /** Puts backpack items into every chest within six cells that already holds that kind of item. Returns how many moved. */
+  quickStack(): number {
+    let moved = 0;
+    const [fx, fy, fz] = this.feet, inv = this.inventory.slots;
+    for (const [key, chest] of this.chests) {
+      const [x, y, z] = key.split(',').map(Number) as [number, number, number];
+      if (Math.hypot(x + 0.5 - fx, y - fy, z + 0.5 - fz) > 6 || BLOCKS.type(this.world.get(x, y, z)) !== CHEST) continue;
+      const kinds = new Set(chest.filter(Boolean).map((s) => s!.state));
+      for (let i = HOTBAR_SIZE; i < inv.length; i++) if (inv[i] && kinds.has(inv[i]!.state)) moved += moveStack(inv, i, chest);
+    }
+    this.toast(moved ? `Stacked ${moved} items into nearby chests` : 'No nearby chest holds those items', 2);
+    this.version++;
+    return moved;
+  }
+
+  /** Waystones the player has touched, by cell key (saved). */
+  readonly waystones = new Set<string>();
+  /** Where the game should move the player next (set by travel; the game clears it). */
+  pendingTeleport: [number, number, number] | null = null;
+  /** Travels from the open waystone to another touched one for WAYSTONE_COINS coins (free in creative). */
+  travel(to: string): boolean {
+    const coin = BLOCKS.state('trade_coin');
+    if (!this.workshopValid('waystone') || !this.waystones.has(to) || to === this.workshop!.key) return false;
+    if (this.mode === 'survival' && this.inventory.count(coin) < WAYSTONE_COINS) {
+      this.toast(`Travel costs ${WAYSTONE_COINS} coins`, 2);
+      return false;
+    }
+    if (this.mode === 'survival') {
+      let left = WAYSTONE_COINS;
+      this.inventory.slots.forEach((c, i) => { if (c?.state === coin && left > 0) { const t = Math.min(left, c.count); left -= t; if ((c.count -= t) <= 0) this.inventory.slots[i] = null; } });
+    }
+    const [x, y, z] = to.split(',').map(Number) as [number, number, number];
+    this.pendingTeleport = [x + 0.5, y + 1, z + 0.5];
+    this.closeScreen();
+    return true;
+  }
+
+  /** Places the player has pinned (saved): the compass points to the last one. */
+  readonly markers: { name: string; x: number; y: number; z: number }[] = [];
+  mark(name: string): void {
+    const [x, y, z] = this.feet;
+    this.markers.push({ name: name.trim().slice(0, 24) || `Marker ${this.markers.length + 1}`, x, y, z });
+    this.version++;
+  }
+  unmark(i: number): void {
+    this.markers.splice(i, 1);
+    this.version++;
+  }
+
+  /** Chest labels, by cell key (saved). */
+  readonly chestNames = new Map<string, string>();
+  nameChest(name: string): void {
+    if (!this.openChest) return;
+    const clean = name.trim().slice(0, 24);
+    if (clean) this.chestNames.set(this.openChest, clean);
+    else this.chestNames.delete(this.openChest);
+    this.version++;
+  }
+
+  private sortSlots(slots: (ItemStack | null)[], start: number): void {
+    const bag = slots.slice(start).filter((s): s is ItemStack => s !== null);
+    slots.fill(null, start);
     const rank = (s: ItemStack) => {
       const t = BLOCKS.type(s.state);
       return t.tool ? 0 : t.armour ? 1 : t.food ? 3 : t.item ? 4 : 2;
     };
     bag.sort((a, b) => rank(a) - rank(b) || BLOCKS.type(a.state).name.localeCompare(BLOCKS.type(b.state).name) || a.state - b.state || (a.wear ?? 0) - (b.wear ?? 0));
-    for (const s of bag) insertStack(slots, s, HOTBAR_SIZE);
+    for (const s of bag) insertStack(slots, s, start);
     this.version++;
   }
 
@@ -1614,11 +1759,11 @@ export class Play {
       decorations: this.decorations.save(), mode: this.mode, difficulty: this.difficulty, hints: this.hints.save(), inventory: this.inventory.save(), selected: this.inventory.selected, drops: this.drops.save(),
       health: this.survival.health, maxHealth: this.survival.maxHealth, hunger: this.survival.hunger, air: this.survival.air, effects: { ...this.survival.effects }, burning: this.survival.burning, bodyC: this.survival.temperature.coreC, spawn: this.spawn,
       furnaces: [...this.furnaces].map(([k, f]) => [k, s(f.input), s(f.fuel), s(f.output), f.burn, f.progress]),
-      quests: [...this.quests], questsDone: [...this.questsDone], event: this.event, eventKills: this.eventKills, wardenHealth: [...this.wardenHealth], homes: [...this.homes.values()].map((h) => [h.x, h.y, h.z, h.yaw, h.who]), journal: this.journal.save(), seen: [...this.seen], bestiary: [...this.bestiary].map(([k, e]) => [k, e.kills, [...e.drops]]), stats: this.stats, biomesSeen: [...this.biomesSeen], deepestM: this.deepestM, found: [...this.found], beaconLit: this.beaconLit, endingSeen: this.endingSeen, boating: this.boating,
+      chestNames: [...this.chestNames], waystones: [...this.waystones], markers: this.markers, quests: [...this.quests], questsDone: [...this.questsDone], event: this.event, eventKills: this.eventKills, wardenHealth: [...this.wardenHealth], homes: [...this.homes.values()].map((h) => [h.x, h.y, h.z, h.yaw, h.who]), journal: this.journal.save(), seen: [...this.seen], bestiary: [...this.bestiary].map(([k, e]) => [k, e.kills, [...e.drops]]), stats: this.stats, biomesSeen: [...this.biomesSeen], deepestM: this.deepestM, found: [...this.found], beaconLit: this.beaconLit, endingSeen: this.endingSeen, boating: this.boating,
       armour: this.armour.map((a) => (a ? [BLOCKS.stateName(a.state), 1, a.wear ?? 0, a.upgrade ?? 0] : null)),
       accessories: this.accessories.map((a) => (a ? [BLOCKS.stateName(a.state), 1] : null)),
       campfires: [...this.campfires].map(([k, c]) => [k, c.map(([st, left]) => [BLOCKS.stateName(st), left])]),
-      chests: [...this.chests].map(([k, slots]) => [k, slots.map((st) => (st ? [BLOCKS.stateName(st.state), st.count, st.wear ?? 0, st.upgrade ?? 0] : null))]),
+      chests: [...this.chests].map(([k, slots]) => [k, slots.map((st) => (st ? [BLOCKS.stateName(st.state), st.count, st.wear ?? 0, st.upgrade ?? 0, modIndex(st.mod)] : null))]),
     };
   }
 
@@ -1641,6 +1786,11 @@ export class Play {
     this.survival.air = num(p.air, this.survival.air);
     this.survival.burning = Math.max(0, num(p.burning, 0));
     if (p.event === 'red_night' || p.event === 'slime_rain') this.event = p.event;
+    if (Array.isArray(p.waystones)) for (const k of p.waystones) if (typeof k === 'string' && /^-?\d+,-?\d+,-?\d+$/.test(k)) this.waystones.add(k);
+    if (Array.isArray(p.markers)) for (const m of p.markers.slice(0, 64)) {
+      if (m && typeof m.name === 'string' && [m.x, m.y, m.z].every((v) => typeof v === 'number' && Number.isFinite(v))) this.markers.push({ name: m.name.slice(0, 24), x: m.x, y: m.y, z: m.z });
+    }
+    if (Array.isArray(p.chestNames)) for (const e of p.chestNames) if (Array.isArray(e) && typeof e[0] === 'string' && typeof e[1] === 'string') this.chestNames.set(e[0], e[1].slice(0, 24));
     const known = (id: unknown) => typeof id === 'string' && QUESTS.some((q) => q.id === id);
     if (Array.isArray(p.quests)) for (const e of p.quests) if (Array.isArray(e) && known(e[0])) this.quests.set(e[0], Math.max(0, Math.floor(num(e[1], 0))));
     if (Array.isArray(p.questsDone)) for (const id of p.questsDone) if (known(id)) this.questsDone.add(id);

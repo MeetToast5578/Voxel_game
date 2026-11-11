@@ -43,6 +43,8 @@ export interface Creature {
   maxHealth: number;
   /** A villager's bed: where it goes at night and stays near by day. */
   home?: readonly [number, number, number];
+  /** Tamed by the player: follows them and fights what threatens them. */
+  tame?: boolean;
   /** A guardian's shrine (its anchor, "x,z"). */
   site?: string;
   /** A boss summoned at an altar: it leaves twice the treasure. */
@@ -69,6 +71,8 @@ const GRAVITY = toCells(GRAVITY_M_S2);
 const STEP = cells(STEP_HEIGHT_M);
 const FALL = cells(CREATURE_FALL_M);
 const THINK_S = 0.25;
+/** A pet guards the player against monsters within this many cells of them. */
+const TAME_GUARD = 14;
 /** Seconds a defeated creature takes to fall over and fade. */
 export const DEATH_S = 0.7;
 /** Seconds between path plans while hunting, and the search budget of one plan. */
@@ -108,7 +112,7 @@ export class Creatures {
       const c = this.list[i]!;
       const d = Math.hypot(c.body.x - p.x, c.body.z - p.z);
       // Out of range, a monster caught far away by daylight, or any monster when the difficulty allows none: gone.
-      if (d > toCells(DESPAWN_M) || (c.species.hostile && ((ctx.day && !c.species.guardian && !c.species.daytime && d > toCells(SPAWN_MIN_M) && this.rand() < dt * 0.2) || ctx.hostiles <= 0))) {
+      if (!c.tame && (d > toCells(DESPAWN_M) || (c.species.hostile && ((ctx.day && !c.species.guardian && !c.species.daytime && d > toCells(SPAWN_MIN_M) && this.rand() < dt * 0.2) || ctx.hostiles <= 0)))) {
         this.list.splice(i, 1);
         continue;
       }
@@ -147,6 +151,17 @@ export class Creatures {
   /** Picks what to do: flee a threat, hunt prey, keep with the herd, wander or rest. */
   private decide(c: Creature, ctx: CreatureContext): void {
     const s = c.species, b = c.body, p = ctx.player;
+    if (c.tame) {
+      // A pet: goes for the nearest monster near the player, else keeps close; left far behind, it catches up at once.
+      const foe = this.list.filter((o) => o.species.hostile && o.health > 0 && Math.hypot(o.body.x - p.x, o.body.z - p.z) < TAME_GUARD).sort((a, o) =>
+        Math.hypot(a.body.x - b.x, a.body.z - b.z) - Math.hypot(o.body.x - b.x, o.body.z - b.z))[0];
+      const d = Math.hypot(p.x - b.x, p.z - b.z);
+      if (d > TAME_GUARD * 3) Object.assign(b, { x: p.x + 1, y: p.y, z: p.z + 1, vx: 0, vy: 0, vz: 0 });
+      if (foe) { c.mode = 'hunt'; c.target = foe; c.goal = null; }
+      else if (d > 3) { c.mode = 'follow'; c.target = null; c.goal = [p.x, p.z]; }
+      else { c.mode = 'idle'; c.target = null; c.goal = null; }
+      return;
+    }
     if (c.home) {
       // Villagers: home to bed at night, out and about near home by day.
       const [hx, hy, hz] = c.home, homeD = Math.hypot(hx - b.x, hz - b.z);
@@ -569,17 +584,20 @@ export class Creatures {
     return c;
   }
 
-  save(): [string, number, number, number, number][] {
+  save(): [string, number, number, number, number, number][] {
     // Villagers are not saved: they come back to their houses' beds.
-    return this.list.filter((c) => !c.home).map((c) => [c.species.key, c.body.x, c.body.y, c.body.z, c.health]);
+    return this.list.filter((c) => !c.home).map((c) => [c.species.key, c.body.x, c.body.y, c.body.z, c.health, c.tame ? 1 : 0]);
   }
 
   load(saved: unknown): void {
     if (!Array.isArray(saved)) return;
     for (const e of saved) {
-      if (!Array.isArray(e) || e.length !== 5) continue;
+      if (!Array.isArray(e) || e.length < 5) continue;
       const s = SPECIES_BY_KEY.get(String(e[0]));
-      if (s && [1, 2, 3, 4].every((k) => Number.isFinite(e[k]))) this.add(s, e[1], e[2], e[3], Math.max(1, e[4]));
+      if (s && [1, 2, 3, 4].every((k) => Number.isFinite(e[k]))) {
+        const c = this.add(s, e[1], e[2], e[3], Math.max(1, e[4]));
+        if (e[5] === 1) c.tame = true;
+      }
     }
   }
 }

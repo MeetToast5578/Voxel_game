@@ -2,6 +2,7 @@ import { hash2, mulberry32 } from '../core/random';
 import { BLOCK_SIZE_M } from '../config';
 import { BLOCKS } from '../engine/blocks';
 import type { ItemStack } from './inventory';
+import { rollModifier, takesModifier } from './modifiers';
 
 export type LootTable = 'surface' | 'mine' | 'vault' | 'shrine' | 'sky' | 'pyramid' | 'temple';
 /** Structures whose chests have their own table, whatever their height. */
@@ -23,7 +24,7 @@ const TABLES: Record<LootTable, { rolls: readonly [number, number]; entries: rea
   ] },
   // The sky, the desert pyramid and the jungle temple: each with something found nowhere else.
   sky: { rolls: [3, 5], always: [['feather_charm', 1]], entries: [
-    ['cloud_charm', 1, 1, 2], ['swift_anklet', 1, 1, 1], ['life_crystal', 1, 2, 2], ['gold_ingot', 2, 5, 2], ['feather', 3, 8, 3],
+    ['cloud_charm', 1, 1, 2], ['glider_wings', 1, 1, 1.2], ['swift_anklet', 1, 1, 1], ['life_crystal', 1, 2, 2], ['gold_ingot', 2, 5, 2], ['feather', 3, 8, 3],
     ['swiftness_potion', 1, 2, 2], ['arrow', 4, 12, 2],
   ] },
   pyramid: { rolls: [4, 6], always: [['scarab_charm', 1]], entries: [
@@ -64,7 +65,8 @@ export function rollLoot(seed: number, x: number, y: number, z: number, table: L
   for (let r = 0; r < rolls; r++) {
     let pick = rand() * total;
     const e = t.entries.find((en) => (pick -= en[3]) < 0) ?? t.entries[t.entries.length - 1]!;
-    items.push({ state: BLOCKS.state(e[0]), count: e[1] + Math.floor(rand() * (e[2] - e[1] + 1)) });
+    const state = BLOCKS.state(e[0]);
+    items.push({ state, count: e[1] + Math.floor(rand() * (e[2] - e[1] + 1)), ...(takesModifier(state) ? { mod: rollModifier(rand) } : {}) });
   }
   // Scattered over the slots.
   for (const item of items) {

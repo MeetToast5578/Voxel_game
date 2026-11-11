@@ -155,7 +155,8 @@ Every task also passes `npm run check`, `npm run benchmark -- --assert` and `npm
   **Done when:** each generates on seed 1 and its chest rolls its own loot.
 - [x] **R4.5 Mimics (S).** Done in 0.8.0. Rarely, a chest in a dungeon is a mimic. It bites when opened and drops a good accessory.
   **Done when:** a test opens one and it attacks.
-- [ ] **R4.6 Map markers and waystones (M).** Pin places on the full map, and the compass points to a pin. Waystones are
+- [x] **R4.6 Map markers and waystones (M).** Done in 0.8.4 (markers are listed in the pause menu, not drawn on
+  the map). Pin places on the full map, and the compass points to a pin. Waystones are
   found in ruins. Once activated, they let the player travel between them for a cost. Covers idea 14 "Map markers".
   **Done when:** a test teleports between two activated waystones.
 - [x] **R4.7 Fire (M)** (12.2). Done in 0.8.2. A fire block that:
@@ -177,7 +178,7 @@ Every task also passes `npm run check`, `npm run benchmark -- --assert` and `npm
   - the Ember Warden keeps its wounds.
 
   **Done when:** the earlier tests in `tasks.md` pass.
-- [ ] **R4.10 Meteor fall (S).** After the first boss, a meteor sometimes lands at night. It leaves a crater of rare
+- [x] **R4.10 Meteor fall (S).** Done in 0.8.5. After the first boss, a meteor sometimes lands at night. It leaves a crater of rare
   ore that is hot to stand on.
   **Done when:** a test spawns one and mines it.
 
@@ -233,14 +234,14 @@ Every task also passes `npm run check`, `npm run benchmark -- --assert` and `npm
 
   The tooltip shows the bonus.
   **Done when:** a test equips each full set.
-- [ ] **R6.3 Modifiers (M).** Weapons and accessories roll a modifier when made or found, for example: Keen (+crit),
+- [x] **R6.3 Modifiers (M).** Done in 0.8.4 for weapons (reforged at the ember forge; accessories have none). Weapons and accessories roll a modifier when made or found, for example: Keen (+crit),
   Heavy (+knockback), Swift (+speed), Sturdy (+defense). At an anvil the player can pay coins to roll again. The
   modifier shows in the name and the rarity colour.
   **Done when:** rolls are seeded and saved, and a reforge test passes.
 - [x] **R6.4 Grappling hook (M).** Done in 0.7.4: pull and hold; swinging on release is not done. Fire a hook at a block and get pulled to it. Release in mid-air to swing. It is the
   most "3D Terraria" movement tool.
   **Done when:** a test pulls the player up a cliff.
-- [ ] **R6.5 Late movement (M).**
+- [x] **R6.5 Late movement (M).** Done in 0.8.4.
   - **Glider wings:** hold jump to glide far, made from sky-island loot.
   - **Rocket boots:** short flight with a fuel bar.
   - **Tinkered combinations:** cloud charm + feather charm = Storm Charm.
@@ -250,7 +251,7 @@ Every task also passes `npm run check`, `npm run benchmark -- --assert` and `npm
   Slime King gives a bouncy mount.
   **Decide** whether this is wanted.
   **Done when:** a test rides a mount across a field.
-- [ ] **R6.7 Pets and companions (M)** (idea 14 "Tame wolves").
+- [~] **R6.7 Pets and companions (M)** (idea 14 "Tame wolves"). 0.8.4: tame wolves; light pets remain.
   - A wolf tamed with bones follows the player and fights.
   - Light pets (a wisp) follow the player and give light.
 
@@ -298,7 +299,7 @@ Every task also passes `npm run check`, `npm run benchmark -- --assert` and `npm
   - start a respawn timer.
 
   **Done when:** a test dies and finds the coins.
-- [ ] **R8.4 Chests (S).**
+- [x] **R8.4 Chests (S).** Done in 0.8.4.
   - Quick stack to all chests nearby.
   - Name a chest.
   - Sort a chest.
@@ -308,14 +309,14 @@ Every task also passes `npm run check`, `npm run benchmark -- --assert` and `npm
 - [ ] **R8.5 Controller play (M).** Full play with a gamepad: aim assist on targets, radial hotbar, menu navigation
   (part exists in `padMenu.ts`).
   **Done when:** the scripted play-through (R1.1) passes using pad input only.
-- [ ] **R8.6 Accessibility (S)** (idea 14).
+- [x] **R8.6 Accessibility (S)** (idea 14). Done in 0.8.5.
   - subtitles for sounds;
   - colour-blind safe rarity marks (a symbol as well as a colour);
   - hold-to-toggle for held keys;
   - reduced screen shake.
 
   **Done when:** each is a setting and is tested.
-- [ ] **R8.7 Tutorial (M).** The Guide NPC and short on-screen goals take a new player through the first night. No
+- [~] **R8.7 Tutorial (M).** 0.8.5: the hints run on to torches, iron and a first home; the Guide does not lead it. The Guide NPC and short on-screen goals take a new player through the first night. No
   wall of text.
   **Done when:** a new world shows the first goal, and each goal clears when it is done.
 

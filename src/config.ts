@@ -407,6 +407,8 @@ export const FIRE_TICK_S: readonly [number, number] = [0.8, 2], FIRE_AGES = 4, F
 /** World events: the share of nights with a red moon and of days with slime rain (from this day on), the slimes to
  * defeat before the Slime King comes, and seconds between falling slimes. */
 export const RED_NIGHT_CHANCE = 1 / 8;
+/** Once a boss is beaten: the share of nights a meteor falls near the player. */
+export const METEOR_CHANCE = 1 / 6;
 export const SLIME_RAIN_CHANCE = 1 / 10;
 export const EVENTS_FROM_DAY = 2;
 export const SLIME_RAIN_KILLS = 25;
@@ -461,6 +463,9 @@ export const ARROW_KINDS: Readonly<Record<string, number>> = { arrow: 1, iron_ar
 export const EMBER_BURN_S = 4;
 /** Dash Boots: a double tap of a direction within DASH_TAP_S dashes at DASH_SPEED_M_S, once per DASH_COOLDOWN_S. */
 export const DASH_SPEED_M_S = 15, DASH_TAP_S = 0.25, DASH_COOLDOWN_S = 1.2;
+/** Glider Wings: a slower glide that carries the player this many times faster across. Rocket Boots: seconds of thrust
+ * (refilled on the ground) and its upward speed (m/s). */
+export const WINGS_FALL_M_S = 1.2, WINGS_SPEED = 1.7, ROCKET_FUEL_S = 1.6, ROCKET_SPEED_M_S = 6;
 /** Mana: the most there is, how fast it refills, and the rest after casting before it starts to. */
 export const MAX_MANA = 20;
 export const MANA_PER_S = 4;
