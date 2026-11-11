@@ -222,7 +222,7 @@ Every task also passes `npm run check`, `npm run benchmark -- --assert` and `npm
 
 ## R6. Progression and gear
 
-- [ ] **R6.1 A full material ladder (M).** wood → stone → iron → gold → diamond → jade → Depths ore. Each tier has
+- [x] **R6.1 A full material ladder (M).** Done in 0.12.4 (gold tier; no arrows per tier beyond iron, ember and jade). wood → stone → iron → gold → diamond → jade → Depths ore. Each tier has
   tools, a sword, a spear, a hammer, armour and arrows. Gold gets real gear (fast but weak) instead of being only a
   trade good.
   **Done when:** the balance sheet (R1.2) shows each tier clearly better than the last.

@@ -5,58 +5,58 @@ full-strength hits, no crits, 20 health.
 
 ## Sword hits to kill
 
-| Creature | Health | wooden (4) | stone (5) | iron (7) | diamond (10) | jade (13) | emberite (17) |
-| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| Zombie | 20 | 5 | 4 | 3 | 2 | 2 | 2 |
-| Skulker | 14 | 4 | 3 | 2 | 2 | 2 | 1 |
-| Cave crawler | 10 | 3 | 2 | 2 | 1 | 1 | 1 |
-| Frost brute | 40 | 10 | 8 | 6 | 4 | 4 | 3 |
-| **Ember Warden** | 160 | 40 | 32 | 23 | 16 | 13 | 10 |
-| Dune Stalker | 24 | 6 | 5 | 4 | 3 | 2 | 2 |
-| Mire Hollow | 32 | 8 | 7 | 5 | 4 | 3 | 2 |
-| Snow Prowler | 26 | 7 | 6 | 4 | 3 | 2 | 2 |
-| Green Slime | 8 | 2 | 2 | 2 | 1 | 1 | 1 |
-| Cave Slime | 14 | 4 | 3 | 2 | 2 | 2 | 1 |
-| Ember Slime | 22 | 6 | 5 | 4 | 3 | 2 | 2 |
-| Mimic | 90 | 23 | 18 | 13 | 9 | 7 | 6 |
-| **Slime King** | 240 | 60 | 48 | 35 | 24 | 19 | 15 |
-| Gloom Moth | 10 | 3 | 2 | 2 | 1 | 1 | 1 |
-| **Gloom Matriarch** | 320 | 80 | 64 | 46 | 32 | 25 | 19 |
-| **Frost Colossus** | 420 | 105 | 84 | 60 | 42 | 33 | 25 |
-| **Sandmaw** | 380 | 95 | 76 | 55 | 38 | 30 | 23 |
-| Spore Slime | 16 | 4 | 4 | 3 | 2 | 2 | 1 |
-| **The Deep Heart** | 540 | 135 | 108 | 78 | 54 | 42 | 32 |
-| Jungle Hornet | 9 | 3 | 2 | 2 | 1 | 1 | 1 |
-| **Hive Mother** | 360 | 90 | 72 | 52 | 36 | 28 | 22 |
-| Fire Bat | 14 | 4 | 3 | 2 | 2 | 2 | 1 |
-| Cave Bat | 4 | 1 | 1 | 1 | 1 | 1 | 1 |
-| Skeleton | 22 | 6 | 5 | 4 | 3 | 2 | 2 |
+| Creature | Health | wooden (4) | stone (5) | iron (7) | gold (8) | diamond (10) | jade (13) | emberite (17) |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Zombie | 20 | 5 | 4 | 3 | 3 | 2 | 2 | 2 |
+| Skulker | 14 | 4 | 3 | 2 | 2 | 2 | 2 | 1 |
+| Cave crawler | 10 | 3 | 2 | 2 | 2 | 1 | 1 | 1 |
+| Frost brute | 40 | 10 | 8 | 6 | 5 | 4 | 4 | 3 |
+| **Ember Warden** | 160 | 40 | 32 | 23 | 20 | 16 | 13 | 10 |
+| Dune Stalker | 24 | 6 | 5 | 4 | 3 | 3 | 2 | 2 |
+| Mire Hollow | 32 | 8 | 7 | 5 | 4 | 4 | 3 | 2 |
+| Snow Prowler | 26 | 7 | 6 | 4 | 4 | 3 | 2 | 2 |
+| Green Slime | 8 | 2 | 2 | 2 | 1 | 1 | 1 | 1 |
+| Cave Slime | 14 | 4 | 3 | 2 | 2 | 2 | 2 | 1 |
+| Ember Slime | 22 | 6 | 5 | 4 | 3 | 3 | 2 | 2 |
+| Mimic | 90 | 23 | 18 | 13 | 12 | 9 | 7 | 6 |
+| **Slime King** | 240 | 60 | 48 | 35 | 30 | 24 | 19 | 15 |
+| Gloom Moth | 10 | 3 | 2 | 2 | 2 | 1 | 1 | 1 |
+| **Gloom Matriarch** | 320 | 80 | 64 | 46 | 40 | 32 | 25 | 19 |
+| **Frost Colossus** | 420 | 105 | 84 | 60 | 53 | 42 | 33 | 25 |
+| **Sandmaw** | 380 | 95 | 76 | 55 | 48 | 38 | 30 | 23 |
+| Spore Slime | 16 | 4 | 4 | 3 | 2 | 2 | 2 | 1 |
+| **The Deep Heart** | 540 | 135 | 108 | 78 | 68 | 54 | 42 | 32 |
+| Jungle Hornet | 9 | 3 | 2 | 2 | 2 | 1 | 1 | 1 |
+| **Hive Mother** | 360 | 90 | 72 | 52 | 45 | 36 | 28 | 22 |
+| Fire Bat | 14 | 4 | 3 | 2 | 2 | 2 | 2 | 1 |
+| Cave Bat | 4 | 1 | 1 | 1 | 1 | 1 | 1 | 1 |
+| Skeleton | 22 | 6 | 5 | 4 | 3 | 3 | 2 | 2 |
 
 ## Bites to kill the player
 
-| Creature | Bite | none (0%) | leather (21%) | iron (45%) | diamond (60%) | jade (72%) | emberite (84%) |
-| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| Zombie | 3 | 7 | 9 | 13 | 17 | 24 | 42 |
-| Skulker | 3 | 7 | 9 | 13 | 17 | 24 | 42 |
-| Cave crawler | 2 | 10 | 13 | 19 | 25 | 36 | 63 |
-| Frost brute | 7 | 3 | 4 | 6 | 8 | 11 | 18 |
-| **Ember Warden** | 8 | 3 | 4 | 5 | 7 | 9 | 16 |
-| Dune Stalker | 4 | 5 | 7 | 10 | 13 | 18 | 32 |
-| Mire Hollow | 5 | 4 | 6 | 8 | 10 | 15 | 25 |
-| Snow Prowler | 4 | 5 | 7 | 10 | 13 | 18 | 32 |
-| Green Slime | 2 | 10 | 13 | 19 | 25 | 36 | 63 |
-| Cave Slime | 3 | 7 | 9 | 13 | 17 | 24 | 42 |
-| Ember Slime | 5 | 4 | 6 | 8 | 10 | 15 | 25 |
-| Mimic | 7 | 3 | 4 | 6 | 8 | 11 | 18 |
-| **Slime King** | 6 | 4 | 5 | 7 | 9 | 12 | 21 |
-| Gloom Moth | 2 | 10 | 13 | 19 | 25 | 36 | 63 |
-| **Gloom Matriarch** | 7 | 3 | 4 | 6 | 8 | 11 | 18 |
-| **Frost Colossus** | 9 | 3 | 3 | 5 | 6 | 8 | 14 |
-| **Sandmaw** | 8 | 3 | 4 | 5 | 7 | 9 | 16 |
-| Spore Slime | 3 | 7 | 9 | 13 | 17 | 24 | 42 |
-| **The Deep Heart** | 11 | 2 | 3 | 4 | 5 | 7 | 12 |
-| Jungle Hornet | 3 | 7 | 9 | 13 | 17 | 24 | 42 |
-| **Hive Mother** | 7 | 3 | 4 | 6 | 8 | 11 | 18 |
-| Fire Bat | 4 | 5 | 7 | 10 | 13 | 18 | 32 |
-| Cave Bat | 1 | 20 | 26 | 37 | 50 | 72 | 125 |
-| Skeleton | 4 | 5 | 7 | 10 | 13 | 18 | 32 |
+| Creature | Bite | none (0%) | leather (21%) | iron (45%) | gold (51%) | diamond (60%) | jade (72%) | emberite (84%) |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Zombie | 3 | 7 | 9 | 13 | 14 | 17 | 24 | 42 |
+| Skulker | 3 | 7 | 9 | 13 | 14 | 17 | 24 | 42 |
+| Cave crawler | 2 | 10 | 13 | 19 | 21 | 25 | 36 | 63 |
+| Frost brute | 7 | 3 | 4 | 6 | 6 | 8 | 11 | 18 |
+| **Ember Warden** | 8 | 3 | 4 | 5 | 6 | 7 | 9 | 16 |
+| Dune Stalker | 4 | 5 | 7 | 10 | 11 | 13 | 18 | 32 |
+| Mire Hollow | 5 | 4 | 6 | 8 | 9 | 10 | 15 | 25 |
+| Snow Prowler | 4 | 5 | 7 | 10 | 11 | 13 | 18 | 32 |
+| Green Slime | 2 | 10 | 13 | 19 | 21 | 25 | 36 | 63 |
+| Cave Slime | 3 | 7 | 9 | 13 | 14 | 17 | 24 | 42 |
+| Ember Slime | 5 | 4 | 6 | 8 | 9 | 10 | 15 | 25 |
+| Mimic | 7 | 3 | 4 | 6 | 6 | 8 | 11 | 18 |
+| **Slime King** | 6 | 4 | 5 | 7 | 7 | 9 | 12 | 21 |
+| Gloom Moth | 2 | 10 | 13 | 19 | 21 | 25 | 36 | 63 |
+| **Gloom Matriarch** | 7 | 3 | 4 | 6 | 6 | 8 | 11 | 18 |
+| **Frost Colossus** | 9 | 3 | 3 | 5 | 5 | 6 | 8 | 14 |
+| **Sandmaw** | 8 | 3 | 4 | 5 | 6 | 7 | 9 | 16 |
+| Spore Slime | 3 | 7 | 9 | 13 | 14 | 17 | 24 | 42 |
+| **The Deep Heart** | 11 | 2 | 3 | 4 | 4 | 5 | 7 | 12 |
+| Jungle Hornet | 3 | 7 | 9 | 13 | 14 | 17 | 24 | 42 |
+| **Hive Mother** | 7 | 3 | 4 | 6 | 6 | 8 | 11 | 18 |
+| Fire Bat | 4 | 5 | 7 | 10 | 11 | 13 | 18 | 32 |
+| Cave Bat | 1 | 20 | 26 | 37 | 41 | 50 | 72 | 125 |
+| Skeleton | 4 | 5 | 7 | 10 | 11 | 13 | 18 | 32 |

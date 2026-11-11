@@ -860,7 +860,7 @@ const HAMMER = [
   '................',
   '................'];
 const TIER_COLOURS: Readonly<Record<string, [string, string, string]>> = {
-  wooden: ['#a07040', '#c89a60', '#6a4a2a'], stone: ['#8a8a8a', '#c0c0c0', '#5a5a5a'], iron: ['#c8ccd2', '#f4f6f8', '#7a808a'],
+  wooden: ['#a07040', '#c89a60', '#6a4a2a'], stone: ['#8a8a8a', '#c0c0c0', '#5a5a5a'], iron: ['#c8ccd2', '#f4f6f8', '#7a808a'], gold: ['#e8b84a', '#fff0a8', '#a8742a'],
   diamond: ['#4ae0e0', '#c0fffa', '#1a8a90'], jade: ['#3ac070', '#a8f4c8', '#1a7040'], emberite: ['#e8582a', '#ffc890', '#902a10'],
 };
 for (const [tier, [h, H, d]] of Object.entries(TIER_COLOURS)) {
@@ -982,7 +982,8 @@ const hex = (c: string): number[] => [1, 3, 5].map((i) => parseInt(c.slice(i, i 
 
 /** Art made by recolouring other art: [source tile, hue in degrees given to its blue-green gem colours]. */
 const RECOLOURED: readonly [RegExp, (name: string) => string, number][] = [[/^jade(_|$)/, (n) => n.replace(/^jade/, 'diamond'), 138],
-  [/^emberite_(?!ingot)/, (n) => n.replace(/^emberite/, 'diamond'), 16]];
+  [/^emberite_(?!ingot)/, (n) => n.replace(/^emberite/, 'diamond'), 16],
+  [/^gold_(pickaxe|axe|shovel|sword|hoe|helmet|chestplate|leggings|boots)$/, (n) => n.replace(/^gold/, 'diamond'), 46]];
 
 /** The source tile a recoloured tile is made from, if it is one. */
 export function recolourSource(name: string): { from: string; hue: number } | undefined {

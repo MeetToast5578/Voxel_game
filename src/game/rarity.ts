@@ -11,7 +11,7 @@ const UNCOMMON = new Set(['gold_ingot', 'lapis', 'lantern', 'bow', 'trade_coin']
 export function rarity(s: ItemStack): number {
   const t = BLOCKS.type(s.state), k = t.key;
   let r = k === 'beacon' || k === 'lit_beacon' || k.startsWith('emberite') ? 4 : EPIC.has(k) || k === 'jade' || k.startsWith('jade_') ? 3 : RARE.has(k) || k.startsWith('diamond_') ? 2
-    : UNCOMMON.has(k) || k.startsWith('iron_') ? 1 : 0;
+    : UNCOMMON.has(k) || k.startsWith('iron_') || k.startsWith('gold_') ? 1 : 0;
   r += s.upgrade ?? 0;
   return Math.min(4, r);
 }

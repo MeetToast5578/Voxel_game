@@ -42,6 +42,6 @@ describe('the Ember Depths', () => {
     expect(BLOCKS.type(ore).smeltsTo).toBe('emberite_ingot');
     for (const k of ['emberite_pickaxe', 'emberite_sword', 'emberite_spear', 'emberite_hammer', 'emberite_helmet', 'emberite_chestplate'])
       expect(RECIPES.some((r) => BLOCKS.type(BLOCKS.state(r.result[0])).key === k), k).toBe(true);
-    expect(BLOCKS.type(BLOCKS.state('emberite_pickaxe')).tool!.tier).toBe(5);
+    expect(BLOCKS.type(BLOCKS.state('emberite_pickaxe')).tool!.tier).toBe(6);
   });
 });

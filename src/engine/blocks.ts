@@ -330,14 +330,14 @@ const BASE: BlockSpec[] = [
   stone('lapis_ore', 'Lapis ore', { hardness: 3, needsTier: 1, drops: 'lapis' }),
   // Redstone and emerald ore are no longer generated (they had no use); they stay so old worlds keep them.
   // Ember ore: deep down in deepslate near the lava, glowing faintly; only a diamond pickaxe gets its crystals.
-  stone('ember_ore', 'Ember ore', { hardness: 6, needsTier: 3, drops: 'ember_crystal', lightEmission: 5 }),
+  stone('ember_ore', 'Ember ore', { hardness: 6, needsTier: 4, drops: 'ember_crystal', lightEmission: 5 }),
   // Verdant jade: the deepest gem, past diamond; its tools and armour are the best there are.
   // Meteorite: fallen from the sky after a boss is beaten; hot to stand on, and only iron or better digs it.
   stone('meteorite', 'Meteorite', { hardness: 5, needsTier: 2, drops: 'meteor_shard', lightEmission: 6 }),
-  stone('jade_ore', 'Verdant jade ore', { hardness: 7, needsTier: 3, drops: 'jade' }),
+  stone('jade_ore', 'Verdant jade ore', { hardness: 7, needsTier: 4, drops: 'jade' }),
   // The Ember Depths: glowing ember stone, and emberite, the top ore, which only a jade pickaxe digs.
   stone('ember_stone', 'Ember stone', { hardness: 3, needsTier: 1, lightEmission: 11 }),
-  stone('emberite_ore', 'Emberite ore', { hardness: 9, needsTier: 4, drops: 'emberite_ore', smeltsTo: 'emberite_ingot', lightEmission: 4 }),
+  stone('emberite_ore', 'Emberite ore', { hardness: 9, needsTier: 5, drops: 'emberite_ore', smeltsTo: 'emberite_ingot', lightEmission: 4 }),
   { key: 'cactus', name: 'Cactus', tiles: { top: 'saguaro_top', side: 'saguaro_side', bottom: 'saguaro_top' }, hardness: 0.5, density: 700 },
   // Tall grass sometimes gives wheat seeds (handled where blocks are broken).
   plant('tall_grass', 'Tall grass', { drops: '' }),
@@ -364,17 +364,19 @@ const DECOR_PANEL: readonly Box[][] = [[[0,2,2,2,14,14]],[[14,2,2,16,14,14]],[[2
 const TURN = [2, 3, 1, 0];
 const HIGH_HALF: Record<number, Box> = { 0: [8, 8, 0, 16, 16, 16], 1: [0, 8, 0, 8, 16, 16], 2: [0, 8, 8, 16, 16, 16], 3: [0, 8, 0, 16, 16, 8] };
 const STAIR_MATERIALS = ['planks', 'cobblestone', 'stone', 'brick', 'sandstone'];
-export const TOOL_TIERS = ['wooden', 'stone', 'iron', 'diamond', 'jade', 'emberite'] as const;
+// Gold sits between iron and diamond: the fastest to dig with of the early tiers, but it wears out quickly.
+export const TOOL_TIERS = ['wooden', 'stone', 'iron', 'gold', 'diamond', 'jade', 'emberite'] as const;
 export const TOOL_KINDS: readonly ToolKind[] = ['pickaxe', 'axe', 'shovel', 'sword', 'hoe'];
 /** Weapons made in every tier, beside the tools: a long spear and a heavy hammer. */
 export const WEAPON_KINDS: readonly ToolKind[] = ['spear', 'hammer'];
-const DURABILITY = [60, 132, 251, 1561, 2400, 3200];
+const DURABILITY = [60, 132, 251, 180, 1561, 2400, 3200];
 /** Armour materials and pieces: protection per piece (head, chest, legs, feet), warmth per piece, and hits it takes. */
 export const ARMOUR_PIECES = ['helmet', 'chestplate', 'leggings', 'boots'] as const;
 /** What a full set of one material adds, beyond its pieces. */
 export const SET_BONUSES: Readonly<Record<string, { text: string; speed?: number; protection?: number; crit?: number; thorns?: number; fireproof?: boolean }>> = {
   leather: { text: '10% faster on foot', speed: 0.1 },
   iron: { text: 'Stops 6% more harm', protection: 2 },
+  gold: { text: '12% faster on foot; 5% more critical hits', speed: 0.12, crit: 0.05 },
   diamond: { text: '10% more critical hits', crit: 0.1 },
   jade: { text: 'Biters take 3 damage back', thorns: 3 },
   emberite: { text: 'Lava and fire do not burn you; 6% more harm stopped', fireproof: true, protection: 2 },
@@ -382,6 +384,7 @@ export const SET_BONUSES: Readonly<Record<string, { text: string; speed?: number
 export const ARMOUR_MATERIALS = {
   leather: { protection: [1, 3, 2, 1], warmth: [3, 6, 4, 2], durability: 80 },
   iron: { protection: [2, 6, 5, 2], warmth: [0, 1, 1, 0], durability: 240 },
+  gold: { protection: [3, 7, 5, 2], warmth: [0, 1, 1, 0], durability: 150 },
   diamond: { protection: [3, 8, 6, 3], warmth: [0, 1, 1, 0], durability: 500 },
   jade: { protection: [4, 9, 7, 4], warmth: [1, 2, 1, 1], durability: 800 },
   emberite: { protection: [5, 10, 8, 5], warmth: [2, 3, 2, 2], durability: 1100 },
@@ -410,7 +413,7 @@ function gameplay(): BlockSpec[] {
       hardness: 0, drops: '', lightEmission: 13, variants: 4, supports: false },
     // A waystone: once touched, it lets the player travel to any other touched waystone.
     { key: 'waystone', name: 'Waystone', tiles: { top: 'waystone_top', side: 'waystone_side', bottom: 'waystone_top' }, hardness: 30, density: 2600,
-      mineWith: 'pickaxe', needsTier: 3, lightEmission: 7 },
+      mineWith: 'pickaxe', needsTier: 4, lightEmission: 7 },
     // Potions are made beside it.
     { key: 'alchemy_table', name: 'Alchemy table', tiles: { top: 'alchemy_table_top', side: 'alchemy_table_side', bottom: 'planks' },
       hardness: 2.5, density: 600, ...wood },

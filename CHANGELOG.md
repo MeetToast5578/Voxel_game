@@ -3,6 +3,15 @@
 The newest version comes first. `npm run check` fails if the version at the top here is not the one in
 `package.json`, so the two are changed together.
 
+## 0.12.4 — 2026-11-11
+
+Gold gear (roadmap R6.1).
+
+- **Gold** is a gear tier of its own, between iron and diamond: tools, sword, spear, hammer and armour from gold
+  ingots. Gold tools dig fastest of all short of jade but wear out quickly (180 uses). A full gold set makes you 12%
+  faster and gives 5% more critical hits.
+- Diamond, jade and emberite need the same pickaxes as before.
+
 ## 0.12.3 — 2026-11-11
 
 Challenge runs (roadmap R7.6).

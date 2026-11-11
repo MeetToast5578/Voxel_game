@@ -5,7 +5,7 @@ const LINES: Readonly<Record<string, readonly string[]>> = {
   farmer: ['The wheat likes a bit of rain, and so do I.', 'Bone meal makes anything grow. Ask a skeleton.', 'Sheep give wool if you are gentle.',
     'Farmland by water grows twice as fast.', 'Cows follow anyone holding wheat. Cows are simple.', 'I sell seeds. Well, wheat. Same thing.',
     'Carrots and potatoes come from the ruins, sometimes.', 'A full belly heals you quicker. Cook your meat!'],
-  smith: ['Iron, then diamond, then jade. Never skip a step.', 'A hammer hits hard but slow. Like me.', 'Bring me ingots and I will make it worth it.',
+  smith: ['Iron, gold, diamond, then jade. Never skip a step.', 'A hammer hits hard but slow. Like me.', 'Bring me ingots and I will make it worth it.',
     'Ember crystals make steel sing. Find a forge.', 'Full iron armour stops more than the pieces alone.', 'A spear keeps trouble at arm\'s length.',
     'Grind your tools down and they snap. Keep spares.', 'Jade lies deeper than anything. Bring light.'],
   herbalist: ['Gel, poppies and a bottle make a fine regeneration potion.', 'Red mushrooms heal. Brown ones cure poison.', 'The moths come out at night. Mind them.',

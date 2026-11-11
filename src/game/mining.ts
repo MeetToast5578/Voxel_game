@@ -2,8 +2,8 @@ import { MINE_SPEED, SAPLING_CHANCE, SEED_CHANCE } from '../config';
 import { BLOCKS, WOOD_SPECIES, SAPLING_SPECIES } from '../engine/blocks';
 import type { ItemStack } from './inventory';
 
-/** Speed of each tool tier on blocks it suits (wood, stone, iron, diamond, jade, emberite). */
-const TIER_SPEED = [2, 4, 6, 8, 10, 12];
+/** Speed of each tool tier on blocks it suits (wood, stone, iron, gold, diamond, jade, emberite): gold digs fast. */
+const TIER_SPEED = [2, 4, 6, 9, 8, 10, 12];
 /** Without the tool tier a block needs, breaking takes this many times longer and gives nothing. */
 const WRONG_TOOL_SLOWDOWN = 3.3;
 
