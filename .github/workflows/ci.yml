@@ -37,7 +37,10 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - run: npx playwright install --with-deps chromium
+      # The browser comes from Playwright's own download; its system packages come from the Ubuntu mirrors, which are
+      # sometimes unreachable from the runner. The runner image already has what Chromium needs, so that step may fail.
+      - run: npx playwright install chromium
+      - run: timeout 300 npx playwright install-deps chromium || echo "Ubuntu mirrors unreachable; using the runner's own libraries"
       - run: npm run smoke
       - run: node scripts/playthrough.mjs
       - uses: actions/upload-artifact@v4
