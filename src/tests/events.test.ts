@@ -65,3 +65,33 @@ describe('world events', () => {
     expect(play.inventory.count(S('trade_coin'))).toBe(25);
   });
 });
+
+describe('places to find', () => {
+  type Inner = { mimicAt(key: string, x: number, y: number, z: number, state: number): boolean; chestSlots(key: string, state: number): unknown };
+  it('some vault chests are mimics, the same ones every time; a player chest never is', async () => {
+    const { hash2 } = await import('../core/random');
+    const { play, cs } = setup();
+    const y = -120, z = 0, chest = S('chest');
+    const x = Array.from({ length: 200 }, (_, i) => i).find((x) => hash2(play.seed + 600, x + y * 7, z) < 0.15)!;
+    const inner = play as unknown as Inner;
+    expect(inner.mimicAt(`${x},${y},${z}`, x, y, z, chest)).toBe(true);
+    expect(cs.list.map((c) => c.species.key)).toEqual(['mimic']);
+    const safe = Array.from({ length: 200 }, (_, i) => i).find((x) => hash2(play.seed + 600, x + y * 7, z) >= 0.15)!;
+    expect(inner.mimicAt(`${safe},${y},${z}`, safe, y, z, chest)).toBe(false);
+    // A chest already opened (or placed by the player, which starts empty) is never a mimic.
+    play.chests.set(`${x},${y},${z}`, []);
+    expect(inner.mimicAt(`${x},${y},${z}`, x, y, z, chest)).toBe(false);
+  });
+
+  it('a chest on a sky island rolls the sky table, with its featherfall charm', async () => {
+    const { Generator } = await import('../worldgen/generator');
+    const { sitesNear, structureCells } = await import('../worldgen/structures');
+    const { play } = setup();
+    play.seed = 1;
+    const gen = new Generator(1), island = sitesNear(1, -900, -900, 900, 900).find((s) => s.kind === 'sky_island' && gen.structureBase(s.kind, s.x, s.z) !== null)!;
+    const [dx, y, dz] = structureCells(1, 'sky_island', island.x, island.z, gen.structureBase('sky_island', island.x, island.z)!).find(([, , , st]) => BLOCKS.type(st).key === 'chest')!;
+    const slots = (play as unknown as Inner).chestSlots(`${island.x + dx},${y},${island.z + dz}`, S('chest')) as ({ state: number } | null)[];
+    expect(slots.some((s) => s && BLOCKS.type(s.state).key === 'feather_charm')).toBe(true);
+    expect(play.found.has('sky')).toBe(true);
+  });
+});

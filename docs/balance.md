@@ -18,6 +18,7 @@ full-strength hits, no crits, 20 health.
 | Green Slime | 8 | 2 | 2 | 2 | 1 | 1 |
 | Cave Slime | 14 | 4 | 3 | 2 | 2 | 2 |
 | Ember Slime | 22 | 6 | 5 | 4 | 3 | 2 |
+| Mimic | 90 | 23 | 18 | 13 | 9 | 7 |
 | **Slime King** | 240 | 60 | 48 | 35 | 24 | 19 |
 | Gloom Moth | 10 | 3 | 2 | 2 | 1 | 1 |
 | **Gloom Matriarch** | 320 | 80 | 64 | 46 | 32 | 25 |
@@ -39,6 +40,7 @@ full-strength hits, no crits, 20 health.
 | Green Slime | 2 | 10 | 13 | 19 | 25 | 36 |
 | Cave Slime | 3 | 7 | 9 | 13 | 17 | 24 |
 | Ember Slime | 5 | 4 | 6 | 8 | 10 | 15 |
+| Mimic | 7 | 3 | 4 | 6 | 8 | 11 |
 | **Slime King** | 6 | 4 | 5 | 7 | 9 | 12 |
 | Gloom Moth | 2 | 10 | 13 | 19 | 25 | 36 |
 | **Gloom Matriarch** | 7 | 3 | 4 | 6 | 8 | 11 |

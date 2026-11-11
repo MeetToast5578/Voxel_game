@@ -26,7 +26,7 @@ function statesAround(gen: Generator, x: number, z: number, cy0: number, cy1: nu
 
 describe('structures', () => {
   it('stay within reach of their anchor, so every column that holds a part of one finds it', () => {
-    for (const kind of ['cabin', 'tower', 'camp', 'mine', 'vault', 'shrine', 'house'] as const) {
+    for (const kind of ['cabin', 'tower', 'camp', 'mine', 'vault', 'shrine', 'house', 'sky_island', 'pyramid', 'temple', 'altar'] as const) {
       for (const [dx, , dz] of structureCells(1, kind, 0, 0, 0)) expect(Math.max(Math.abs(dx), Math.abs(dz))).toBeLessThanOrEqual(8);
     }
   });
@@ -55,6 +55,22 @@ describe('structures', () => {
     const gen = new Generator(1), half = Math.round(500 / BLOCK_SIZE_M);
     const standing = sitesNear(1, -half, -half, half, half).filter((s) => gen.structureBase(s.kind, s.x, s.z) !== null);
     for (const kind of ['cabin', 'tower', 'camp', 'mine', 'vault'] as const) expect(standing.filter((s) => s.kind === kind).length, kind).toBeGreaterThan(0);
+  });
+
+  it('floats sky islands and stands altars near the start; pyramids stand in deserts, temples in deep forests', () => {
+    const near = (seed: number, m: number) => {
+      const gen = new Generator(seed), half = Math.round(m / BLOCK_SIZE_M);
+      return { gen, standing: sitesNear(seed, -half, -half, half, half).filter((s) => gen.structureBase(s.kind, s.x, s.z) !== null) };
+    };
+    const { gen, standing } = near(1, 1000);
+    for (const kind of ['sky_island', 'altar'] as const) expect(standing.filter((s) => s.kind === kind).length, kind).toBeGreaterThan(0);
+    // Deserts and deep forests are rarer: seed 8 has both within 2 km.
+    const far = near(8, 2000).standing;
+    for (const kind of ['pyramid', 'temple'] as const) expect(far.filter((s) => s.kind === kind).length, kind).toBeGreaterThan(0);
+    const island = standing.find((s) => s.kind === 'sky_island')!, base = gen.structureBase('sky_island', island.x, island.z)!;
+    expect((base - gen.column(Math.floor(island.x / 16), Math.floor(island.z / 16)).top.reduce((a, b) => Math.max(a, b))) * BLOCK_SIZE_M).toBeGreaterThan(25);
+    const chest = structureCells(1, 'sky_island', island.x, island.z, base).find(([, , , st]) => BLOCKS.type(st).key === 'chest');
+    expect(chest).toBeDefined();
   });
 
   it('builds an ember shrine deep down with its ancient chest', () => {

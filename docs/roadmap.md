@@ -99,7 +99,7 @@ Every task also passes `npm run check`, `npm run benchmark -- --assert` and `npm
 
 ## R3. Bosses and events
 
-- [ ] **R3.1 Boss arenas (M)** (18.D4 rest). An altar structure appears in each biome region: a flat ring with
+- [~] **R3.1 Boss arenas (M)** (18.D4 rest). 0.8.0: altars (two bags for a boss summoned there); no barrier yet. An altar structure appears in each biome region: a flat ring with
   pillars. Using a summon item away from an altar asks the player to find one, or works with a weaker reward
   (**Decide**). The fight closes the arena with a temporary barrier.
   **Done when:** a test summons at an altar, and the barrier lifts on a win or on death.
@@ -141,10 +141,11 @@ Every task also passes `npm run check`, `npm run benchmark -- --assert` and `npm
 
   Covers idea 14 "The Ember Depths".
   **Done when:** the layer generates, the ore tier is complete, and the boss can be reached.
-- [ ] **R4.3 Sky islands (M).** Rare floating islands high above the surface. Each has a small house, a chest with
+- [x] **R4.3 Sky islands (M).** Done in 0.8.0 (no sky slime yet; the nearest on seed 1 is 820 m away). Rare floating islands high above the surface. Each has a small house, a chest with
   flight-themed loot (cloud charm, feather charm, a glider) and a sky slime.
   **Done when:** seed 1 has one within 500 m of spawn.
-- [ ] **R4.4 Biome dungeons (M).**
+- [~] **R4.4 Biome dungeons (M).** 0.8.0: pyramid and overgrown temple with unique charms; ice cave and sunken
+  ship remain; deserts and rainforests are rare near spawn.
   - a sand pyramid with traps;
   - an ice cave;
   - a jungle temple;
@@ -152,7 +153,7 @@ Every task also passes `npm run check`, `npm run benchmark -- --assert` and `npm
 
   Each holds a biome chest with an item found nowhere else.
   **Done when:** each generates on seed 1 and its chest rolls its own loot.
-- [ ] **R4.5 Mimics (S).** Rarely, a chest in a dungeon is a mimic. It bites when opened and drops a good accessory.
+- [x] **R4.5 Mimics (S).** Done in 0.8.0. Rarely, a chest in a dungeon is a mimic. It bites when opened and drops a good accessory.
   **Done when:** a test opens one and it attacks.
 - [ ] **R4.6 Map markers and waystones (M).** Pin places on the full map, and the compass points to a pin. Waystones are
   found in ruins. Once activated, they let the player travel between them for a cost. Covers idea 14 "Map markers".

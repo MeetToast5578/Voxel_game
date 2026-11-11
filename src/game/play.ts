@@ -18,7 +18,7 @@ import { hash2 } from '../core/random';
 import { checkRoom } from './housing';
 import { isEffect, POTION_SICKNESS_S, SLOWED_SPEED, SWIFT_SPEED } from './effects';
 import { Particles } from './particles';
-import { lootTableFor, rollLoot, type LootTable } from './loot';
+import { lootTableFor, rollLoot, SITE_TABLES, type LootTable } from './loot';
 import { Journal, MILESTONES, type Stats } from './journal';
 import { aimAt, Projectiles } from './projectiles';
 import type { BoxAt } from './collision';
@@ -38,6 +38,8 @@ export const BEACON_MIN_M = 150;
 export const CHEST_SLOTS = 27;
 /** Cooked meals that leave the player well fed, and for how long. */
 const WELL_FED_FOODS = new Set(['cooked_meat', 'cooked_fish', 'baked_potato']), WELL_FED_S = 90;
+/** The share of eligible chests that are mimics. */
+const MIMIC_CHANCE = 0.15;
 const TABLE = S('crafting_table'), ALCHEMY = S('alchemy_table'), TORCH = S('torch'), GRASS = S('grass'), DIRT = S('dirt'), CAMPFIRE = S('campfire'), FARMLAND = S('farmland');
 const ROD = S('fishing_rod'), FISH = S('raw_fish'), BOAT = S('boat');
 const WARDEN = SPECIES_BY_KEY.get('warden')!;
@@ -528,7 +530,7 @@ export class Play {
       this.toast('The slimes stop falling... the Slime King has come!', 5);
     }
     // A boss leaves one treasure bag, so nothing it drops is lost in lava or water.
-    const loots = c.species.boss || c.species.guardian ? [{ state: BLOCKS.state(`${c.species.key}_bag`), count: 1 }] : lootOf(c);
+    const loots = c.species.boss || c.species.guardian ? [{ state: BLOCKS.state(`${c.species.key}_bag`), count: c.atAltar ? 2 : 1 }] : lootOf(c);
     for (const loot of loots) {
       entry.drops.add(BLOCKS.type(loot.state).key);
       this.drop(loot, c.body.x, c.body.y, c.body.z);
@@ -713,12 +715,30 @@ export class Play {
     this.version++;
   }
 
+  /**
+   * Some chests deep in vaults, pyramids and temples are mimics: opened for the first time, the chest jumps up as a
+   * monster instead. Decided by the world seed and place, so it is always the same chest.
+   */
+  private mimicAt(key: string, x: number, y: number, z: number, state: number): boolean {
+    if (this.chests.has(key) || BLOCKS.type(state) !== CHEST || !this.creatures || this.mode !== 'survival') return false;
+    const site = sitesNear(this.seed, x, z, x, z).some((s) => s.kind === 'pyramid' || s.kind === 'temple');
+    if (!site && lootTableFor('chest', y) !== 'vault') return false;
+    if (hash2(this.seed + 600, x + y * 7, z) >= MIMIC_CHANCE) return false;
+    this.setBlock(x, y, z, AIR);
+    const mimic = SPECIES_BY_KEY.get('mimic')!;
+    this.creatures.add(mimic, x + 0.5, y, z + 0.5, mimic.health);
+    this.toast('The chest was a mimic!', 3);
+    return true;
+  }
+
   /** A chest's slots, rolling its loot first if it is a generated one opened for the first time. */
   private chestSlots(key: string, state: number): (ItemStack | null)[] {
     let slots = this.chests.get(key);
     if (!slots) {
       const [x, y, z] = key.split(',').map(Number) as [number, number, number];
-      const table = lootTableFor(BLOCKS.type(state).key, y);
+      // Chests in a sky island, pyramid or temple have that place's table; others go by depth.
+      const site = sitesNear(this.seed, x, z, x, z).find((s) => (SITE_TABLES as readonly string[]).includes(s.kind));
+      const table: LootTable = site ? (site.kind === 'sky_island' ? 'sky' : site.kind as LootTable) : lootTableFor(BLOCKS.type(state).key, y);
       slots = rollLoot(this.seed, x, y, z, table, CHEST_SLOTS);
       this.found.add(table);
       this.chests.set(key, slots);
@@ -1011,6 +1031,7 @@ export class Play {
           return;
         }
         const key = `${t.x},${t.y},${t.z}`;
+        if (this.mimicAt(key, t.x, t.y, t.z, state)) return;
         this.chestSlots(key, state);
         this.openChest = key;
         this.openScreen('chest', 2);
@@ -1083,9 +1104,11 @@ export class Play {
       else if (moth && this.daylight > 0.35) this.toast('The lure only draws her out at night', 3);
       else {
         const boss = SPECIES_BY_KEY.get(moth ? 'gloom_matriarch' : 'king_slime')!, [x, y, z] = this.feet, a = Math.random() * Math.PI * 2;
-        this.creatures.add(boss, x + Math.cos(a) * 9, y + (moth ? 10 : 6), z + Math.sin(a) * 9, boss.health);
+        const c = this.creatures.add(boss, x + Math.cos(a) * 9, y + (moth ? 10 : 6), z + Math.sin(a) * 9, boss.health);
+        // Summoned on an altar, a boss leaves two treasure bags.
+        c.atAltar = sitesNear(this.seed, Math.floor(x), Math.floor(z), Math.floor(x), Math.floor(z)).some((s) => s.kind === 'altar');
         if (this.mode === 'survival') this.inventory.useHeld();
-        this.toast(moth ? 'The Gloom Matriarch descends!' : 'The Slime King has awoken!', 4);
+        this.toast(`${moth ? 'The Gloom Matriarch descends!' : 'The Slime King has awoken!'}${c.atAltar ? ' The altar answers: twice the treasure.' : ''}`, 4);
       }
       return;
     }
@@ -1517,7 +1540,7 @@ export class Play {
       const st = p.stats as Record<string, unknown>;
       for (const k of Object.keys(this.stats) as (keyof Stats)[]) this.stats[k] = Math.max(0, num(st[k], 0));
     }
-    if (Array.isArray(p.found)) for (const f of p.found) if (['surface', 'mine', 'vault', 'shrine'].includes(f)) this.found.add(f as LootTable);
+    if (Array.isArray(p.found)) for (const f of p.found) if (['surface', 'mine', 'vault', 'shrine', 'sky', 'pyramid', 'temple'].includes(f)) this.found.add(f as LootTable);
     this.beaconLit = p.beaconLit === true;
     if (Array.isArray(p.biomesSeen)) for (const b of p.biomesSeen) if (Number.isInteger(b) && b >= 0 && b < 256) this.biomesSeen.add(b);
     this.deepestM = Math.min(0, num(p.deepestM, 0));

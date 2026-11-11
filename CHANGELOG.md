@@ -3,6 +3,21 @@
 The newest version comes first. `npm run check` fails if the version at the top here is not the one in
 `package.json`, so the two are changed together.
 
+## 0.8.0 — 2026-11-11
+
+Places worth finding (roadmap R4.3, R4.4, R4.5, R3.1).
+
+- Sky islands float 130 m up, about two per square kilometre: grassy discs on rocky undersides, each with a glass hut
+  and a chest of sky treasure (always a Featherfall Charm; cloud charms, Life Crystals, gold). Reach them with a
+  grappling hook, by building up, or with a double jump and a glide.
+- Desert pyramids (in deserts and badlands) and overgrown temples (in rainforests, swamps and deep forests) each hold
+  a chest with something found nowhere else: the Scarab Charm (10% faster, 6% more harm stopped) and the Jungle Idol
+  (faster healing, longer breath).
+- Mimics: some chests in vaults, pyramids and temples jump up as a monster when first opened. A mimic hits hard and
+  drops gold and good accessories.
+- Boss altars: round slate floors ringed by torch-lit pillars. A boss summoned on an altar leaves two treasure bags.
+- Trees keep clear of altars, pyramids and temples. The creature gallery shows all 31 creatures.
+
 ## 0.7.6 — 2026-11-10
 
 Events and boss rewards (roadmap R3.2, R3.4).

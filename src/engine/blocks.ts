@@ -248,6 +248,8 @@ const ACCESSORIES: readonly [string, string, Accessory][] = [
   ['gill_pendant', 'Gill Pendant', { effect: 'Breath lasts four times longer', breath: 4 }],
   ['ember_ring', 'Ember Ring', { effect: 'Lava and fire do not burn you', fireproof: true }],
   ['heart_locket', 'Heart Locket', { effect: 'Health returns twice as fast', regen: 2 }],
+  ['scarab_charm', 'Scarab Charm', { effect: '10% faster; stops 6% more harm', speed: 0.1, protection: 2 }],
+  ['jungle_idol', 'Jungle Idol', { effect: 'Health returns 50% faster; breath lasts twice as long', regen: 1.5, breath: 2 }],
 ];
 
 /** Flowing fluids have 8 levels, each with a falling and a resting variant. */

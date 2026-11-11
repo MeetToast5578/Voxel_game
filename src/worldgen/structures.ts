@@ -2,7 +2,7 @@ import { BLOCK_SIZE_M, TREE_REACH_CELLS } from '../config';
 import { hash2 } from '../core/random';
 import { BLOCKS } from '../engine/blocks';
 
-export type StructureKind = 'cabin' | 'tower' | 'camp' | 'mine' | 'vault' | 'shrine' | 'house';
+export type StructureKind = 'cabin' | 'tower' | 'camp' | 'mine' | 'vault' | 'shrine' | 'house' | 'sky_island' | 'pyramid' | 'temple' | 'altar';
 
 /** A structure cell relative to the site: x and z from its anchor, y absolute; then the state. */
 export type StructureCell = readonly [dx: number, y: number, dz: number, state: number];
@@ -11,7 +11,7 @@ export type StructureCell = readonly [dx: number, y: number, dz: number, state: 
  * Where each kind may stand: grid size (m), chance a grid cell has one, and for underground kinds the depth band (m).
  * One site per grid cell at a jittered spot, so sites are spread out and every decision is local.
  */
-const KINDS: Record<StructureKind, { gridM: number; chance: number; salt: number; depth?: readonly [number, number] }> = {
+const KINDS: Record<StructureKind, { gridM: number; chance: number; salt: number; depth?: readonly [number, number]; biomes?: readonly string[] }> = {
   cabin: { gridM: 160, chance: 0.5, salt: 71 },
   tower: { gridM: 260, chance: 0.5, salt: 72 },
   camp: { gridM: 190, chance: 0.5, salt: 73 },
@@ -21,7 +21,17 @@ const KINDS: Record<StructureKind, { gridM: number; chance: number; salt: number
   shrine: { gridM: 600, chance: 1, salt: 76, depth: [-130, -110] },
   // Village houses: on a fine grid, but only inside village regions, so they stand together.
   house: { gridM: 20, chance: 0.8, salt: 77 },
+  // Floating islands high over the land, a desert pyramid, a jungle temple, and a boss altar out in the open.
+  sky_island: { gridM: 450, chance: 0.4, salt: 78 },
+  pyramid: { gridM: 300, chance: 0.6, salt: 79, biomes: ['desert', 'badlands'] },
+  temple: { gridM: 300, chance: 0.6, salt: 80, biomes: ['tropical_rainforest', 'swamp', 'old_growth_dark_forest', 'temperate_deciduous'] },
+  altar: { gridM: 360, chance: 0.6, salt: 81 },
 };
+
+/** The biomes a kind's anchor must stand in, if it is particular. */
+export const structureBiomes = (kind: StructureKind): readonly string[] | undefined => KINDS[kind].biomes;
+/** Sky islands float with their ground at this height (m), over land no higher than SKY_ISLAND_MAX_GROUND_M. */
+export const SKY_ISLAND_M = 130, SKY_ISLAND_MAX_GROUND_M = 100;
 
 /** Village regions: one per 320 m grid cell at most, houses within 34 m of its centre. */
 const VILLAGE_GRID_M = 320, VILLAGE_CHANCE = 0.45, VILLAGE_RADIUS_M = 34;
@@ -167,6 +177,55 @@ export function structureCells(seed: number, kind: StructureKind, x: number, z: 
       put(-2, base + 1, -1, S('cobblestone'));
     } else {
       for (let dx = -3; dx <= 3; dx += 2) put(dx, base + 1, -5, S('poppy'));
+    }
+  } else if (kind === 'sky_island') {
+    // A floating island: a grassy disc on a rocky underside that narrows to a point, with a cloud-white hut and a chest.
+    for (let dz = -7; dz <= 7; dz++) for (let dx = -7; dx <= 7; dx++) {
+      const r = Math.hypot(dx, dz) + hash2(seed + 500, x + dx, z + dz) * 1.2;
+      if (r > 7) continue;
+      const depth = Math.round((7 - r) * 1.1) + 1;
+      for (let k = 0; k < depth; k++) put(dx, base - k, dz, k === 0 ? S('grass') : k < 3 ? S('dirt') : S('stone'));
+      if (r < 6.5 && hash2(seed + 501, x + dx, z + dz) < 0.12) put(dx, base + 1, dz, S(hash2(seed + 502, x + dx, z + dz) < 0.5 ? 'dandelion' : 'poppy'));
+    }
+    box(2, base + 1, base + 4, (dx, y, dz) => {
+      const edge = Math.abs(dx) === 2 || Math.abs(dz) === 2;
+      if (y === base + 4) return S('glass');
+      if (edge) return dx === 0 && dz === -2 && y <= base + 2 ? AIR : Math.abs(dx) === 2 && Math.abs(dz) === 2 ? LOG : S('glass');
+      return AIR;
+    });
+    put(1, base + 1, 1, S('chest', 1));
+    put(-1, base + 1, 1, S('lantern'));
+  } else if (kind === 'pyramid') {
+    // A sandstone pyramid, eight steps high, with a doorway, a dark hall and a chest at its heart.
+    for (let step = 0; step <= 7; step++) box(7 - step, base + step, base + step, () => S('sandstone'));
+    box(4, base + 1, base + 3, (dx, _y, dz) => (Math.abs(dx) < 4 && Math.abs(dz) < 4 ? AIR : null));
+    for (let dz = -7; dz <= -4; dz++) for (let y = base + 1; y <= base + 2; y++) put(0, y, dz, AIR);
+    put(0, base + 1, 2, S('chest', 3));
+    put(-3, base + 1, 3, TORCH);
+  } else if (kind === 'temple') {
+    // An overgrown temple: a cobblestone hall half taken by leaves, with a chest behind the altar stone.
+    box(5, base - 1, base + 6, (dx, y, dz) => {
+      const shell = Math.abs(dx) === 5 || Math.abs(dz) === 5 || y === base - 1 || y === base + 6;
+      if (!shell) return AIR;
+      if (dz === -5 && Math.abs(dx) <= 1 && y >= base && y <= base + 2) return AIR;
+      return hash2(seed + 510 + y, x + dx, z + dz) < 0.3 ? S('leaves', 1) : y === base + 6 ? S('slate') : S('cobblestone');
+    });
+    put(0, base, 2, S('slate'));
+    put(0, base, 3, S('chest', 3));
+    put(-4, base, -4, TORCH);
+    put(4, base, -4, TORCH);
+  } else if (kind === 'altar') {
+    // A boss altar: a round floor of slate with a ring of pillars and a glowing stone in the middle.
+    for (let dz = -7; dz <= 7; dz++) for (let dx = -7; dx <= 7; dx++) {
+      const r = Math.hypot(dx, dz);
+      if (r > 7.4) continue;
+      put(dx, base, dz, r < 1.5 ? S('glowstone') : S('slate'));
+      for (let y = base + 1; y <= base + 5; y++) put(dx, y, dz, AIR);
+    }
+    for (let a = 0; a < 8; a++) {
+      const px = Math.round(Math.cos((a * Math.PI) / 4) * 6), pz = Math.round(Math.sin((a * Math.PI) / 4) * 6);
+      for (let y = base + 1; y <= base + 3 + (a % 2); y++) put(px, y, pz, S('cobblestone'));
+      put(px, base + 4 + (a % 2), pz, TORCH);
     }
   } else if (kind === 'mine') {
     // Two crossing tunnels, 3 wide and 3 high, with timber frames every 4 cells, torches, and sometimes a chest.
