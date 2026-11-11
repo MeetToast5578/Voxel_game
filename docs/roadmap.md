@@ -55,7 +55,7 @@ Every task also passes `npm run check`, `npm run benchmark -- --assert` and `npm
 - [x] **R2.1 Enemies that shoot (M).** Done in 0.7.2 for skeletons (arrows sticking in blocks not yet). Skeletons draw and loose arrows that the player can see and dodge. The draw is
   telegraphed (they pause and aim). Arrows stick in blocks for a while.
   **Done when:** a test has a skeleton hit a standing player and miss a moving one.
-- [ ] **R2.2 Telegraphed attacks (M).** Every hostile winds up before it strikes: a crouch, a flash, a sound. Bosses
+- [x] **R2.2 Telegraphed attacks (M).** Done in 0.9.0 (wind-ups, the slam and dive, enraged phase; no wind-up sound yet). Every hostile winds up before it strikes: a crouch, a flash, a sound. Bosses
   get two or three named attacks each, plus a second phase below half health.
   **Done when:** the shape gallery shows each wind-up and a test sees a boss change phase.
 - [x] **R2.3 Status effects (M).** Done in 0.7.2 (a list with timers rather than icons). Five effects, each with an icon on the HUD and a timer:
@@ -106,7 +106,7 @@ Every task also passes `npm run check`, `npm run benchmark -- --assert` and `npm
 - [x] **R3.2 Treasure bags (S).** Done in 0.7.6 (no trophy block yet). Each boss drops one bag with its unique loot, so nothing is lost in lava. The bag
   holds a trophy block for display.
   **Done when:** opening a bag gives the listed loot.
-- [ ] **R3.3 New bosses (L, one at a time).**
+- [~] **R3.3 New bosses (L, one at a time).** 0.9.1: Frost Colossus (no arena of its own yet); Sandmaw, Hive Mother and the Deep Heart remain.
   - **Sandmaw:** a segmented burrowing worm in the desert. It dives under sand and bursts up.
   - **Frost Colossus:** a slow giant in the snow. It throws ice boulders and slows the player.
   - **Hive Mother:** in the jungle or swamp. She spits venom and calls a swarm.
@@ -348,7 +348,7 @@ Every task also passes `npm run check`, `npm run benchmark -- --assert` and `npm
 - [ ] **R11.1 Split the large files (M).** `main.ts` (881 lines), `play.ts` (1323) and `app.tsx` (509) split by
   concern: combat, items, townsfolk and screens. Behaviour stays the same.
   **Done when:** no file is over about 600 lines and all checks pass.
-- [ ] **R11.2 Error overlay (S).** In development builds, uncaught errors show on screen with a copy button, so the
+- [x] **R11.2 Error overlay (S).** Done in 0.9.0. In development builds, uncaught errors show on screen with a copy button, so the
   owner can paste them.
 
 ## R12. Large and undecided

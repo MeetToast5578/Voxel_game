@@ -275,6 +275,15 @@ const MODELS: Record<string, Model> = {
     } }),
   brute: biped({ skin: 0xbcd2e2, shirt: 0xaac4d6, trousers: 0x7890a4, shoe: 0x52667a, eye: 0x9fe8ff, glowEyes: true, bulk: 1.7, hunch: 0.35, armLen: 0.26, headSize: 0.8,
     extra: (root, head) => { root.shapes.push(ball([0, 0.36, 0.04], [0.5, 0.22, 0.32], 0xe2eef6)); for (const s of [-1, 1]) head.shapes.push(cone([s * 0.07, 0.16, 0], [0.04, 0.12, 0.04], 0xf4f8fa, [0, 0, -s * 0.4])); } }),
+  frost_colossus: biped({ skin: 0xc4def0, shirt: 0x9cc4e0, trousers: 0x6e94b4, shoe: 0x4a6a8a, eye: 0x7ff0ff, glowEyes: true, bulk: 2.1, hunch: 0.2, armLen: 0.3,
+    legLen: 0.27, headSize: 0.75,
+    extra: (root, head, arms) => {
+      // Ice crystals jut from the shoulders, back and crown; the fists are blocks of ice.
+      for (const s of [-1, 1]) for (let k = 0; k < 3; k++) root.shapes.push(cone([s * (0.2 + k * 0.06), 0.36 + k * 0.03, 0.04 + k * 0.03], [0.05, 0.16 - k * 0.03, 0.05], 0xe8f8ff, [0.3, 0, -s * (0.5 + k * 0.2)]));
+      for (let k = 0; k < 3; k++) root.shapes.push(cone([0, 0.18 + k * 0.08, 0.14], [0.05, 0.14, 0.05], 0xbfeaff, [0.9, 0, 0]));
+      for (const s of [-1, 0, 1]) head.shapes.push(cone([s * 0.06, 0.18, 0], [0.035, 0.12 - Math.abs(s) * 0.03, 0.035], 0xe8f8ff, [0, 0, -s * 0.35]));
+      for (const a of arms) a.kids[0]!.shapes.push(box([0, -0.3, 0], [0.12, 0.12, 0.12], 0xbfeaff));
+    } }),
   warden: biped({ skin: 0x5a3c40, shirt: 0x523a3e, trousers: 0x3e2c30, shoe: 0x2a1c1e, eye: 0xffa040, glowEyes: true, bulk: 1.8, armLen: 0.28, legLen: 0.26, headSize: 0.9,
     extra: (root, head) => {
       head.shapes.push(ball([0, 0.06, -0.06], [0.14, 0.1, 0.12], 0xff7828, undefined, true), cone([0, 0.25, 0.02], [0.08, 0.16, 0.08], 0xff9a40, undefined));
@@ -452,7 +461,7 @@ function animate(j: Joint, p: Pose, out: number[]): void {
 const tmpQ = new THREE.Quaternion(), tmpV = new THREE.Vector3(), tmpS = new THREE.Vector3(), tmpE = new THREE.Euler();
 const local = new THREE.Matrix4(), part = new THREE.Matrix4(), tmpC = new THREE.Color();
 const UP = new THREE.Vector3(0, 1, 0), FORWARD = new THREE.Vector3(0, 0, 1);
-const HURT = new THREE.Color(1, 0.12, 0.1);
+const HURT = new THREE.Color(1, 0.12, 0.1), FLASH = new THREE.Color(1, 1, 0.85);
 const angles = [0, 0, 0];
 
 /** Shape-built creatures in four instanced draws, one per primitive. */
@@ -518,6 +527,13 @@ export class ShapeMobs {
         sx = sz = 1 / Math.sqrt(k);
       }
       if (sleeping && model.plan === 'quad') sy *= 1 + Math.sin(t * 0.9) * 0.015;
+      // A wind-up: it crouches and flashes before the strike lands.
+      const winding = (c.windup ?? 0) > 0 || (c.move !== undefined && c.move.t > 0);
+      if (winding) {
+        sy *= 0.82;
+        sx *= 1.1;
+        sz *= 1.1;
+      }
       const dead = deadAt.get(c);
       if (dead !== undefined) {
         // Defeated: it tips over onto its side, then shrinks away.
@@ -539,6 +555,8 @@ export class ShapeMobs {
       }
       tmpC.setRGB(light, light, light);
       if (c.hurt > 0) tmpC.lerp(HURT, 0.6);
+      else if (winding) tmpC.lerp(FLASH, 0.35 + 0.25 * Math.sin(t * 40));
+      if (c.phase === 2) tmpC.lerp(HURT, 0.2);
       this.draw(model.root, 0, pose, tmpC.clone(), light);
     }
     this.meshes.forEach((m, i) => {

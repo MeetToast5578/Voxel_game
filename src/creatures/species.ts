@@ -1,6 +1,9 @@
 type RGB = readonly [number, number, number];
 
 /** How a species lives, with sizes and speeds in meters. Ported from the old game. */
+/** A boss's named attacks: a leap that lands hard, a swooping dive, a ground stomp, and a thrown ice boulder. */
+export type BossMove = 'slam' | 'dive' | 'stomp' | 'boulder';
+
 export interface Species {
   key: string;
   name: string;
@@ -53,6 +56,12 @@ export interface Species {
   fireproof?: boolean;
   /** A boss: its health shows in a bar across the top of the screen. */
   boss?: boolean;
+  /** A boss's named attacks (see Creatures.bossMove), and the smaller kind it calls as it is struck. */
+  moves?: readonly BossMove[];
+  brood?: string;
+  /** A boss: the item that calls it, whether it only comes at night, how high above the player it arrives, and the
+   * line announcing it. */
+  summon?: { readonly item: string; readonly night?: boolean; readonly height: number; readonly line: string };
   /** Lives in a village house: stays near home by day and sleeps in its bed at night. Never spawns on its own. */
   villager?: boolean;
   /** Which shop list a trader offers (see workshops.ts); the general list when unset. */
@@ -99,7 +108,7 @@ export const SPECIES: readonly Species[] = [
     meat: 0, loot: [['string', 2], ['swift_anklet', 1, 0.015]], voice: 0.85 },
   { ...BASE, key: 'brute', name: 'Frost brute', halfWidthM: 0.5, heightM: 2.2, speedM_S: 1.1, health: 40, hostile: true, nocturnal: true, inflicts: ['slowed', 4, 0.6],
     attack: 7, biomes: ['deep', 'tundra', 'snowy_taiga', 'glacier', 'snowcapped_peaks'], group: [1, 1],
-    colours: { body: [170, 196, 214], head: [210, 226, 236], legs: [120, 140, 160] }, meat: 0, loot: [['bone', 3], ['iron_band', 1, 0.04]], voice: 0.1 },
+    colours: { body: [170, 196, 214], head: [210, 226, 236], legs: [120, 140, 160] }, meat: 0, loot: [['bone', 3], ['frost_shard', 2, 0.6], ['iron_band', 1, 0.04]], voice: 0.1 },
   { ...BASE, key: 'warden', name: 'Ember Warden', halfWidthM: 0.55, heightM: 2.5, speedM_S: 1.3, health: 160, hostile: true, guardian: true,
     attack: 8, biomes: [], group: [1, 1], colours: { body: [58, 40, 44], head: [255, 120, 40], legs: [40, 30, 34] }, meat: 0,
     loot: [['ember_crystal', 3], ['diamond', 2], ['life_crystal', 3], ['ember_ring', 1], ['heart_locket', 1, 0.5]], voice: 0.05 },
@@ -111,7 +120,7 @@ export const SPECIES: readonly Species[] = [
     colours:{body:[72,95,44],head:[80,110,48],legs:[64,78,36]}, voice:.25 },
   { ...BASE, key:'snow_prowler', name:'Snow Prowler', halfWidthM:.38, heightM:1.15, speedM_S:2.8, health:26, inflicts: ['slowed', 3, 0.5],
     hostile:true, nocturnal:true, attack:4, biomes:['snowy_taiga','tundra','glacier','snowcapped_peaks'], group:[1,2],meat:0,
-    loot:[['leather',2],['bone',1],['feather_charm',1,0.03]],colours:{body:[223,234,239],head:[238,244,248],legs:[193,213,226]},voice:.4 },
+    loot:[['leather',2],['bone',1],['frost_shard',1,0.5],['feather_charm',1,0.03]],colours:{body:[223,234,239],head:[238,244,248],legs:[193,213,226]},voice:.4 },
   { ...BASE, key:'trader',name:'Traveling Trader',halfWidthM:.28,heightM:1.8,speedM_S:.8,health:30,trader:true,
     biomes:['plains','meadow','temperate_deciduous','birch','savanna'],group:[1,1],meat:0,
     colours:{body:[45,99,111],head:[207,162,116],legs:[57,54,66]},voice:.5 },
@@ -132,14 +141,21 @@ export const SPECIES: readonly Species[] = [
     attack: 7, biomes: [], group: [1, 1], colours: { body: [138, 90, 44], head: [106, 110, 116], legs: [240, 234, 216] }, meat: 0,
     loot: [['gold_ingot', 4], ['life_crystal', 1, 0.5], ['cloud_charm', 1, 0.3], ['heart_locket', 1, 0.3], ['ember_ring', 1, 0.2], ['iron_band', 1, 0.3]], voice: 0.35 },
   { ...BASE, key: 'king_slime', name: 'Slime King', halfWidthM: 1.0, heightM: 1.7, speedM_S: 2.8, health: 240, hostile: true, daytime: true, hops: true,
-    boss: true, attack: 6, biomes: [], group: [1, 1], colours: { body: [80, 150, 240], head: [40, 90, 200], legs: [200, 230, 255] },
+    boss: true, moves: ['slam'], brood: 'slime', summon: { item: 'slime_crown', height: 6, line: 'The Slime King has awoken!' },
+    attack: 6, biomes: [], group: [1, 1], colours: { body: [80, 150, 240], head: [40, 90, 200], legs: [200, 230, 255] },
     meat: 0, loot: [['gel', 30], ['life_crystal', 2], ['cloud_charm', 1], ['swift_anklet', 1, 0.6], ['heart_locket', 1, 0.3], ['gold_ingot', 4]], voice: 0.3 },
   { ...BASE, key: 'gloom_moth', name: 'Gloom Moth', halfWidthM: 0.3, heightM: 0.5, speedM_S: 2.8, health: 10, hostile: true, nocturnal: true, flies: true,
     attack: 2, biomes: [...FORESTS, 'swamp', 'plains', 'meadow'], group: [1, 2], colours: { body: [96, 84, 120], head: [70, 60, 90], legs: [200, 220, 120] },
     meat: 0, loot: [['string', 1, 0.6], ['feather', 1, 0.5], ['feather_charm', 1, 0.02]], voice: 0.95 },
   { ...BASE, key: 'gloom_matriarch', name: 'Gloom Matriarch', halfWidthM: 1.1, heightM: 1.5, speedM_S: 3.4, health: 320, hostile: true, nocturnal: true,
-    flies: true, boss: true, attack: 7, biomes: [], group: [1, 1], colours: { body: [120, 96, 150], head: [80, 64, 110], legs: [230, 250, 140] },
+    flies: true, boss: true, moves: ['dive'], brood: 'gloom_moth', summon: { item: 'moth_lure', night: true, height: 10, line: 'The Gloom Matriarch descends!' },
+    attack: 7, biomes: [], group: [1, 1], colours: { body: [120, 96, 150], head: [80, 64, 110], legs: [230, 250, 140] },
     meat: 0, loot: [['life_crystal', 3], ['feather_charm', 1], ['ember_staff', 1, 0.5], ['cloud_charm', 1, 0.5], ['gold_ingot', 6]], voice: 0.2 },
+  { ...BASE, key: 'frost_colossus', name: 'Frost Colossus', halfWidthM: 0.9, heightM: 3.4, speedM_S: 1.5, health: 420, hostile: true, daytime: true,
+    boss: true, moves: ['stomp', 'boulder'], brood: 'snow_prowler', inflicts: ['slowed', 4, 0.6],
+    summon: { item: 'frost_sigil', height: 3, line: 'The Frost Colossus rises from the snow!' },
+    attack: 9, biomes: [], group: [1, 1], colours: { body: [170, 205, 230], head: [220, 238, 250], legs: [110, 140, 170] },
+    meat: 0, loot: [['frost_shard', 12], ['life_crystal', 2], ['frost_heart', 1], ['iron_band', 1, 0.5], ['diamond', 3], ['gold_ingot', 6]], voice: 0.05 },
   { ...BASE, key: 'bat', name: 'Cave Bat', halfWidthM: 0.2, heightM: 0.4, speedM_S: 3.2, health: 4, hostile: true, flies: true,
     attack: 1, biomes: ['cave'], group: [1, 3], colours: { body: [70, 56, 52], head: [86, 68, 60], legs: [50, 40, 40] },
     meat: 0, loot: [['leather', 1, 0.3], ['cloud_charm', 1, 0.015]], voice: 1 },

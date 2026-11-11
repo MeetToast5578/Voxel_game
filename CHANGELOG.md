@@ -3,6 +3,34 @@
 The newest version comes first. `npm run check` fails if the version at the top here is not the one in
 `package.json`, so the two are changed together.
 
+## 0.9.1 — 2026-11-11
+
+A third boss (roadmap R3.3, first of three).
+
+- The **Frost Colossus**: a giant of ice, 420 health. Its bite slows you. Named attacks: **Stomp** (a shock round
+  where it stands; step back) and **Boulder** (a thrown block of ice that hits hard and slows; dodge it). Its brood are
+  Snow Prowlers.
+- Summoned with a **Frost Sigil**: eight Frost Shards round a gold ingot. Frost brutes and Snow Prowlers drop the
+  shards.
+- Its treasure bag holds the **Frost Heart** accessory (stops 9% more harm, health returns 30% faster), diamonds, life
+  crystals and more.
+- Bosses are now described by data (their attacks, brood and summon item), so new ones need no special code.
+
+## 0.9.0 — 2026-11-11
+
+Fights you can read (roadmap R2.2).
+
+- Every melee monster winds up before it bites: it crouches and flashes for a third of a second. Stepping back out
+  of reach in that moment dodges the bite.
+- Bosses have named attacks, announced on screen:
+  - the Slime King's **Slam**: it crouches, leaps at you and hurts anyone on the ground near where it lands;
+  - the Gloom Matriarch's **Dive**: it rises, then swoops at where you stood;
+  - both keep calling their brood as they are struck.
+- Below half health a boss is **enraged**: it turns redder and moves faster, its attacks come sooner, and it calls a
+  brood of three at once.
+- The shape gallery has a wind-up column.
+- Development builds show uncaught errors on screen, with a Copy button for bug reports (R11.2).
+
 ## 0.8.5 — 2026-11-11
 
 Easier to play, and something from the sky (roadmap R8.6, R8.7, R4.10).

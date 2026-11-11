@@ -22,6 +22,7 @@ full-strength hits, no crits, 20 health.
 | **Slime King** | 240 | 60 | 48 | 35 | 24 | 19 |
 | Gloom Moth | 10 | 3 | 2 | 2 | 1 | 1 |
 | **Gloom Matriarch** | 320 | 80 | 64 | 46 | 32 | 25 |
+| **Frost Colossus** | 420 | 105 | 84 | 60 | 42 | 33 |
 | Cave Bat | 4 | 1 | 1 | 1 | 1 | 1 |
 | Skeleton | 22 | 6 | 5 | 4 | 3 | 2 |
 
@@ -44,5 +45,6 @@ full-strength hits, no crits, 20 health.
 | **Slime King** | 6 | 4 | 5 | 7 | 9 | 12 |
 | Gloom Moth | 2 | 10 | 13 | 19 | 25 | 36 |
 | **Gloom Matriarch** | 7 | 3 | 4 | 6 | 8 | 11 |
+| **Frost Colossus** | 9 | 3 | 3 | 5 | 6 | 8 |
 | Cave Bat | 1 | 20 | 26 | 37 | 50 | 72 |
 | Skeleton | 4 | 5 | 7 | 10 | 13 | 18 |

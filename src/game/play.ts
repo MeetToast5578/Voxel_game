@@ -27,7 +27,7 @@ import { aimAt, Projectiles } from './projectiles';
 import type { BoxAt } from './collision';
 import { HOUSE_BED, professionAt, sitesNear, structureCells, undergroundFloor } from '../worldgen/structures';
 import { Decorations, SHOPS, TRADE_OFFERS, WORKSHOP_BLOCKS, trade, forge, type TradeOffer, type WorkshopKind } from './workshops';
-import { SPECIES_BY_KEY } from '../creatures/species';
+import { SPECIES, SPECIES_BY_KEY } from '../creatures/species';
 import { buildingMaterial } from './building';
 
 export type Mode = 'creative' | 'survival';
@@ -892,10 +892,12 @@ export class Play {
   }
 
   /** A creature shoots a bolt at the player's chest from (x, y, z). */
-  shootAtPlayer(x: number, y: number, z: number, player: Player, damage: number, by = 'Skulker'): void {
-    const b = player.body, speed = toCells(BOLT_SPEED_M_S);
+  shootAtPlayer(x: number, y: number, z: number, player: Player, damage: number, by = 'Skulker', item?: string): void {
+    const b = player.body, speed = toCells(BOLT_SPEED_M_S) * (item === 'ice' ? 0.7 : 1);
     const [dx, dy, dz] = aimAt(x, y, z, b.x, b.y + b.height * 0.7, b.z, speed);
     this.projectiles.shoot(x, y, z, dx, dy, dz, speed, damage, false, false, by);
+    // A thrown ice boulder (the Frost Colossus): slower, it hits harder and chills.
+    if (item) Object.assign(this.projectiles.list.at(-1)!, { item, damage: damage + 3 });
   }
 
   /** Flies every arrow and bolt; hits hurt creatures or the player, and the player's arrows that miss can be picked up. */
@@ -923,6 +925,7 @@ export class Play {
         continue;
       }
       if (!p.fromPlayer) {
+        if (p.item === 'ice') this.survival.addEffect('slowed', 4);
         this.survival.hurt(this.protect(p.damage * DIFFICULTY[this.difficulty].damage), `shot by a ${(p.by ?? 'skulker').toLowerCase()}`);
         this.version++;
         continue;
@@ -1220,18 +1223,18 @@ export class Play {
       this.version++;
       return;
     }
-    if ((heldType.key === 'slime_crown' || heldType.key === 'moth_lure') && this.creatures) {
-      // Calls a boss: it arrives a little way off, ready to fight. One at a time; the Matriarch only comes at night.
-      const moth = heldType.key === 'moth_lure';
+    const boss = SPECIES.find((s) => s.summon?.item === heldType.key);
+    if (boss && this.creatures) {
+      // Calls a boss: it arrives a little way off, ready to fight. One at a time; some only come at night.
       if (this.creatures.list.some((c) => c.species.boss)) this.toast('A boss is already here', 3);
-      else if (moth && this.daylight > 0.35) this.toast('The lure only draws her out at night', 3);
+      else if (boss.summon!.night && this.daylight > 0.35) this.toast(`The ${heldType.name} only works at night`, 3);
       else {
-        const boss = SPECIES_BY_KEY.get(moth ? 'gloom_matriarch' : 'king_slime')!, [x, y, z] = this.feet, a = Math.random() * Math.PI * 2;
-        const c = this.creatures.add(boss, x + Math.cos(a) * 9, y + (moth ? 10 : 6), z + Math.sin(a) * 9, boss.health);
+        const [x, y, z] = this.feet, a = Math.random() * Math.PI * 2;
+        const c = this.creatures.add(boss, x + Math.cos(a) * 9, y + boss.summon!.height, z + Math.sin(a) * 9, boss.health);
         // Summoned on an altar, a boss leaves two treasure bags.
         c.atAltar = sitesNear(this.seed, Math.floor(x), Math.floor(z), Math.floor(x), Math.floor(z)).some((s) => s.kind === 'altar');
         if (this.mode === 'survival') this.inventory.useHeld();
-        this.toast(`${moth ? 'The Gloom Matriarch descends!' : 'The Slime King has awoken!'}${c.atAltar ? ' The altar answers: twice the treasure.' : ''}`, 4);
+        this.toast(`${boss.summon!.line}${c.atAltar ? ' The altar answers: twice the treasure.' : ''}`, 4);
       }
       return;
     }

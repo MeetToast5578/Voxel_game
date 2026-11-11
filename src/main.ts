@@ -244,6 +244,8 @@ const play = new Play(world, (x, y, z, s) => setBlock(x, y, z, s, true), {
 const urlDifficulty = params.get('difficulty');
 if (urlDifficulty && urlDifficulty in DIFFICULTY) play.difficulty = urlDifficulty as Difficulty;
 let lastBite = -Infinity;
+/** What a boss's named attacks are called on screen, with the way to dodge. */
+const BOSS_CALLS = { slam: 'Slam! Jump or step away', dive: 'Dive! Step aside', stomp: 'Stomp! Step back', boulder: 'Boulder! Dodge it' } as const;
 const creatures = new Creatures(world, mulberry32(seed ^ 0xc0ffee), {
   bite: (damage, by, species, biter) => {
     // A moment of safety after each bite, so a crowd cannot take the player down all at once.
@@ -253,7 +255,13 @@ const creatures = new Creatures(world, mulberry32(seed ^ 0xc0ffee), {
     play.bitten(damage, by, species, Math.random, biter);
   },
   sound: (name, volume) => sounds.play(name, volume),
-  shoot: (c, x, y, z) => play.shootAtPlayer(x, y, z, player, c.species.attack, c.species.name),
+  shoot: (c, x, y, z, item) => play.shootAtPlayer(x, y, z, player, c.species.attack, c.species.name, item),
+  boss: (c, what) => {
+    if (what === 'land') {
+      sounds.play('break', 1);
+      caption(`${c.species.name} lands ${direction(c.body.x, c.body.z)}`);
+    } else play.toast(what === 'enraged' ? `${c.species.name} is enraged!` : `${c.species.name}: ${BOSS_CALLS[what]}`, 2.5);
+  },
   // Calls carry 32 m; pitch follows the species' voice.
   call: (c, kind) => {
     const near = 1 - Math.hypot(c.body.x - player.body.x, c.body.y - player.body.y, c.body.z - player.body.z) * BLOCK_SIZE_M / 32;

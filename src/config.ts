@@ -373,6 +373,14 @@ export const FLEE_M = 8;
 export const HUNT_M = 16;
 export const ATTACK_REACH_M = 0.6;
 export const ATTACK_COOLDOWN_S = 1.2;
+/** Seconds a monster winds up before a bite lands (a step back dodges it), and a boss before a named attack. */
+export const WINDUP_S = 0.35;
+export const BOSS_WINDUP_S = 0.7;
+/** Seconds between a boss's named attacks (less once enraged), and the reach of the Slime King's slam. */
+export const BOSS_SPECIAL_S = 6;
+export const SLAM_RADIUS_M = 2.4;
+/** The Matriarch's dive speed. */
+export const DIVE_M_S = 7;
 /** Creatures do not walk off drops deeper than this. */
 export const CREATURE_FALL_M = 3;
 export const RUN_FACTOR = 1.8;
