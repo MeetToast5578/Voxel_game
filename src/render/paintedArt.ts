@@ -111,6 +111,23 @@ const ICONS: Readonly<Record<string, Icon>> = {
     '......ssss......',
     '................',
     '................']],
+  treasure_map: [{ p: '#e8dcb8', P: '#f8f0d8', d: '#b8a478', r: '#c03020', b: '#6a8ab8', g: '#6a9a50' }, [
+    '................',
+    '................',
+    '..dppppppppppd..',
+    '..pPPpppgggppd..',
+    '..pPpppggbbgpd..',
+    '..ppppgggbbppd..',
+    '..ppr.ppgpp.pd..',
+    '..ppp.r.pp.ppd..',
+    '..pppp.r.ppppd..',
+    '..ppbbpp.r.ppd..',
+    '..pbbbbpp.rrpd..',
+    '..ppbbppppprpd..',
+    '..ppppppppppPd..',
+    '..dddddddddddd..',
+    '................',
+    '................']],
   wisp_bottle: [{ c: '#8a6040', g: '#b8d4e0', G: '#ffffff', w: '#c8f0ff', W: '#ffffff', b: '#60b0f0' }, [
     '................',
     '......cccc......',
@@ -1009,3 +1026,14 @@ export function paintedPixels(name: string): Uint8ClampedArray | undefined {
 }
 
 export const PAINTED_NAMES = Object.keys(ICONS);
+
+// The tinkerer's combined accessories keep the shape of one of their parts, in new colours.
+const repaint = (from: string, colours: Record<string, string>): Icon => {
+  const [palette, rows] = (ICONS as Record<string, Icon>)[from]!;
+  return [{ ...palette, ...colours }, rows];
+};
+Object.assign(ICONS as Record<string, Icon>, {
+  sprint_boots: repaint('dash_boots', { b: '#2a6ab0', B: '#5aa0e0', d: '#183a68' }),
+  guardian_band: repaint('iron_band', { a: '#e0b040', A: '#fff0a0' }),
+  elemental_amulet: repaint('ember_ring', { r: '#3a70d0', R: '#90c0ff' }),
+});

@@ -372,6 +372,18 @@ const MODELS: Record<string, Model> = {
       root.shapes.push(cone([0, -0.06, 0], [0.32, 0.48, 0.25], 0x235a5a, [Math.PI, 0, 0]), ball([0.14, 0.0, -0.04], [0.05, 0.07, 0.05], 0xe0303c));
       head.shapes.push(ball([0.06, 0.12, -0.11], [0.045, 0.045, 0.03], 0xc89a4a), ball([-0.06, 0.12, -0.11], [0.045, 0.045, 0.03], 0xc89a4a), ball([0, 0.15, 0], [0.18, 0.08, 0.18], 0x7a5a40));
     } }),
+  tinkerer: biped({ skin: 0xe0b890, shirt: 0x8a5a30, trousers: 0x4a3a2a, shoe: 0x2a2018, eye: 0x241a14,
+    extra: (root, head) => {
+      // A leather apron with a wrench at the belt, and big goggles over the eyes.
+      root.shapes.push(box([0, 0.12, -0.12], [0.3, 0.34, 0.03], 0x6a4020), box([-0.15, 0.02, -0.06], [0.03, 0.16, 0.03], 0x9aa3ad));
+      head.shapes.push(ball([0.06, 0.1, -0.13], [0.06, 0.06, 0.04], 0x3ab0c0), ball([-0.06, 0.1, -0.13], [0.06, 0.06, 0.04], 0x3ab0c0), box([0, 0.1, -0.1], [0.24, 0.03, 0.06], 0x5a4030));
+    } }),
+  explorer: biped({ skin: 0xc89a70, shirt: 0x8a8a4a, trousers: 0x6a5a3a, shoe: 0x3a2a1a, eye: 0x241a14,
+    extra: (root, head) => {
+      // A wide-brimmed hat, a scarf, and a rolled map in a satchel.
+      head.shapes.push(box([0, 0.2, 0], [0.34, 0.025, 0.34], 0x7a5a30), box([0, 0.26, 0], [0.18, 0.1, 0.18], 0x7a5a30), box([0, 0.215, 0], [0.19, 0.03, 0.19], 0x3a2a1a));
+      root.shapes.push(ball([0, 0.33, 0], [0.24, 0.07, 0.18], 0xb03a2a), box([0.16, 0.04, 0.04], [0.08, 0.12, 0.14], 0x6a4a28), cone([0.16, 0.16, 0.04], [0.04, 0.16, 0.04], 0xe8dcb8));
+    } }),
   crawler: spider(0x3e3632, 0x4a403a, 0x302a26, 0xff3030, 4, [0.6, 0.4, 0.8]),
   desert_stalker: spider(0xba914b, 0xd2ae62, 0x90693a, 0x301808, 3, [0.5, 0.35, 0.8], (root, head) => {
     // A curled tail over the back ending in a sting, and two claws.

@@ -28,6 +28,7 @@ import type { BoxAt } from './collision';
 import { HOUSE_BED, professionAt, sitesNear, structureCells, undergroundFloor } from '../worldgen/structures';
 import { Decorations, SHOPS, TRADE_OFFERS, WORKSHOP_BLOCKS, trade, forge, type TradeOffer, type WorkshopKind } from './workshops';
 import { SPECIES, SPECIES_BY_KEY } from '../creatures/species';
+import { Generator } from '../worldgen/generator';
 import { buildingMaterial } from './building';
 
 export type Mode = 'creative' | 'survival';
@@ -64,6 +65,9 @@ const BUCKET = S('bucket'), BOW = S('bow'), ARROW = S('arrow'), BONE_MEAL = S('b
 export const DOOR_CELLS = 4;
 const FACING_OFFSET = [[1, 0], [-1, 0], [0, 1], [0, -1]] as const;
 /** A home the player made: the bed head's cell, which way its sleeper lies, and who lives there. */
+/** Places a treasure map can show, by name. */
+const MAP_PLACES = { pyramid: 'A pyramid', temple: 'An overgrown temple', sky_island: 'A sky island', altar: 'A boss altar', shrine: 'An ember shrine', tower: 'A watchtower', cabin: 'A cabin' } as const;
+
 export interface Home { x: number; y: number; z: number; yaw: number; who: string | null }
 
 /** Everything one player can do with the world: break, place, use blocks, carry and craft. Ported from the old game. */
@@ -659,6 +663,28 @@ export class Play {
     }
   }
 
+  /**
+   * A treasure map marks the nearest place worth finding that is not marked yet (within about 700 m), for the compass.
+   * Returns whether it found one.
+   */
+  readMap(): boolean {
+    const gen = (this.mapGen ??= new Generator(this.seed)), [fx, , fz] = this.feet, r = 1200;
+    const sites = sitesNear(this.seed, Math.floor(fx) - r, Math.floor(fz) - r, Math.floor(fx) + r, Math.floor(fz) + r)
+      .filter((s) => s.kind in MAP_PLACES && !this.markers.some((m) => m.x === s.x + 0.5 && m.z === s.z + 0.5))
+      .sort((a, b) => Math.hypot(a.x - fx, a.z - fz) - Math.hypot(b.x - fx, b.z - fz));
+    for (const s of sites) {
+      const base = gen.structureBase(s.kind, s.x, s.z);
+      if (base === null) continue;
+      const name = MAP_PLACES[s.kind as keyof typeof MAP_PLACES], d = Math.round(Math.hypot(s.x - fx, s.z - fz) * BLOCK_SIZE_M);
+      this.markers.push({ name, x: s.x + 0.5, y: base, z: s.z + 0.5 });
+      this.toast(`The map shows ${name.toLowerCase()} ${d} m away. The compass points to it.`, 5);
+      return true;
+    }
+    this.toast('The map shows nothing new near here.', 3);
+    return false;
+  }
+  private mapGen?: Generator;
+
   /** Raiders still standing in a raid on the player's town: the raid is won when none are left. */
   raidLeft = 0;
 
@@ -723,8 +749,9 @@ export class Play {
   private nextArrival(): string {
     const housed = new Set([...this.homes.values()].map((h) => h.who));
     const potions = POTIONS.some(([k]) => this.hasItem(k)) || this.hasItem('glass_bottle') || this.hasItem('alchemy_table');
+    const bossBeaten = [...this.bestiary.keys()].some((k) => SPECIES_BY_KEY.get(k)?.boss);
     const ready: [string, boolean][] = [['guide', true], ['merchant', this.inventory.count(BLOCKS.state('trade_coin')) >= 20], ['nurse', this.survival.maxHealth > MAX_HEALTH],
-      ['alchemist', potions]];
+      ['alchemist', potions], ['tinkerer', bossBeaten], ['explorer', this.biomesSeen.size >= 8]];
     return ready.find(([who, ok]) => ok && !housed.has(who))?.[0] ?? ['farmer', 'smith', 'herbalist'][this.homes.size % 3]!;
   }
 
@@ -1264,6 +1291,10 @@ export class Play {
         this.events.sound('eat');
       } else this.toast('Your heart can grow no stronger', 3);
       this.version++;
+      return;
+    }
+    if (heldType.key === 'treasure_map') {
+      if (this.readMap() && this.mode === 'survival') this.inventory.useHeld();
       return;
     }
     const boss = SPECIES.find((s) => s.summon?.item === heldType.key);

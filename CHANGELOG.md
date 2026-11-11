@@ -3,6 +3,21 @@
 The newest version comes first. `npm run check` fails if the version at the top here is not the one in
 `package.json`, so the two are changed together.
 
+## 0.12.1 — 2026-11-11
+
+Two more townsfolk (roadmap R5.2).
+
+- The **Tinkerer** moves into a free home once you have beaten a boss. They combine two accessories into one:
+  - Cloud Charm + Featherfall Charm → **Storm Charm**;
+  - Swiftstep Anklet + Dash Boots → **Sprint Boots** (dash, 25% faster);
+  - Ironskin Band + Heart Locket → **Guardian Band** (stops 12% more harm, health returns twice as fast);
+  - Ember Ring + Gill Pendant → **Elemental Amulet** (fireproof, four times the breath).
+
+  They also sell Dash Boots and Grappling Hooks.
+- The **Explorer** arrives once you have seen eight biomes. They sell **treasure maps**: reading one marks the nearest
+  place not yet marked (a pyramid, temple, sky island, altar, shrine, tower or cabin) for the compass. They buy
+  crystal shards, frost shards and dune fangs, and sell the Wisp in a Bottle.
+
 ## 0.12.0 — 2026-11-11
 
 Towns under siege, and light in the dark (roadmap R3.5, R6.7, R2.4).

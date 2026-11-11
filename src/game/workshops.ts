@@ -3,7 +3,8 @@ import { Inventory, type ItemStack } from './inventory';
 
 export type WorkshopKind = 'trade' | 'forge' | 'sign' | 'frame' | 'waystone';
 export const WORKSHOP_BLOCKS: Readonly<Record<string, WorkshopKind>> = { trading_post:'trade', ember_forge:'forge', sign:'sign', item_frame:'frame', waystone:'waystone' };
-export interface TradeOffer { name: string; cost: readonly [string,number]; gives: readonly [string,number] }
+/** A trade: what it costs (and a second thing, for the tinkerer's combinations) and what it gives. */
+export interface TradeOffer { name: string; cost: readonly [string,number]; also?: readonly [string,number]; gives: readonly [string,number] }
 export const TRADE_OFFERS: readonly TradeOffer[] = [
   {name:'Sell wheat',cost:['wheat',8],gives:['trade_coin',1]},
   {name:'Sell wool',cost:['wool',4],gives:['trade_coin',2]},
@@ -57,6 +58,20 @@ export const SHOPS: Readonly<Record<string, readonly TradeOffer[]>> = {
     offer('Buy a Swiftness Potion', ['trade_coin', 7], ['swiftness_potion', 1]), offer('Buy a Water Breathing Potion', ['trade_coin', 8], ['water_breathing_potion', 1]),
     offer('Buy a Fire Resistance Potion', ['trade_coin', 10], ['fire_resistance_potion', 1]),
   ],
+  // The tinkerer puts two accessories together into one that does both.
+  tinkerer: [
+    {name:'Combine into a Storm Charm',cost:['cloud_charm',1],also:['feather_charm',1],gives:['storm_charm',1]},
+    {name:'Combine into Sprint Boots',cost:['swift_anklet',1],also:['dash_boots',1],gives:['sprint_boots',1]},
+    {name:'Combine into a Guardian Band',cost:['iron_band',1],also:['heart_locket',1],gives:['guardian_band',1]},
+    {name:'Combine into an Elemental Amulet',cost:['ember_ring',1],also:['gill_pendant',1],gives:['elemental_amulet',1]},
+    offer('Buy Dash Boots', ['trade_coin', 40], ['dash_boots', 1]), offer('Buy a Grappling Hook', ['trade_coin', 25], ['grappling_hook', 1]),
+  ],
+  // The explorer sells maps to places not yet marked, and buys the shards found on the way.
+  explorer: [
+    offer('Buy a treasure map', ['trade_coin', 8], ['treasure_map', 1]), offer('Sell crystal shards', ['crystal_shard', 4], ['trade_coin', 3]),
+    offer('Sell frost shards', ['frost_shard', 4], ['trade_coin', 3]), offer('Sell dune fangs', ['dune_fang', 4], ['trade_coin', 3]),
+    offer('Buy a Wisp in a Bottle', ['trade_coin', 50], ['wisp_bottle', 1]),
+  ],
   herbalist: [
     offer('Sell feathers', ['feather', 6], ['trade_coin', 1]), offer('Sell gel', ['gel', 8], ['trade_coin', 1]),
     offer('Buy cooked fish', ['trade_coin', 2], ['cooked_fish', 3]), offer('Buy a Gill Pendant', ['trade_coin', 25], ['gill_pendant', 1]),
@@ -81,7 +96,7 @@ const commit=(inv:Inventory,other:Inventory)=>other.slots.forEach((s,i)=>inv.slo
 export function trade(inv:Inventory, offer:number, offers:readonly TradeOffer[]=TRADE_OFFERS): boolean {
   const o=offers[offer];if(!o)return false;
   const next=copy(inv);
-  if(!take(next,...o.cost)||next.add({state:BLOCKS.state(o.gives[0]),count:o.gives[1]})!==0)return false;
+  if(!take(next,...o.cost)||(o.also&&!take(next,...o.also))||next.add({state:BLOCKS.state(o.gives[0]),count:o.gives[1]})!==0)return false;
   commit(inv,next);return true;
 }
 export function upgradeCost(stack:ItemStack):number{return 3*((stack.upgrade??0)+1);}

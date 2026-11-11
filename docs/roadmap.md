@@ -193,8 +193,8 @@ Every task also passes `npm run check`, `npm run benchmark -- --assert` and `npm
 
   A homeless villager moves into a valid home. A **House?** tool shows whether a room is valid and why not.
   **Done when:** a test builds a room and a villager moves in.
-- [~] **R5.2 More townsfolk (M).** 0.7.5: Guide, Merchant, Nurse and Alchemist; Tinkerer and Explorer remain,
-  and the Guide does not explain recipes yet. Each arrives when a condition is met:
+- [~] **R5.2 More townsfolk (M).** 0.7.5: Guide, Merchant, Nurse and Alchemist; 0.12.1: Tinkerer and Explorer.
+  The Guide does not explain recipes yet. Each arrives when a condition is met:
   - Guide: from the start; gives tips and explains recipes.
   - Nurse: after a Life Crystal; heals for coins.
   - Tinkerer: after the first boss; combines accessories.
