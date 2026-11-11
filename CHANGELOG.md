@@ -3,6 +3,21 @@
 The newest version comes first. `npm run check` fails if the version at the top here is not the one in
 `package.json`, so the two are changed together.
 
+## 0.8.1 — 2026-11-11
+
+A fuller combat kit (roadmap R2.5, R2.6, R2.8, R8.3).
+
+- Spears and hammers in every tier (wood to jade). A spear reaches 60% further in a narrow thrust; a hammer hits
+  hardest and knocks furthest but recovers slowly. Spear: a head on two sticks, diagonal; hammer: a head of three over
+  two, on a stick.
+- Throwing Knives (an iron ingot over a stick makes six): right click throws one. The Boomerang (three planks): right
+  click throws it and it flies back to your hand.
+- Arrows by kind: iron (+50%), ember (+30%, sets the target alight) and jade (double damage), each made from arrows and
+  the material. The bow shoots the best arrows you carry, and the HUD counts them while it is held.
+- Dash Boots (leather and feathers): double-tap a direction to dash, with a moment no bite can land.
+- Dying no longer scatters everything: half the coins you carry drop where you fell, and you keep the rest. The death
+  screen says how many.
+
 ## 0.8.0 — 2026-11-11
 
 Places worth finding (roadmap R4.3, R4.4, R4.5, R3.1).

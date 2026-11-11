@@ -77,12 +77,13 @@ async function collect() {
   for (let i = 0; i < 40; i++) {
     const left = await near();
     if (!left.length) return;
-    await game((d) => { const n = window.__game; Object.assign(n.player.body, { x: d[0], y: d[1], z: d[2] + 0.4, vx: 0, vy: 0, vz: 0 }); }, left[0]);
+    await game((d) => { const n = window.__game; Object.assign(n.player.body, { x: d[0], y: d[1], z: d[2], vx: 0, vy: 0, vz: 0 }); }, left[0]);
     // Real frames as well as time: on a slow machine the game runs fewer steps per second.
     await page.waitForTimeout(250);
     await frames(10);
   }
-  throw new Error(`${(await near()).length} drops not picked up`);
+  const state = await game(() => { const n = window.__game, b = n.player.body; return { player: [b.x, b.y, b.z].map((v) => +v.toFixed(2)), drops: n.play.drops.list.map((d) => [n.blocks.stateName(d.stack.state), d.stack.count, +d.body.x.toFixed(2), +d.body.y.toFixed(2), +d.body.z.toFixed(2), +d.wait.toFixed(2)]), free: n.play.inventory.slots.filter((s) => !s).length }; });
+  throw new Error(`${(await near()).length} drops not picked up: ${JSON.stringify(state)}`);
 }
 
 /** Selects the hotbar slot holding `key`, moving it to the hotbar first if needed. */

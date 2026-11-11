@@ -351,8 +351,16 @@ function update(dt: number): void {
   player.speedBonus = bonus.speed;
   player.airJumps = bonus.jumps;
   player.glide = bonus.featherfall;
+  player.dash = bonus.dash;
   player.update(dt, active ? input : idleInput, boxAt, waterAt, climbAt, currentAt);
   if (active) play.update(dt, input, player);
+  if (player.dashed) {
+    // A dash: a puff of dust, and a moment no bite can land.
+    player.dashed = false;
+    lastBite = performance.now();
+    play.particles.burst(BLOCKS.state('dirt'), player.body.x - 0.5, player.body.y, player.body.z - 0.5, 8);
+    sounds.play('place', 0.3);
+  }
   if (player.airJumped) {
     player.airJumped = false;
     play.particles.burst(BLOCKS.state('snow'), player.body.x - 0.5, player.body.y - 0.6, player.body.z - 0.5, 10);
@@ -796,7 +804,7 @@ const loop = new FixedStepLoop(1 / 60, 0.25, timedUpdate, (alpha, frameDt) => {
     }
   }
   const burning=creatures.list.filter(c=>c.burning>0).map(c=>({kind:'fire' as const,x:c.body.x,y:c.body.y+c.body.height*.45,z:c.body.z,size:c.body.height*.7}));
-  const bolts=play.projectiles.list.filter(p=>p.magic).map(p=>({kind:'sparks' as const,x:p.x,y:p.y,z:p.z,size:.5}));
+  const bolts=play.projectiles.list.filter(p=>p.magic&&!p.item).map(p=>({kind:'sparks' as const,x:p.x,y:p.y,z:p.z,size:.5}));
   effects.update(frameDt,now/1000,[...burning,...emitters,...bolts]);
   decorationMeshes.update(play.decorations,world,renderer.camera,lightAt);
   for (const d of creatures.dying) if (!d.puffed) {
@@ -806,7 +814,7 @@ const loop = new FixedStepLoop(1 / 60, 0.25, timedUpdate, (alpha, frameDt) => {
   creatureMeshes.update(creatures.list, (c) => lightAt(c.body.x, c.body.y + c.body.height * 0.6, c.body.z), now / 1000, creatures.dying);
   // Arrows in flight and bits of broken blocks are drawn like dropped items, smaller.
   const flying = [
-    ...play.projectiles.list.map((p) => ({ state: p.magic ? MAGIC_BOLT : ARROW, x: p.x, y: p.y, z: p.z, size: p.magic ? 0.3 : 0.4 })),
+    ...play.projectiles.list.map((p) => ({ state: p.item ? BLOCKS.state(p.item) : p.magic ? MAGIC_BOLT : ARROW, x: p.x, y: p.y, z: p.z, size: p.magic ? 0.3 : 0.4 })),
     ...play.particles.list.map((p) => ({ state: p.state, x: p.x, y: p.y, z: p.z, size: 0.15 })),
   ].map((f) => ({ stack: { state: f.state, count: 1 }, age: 0, wait: 0,
     body: { x: f.x, y: f.y, z: f.z, vx: 0, vy: 0, vz: 0, halfWidth: f.size / 2, height: f.size, onGround: false } }));

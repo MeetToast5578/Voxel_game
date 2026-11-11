@@ -443,7 +443,17 @@ export const AXE_ARC_RAD = 0.7;
 export const CRIT_CHANCE = 0.08;
 export const CRIT_FACTOR = 1.5;
 /** Knockback of a hit, as a factor of the base, by weapon kind. */
-export const KNOCKBACK_FACTOR: Readonly<Record<string, number>> = { sword: 1.3, axe: 1.7, hand: 0.7 };
+export const KNOCKBACK_FACTOR: Readonly<Record<string, number>> = { sword: 1.3, axe: 1.7, hand: 0.7, spear: 0.8, hammer: 2.6 };
+/** Spears reach this many times further than other weapons and thrust in a narrow cone (radians); hammers hit hard but
+ * recover this many times slower. Base damage of each (tiers add TIER_DAMAGE). */
+export const SPEAR_REACH = 1.6, SPEAR_ARC_RAD = 0.22, HAMMER_SLOW = 1.7, SPEAR_DAMAGE = 3, HAMMER_DAMAGE = 7;
+/** Throwing knives and the boomerang: damage, speed (m/s), and seconds before the boomerang turns back. */
+export const KNIFE_DAMAGE = 5, KNIFE_SPEED_M_S = 24, BOOMERANG_DAMAGE = 5, BOOMERANG_SPEED_M_S = 18, BOOMERANG_OUT_S = 0.45;
+/** Arrows by kind: damage factor; ember arrows set what they hit burning for this long (s). */
+export const ARROW_KINDS: Readonly<Record<string, number>> = { arrow: 1, iron_arrow: 1.5, ember_arrow: 1.3, jade_arrow: 2 };
+export const EMBER_BURN_S = 4;
+/** Dash Boots: a double tap of a direction within DASH_TAP_S dashes at DASH_SPEED_M_S, once per DASH_COOLDOWN_S. */
+export const DASH_SPEED_M_S = 15, DASH_TAP_S = 0.25, DASH_COOLDOWN_S = 1.2;
 /** Mana: the most there is, how fast it refills, and the rest after casting before it starts to. */
 export const MAX_MANA = 20;
 export const MANA_PER_S = 4;

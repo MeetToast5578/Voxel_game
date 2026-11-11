@@ -1,4 +1,4 @@
-import { EVENTS_FROM_DAY, RED_NIGHT_CHANCE, SLIME_RAIN_CHANCE, SLIME_RAIN_EVERY_S, SLIME_RAIN_KILLS, HOOK_RANGE_M, TIER_DAMAGE, ARMOUR_CAP, ARMOUR_PER_POINT, MAX_HEALTH, ACCESSORY_SLOTS, AXE_ARC_RAD, CRIT_CHANCE, CRIT_FACTOR, KNOCKBACK_FACTOR, SWORD_ARC_RAD, LIGHTNING_DAMAGE, LIGHTNING_REACH_M, FISH_MAX_S, FISH_MIN_S, BLOCK_SIZE_M, ARROW_DAMAGE, ARROW_SPEED_M_S, BOLT_SPEED_M_S, BOW_DRAW_S, AXE_DAMAGE, BUILD_CELLS_PER_TICK, CAMPFIRE_COOK_S, CAMPFIRE_SLOTS, DIFFICULTY, PLAYER_ATTACK_COOLDOWN_S, SWORD_DAMAGE, type Difficulty, BUILD_MAX_M, DROP_PICKUP_DELAY_S, DROP_THROW_M_S, HAND_DAMAGE, REACH_M, REPEAT_S, TOOL_DAMAGE, UNDO_STEPS, cells, toCells } from '../config';
+import { ARROW_KINDS, BOOMERANG_DAMAGE, BOOMERANG_OUT_S, BOOMERANG_SPEED_M_S, EMBER_BURN_S, HAMMER_DAMAGE, HAMMER_SLOW, KNIFE_DAMAGE, KNIFE_SPEED_M_S, SPEAR_ARC_RAD, SPEAR_DAMAGE, SPEAR_REACH, EVENTS_FROM_DAY, RED_NIGHT_CHANCE, SLIME_RAIN_CHANCE, SLIME_RAIN_EVERY_S, SLIME_RAIN_KILLS, HOOK_RANGE_M, TIER_DAMAGE, ARMOUR_CAP, ARMOUR_PER_POINT, MAX_HEALTH, ACCESSORY_SLOTS, AXE_ARC_RAD, CRIT_CHANCE, CRIT_FACTOR, KNOCKBACK_FACTOR, SWORD_ARC_RAD, LIGHTNING_DAMAGE, LIGHTNING_REACH_M, FISH_MAX_S, FISH_MIN_S, BLOCK_SIZE_M, ARROW_DAMAGE, ARROW_SPEED_M_S, BOLT_SPEED_M_S, BOW_DRAW_S, AXE_DAMAGE, BUILD_CELLS_PER_TICK, CAMPFIRE_COOK_S, CAMPFIRE_SLOTS, DIFFICULTY, PLAYER_ATTACK_COOLDOWN_S, SWORD_DAMAGE, type Difficulty, BUILD_MAX_M, DROP_PICKUP_DELAY_S, DROP_THROW_M_S, HAND_DAMAGE, REACH_M, REPEAT_S, TOOL_DAMAGE, UNDO_STEPS, cells, toCells } from '../config';
 import { bagLoot, lootOf, type Creature, type Creatures } from '../creatures/creatures';
 import { AIR, BLOCKS, POTIONS, SET_BONUSES, SOLID, type BlockType } from '../engine/blocks';
 import type { World } from '../engine/world';
@@ -156,8 +156,8 @@ export class Play {
   }
 
   /** What the worn accessories (and a full armour set, and status effects) add up to. */
-  get bonus(): { speed: number; jumps: number; featherfall: boolean; protection: number; breath: number; fireproof: boolean; regen: number; crit: number; thorns: number } {
-    const b = { speed: 0, jumps: 0, featherfall: false, protection: 0, breath: 1, fireproof: false, regen: 1, crit: 0, thorns: 0 };
+  get bonus(): { speed: number; jumps: number; featherfall: boolean; protection: number; breath: number; fireproof: boolean; regen: number; crit: number; thorns: number; dash: boolean } {
+    const b = { speed: 0, jumps: 0, featherfall: false, protection: 0, breath: 1, fireproof: false, regen: 1, crit: 0, thorns: 0, dash: false };
     const set = this.armourSet && SET_BONUSES[this.armourSet];
     if (set) {
       b.speed += set.speed ?? 0;
@@ -171,6 +171,7 @@ export class Play {
       b.speed += a.speed ?? 0;
       b.jumps += a.jumps ?? 0;
       b.featherfall ||= a.featherfall ?? false;
+      b.dash ||= a.dash ?? false;
       b.protection += a.protection ?? 0;
       b.breath *= a.breath ?? 1;
       b.fireproof ||= a.fireproof ?? false;
@@ -344,13 +345,21 @@ export class Play {
     this.version++;
   }
 
-  /** Scatters the whole inventory where the player died. */
+  /** Coins dropped at the last death, for the death screen. */
+  lostCoins = 0;
+
+  /** On death, half the coins carried drop where the player fell; everything else is kept. */
   dropAll(): void {
-    const [x, y, z] = this.feet;
-    for (const s of [...this.inventory.slots, ...this.armour, ...this.accessories]) if (s) this.drops.spawn(s, x, y + 0.5, z, (Math.random() - 0.5) * 6, 4, (Math.random() - 0.5) * 6, DROP_PICKUP_DELAY_S);
-    this.inventory.clear();
-    this.armour.fill(null);
-    this.accessories.fill(null);
+    const [x, y, z] = this.feet, coin = BLOCKS.state('trade_coin');
+    let left = (this.lostCoins = Math.floor(this.inventory.count(coin) / 2));
+    for (let i = this.inventory.slots.length - 1; i >= 0 && left > 0; i--) {
+      const s = this.inventory.slots[i];
+      if (s?.state !== coin) continue;
+      const take = Math.min(left, s.count);
+      left -= take;
+      if ((s.count -= take) <= 0) this.inventory.slots[i] = null;
+    }
+    if (this.lostCoins) this.drops.spawn({ state: coin, count: this.lostCoins }, x, y + 0.5, z, 0, 4, 0, DROP_PICKUP_DELAY_S);
     this.version++;
   }
 
@@ -420,7 +429,8 @@ export class Play {
    */
   private attack(ox: number, oy: number, oz: number, dx: number, dy: number, dz: number): boolean {
     const held = this.held, tool = held ? BLOCKS.type(held.state).tool : undefined;
-    const arc = tool?.kind === 'sword' ? SWORD_ARC_RAD : tool?.kind === 'axe' ? AXE_ARC_RAD : 0, reach = toCells(REACH_M);
+    const kind = tool?.kind, arc = kind === 'sword' ? SWORD_ARC_RAD : kind === 'axe' || kind === 'hammer' ? AXE_ARC_RAD : kind === 'spear' ? SPEAR_ARC_RAD : 0;
+    const reach = toCells(REACH_M) * (kind === 'spear' ? SPEAR_REACH : 1);
     // Only a solid block shields creatures behind it: a swing goes through grass and flowers.
     const t = this.target, wall = t && BLOCKS.type(this.world.get(t.x, t.y, t.z)).solid ? t.distance + 0.5 : Infinity;
     let victims: Creature[];
@@ -444,11 +454,11 @@ export class Play {
     }
     if (!victims.length) return false;
     // Quick swings land weaker blows: the hit's strength recovers over the cooldown.
-    const strength = Math.max(0.2, Math.min(1, this.sinceAttack / PLAYER_ATTACK_COOLDOWN_S));
+    const strength = Math.max(0.2, Math.min(1, this.sinceAttack / (PLAYER_ATTACK_COOLDOWN_S * (kind === 'hammer' ? HAMMER_SLOW : 1))));
     this.sinceAttack = 0;
     const crit = Math.random() < CRIT_CHANCE + this.bonus.crit, damage = strength * weaponDamage(held) * (crit ? CRIT_FACTOR : 1);
     const knock = (KNOCKBACK_FACTOR[tool?.kind ?? 'hand'] ?? 1) * (0.5 + strength * 0.5);
-    if (arc) this.slashes++;
+    if (arc && kind !== 'spear') this.slashes++;
     for (const c of victims) {
       const top = c.body.y + c.body.height;
       if (this.visualEvents.length < 64) this.visualEvents.push({ kind: 'sparks', x: c.body.x, y: c.body.y + c.body.height * .65, z: c.body.z });
@@ -781,13 +791,41 @@ export class Play {
     const strength = Math.min(1, this.drawS / BOW_DRAW_S);
     this.drawS = 0;
     if (strength < 0.15) return;
-    const arrows = this.inventory.slots.findIndex((s) => s?.state === ARROW);
+    // The best arrows carried go first.
+    const arrows = this.arrowSlot();
+    const kind = arrows >= 0 ? BLOCKS.type(this.inventory.slots[arrows]!.state).key : 'arrow';
     if (this.mode === 'survival') {
       if (arrows < 0) return;
       if (--this.inventory.slots[arrows]!.count <= 0) this.inventory.slots[arrows] = null;
     }
     const [dx, dy, dz] = player.direction(), b = player.body;
-    this.projectiles.shoot(b.x + dx * 0.6, player.eyeY - 0.2, b.z + dz * 0.6, dx, dy, dz, toCells(ARROW_SPEED_M_S) * strength, ARROW_DAMAGE * strength, true);
+    this.projectiles.shoot(b.x + dx * 0.6, player.eyeY - 0.2, b.z + dz * 0.6, dx, dy, dz, toCells(ARROW_SPEED_M_S) * strength, ARROW_DAMAGE * strength * (ARROW_KINDS[kind] ?? 1), true);
+    this.projectiles.list.at(-1)!.item = kind;
+    this.version++;
+  }
+
+  /** The inventory slot of the best arrows carried, or -1. */
+  arrowSlot(): number {
+    let best = -1, bestDamage = 0;
+    this.inventory.slots.forEach((s, i) => {
+      const d = s ? ARROW_KINDS[BLOCKS.type(s.state).key] ?? 0 : 0;
+      if (d > bestDamage) { best = i; bestDamage = d; }
+    });
+    return best;
+  }
+
+  /** The boomerang is out: it cannot be thrown again until it comes back. */
+  boomerangOut = false;
+  /** Right click with throwing knives or a boomerang: they fly where the player looks. */
+  private throwWeapon(player: Player, key: string): void {
+    if (key === 'boomerang' && this.boomerangOut) return;
+    const [dx, dy, dz] = player.direction(), b = player.body, knife = key === 'throwing_knife';
+    this.projectiles.shoot(b.x + dx * 0.6, player.eyeY - 0.2, b.z + dz * 0.6, dx, dy, dz, toCells(knife ? KNIFE_SPEED_M_S : BOOMERANG_SPEED_M_S), knife ? KNIFE_DAMAGE : BOOMERANG_DAMAGE, true);
+    const p = this.projectiles.list.at(-1)!;
+    p.item = key;
+    if (knife) { if (this.mode === 'survival') this.inventory.useHeld(); }
+    else { p.magic = true; this.boomerangOut = true; }
+    this.swings++;
     this.version++;
   }
 
@@ -801,13 +839,21 @@ export class Play {
   /** Flies every arrow and bolt; hits hurt creatures or the player, and the player's arrows that miss can be picked up. */
   tickProjectiles(dt: number, boxAt: BoxAt, player: Player): void {
     const creatures = this.creatures;
+    // A boomerang turns back after a moment and flies home; caught when it reaches the player.
+    for (const p of [...this.projectiles.list]) {
+      if (p.item !== 'boomerang' || p.age < BOOMERANG_OUT_S) continue;
+      const tx = player.body.x - p.x, ty = player.eyeY - 0.3 - p.y, tz = player.body.z - p.z, d = Math.hypot(tx, ty, tz), v = toCells(BOOMERANG_SPEED_M_S);
+      if (d < 1.2) { this.projectiles.list.splice(this.projectiles.list.indexOf(p), 1); this.boomerangOut = false; continue; }
+      Object.assign(p, { vx: (tx / d) * v, vy: (ty / d) * v, vz: (tz / d) * v, age: Math.min(p.age, 2) });
+    }
+    if (this.boomerangOut && !this.projectiles.list.some((p) => p.item === 'boomerang')) this.boomerangOut = false;
     const hits = this.projectiles.update(dt, boxAt, (fromPlayer) => (fromPlayer ? creatures?.list.map((c) => c.body) ?? []
       : this.mode === 'survival' && !this.survival.dead ? [player.body] : []));
     for (const h of hits) {
       const p = h.p;
       if (p.magic && this.visualEvents.length < 64) this.visualEvents.push({ kind: 'sparks', x: p.x, y: p.y, z: p.z });
       if (h.kind === 'ground') {
-        if (p.fromPlayer && !p.magic && this.mode === 'survival') this.drops.spawn({ state: ARROW, count: 1 }, p.x, p.y, p.z);
+        if (p.fromPlayer && !p.magic && this.mode === 'survival') this.drops.spawn({ state: p.item ? BLOCKS.state(p.item) : ARROW, count: 1 }, p.x, p.y, p.z);
         continue;
       }
       if (!p.fromPlayer) {
@@ -817,6 +863,7 @@ export class Play {
       }
       const c = creatures?.list.find((k) => k.body === h.body);
       if (c && this.hits.length < 32) this.hits.push({ x: c.body.x, y: c.body.y + c.body.height, z: c.body.z, amount: Math.max(1, Math.round(p.damage)), crit: false, age: 0 });
+      if (c && p.item === 'ember_arrow') c.burning = Math.max(c.burning, EMBER_BURN_S);
       if (c && creatures!.damage(c, p.damage, p.x - p.vx, p.z - p.vz) && this.mode === 'survival') {
         this.defeated(c);
       }
@@ -1069,6 +1116,10 @@ export class Play {
     const heldType = BLOCKS.type(held.state);
     if (heldType.armour) {
       this.wear(held);
+      return;
+    }
+    if (heldType.key === 'throwing_knife' || heldType.key === 'boomerang') {
+      this.throwWeapon(player, heldType.key);
       return;
     }
     if (heldType.key === 'grappling_hook') {
@@ -1588,5 +1639,6 @@ export const armourFactor = (points: number): number => 1 - Math.min(ARMOUR_CAP,
 export function weaponDamage(held: ItemStack | null): number {
   const tool = held ? BLOCKS.type(held.state).tool : undefined;
   if (!tool) return HAND_DAMAGE;
-  return (tool.kind === 'sword' ? SWORD_DAMAGE : tool.kind === 'axe' ? AXE_DAMAGE : TOOL_DAMAGE) + (TIER_DAMAGE[tool.tier] ?? tool.tier) + (held?.upgrade ?? 0);
+  const base = tool.kind === 'sword' ? SWORD_DAMAGE : tool.kind === 'axe' ? AXE_DAMAGE : tool.kind === 'spear' ? SPEAR_DAMAGE : tool.kind === 'hammer' ? HAMMER_DAMAGE : TOOL_DAMAGE;
+  return base + (TIER_DAMAGE[tool.tier] ?? tool.tier) + (held?.upgrade ?? 0);
 }

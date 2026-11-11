@@ -330,6 +330,123 @@ const BAG = [
 for (const [key, B, b, t] of [['king_slime_bag', '#4a8ae0', '#2a5ab8', '#e8b84a'], ['gloom_matriarch_bag', '#8a70b0', '#5a4880', '#e8ff90'],
   ['warden_bag', '#c04a20', '#7a2a10', '#ffb050']] as const) (ICONS as Record<string, Icon>)[key] = [{ B, b, t, ...GOLD }, BAG];
 
+/** Spears and hammers in every tier: one picture each, its head in the tier's colours (h, H shine, d shade). */
+const SPEAR = [
+  '..............Hh',
+  '.............Hhd',
+  '............Hhd.',
+  '...........hhd..',
+  '..........dd....',
+  '.........ww.....',
+  '........ww......',
+  '.......ww.......',
+  '......ww........',
+  '.....ww.........',
+  '....ww..........',
+  '...ww...........',
+  '..ww............',
+  '.ww.............',
+  'ww..............',
+  '................'];
+const HAMMER = [
+  '................',
+  '.......HHh......',
+  '......HHhhh.....',
+  '.....HHhhhhd....',
+  '....Hhhhhhhdd...',
+  '.....hhhwhhdd...',
+  '......hdwhddd...',
+  '.......wwd......',
+  '......ww........',
+  '.....ww.........',
+  '....ww..........',
+  '...ww...........',
+  '..ww............',
+  '.ww.............',
+  '................',
+  '................'];
+const TIER_COLOURS: Readonly<Record<string, [string, string, string]>> = {
+  wooden: ['#a07040', '#c89a60', '#6a4a2a'], stone: ['#8a8a8a', '#c0c0c0', '#5a5a5a'], iron: ['#c8ccd2', '#f4f6f8', '#7a808a'],
+  diamond: ['#4ae0e0', '#c0fffa', '#1a8a90'], jade: ['#3ac070', '#a8f4c8', '#1a7040'],
+};
+for (const [tier, [h, H, d]] of Object.entries(TIER_COLOURS)) {
+  (ICONS as Record<string, Icon>)[`${tier}_spear`] = [{ h, H, d, w: '#8a6040' }, SPEAR];
+  (ICONS as Record<string, Icon>)[`${tier}_hammer`] = [{ h, H, d, w: '#8a6040' }, HAMMER];
+}
+/** Arrows by kind: the head's colours over the same shaft and fletching. */
+const ARROW_ROWS = [
+  '................',
+  '...........hHh..',
+  '..........hHhh..',
+  '.........dhhd...',
+  '........ww.d....',
+  '.......ww.......',
+  '......ww........',
+  '.....ww.........',
+  '....ww..........',
+  '..fww...........',
+  '.ffw............',
+  'fff.............',
+  '.f..............',
+  '................',
+  '................',
+  '................'];
+for (const [key, [h, H, d]] of [['iron_arrow', ['#c8ccd2', '#f4f6f8', '#7a808a']], ['ember_arrow', ['#f06020', '#ffd090', '#a02a10']], ['jade_arrow', ['#3ac070', '#a8f4c8', '#1a7040']]] as const)
+  (ICONS as Record<string, Icon>)[key] = [{ h, H, d, w: '#8a6040', f: '#f0ece0' }, ARROW_ROWS];
+Object.assign(ICONS as Record<string, Icon>, {
+  throwing_knife: [{ i: '#c8ccd2', I: '#f4f6f8', d: '#7a808a', w: '#6a4428', r: '#a03030' }, [
+    '................',
+    '...........II...',
+    '..........Iid...',
+    '.........Iid....',
+    '........Iid.....',
+    '.......Iid......',
+    '......Iid.......',
+    '.....rdd........',
+    '....rww.........',
+    '...rww..........',
+    '...ww...........',
+    '..ww............',
+    '................',
+    '................',
+    '................',
+    '................']],
+  boomerang: [{ w: '#b07a40', W: '#d8a868', d: '#6a4422', r: '#c03838' }, [
+    '................',
+    '..WWw...........',
+    '..Wwww..........',
+    '...wwww.........',
+    '....wwwr........',
+    '.....wwrw.......',
+    '......wwww......',
+    '.......wwwwd....',
+    '......wwwwwwd...',
+    '.....rwwdd.dd...',
+    '....wwwd........',
+    '...wwwd.........',
+    '..wwdd..........',
+    '..ddd...........',
+    '................',
+    '................']],
+  dash_boots: [{ b: '#7a4a2a', B: '#a87048', d: '#4a2a18', f: '#f0ece0', F: '#b8c8d8' }, [
+    '................',
+    '.........ff.....',
+    '........fFFf....',
+    '....bbb.fFf.....',
+    '....bBb..f......',
+    '....bBb.........',
+    '....bBb.........',
+    '....bBbbbbb.....',
+    '...bbBBbbbbbb...',
+    '...bbbbbbbbbbb..',
+    '...ddddddddddd..',
+    '................',
+    '................',
+    '................',
+    '................',
+    '................']],
+});
+
 /** Whole-face tiles for the alchemy table: a dark slate top with bottles and a bowl, plank sides with a drawer. */
 const WOOD = { w: '#9a6a3c', W: '#b88452', d: '#6a4424' };
 (ICONS as Record<string, Icon>).alchemy_table_top = [{ ...WOOD, s: '#3c4450', S: '#4c5664', r: '#e0303c', b: '#3060e0', n: '#60c040', g: '#cfe6f0', k: '#8a8a8a' }, [

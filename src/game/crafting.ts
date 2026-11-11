@@ -28,7 +28,8 @@ const ROCK = ['cobblestone', 'granite', 'diorite', 'andesite', 'limestone', 'sla
 const TOOL_HEADS = { wooden: ['planks'], stone: ROCK, iron: ['iron_ingot'], diamond: ['diamond'], jade: ['jade'] } as const;
 const ARMOUR_PATTERNS = [['MMM', 'M M'], ['M M', 'MMM', 'MMM'], ['MMM', 'M M', 'M M'], ['M M', 'M M']] as const;
 const ARMOUR_FROM = { leather: 'leather', iron: 'iron_ingot', diamond: 'diamond', jade: 'jade' } as const;
-const TOOL_PATTERNS = { pickaxe: ['MMM', ' S ', ' S '], axe: ['MM', 'MS', ' S'], shovel: ['M', 'S', 'S'], sword: ['M', 'M', 'S'], hoe: ['MM', ' S', ' S'] } as const;
+const TOOL_PATTERNS = { pickaxe: ['MMM', ' S ', ' S '], axe: ['MM', 'MS', ' S'], shovel: ['M', 'S', 'S'], sword: ['M', 'M', 'S'], hoe: ['MM', ' S', ' S'],
+  spear: ['  M', ' S ', 'S  '], hammer: ['MMM', 'MSM', ' S '] } as const;
 
 export const RECIPES: readonly Recipe[] = [
   {pattern:['PPP','PPP',' S '],key:{P:['planks'],S:['stick']},result:['sign',3]},
@@ -47,6 +48,12 @@ export const RECIPES: readonly Recipe[] = [
   { pattern: ['G G', 'PPP'], key: { G: ['glass_bottle'], P: ['planks'] }, result: ['alchemy_table', 1] },
   { pattern: ['G G', ' G '], key: { G: ['glass'] }, result: ['glass_bottle', 3] },
   { pattern: [' II', ' SI', 'S  '], key: { I: ['iron_ingot'], S: ['string'] }, result: ['grappling_hook', 1] },
+  { pattern: ['I', 'S'], key: { I: ['iron_ingot'], S: ['stick'] }, result: ['throwing_knife', 6] },
+  { pattern: ['PP', ' P'], key: { P: ['planks'] }, result: ['boomerang', 1] },
+  { pattern: ['M', 'A'], key: { M: ['iron_ingot'], A: ['arrow'] }, result: ['iron_arrow', 4] },
+  { pattern: ['M', 'A'], key: { M: ['ember_crystal'], A: ['arrow'] }, result: ['ember_arrow', 8] },
+  { pattern: ['M', 'A'], key: { M: ['jade'], A: ['arrow'] }, result: ['jade_arrow', 8] },
+  { pattern: ['L L', 'F F'], key: { L: ['leather'], F: ['feather'] }, result: ['dash_boots', 1] },
   ...BREWS.map(([potion, a, b]) => ({ pattern: ['ABG'], key: { A: a, B: b, G: ['glass_bottle'] }, result: [potion, 1] as const, station: 'alchemy' as const })),
   { pattern: ['PPP', 'P P', 'PPP'], key: { P: ['planks'] }, result: ['chest', 1] },
   { pattern: ['CCC', 'C C', 'CCC'], key: { C: ROCK }, result: ['furnace', 1] },

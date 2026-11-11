@@ -5,7 +5,7 @@
 
 export type RenderLayer = 'none' | 'opaque' | 'cutout' | 'water' | 'ice';
 export type BlockShape = 'cube' | 'cross' | 'layer' | 'slab' | 'boxes';
-export type ToolKind = 'pickaxe' | 'axe' | 'shovel' | 'sword' | 'hoe';
+export type ToolKind = 'pickaxe' | 'axe' | 'shovel' | 'sword' | 'hoe' | 'spear' | 'hammer';
 /** A box inside a cell, in sixteenths: [x0, y0, z0, x1, y1, z1]. */
 export type Box = readonly [number, number, number, number, number, number];
 
@@ -220,7 +220,9 @@ export interface Accessory {
   readonly jumps?: number;
   /** No fall damage, and holding jump while falling glides. */
   readonly featherfall?: boolean;
-  /** Armour points (4% of harm each). */
+  /** A double tap of a direction dashes. */
+  readonly dash?: boolean;
+  /** Armour points (3% of harm each). */
   readonly protection?: number;
   /** Breath lasts this many times longer. */
   readonly breath?: number;
@@ -248,6 +250,7 @@ const ACCESSORIES: readonly [string, string, Accessory][] = [
   ['gill_pendant', 'Gill Pendant', { effect: 'Breath lasts four times longer', breath: 4 }],
   ['ember_ring', 'Ember Ring', { effect: 'Lava and fire do not burn you', fireproof: true }],
   ['heart_locket', 'Heart Locket', { effect: 'Health returns twice as fast', regen: 2 }],
+  ['dash_boots', 'Dash Boots', { effect: 'Double-tap a direction to dash', dash: true }],
   ['scarab_charm', 'Scarab Charm', { effect: '10% faster; stops 6% more harm', speed: 0.1, protection: 2 }],
   ['jungle_idol', 'Jungle Idol', { effect: 'Health returns 50% faster; breath lasts twice as long', regen: 1.5, breath: 2 }],
 ];
@@ -331,6 +334,8 @@ const HIGH_HALF: Record<number, Box> = { 0: [8, 8, 0, 16, 16, 16], 1: [0, 8, 0, 
 const STAIR_MATERIALS = ['planks', 'cobblestone', 'stone', 'brick', 'sandstone'];
 export const TOOL_TIERS = ['wooden', 'stone', 'iron', 'diamond', 'jade'] as const;
 export const TOOL_KINDS: readonly ToolKind[] = ['pickaxe', 'axe', 'shovel', 'sword', 'hoe'];
+/** Weapons made in every tier, beside the tools: a long spear and a heavy hammer. */
+export const WEAPON_KINDS: readonly ToolKind[] = ['spear', 'hammer'];
 const DURABILITY = [60, 132, 251, 1561, 2400];
 /** Armour materials and pieces: protection per piece (head, chest, legs, feet), warmth per piece, and hits it takes. */
 export const ARMOUR_PIECES = ['helmet', 'chestplate', 'leggings', 'boots'] as const;
@@ -454,7 +459,10 @@ function gameplay(): BlockSpec[] {
     item('baked_potato', 'Baked potato', { food: 5 }),
     item('raw_meat', 'Raw meat', { food: 2, smeltsTo: 'cooked_meat' }),
     item('cooked_meat', 'Cooked meat', { food: 6 }),
-    ...TOOL_TIERS.flatMap((tier, t) => TOOL_KINDS.map((kind) => item(`${tier}_${kind}`, `${tier[0]!.toUpperCase()}${tier.slice(1)} ${kind}`, {
+    item('throwing_knife', 'Throwing Knife', { maxStack: 32 }),
+    item('boomerang', 'Boomerang', { maxStack: 1 }),
+    ...['iron_arrow', 'ember_arrow', 'jade_arrow'].map((k) => item(k, k === 'iron_arrow' ? 'Iron arrow' : k === 'ember_arrow' ? 'Ember arrow' : 'Jade arrow')),
+    ...TOOL_TIERS.flatMap((tier, t) => [...TOOL_KINDS, ...WEAPON_KINDS].map((kind) => item(`${tier}_${kind}`, `${tier[0]!.toUpperCase()}${tier.slice(1)} ${kind}`, {
       maxStack: 1, tool: { kind, tier: t, durability: DURABILITY[t]! }, fuel: tier === 'wooden' ? 10 : undefined,
     }))),
   ];

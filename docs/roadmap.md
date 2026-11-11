@@ -79,7 +79,7 @@ Every task also passes `npm run check`, `npm run benchmark -- --assert` and `npm
   Ingredients are flowers, mushrooms, gel, ember dust and fish. Drinking one gives a short sickness so potions cannot
   be chained. Covers idea 14 "Brewing".
   **Done when:** each potion is craftable at the table and its effect shows in a test.
-- [ ] **R2.5 More weapon kinds (M).** Each weapon kind plays differently:
+- [x] **R2.5 More weapon kinds (M).** Done in 0.8.1 (the hammer does not break 3×3 yet). Each weapon kind plays differently:
   - a spear: long reach, a narrow thrust;
   - a hammer: slow, big knockback, and it breaks blocks in a 3×3 area;
   - throwing knives: thrown, and they stack;
@@ -87,14 +87,14 @@ Every task also passes `npm run check`, `npm run benchmark -- --assert` and `npm
 
   The same material tiers apply to all of them.
   **Done when:** each is craftable and its attack shape is tested.
-- [ ] **R2.6 Better bow (S).** Hold to draw, release to shoot. A drawn shot flies further and hits harder. Arrow types:
+- [x] **R2.6 Better bow (S).** Done in 0.8.1 (the draw already existed). Hold to draw, release to shoot. A drawn shot flies further and hits harder. Arrow types:
   flint, iron, ember (sets things alight), jade (pierces). An ammo count shows next to the hotbar.
   **Done when:** a test shows a full draw fly further than a tap.
 - [ ] **R2.7 Hit feel (S, owner to judge).** Hit-stop (a 40 ms freeze on a heavy hit), a small camera kick, a hurt
   sound for each species, and a red edge on the screen when the player is low on health. Each one can be switched off in
   the settings.
   **Done when:** the owner signs it off in play.
-- [ ] **R2.8 Dodge (S).** The Dash Boots accessory gives a double-tap dash with brief invulnerability and a cooldown.
+- [x] **R2.8 Dodge (S).** Done in 0.8.1. The Dash Boots accessory gives a double-tap dash with brief invulnerability and a cooldown.
   **Done when:** a test dashes through an attack unharmed.
 
 ## R3. Bosses and events
@@ -291,7 +291,7 @@ Every task also passes `npm run check`, `npm run benchmark -- --assert` and `npm
   - an option for half-rate shadows or effects.
 
   **Done when:** 60 fps on the owner's machine in a normal scene.
-- [ ] **R8.3 Death and respawn (S).** On death:
+- [x] **R8.3 Death and respawn (S).** Done in 0.8.1 with the default: half the coins (no respawn timer). On death:
   - drop half the coins where you died (**Decide**: coins only, or the whole inventory as now);
   - show a death screen with the cause;
   - start a respawn timer.

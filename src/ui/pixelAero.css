@@ -93,3 +93,4 @@ h3 small{font-weight:400;color:var(--muted);letter-spacing:0}.section-copy,.help
 .bestiary li{display:flex;flex-direction:column;gap:3px;padding:9px 11px;border:1px solid var(--line);border-radius:4px;background:#0f1d20}
 .bestiary li.hostile b{color:#ffb8a0}.bestiary li.unknown{opacity:.55}.bestiary small{color:var(--muted);font-size:11px;line-height:1.5}
 .set-bonus{font-size:11px;color:var(--accent);text-align:center;margin:4px 0 0;line-height:1.4}
+.ammo{font-size:12px;color:#e8dcc0;padding:0 4px}

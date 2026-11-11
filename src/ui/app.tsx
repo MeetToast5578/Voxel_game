@@ -1,6 +1,6 @@
 import { render, type ComponentChildren } from 'preact';
 import { useEffect, useRef, useState } from 'preact/hooks';
-import { ARMOUR_PER_POINT, BLOCK_SIZE_M, BODY_COLD_C, BODY_HOT_C, MAX_HUNGER, MAX_MANA, BREATH_S, MAX_VIEW_CHUNKS, MIN_VIEW_CHUNKS } from '../config';
+import { ARMOUR_PER_POINT, ARROW_KINDS, BLOCK_SIZE_M, BODY_COLD_C, BODY_HOT_C, MAX_HUNGER, MAX_MANA, BREATH_S, MAX_VIEW_CHUNKS, MIN_VIEW_CHUNKS } from '../config';
 import { BLOCKS, SET_BONUSES } from '../engine/blocks';
 import { clickSlot, type ItemStack } from '../game/inventory';
 import { canCraft, CRAFTS, haveFor, timesCraftable } from '../game/crafting';
@@ -131,6 +131,7 @@ function Hud({ play, hideKey }: { play: Play; hideKey: string }) {
           <Bar value={s.hunger} max={MAX_HUNGER} color="#c8862a" label="Hunger" />
           {s.air < BREATH_S && <Bar value={s.air} max={BREATH_S} color="#5ad" label="Air" />}
           {(s.mana < MAX_MANA || (play.held && BLOCKS.type(play.held.state).spell)) && <Bar value={s.mana} max={MAX_MANA} color="#5a6cf0" label="Mana" />}
+          {play.held && BLOCKS.type(play.held.state).key === 'bow' && <span class="ammo" title="Arrows carried">Arrows {Object.keys(ARROW_KINDS).reduce((n, k) => n + inv.count(BLOCKS.state(k)), 0)}</span>}
           <Thermometer coreC={s.temperature.coreC} feltC={s.feltC} />
         </div>
       )}
@@ -514,6 +515,7 @@ function Death({ m }: { m: UiModel }) {
     <div class="menu death">
       <h1>You died</h1>
       <p>{m.play.survival.cause}</p>
+      {m.play.lostCoins > 0 && <p>You dropped {m.play.lostCoins} coins where you fell. Everything else is still yours.</p>}
       <StatsList play={m.play} />
       <button class="primary" onClick={m.respawn}>Respawn</button>
     </div>
