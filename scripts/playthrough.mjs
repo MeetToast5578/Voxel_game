@@ -305,10 +305,13 @@ try {
     await game(() => { const n = window.__game; n.play.inventory.add({ state: n.blocks.state('trade_coin'), count: 30 }); });
     const id = await game(() => { const n = window.__game, b = n.player.body, [dx, , dz] = n.player.direction(), x = b.x + dx * 3, z = b.z + dz * 3; return n.spawnMob('farmer', x, n.world.surfaceAt(Math.floor(x), Math.floor(z)) + 1, z); });
     await hold('jade_sword');
-    const c = await game((id) => { const c = window.__game.creatures.list.find((c) => c.id === id); c.home = undefined; return { x: c.body.x, y: c.body.y + c.body.height * 0.6, z: c.body.z }; }, id);
-    await aim(c.x, c.y, c.z);
-    await page.mouse.click(640, 360, { button: 'right' });
-    await page.locator('.trade-list').waitFor({ timeout: 20_000 });
+    // The farmer wanders: look at where it is now and ask again, up to three times.
+    for (let tries = 0; ; tries++) {
+      const c = await game((id) => { const c = window.__game.creatures.list.find((c) => c.id === id); c.home = undefined; return { x: c.body.x, y: c.body.y + c.body.height * 0.6, z: c.body.z }; }, id);
+      await aim(c.x, c.y, c.z);
+      await page.mouse.click(640, 360, { button: 'right' });
+      try { await page.locator('.trade-list').waitFor({ timeout: 8_000 }); break; } catch (e) { if (tries >= 2) throw e; }
+    }
     const before = await count('trade_coin');
     await page.locator('.trade-list button:not([disabled])').first().click();
     if ((await count('trade_coin')) >= before) throw new Error('no coins spent');

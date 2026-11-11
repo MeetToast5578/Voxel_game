@@ -383,6 +383,14 @@ function gameplay(): BlockSpec[] {
     // A door is a column of door cells (variant: facing + 4 when open); it collides as its panel.
     { key: 'door', name: 'Door', tiles: all('door'), shape: 'boxes', variants: 8, hardness: 3, density: 600, mineWith: 'axe',
       boxes: (v) => [PANEL[v < 4 ? v : TURN[v - 4]!]!], fuel: 10 },
+    // Furniture: a chair (variant: which way its back is), a table on one leg, and a candle that lights a room.
+    { key: 'chair', name: 'Chair', tiles: all('planks'), shape: 'boxes', variants: 4, hardness: 1.5, density: 600, ...wood, blocksSky: false, opaque: false,
+      boxes: (v) => [[2, 7, 2, 14, 9, 14], [2, 0, 2, 4, 7, 4], [12, 0, 2, 14, 7, 4], [2, 0, 12, 4, 7, 14], [12, 0, 12, 14, 7, 14],
+        ([[14, 9, 1, 16, 16, 15], [0, 9, 1, 2, 16, 15], [1, 9, 14, 15, 16, 16], [1, 9, 0, 15, 16, 2]] as const)[v]!] },
+    { key: 'wooden_table', name: 'Table', tiles: all('planks'), shape: 'boxes', hardness: 1.5, density: 600, ...wood, blocksSky: false, opaque: false,
+      boxes: () => [[0, 13, 0, 16, 16, 16], [6, 0, 6, 10, 13, 10]] },
+    { key: 'candle', name: 'Candle', tiles: all('candle'), shape: 'boxes', hardness: 0, density: 300, lightEmission: 11, needsSupport: true,
+      solid: false, blocksSky: false, opaque: false, supports: false, layer: 'cutout', boxes: () => [[6, 0, 6, 10, 7, 10]] },
     // A bed covers two cells: variant facing + 4 for the head end.
     { key: 'bed', name: 'Bed', tiles: { top: 'bed_top', side: 'bed_side', bottom: 'planks' }, shape: 'boxes', variants: 8,
       variantFaces:Array.from({length:8},(_,v)=>({top:v<4?'bed_top':'bed_head_'+(v-4),side:'bed_side',bottom:'planks'})),

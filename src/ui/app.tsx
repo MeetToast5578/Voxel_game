@@ -9,6 +9,7 @@ import { version } from '../../package.json';
 import { armourFactor, type Mode, type Play } from '../game/play';
 import { EFFECTS, type Effect } from '../game/effects';
 import { sourcesOf, usesOf } from '../game/guide';
+import { QUESTS } from '../game/townsfolk';
 import { SPECIES } from '../creatures/species';
 import { BINDINGS, DEFAULT_KEYS, keyLabel, type Binding, type Settings } from '../storage/settings';
 import type { Difficulty } from '../config';
@@ -51,6 +52,8 @@ export interface UiModel extends WorldsModel {
   loading: string | null;
   resume(): void;
   respawn(): void;
+  /** Hardcore death: deletes this world and returns to the title. */
+  loseWorld(): void;
   setDifficulty(d: Difficulty): void;
   /** Saves and goes back to the title screen. */
   quitToTitle(): void;
@@ -171,6 +174,18 @@ function MenuShell({title,subtitle,tabs,active,select,children,action}:{title:st
   </div></>;
 }
 
+/** What the person traded with says, and the task they have for you. */
+function TownsfolkTalk({ play }: { play: Play }) {
+  const job = play.tradingWith, q = play.questFor(job), active = q && play.quests.has(q.id), done = q ? play.questProgress(q) : 0;
+  return <div class="talk">
+    <p class="speech">“{play.talk}”</p>
+    {q && <div class="quest-card"><b>{active ? 'Task' : 'A task for you'}</b> {q.text}
+      <small>Reward: {q.reward.map(([k, n]) => `${n} ${BLOCKS.byName(k).name}`).join(', ')}{active ? ` · ${done}/${q.count}` : ''}</small>
+      {active ? <button disabled={done < q.count} onClick={() => play.turnInQuest(q.id)}>Hand in</button> : <button onClick={() => play.acceptQuest(q.id)}>Accept</button>}
+    </div>}
+  </div>;
+}
+
 function WorkshopScreen({play}:{play:Play}) {
   const w=play.workshop;
   const [text,setText]=useState(w?play.decorations.signs.get(w.key)??'':'');
@@ -179,6 +194,7 @@ function WorkshopScreen({play}:{play:Play}) {
   return <div class="screen workshop" role="dialog" aria-modal="true" aria-label={title}>
     <ScreenHead title={title} subtitle={w.kind==='forge'?'Strengthen the equipment you carry. Each level adds speed, protection and durability.':'Supplies for the journey ahead.'} close={()=>play.closeScreen()}/>
     <p class="pack-summary">{play.inventory.slots.filter(Boolean).length}/36 pack slots · {play.inventory.count(BLOCKS.state('trade_coin'))} coins · {play.inventory.count(BLOCKS.state('ember_crystal'))} ember · {play.inventory.count(BLOCKS.state('iron_ingot'))} iron</p>
+    {w.kind==='trade'&&<TownsfolkTalk play={play}/>}
     {w.kind==='trade'&&<div class="trade-list">{play.offers.map((o,i)=>{const owned=play.inventory.count(BLOCKS.state(o.cost[0]));return <button key={i} disabled={owned<o.cost[1]} onClick={()=>play.performTrade(i)}><span class="offer-item"><img alt="" src={iconUrl(BLOCKS.state(o.gives[0]))}/><b>{o.gives[1]} {BLOCKS.byName(o.gives[0]).name}</b></span><span class="offer-cost"><img alt="" src={iconUrl(BLOCKS.state(o.cost[0]))}/>{o.cost[1]} {BLOCKS.byName(o.cost[0]).name}<small>You have {owned}</small></span></button>;})}</div>}
     {w.kind==='forge'&&<div class="equipment-list">{play.inventory.slots.map((s,i)=>s&&(BLOCKS.type(s.state).tool||BLOCKS.type(s.state).armour)&&<button title={tooltip(s)} disabled={(s.upgrade??0)>=3} onClick={()=>play.performForge(i)}><img alt="" src={stackIconUrl(s)}/>{BLOCKS.type(s.state).name}<span>Level {s.upgrade??0}/3</span><span>{upgradeCost(s)} ember + 2 iron</span></button>)}</div>}
     {w.kind==='sign'&&<><label>Up to four lines, 24 characters per line<textarea aria-label="Sign text" maxLength={96} value={text} onInput={e=>setText(e.currentTarget.value)}/></label><button onClick={()=>{if(play.writeSign(text))play.closeScreen();}}>Save sign</button></>}
@@ -361,6 +377,7 @@ function DifficultySelect(props: { value: Difficulty; onChange: (d: Difficulty) 
       <option value="peaceful">Peaceful</option>
       <option value="normal">Normal</option>
       <option value="hard">Hard</option>
+      <option value="hardcore">Hardcore (one life)</option>
     </select>
   );
 }
@@ -392,7 +409,7 @@ const CONTROLS = `WASD move · Space jump / swim · Shift down (flying) · Ctrl 
   the held block; G does the same to clear it; Ctrl+Z undo, Ctrl+Y redo.`;
 
 const CATEGORIES = ['All', 'Tools', 'Armour', 'Building', 'Furniture', 'Potions', 'Items'] as const;
-const FURNITURE = new Set(['crafting_table', 'alchemy_table', 'furnace', 'chest', 'campfire', 'bed', 'trading_post', 'ember_forge', 'beacon', 'sign', 'item_frame', 'lantern', 'torch', 'door', 'ladder']);
+const FURNITURE = new Set(['crafting_table', 'alchemy_table', 'chair', 'wooden_table', 'candle', 'furnace', 'chest', 'campfire', 'bed', 'trading_post', 'ember_forge', 'beacon', 'sign', 'item_frame', 'lantern', 'torch', 'door', 'ladder']);
 function category(key: string): (typeof CATEGORIES)[number] {
   const t = BLOCKS.byName(key);
   return t.tool || ['bow', 'arrow', 'fishing_rod', 'bucket'].includes(key) ? 'Tools' : t.armour ? 'Armour' : t.potion || key === 'glass_bottle' ? 'Potions' : FURNITURE.has(key) ? 'Furniture' : t.item ? 'Items' : 'Building';
@@ -439,7 +456,7 @@ function CraftingPanel({ play }: { play: Play }) {
 function Menu({ m }: { m: UiModel }) {
   const [tab,setTab]=useState('Journey');
   return <MenuShell title="Paused" subtitle={m.worldName??'Your adventure'} tabs={['Journey','Bestiary','Settings','Worlds','Controls']} active={tab} select={setTab} action={<button class="primary" onClick={m.resume}>Resume</button>}>
-    <section class="menu-panel" hidden={tab!=='Journey'}><span class="eyebrow">TAKE A BREATHER</span><h2>Your journey</h2><p class="section-copy">Your world will be here when you’re ready.</p><div class="journey-summary"><span>World<strong>{m.worldName}</strong></span><span>Mode<strong>{m.play.mode}</strong></span><span>Milestones<strong>{m.play.journal.done.size} / {MILESTONES.length}</strong></span></div>{m.play.mode==='survival'&&<><label>Difficulty<DifficultySelect value={m.play.difficulty} onChange={m.setDifficulty}/></label><Journal play={m.play}/></>}<StatsList play={m.play}/><button onClick={()=>m.exportWorld(m.worldName!)}>Export this world</button><button class="quiet" onClick={m.quitToTitle}>Save and quit to title</button></section>
+    <section class="menu-panel" hidden={tab!=='Journey'}><span class="eyebrow">TAKE A BREATHER</span><h2>Your journey</h2><p class="section-copy">Your world will be here when you’re ready.</p><div class="journey-summary"><span>World<strong>{m.worldName}</strong></span><span>Mode<strong>{m.play.mode}</strong></span><span>Milestones<strong>{m.play.journal.done.size} / {MILESTONES.length}</strong></span></div>{m.play.mode==='survival'&&<>{m.play.difficulty==='hardcore'?<p class="help">Hardcore: one life. This world ends when you die.</p>:<label>Difficulty<DifficultySelect value={m.play.difficulty} onChange={m.setDifficulty}/></label>}<Journal play={m.play}/></>}<StatsList play={m.play}/><button onClick={()=>m.exportWorld(m.worldName!)}>Export this world</button><button class="quiet" onClick={m.quitToTitle}>Save and quit to title</button></section>
     <section class="menu-panel" hidden={tab!=='Bestiary'}><span class="eyebrow">FIELD NOTES</span><h2>Bestiary</h2><Bestiary play={m.play}/></section>
     <section class="menu-panel" hidden={tab!=='Settings'}><span class="eyebrow">MAKE IT YOURS</span><h2>Settings</h2><SettingsSection m={m}/></section>
     <section class="menu-panel" hidden={tab!=='Worlds'}><span class="eyebrow">YOUR COLLECTION</span><h2>Saved worlds</h2><WorldsSection m={m}/></section>
@@ -506,6 +523,8 @@ function Journal({ play }: { play: Play }) {
       <ul class="milestones">
         {MILESTONES.map((ms) => <li class={play.journal.done.has(ms.id) ? 'done' : ''}>{play.journal.done.has(ms.id) ? '✔' : '·'} {ms.name} <small>· {ms.reward[1]} {BLOCKS.byName(ms.reward[0]).name}</small></li>)}
       </ul>
+      {play.quests.size > 0 && <><h3>Tasks</h3><ul class="milestones">{QUESTS.filter((q) => play.quests.has(q.id)).map((q) =>
+        <li key={q.id}>· {q.text} <small>{play.questProgress(q)}/{q.count} · from the {q.job}</small></li>)}</ul></>}
     </details>
   );
 }
@@ -515,9 +534,11 @@ function Death({ m }: { m: UiModel }) {
     <div class="menu death">
       <h1>You died</h1>
       <p>{m.play.survival.cause}</p>
-      {m.play.lostCoins > 0 && <p>You dropped {m.play.lostCoins} coins where you fell. Everything else is still yours.</p>}
+      {m.play.difficulty === 'hardcore' ? <p>This was a hardcore world: with your one life, it is lost.</p>
+        : m.play.lostCoins > 0 && <p>You dropped {m.play.lostCoins} coins where you fell. Everything else is still yours.</p>}
       <StatsList play={m.play} />
-      <button class="primary" onClick={m.respawn}>Respawn</button>
+      {m.play.difficulty === 'hardcore' ? <button class="primary" onClick={m.loseWorld}>Delete world and return to title</button>
+        : <button class="primary" onClick={m.respawn}>Respawn</button>}
     </div>
   );
 }

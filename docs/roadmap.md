@@ -201,17 +201,17 @@ Every task also passes `npm run check`, `npm run benchmark -- --assert` and `npm
   - Explorer: after the first dungeon; sells maps to unvisited places.
 
   **Done when:** each arrives under its condition in a test.
-- [ ] **R5.3 Quests and bounties (M).** Townsfolk post simple tasks with coin and item rewards:
+- [x] **R5.3 Quests and bounties (M).** Done in 0.8.3 (tasks show in the journal, not a separate tab). Townsfolk post simple tasks with coin and item rewards:
   - bring 10 gel;
   - kill a Gloom Moth;
   - find the pyramid.
 
   A Quests tab lists them.
   **Done when:** a test accepts, completes and turns in a quest.
-- [ ] **R5.4 Townsfolk talk (S).** Short spoken lines that depend on the time, the weather, nearby events and their
+- [x] **R5.4 Townsfolk talk (S).** Done in 0.8.3 (in the trade screen, not a speech bubble). Short spoken lines that depend on the time, the weather, nearby events and their
   job, shown in a speech bubble.
   **Done when:** each NPC has at least eight lines and the bubble shows.
-- [ ] **R5.5 Furniture (M).** A furniture set in each wood type:
+- [~] **R5.5 Furniture (M).** 0.8.3: chair, table and candle; shelves, banners, chandeliers and paintings remain. A furniture set in each wood type:
   - chairs, tables and shelves;
   - banners, candles and chandeliers;
   - paintings that use existing art.
@@ -275,9 +275,9 @@ Every task also passes `npm run check`, `npm run benchmark -- --assert` and `npm
   Credits play after the final boss, and the player can keep playing.
   **Decide** the story and the name.
   **Done when:** the second act is triggered and the final boss can be beaten.
-- [ ] **R7.5 Harder nights over time (S)** (13.4 rest). Day 20 spawns more than day 1, capped by difficulty.
+- [x] **R7.5 Harder nights over time (S)** (13.4 rest). Done in 0.8.3. Day 20 spawns more than day 1, capped by difficulty.
   **Done when:** the test in `tasks.md` passes.
-- [ ] **R7.6 Hardcore and challenge seeds (S each)** (idea 14). Hardcore has one life. Challenge seeds have a goal
+- [~] **R7.6 Hardcore and challenge seeds (S each)** (idea 14). 0.8.3: hardcore; challenge seeds remain. Hardcore has one life. Challenge seeds have a goal
   and a timer.
   **Done when:** a hardcore death deletes the world after a confirmation.
 

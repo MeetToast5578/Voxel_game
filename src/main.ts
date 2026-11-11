@@ -283,7 +283,10 @@ const env = new Environment(seed, Number(params.get('time') ?? saver.worldMeta.d
 
 /** Saves the world; a small "Saving" note shows while it writes. */
 const savingNote = document.querySelector<HTMLDivElement>('#saving')!;
+/** A lost hardcore world is never saved again. */
+let lost = false;
 function save(): Promise<void> {
+  if (lost) return Promise.resolve();
   const b = player.body;
   savingNote.style.opacity = '1';
   return saver.save(world, {
@@ -381,7 +384,7 @@ function update(dt: number): void {
   play.tickProjectiles(dt, boxAt, player);
   play.particles.update(dt);
   creatures.update(dt, {
-    player: player.body, survival: play.mode === 'survival', day: env.atmosphere.sun[1] > -0.05, hostiles: DIFFICULTY[play.difficulty].hostiles * (play.event === 'red_night' ? 2 : 1), boxAt, waterAt,
+    player: player.body, survival: play.mode === 'survival', day: env.atmosphere.sun[1] > -0.05, hostiles: play.hostileShare, boxAt, waterAt,
     playerHolds: play.held ? BLOCKS.type(play.held.state).key : null,
   });
   if (play.drops.update(dt, dropBoxAt, play.survival.dead ? null : player.body, play.inventory)) play.version++;
@@ -547,6 +550,11 @@ const ui: UiModel & { refreshWorlds(): void } = {
   },
   quitToTitle() {
     void save().then(() => (location.search = ''));
+  },
+  loseWorld() {
+    // Hardcore: the world goes for good; nothing is saved again on the way out.
+    lost = true;
+    void actions.deleteWorld(worldName).then(() => (location.search = ''));
   },
   openWorld: (name, create) => void actions.openWorld(name, create),
   deleteWorld: (name) => void actions.deleteWorld(name),
@@ -791,6 +799,7 @@ const loop = new FixedStepLoop(1 / 60, 0.25, timedUpdate, (alpha, frameDt) => {
   renderer.setAtmosphere(env.frame(frameDt, atmosphereCamera.x, atmosphereCamera.y, atmosphereCamera.z, world));
   const daylight = renderer.uniforms.daylight!.value as number;
   play.daylight = daylight;
+  play.raining = env.falling === 'rain';
   /** Brightness (0..1) of a cell for things drawn outside the terrain. */
   const lightAt = (cx: number, cy: number, cz: number) => {
     const x = Math.floor(cx), y = Math.floor(cy), z = Math.floor(cz);

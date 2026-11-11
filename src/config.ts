@@ -285,13 +285,17 @@ export const LILY_PAD_CHANCE = 0.04;
 // ---- Survival ----
 /** How far from the origin a new world looks for dry, open, level ground to start the player on. */
 export const SPAWN_SEARCH_M = 2000;
-export type Difficulty = 'peaceful' | 'normal' | 'hard';
+export type Difficulty = 'peaceful' | 'normal' | 'hard' | 'hardcore';
 /** Per difficulty: share of the hostile cap that may spawn, damage they deal, and how fast hunger drains. */
 export const DIFFICULTY: Readonly<Record<Difficulty, { hostiles: number; damage: number; hunger: number }>> = {
   peaceful: { hostiles: 0, damage: 0, hunger: 0.5 },
   normal: { hostiles: 1, damage: 1, hunger: 1 },
   hard: { hostiles: 1.5, damage: 1.5, hunger: 1.25 },
+  // As hard, with one life: the world is lost on death.
+  hardcore: { hostiles: 1.5, damage: 1.5, hunger: 1.25 },
 };
+/** Nights grow harder as a world ages: more monsters, by this share per day, up to NIGHT_GROWTH_MAX times as many. */
+export const NIGHT_GROWTH_PER_DAY = 0.025, NIGHT_GROWTH_MAX = 1.6;
 /** Each armour point stops this share of a hit, up to ARMOUR_CAP: full jade (24 points) stops 72%. */
 export const ARMOUR_PER_POINT = 0.03;
 export const ARMOUR_CAP = 0.85;

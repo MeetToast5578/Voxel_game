@@ -3,6 +3,19 @@
 The newest version comes first. `npm run check` fails if the version at the top here is not the one in
 `package.json`, so the two are changed together.
 
+## 0.8.3 — 2026-11-11
+
+Towns with something to say, and worlds that get harder (roadmap R5.3, R5.4, R5.5, R7.5, R7.6).
+
+- Townsfolk talk: each says something fitting for their trade, the night, the rain or a red night, shown when you
+  trade with them.
+- Tasks: every townsperson has tasks, one after another: bring wheat, iron, gel, logs, gold, mushrooms or poppies;
+  defeat zombies, skeletons, gloom moths, slimes or a mimic. Accept them in the trade screen, follow them in the
+  journal, and hand them in for coins and goods (Dash Boots, a Featherfall Charm, a Life Crystal...).
+- Furniture: chairs (facing you as placed), tables and candles (string over gel). A table counts for a home.
+- Nights grow harder as a world ages: 2.5% more monsters per day, up to 60% more.
+- Hardcore (one life): pick it for a new world; dying deletes the world. Its difficulty cannot be changed in the menu.
+
 ## 0.8.2 — 2026-11-11
 
 A world that keeps going (roadmap R4.7, R4.8, R4.9; tasks 12.2, 12.3, 12.5–12.7).

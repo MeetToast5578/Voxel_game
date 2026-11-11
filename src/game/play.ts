@@ -1,4 +1,4 @@
-import { ARROW_KINDS, BOOMERANG_DAMAGE, BOOMERANG_OUT_S, BOOMERANG_SPEED_M_S, EMBER_BURN_S, HAMMER_DAMAGE, HAMMER_SLOW, KNIFE_DAMAGE, KNIFE_SPEED_M_S, SPEAR_ARC_RAD, SPEAR_DAMAGE, SPEAR_REACH, EVENTS_FROM_DAY, RED_NIGHT_CHANCE, SLIME_RAIN_CHANCE, SLIME_RAIN_EVERY_S, SLIME_RAIN_KILLS, HOOK_RANGE_M, TIER_DAMAGE, ARMOUR_CAP, ARMOUR_PER_POINT, MAX_HEALTH, ACCESSORY_SLOTS, AXE_ARC_RAD, CRIT_CHANCE, CRIT_FACTOR, KNOCKBACK_FACTOR, SWORD_ARC_RAD, LIGHTNING_DAMAGE, LIGHTNING_REACH_M, FISH_MAX_S, FISH_MIN_S, BLOCK_SIZE_M, ARROW_DAMAGE, ARROW_SPEED_M_S, BOLT_SPEED_M_S, BOW_DRAW_S, AXE_DAMAGE, BUILD_CELLS_PER_TICK, CAMPFIRE_COOK_S, CAMPFIRE_SLOTS, DIFFICULTY, PLAYER_ATTACK_COOLDOWN_S, SWORD_DAMAGE, type Difficulty, BUILD_MAX_M, DROP_PICKUP_DELAY_S, DROP_THROW_M_S, HAND_DAMAGE, REACH_M, REPEAT_S, TOOL_DAMAGE, UNDO_STEPS, cells, toCells } from '../config';
+import { NIGHT_GROWTH_MAX, NIGHT_GROWTH_PER_DAY, ARROW_KINDS, BOOMERANG_DAMAGE, BOOMERANG_OUT_S, BOOMERANG_SPEED_M_S, EMBER_BURN_S, HAMMER_DAMAGE, HAMMER_SLOW, KNIFE_DAMAGE, KNIFE_SPEED_M_S, SPEAR_ARC_RAD, SPEAR_DAMAGE, SPEAR_REACH, EVENTS_FROM_DAY, RED_NIGHT_CHANCE, SLIME_RAIN_CHANCE, SLIME_RAIN_EVERY_S, SLIME_RAIN_KILLS, HOOK_RANGE_M, TIER_DAMAGE, ARMOUR_CAP, ARMOUR_PER_POINT, MAX_HEALTH, ACCESSORY_SLOTS, AXE_ARC_RAD, CRIT_CHANCE, CRIT_FACTOR, KNOCKBACK_FACTOR, SWORD_ARC_RAD, LIGHTNING_DAMAGE, LIGHTNING_REACH_M, FISH_MAX_S, FISH_MIN_S, BLOCK_SIZE_M, ARROW_DAMAGE, ARROW_SPEED_M_S, BOLT_SPEED_M_S, BOW_DRAW_S, AXE_DAMAGE, BUILD_CELLS_PER_TICK, CAMPFIRE_COOK_S, CAMPFIRE_SLOTS, DIFFICULTY, PLAYER_ATTACK_COOLDOWN_S, SWORD_DAMAGE, type Difficulty, BUILD_MAX_M, DROP_PICKUP_DELAY_S, DROP_THROW_M_S, HAND_DAMAGE, REACH_M, REPEAT_S, TOOL_DAMAGE, UNDO_STEPS, cells, toCells } from '../config';
 import { bagLoot, lootOf, type Creature, type Creatures } from '../creatures/creatures';
 import { AIR, BLOCKS, POTIONS, SET_BONUSES, SOLID, type BlockType } from '../engine/blocks';
 import type { World } from '../engine/world';
@@ -17,6 +17,7 @@ import { Survival } from './survival';
 import { hash2 } from '../core/random';
 import { canIgnite, FIRE } from '../sim/simulation';
 import { checkRoom } from './housing';
+import { QUESTS, talkLine, type Quest } from './townsfolk';
 import { isEffect, POTION_SICKNESS_S, SLOWED_SPEED, SWIFT_SPEED } from './effects';
 import { Particles } from './particles';
 import { lootTableFor, rollLoot, SITE_TABLES, type LootTable } from './loot';
@@ -532,6 +533,7 @@ export class Play {
     const entry = this.bestiary.get(c.species.key) ?? { kills: 0, drops: new Set<string>() };
     this.bestiary.set(c.species.key, entry);
     entry.kills++;
+    for (const q of QUESTS) if (q.kind === 'defeat' && q.key === c.species.key && this.quests.has(q.id)) this.quests.set(q.id, this.quests.get(q.id)! + 1);
     // Event rewards: red nights pay in coins; enough slimes beaten in slime rain bring their king.
     if (this.event === 'red_night' && c.species.hostile && Math.random() < 0.5) this.drop({ state: BLOCKS.state('trade_coin'), count: 1 + Math.floor(Math.random() * 2) }, c.body.x, c.body.y, c.body.z);
     if (this.event === 'slime_rain' && c.species.key === 'slime' && ++this.eventKills >= SLIME_RAIN_KILLS) {
@@ -608,6 +610,12 @@ export class Play {
   event: 'red_night' | 'slime_rain' | null = null;
   private eventKills = 0;
   private eventClock = 0;
+
+  /** The share of the hostile cap that may be about now: the difficulty's, more as the world ages, twice on a red night. */
+  get hostileShare(): number {
+    const growth = Math.min(NIGHT_GROWTH_MAX, 1 + this.stats.days * NIGHT_GROWTH_PER_DAY);
+    return DIFFICULTY[this.difficulty].hostiles * growth * (this.event === 'red_night' ? 2 : 1);
+  }
 
   /** Night falls (`night`) or day breaks: an event may start, by the world seed and the day, and the last one ends. */
   turnOfDay(night: boolean): void {
@@ -1377,7 +1385,7 @@ export class Play {
       state=type.id+(t.nx>0?0:t.nx<0?1:t.nz>0?2:3);
     }
     else if (type.front) state = type.id + toward;
-    else if (type.key.endsWith('_stairs')) state = type.id + facing;
+    else if (type.key.endsWith('_stairs') || type.key === 'chair') state = type.id + facing;
     else if (type.slabOf && t.ny === -1) state = type.id + 1;
     if (!this.free(x, y, z, player, false, state)) return;
     this.setBlock(x, y, z, state);
@@ -1414,6 +1422,56 @@ export class Play {
       WORKSHOP_BLOCKS[BLOCKS.type(this.world.get(x!,y!,z!)).key]===kind&&Math.hypot(x!+.5-this.feet[0],y!+.5-this.feet[1],z!+.5-this.feet[2])<=toCells(REACH_M)+2;
   }
   /** The offers of the open trade: a villager's own shop, or the general list. */
+  /** Whom the open trade screen is with: a townsperson's job, or the trader. */
+  get tradingWith(): string {
+    const w = this.workshop;
+    const c = w?.key.startsWith('mob:') ? this.creatures?.list.find((m) => m.id === Number(w.key.slice(4))) : undefined;
+    return c?.species.shop ?? 'trader';
+  }
+  /** Rain is falling here (set by the game), for what townsfolk say. */
+  raining = false;
+  /** What the person traded with says now. */
+  get talk(): string {
+    return talkLine(this.tradingWith, { night: this.daylight < 0.3, raining: this.raining, event: this.event, seed: this.seed, time: this.stats.days * 97 + (Number(this.workshop?.key.slice(4)) || 0) * 20 });
+  }
+
+  /** Quests under way (their progress: creatures defeated so far) and those finished. */
+  readonly quests = new Map<string, number>();
+  readonly questsDone = new Set<string>();
+  /** A townsperson's current task: their first one not yet finished, or none. */
+  questFor(job: string): Quest | undefined {
+    return QUESTS.find((q) => q.job === job && !this.questsDone.has(q.id));
+  }
+  /** How far along a quest is (items carried, or creatures defeated), out of its count. */
+  questProgress(q: Quest): number {
+    return Math.min(q.count, q.kind === 'bring' ? this.inventory.count(BLOCKS.state(q.key)) : this.quests.get(q.id) ?? 0);
+  }
+  acceptQuest(id: string): void {
+    if (!this.quests.has(id) && !this.questsDone.has(id)) this.quests.set(id, 0);
+    this.version++;
+  }
+  /** Hands in a finished quest: the items it asked for go, its reward comes. Returns whether it was finished. */
+  turnInQuest(id: string): boolean {
+    const q = QUESTS.find((k) => k.id === id);
+    if (!q || !this.quests.has(id) || this.questProgress(q) < q.count) return false;
+    if (q.kind === 'bring') {
+      let left = q.count;
+      const state = BLOCKS.state(q.key);
+      this.inventory.slots.forEach((s, i) => {
+        if (!s || s.state !== state || left <= 0) return;
+        const take = Math.min(left, s.count);
+        left -= take;
+        if ((s.count -= take) <= 0) this.inventory.slots[i] = null;
+      });
+    }
+    for (const [key, count] of q.reward) this.give({ state: BLOCKS.state(key), count }, ...this.feet);
+    this.quests.delete(id);
+    this.questsDone.add(id);
+    this.toast(`Quest done: ${q.text.split('.')[0]}`, 4);
+    this.version++;
+    return true;
+  }
+
   get offers(): readonly TradeOffer[] {
     const w = this.workshop;
     const c = w?.key.startsWith('mob:') ? this.creatures?.list.find((m) => m.id === Number(w.key.slice(4))) : undefined;
@@ -1556,7 +1614,7 @@ export class Play {
       decorations: this.decorations.save(), mode: this.mode, difficulty: this.difficulty, hints: this.hints.save(), inventory: this.inventory.save(), selected: this.inventory.selected, drops: this.drops.save(),
       health: this.survival.health, maxHealth: this.survival.maxHealth, hunger: this.survival.hunger, air: this.survival.air, effects: { ...this.survival.effects }, burning: this.survival.burning, bodyC: this.survival.temperature.coreC, spawn: this.spawn,
       furnaces: [...this.furnaces].map(([k, f]) => [k, s(f.input), s(f.fuel), s(f.output), f.burn, f.progress]),
-      event: this.event, eventKills: this.eventKills, wardenHealth: [...this.wardenHealth], homes: [...this.homes.values()].map((h) => [h.x, h.y, h.z, h.yaw, h.who]), journal: this.journal.save(), seen: [...this.seen], bestiary: [...this.bestiary].map(([k, e]) => [k, e.kills, [...e.drops]]), stats: this.stats, biomesSeen: [...this.biomesSeen], deepestM: this.deepestM, found: [...this.found], beaconLit: this.beaconLit, endingSeen: this.endingSeen, boating: this.boating,
+      quests: [...this.quests], questsDone: [...this.questsDone], event: this.event, eventKills: this.eventKills, wardenHealth: [...this.wardenHealth], homes: [...this.homes.values()].map((h) => [h.x, h.y, h.z, h.yaw, h.who]), journal: this.journal.save(), seen: [...this.seen], bestiary: [...this.bestiary].map(([k, e]) => [k, e.kills, [...e.drops]]), stats: this.stats, biomesSeen: [...this.biomesSeen], deepestM: this.deepestM, found: [...this.found], beaconLit: this.beaconLit, endingSeen: this.endingSeen, boating: this.boating,
       armour: this.armour.map((a) => (a ? [BLOCKS.stateName(a.state), 1, a.wear ?? 0, a.upgrade ?? 0] : null)),
       accessories: this.accessories.map((a) => (a ? [BLOCKS.stateName(a.state), 1] : null)),
       campfires: [...this.campfires].map(([k, c]) => [k, c.map(([st, left]) => [BLOCKS.stateName(st), left])]),
@@ -1583,6 +1641,9 @@ export class Play {
     this.survival.air = num(p.air, this.survival.air);
     this.survival.burning = Math.max(0, num(p.burning, 0));
     if (p.event === 'red_night' || p.event === 'slime_rain') this.event = p.event;
+    const known = (id: unknown) => typeof id === 'string' && QUESTS.some((q) => q.id === id);
+    if (Array.isArray(p.quests)) for (const e of p.quests) if (Array.isArray(e) && known(e[0])) this.quests.set(e[0], Math.max(0, Math.floor(num(e[1], 0))));
+    if (Array.isArray(p.questsDone)) for (const id of p.questsDone) if (known(id)) this.questsDone.add(id);
     if (Array.isArray(p.wardenHealth)) for (const e of p.wardenHealth) if (Array.isArray(e) && typeof e[0] === 'string' && num(e[1], 0) > 0) this.wardenHealth.set(e[0], num(e[1], 0));
     this.eventKills = Math.max(0, Math.floor(num(p.eventKills, 0)));
     if (Array.isArray(p.homes)) for (const h of p.homes) {
