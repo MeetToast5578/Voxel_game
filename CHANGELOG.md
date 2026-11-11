@@ -3,6 +3,17 @@
 The newest version comes first. `npm run check` fails if the version at the top here is not the one in
 `package.json`, so the two are changed together.
 
+## 0.9.2 — 2026-11-11
+
+A fourth boss (roadmap R3.3, second of three).
+
+- The **Hive Mother**: a great hornet queen, 360 health, whose sting poisons. Named attacks: **Dive** and **Venom**
+  (a spat stinger that poisons; dodge it). Jungle Hornets come to her aid.
+- **Jungle Hornets** live in rainforests and swamps by day; their sting poisons and they drop Stingers.
+- Summoned with **Royal Bait**: stingers and gel round a gold ingot.
+- Her treasure bag holds the **Hive Charm** accessory: stings and venom never poison you, and you are 10% faster.
+- The play-through's trade step holds the farmer in front of the player (it used to wander out of reach and fail).
+
 ## 0.9.1 — 2026-11-11
 
 A third boss (roadmap R3.3, first of three).

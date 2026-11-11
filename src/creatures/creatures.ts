@@ -426,18 +426,20 @@ export class Creatures {
     m.t -= dt;
     const dx = m.aim[0] - b.x, dy = m.aim[1] - b.y, dz = m.aim[2] - b.z, len = Math.hypot(dx, dz) || 1;
     c.yaw = Math.atan2(-dx, -dz);
-    if (m.kind === 'stomp' || m.kind === 'boulder') {
-      // Planted while it winds up, then the stomp shakes the ground round it, or the boulder flies at the player.
+    if (m.kind === 'stomp' || m.kind === 'boulder' || m.kind === 'spit') {
+      // Planted while it winds up (a flier hangs still), then the stomp shakes the ground round it, or the boulder or
+      // venom flies at the player.
       b.vx = b.vz = 0;
       if (m.t <= 0) {
-        if (m.kind === 'boulder') this.events.shoot?.(c, b.x, b.y + b.height, b.z, 'ice');
+        if (m.kind !== 'stomp') this.events.shoot?.(c, b.x, b.y + b.height * 0.5, b.z, m.kind === 'boulder' ? 'ice' : 'stinger');
         else {
           if (Math.hypot(p.x - b.x, p.z - b.z) < toCells(SLAM_RADIUS_M * 1.4) + b.halfWidth && Math.abs(p.y - b.y) < 1) this.events.bite(s.attack, s.name, s, c);
           this.events.boss?.(c, 'land');
         }
         c.move = undefined;
       }
-      b.vy -= GRAVITY * dt;
+      if (s.flies) b.vy *= 0.9;
+      else b.vy -= GRAVITY * dt;
     } else if (m.kind === 'slam') {
       if (m.t > 0) {
         // The crouch: it sits still, gathering itself.

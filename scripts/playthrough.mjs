@@ -319,7 +319,11 @@ try {
     await hold('jade_sword');
     // The farmer wanders: look at where it is now and ask again, up to three times.
     for (let tries = 0; ; tries++) {
-      const c = await game((id) => { const c = window.__game.creatures.list.find((c) => c.id === id); c.home = undefined; return { x: c.body.x, y: c.body.y + c.body.height * 0.6, z: c.body.z }; }, id);
+      // It wanders off out of reach between tries: bring it back in front of the player, standing still.
+      const c = await game((id) => { const n = window.__game, c = n.creatures.list.find((c) => c.id === id), b = n.player.body, [dx, , dz] = n.player.direction(), l = Math.hypot(dx, dz) || 1;
+        c.home = undefined; c.goal = null; c.mode = 'idle'; c.think = 30;
+        Object.assign(c.body, { x: b.x + (dx / l) * 3, y: b.y, z: b.z + (dz / l) * 3, vx: 0, vy: 0, vz: 0 });
+        return { x: c.body.x, y: c.body.y + c.body.height * 0.6, z: c.body.z }; }, id);
       await aim(c.x, c.y, c.z);
       await page.mouse.click(640, 360, { button: 'right' });
       try { await page.locator('.trade-list').waitFor({ timeout: 8_000 }); break; } catch (e) {

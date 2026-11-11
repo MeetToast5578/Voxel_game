@@ -164,8 +164,8 @@ export class Play {
   }
 
   /** What the worn accessories (and a full armour set, and status effects) add up to. */
-  get bonus(): { speed: number; jumps: number; featherfall: boolean; protection: number; breath: number; fireproof: boolean; regen: number; crit: number; thorns: number; dash: boolean; wings: boolean; rocket: boolean } {
-    const b = { speed: 0, jumps: 0, featherfall: false, protection: 0, breath: 1, fireproof: false, regen: 1, crit: 0, thorns: 0, dash: false, wings: false, rocket: false };
+  get bonus(): { speed: number; jumps: number; featherfall: boolean; protection: number; breath: number; fireproof: boolean; regen: number; crit: number; thorns: number; dash: boolean; wings: boolean; rocket: boolean; antivenom: boolean } {
+    const b = { speed: 0, jumps: 0, featherfall: false, protection: 0, breath: 1, fireproof: false, regen: 1, crit: 0, thorns: 0, dash: false, wings: false, rocket: false, antivenom: false };
     const set = this.armourSet && SET_BONUSES[this.armourSet];
     if (set) {
       b.speed += set.speed ?? 0;
@@ -186,6 +186,7 @@ export class Play {
       b.breath *= a.breath ?? 1;
       b.fireproof ||= a.fireproof ?? false;
       b.regen *= a.regen ?? 1;
+      b.antivenom ||= a.antivenom ?? false;
     }
     // Potions and other status effects add to what is worn.
     const fx = this.survival;
@@ -896,8 +897,8 @@ export class Play {
     const b = player.body, speed = toCells(BOLT_SPEED_M_S) * (item === 'ice' ? 0.7 : 1);
     const [dx, dy, dz] = aimAt(x, y, z, b.x, b.y + b.height * 0.7, b.z, speed);
     this.projectiles.shoot(x, y, z, dx, dy, dz, speed, damage, false, false, by);
-    // A thrown ice boulder (the Frost Colossus): slower, it hits harder and chills.
-    if (item) Object.assign(this.projectiles.list.at(-1)!, { item, damage: damage + 3 });
+    // A thrown ice boulder (the Frost Colossus) is slower and hits harder; spat venom (the Hive Mother) poisons.
+    if (item) Object.assign(this.projectiles.list.at(-1)!, { item, damage: item === 'ice' ? damage + 3 : damage });
   }
 
   /** Flies every arrow and bolt; hits hurt creatures or the player, and the player's arrows that miss can be picked up. */
@@ -925,7 +926,9 @@ export class Play {
         continue;
       }
       if (!p.fromPlayer) {
+        // A thrown ice boulder chills; spat venom poisons (unless a Hive Charm is worn).
         if (p.item === 'ice') this.survival.addEffect('slowed', 4);
+        if (p.item === 'stinger' && !this.bonus.antivenom) this.survival.addEffect('poisoned', 5);
         this.survival.hurt(this.protect(p.damage * DIFFICULTY[this.difficulty].damage), `shot by a ${(p.by ?? 'skulker').toLowerCase()}`);
         this.version++;
         continue;
@@ -1288,7 +1291,7 @@ export class Play {
     const [effect, seconds, chance] = s?.inflicts ?? ['', 0, 0];
     if (rand() < chance) {
       if (effect === 'burning') { if (!this.bonus.fireproof) this.survival.burning = Math.max(this.survival.burning, seconds); }
-      else if (isEffect(effect)) this.survival.addEffect(effect, seconds);
+      else if (isEffect(effect) && !(effect === 'poisoned' && this.bonus.antivenom)) this.survival.addEffect(effect, seconds);
     }
     this.version++;
   }

@@ -1,8 +1,8 @@
 type RGB = readonly [number, number, number];
 
 /** How a species lives, with sizes and speeds in meters. Ported from the old game. */
-/** A boss's named attacks: a leap that lands hard, a swooping dive, a ground stomp, and a thrown ice boulder. */
-export type BossMove = 'slam' | 'dive' | 'stomp' | 'boulder';
+/** A boss's named attacks: a leap that lands hard, a swooping dive, a ground stomp, a thrown ice boulder, spat venom. */
+export type BossMove = 'slam' | 'dive' | 'stomp' | 'boulder' | 'spit';
 
 export interface Species {
   key: string;
@@ -156,6 +156,14 @@ export const SPECIES: readonly Species[] = [
     summon: { item: 'frost_sigil', height: 3, line: 'The Frost Colossus rises from the snow!' },
     attack: 9, biomes: [], group: [1, 1], colours: { body: [170, 205, 230], head: [220, 238, 250], legs: [110, 140, 170] },
     meat: 0, loot: [['frost_shard', 12], ['life_crystal', 2], ['frost_heart', 1], ['iron_band', 1, 0.5], ['diamond', 3], ['gold_ingot', 6]], voice: 0.05 },
+  { ...BASE, key: 'hornet', name: 'Jungle Hornet', halfWidthM: 0.25, heightM: 0.45, speedM_S: 3.4, health: 9, hostile: true, daytime: true, flies: true,
+    inflicts: ['poisoned', 5, 0.5], attack: 3, biomes: ['tropical_rainforest', 'swamp'], group: [1, 3],
+    colours: { body: [230, 180, 40], head: [40, 32, 20], legs: [255, 230, 120] }, meat: 0, loot: [['stinger', 1, 0.6]], voice: 1 },
+  { ...BASE, key: 'hive_mother', name: 'Hive Mother', halfWidthM: 1.0, heightM: 1.4, speedM_S: 3.6, health: 360, hostile: true, daytime: true, flies: true,
+    boss: true, moves: ['dive', 'spit'], brood: 'hornet', inflicts: ['poisoned', 6, 0.6],
+    summon: { item: 'royal_bait', height: 8, line: 'The Hive Mother answers, humming with fury!' },
+    attack: 7, biomes: [], group: [1, 1], colours: { body: [240, 170, 30], head: [50, 36, 20], legs: [255, 240, 160] },
+    meat: 0, loot: [['stinger', 10], ['life_crystal', 2], ['hive_charm', 1], ['swift_anklet', 1, 0.4], ['gold_ingot', 6]], voice: 0.9 },
   { ...BASE, key: 'bat', name: 'Cave Bat', halfWidthM: 0.2, heightM: 0.4, speedM_S: 3.2, health: 4, hostile: true, flies: true,
     attack: 1, biomes: ['cave'], group: [1, 3], colours: { body: [70, 56, 52], head: [86, 68, 60], legs: [50, 40, 40] },
     meat: 0, loot: [['leather', 1, 0.3], ['cloud_charm', 1, 0.015]], voice: 1 },

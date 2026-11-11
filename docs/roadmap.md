@@ -106,7 +106,7 @@ Every task also passes `npm run check`, `npm run benchmark -- --assert` and `npm
 - [x] **R3.2 Treasure bags (S).** Done in 0.7.6 (no trophy block yet). Each boss drops one bag with its unique loot, so nothing is lost in lava. The bag
   holds a trophy block for display.
   **Done when:** opening a bag gives the listed loot.
-- [~] **R3.3 New bosses (L, one at a time).** 0.9.1: Frost Colossus (no arena of its own yet); Sandmaw, Hive Mother and the Deep Heart remain.
+- [~] **R3.3 New bosses (L, one at a time).** 0.9.1: Frost Colossus; 0.9.2: Hive Mother (no arenas of their own yet); Sandmaw and the Deep Heart remain.
   - **Sandmaw:** a segmented burrowing worm in the desert. It dives under sand and bursts up.
   - **Frost Colossus:** a slow giant in the snow. It throws ice boulders and slows the player.
   - **Hive Mother:** in the jungle or swamp. She spits venom and calls a swarm.

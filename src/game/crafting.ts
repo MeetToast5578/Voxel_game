@@ -44,6 +44,7 @@ export const RECIPES: readonly Recipe[] = [
   { pattern: ['GGG', 'GOG', 'GGG'], key: { G: ['gel'], O: ['gold_ingot'] }, result: ['slime_crown', 1] },
   { pattern: ['FTF', 'GEG', 'FTF'], key: { F: ['feather'], T: ['torch'], G: ['gel'], E: ['ember_crystal'] }, result: ['moth_lure', 1] },
   { pattern: ['FFF', 'FGF', 'FFF'], key: { F: ['frost_shard'], G: ['gold_ingot'] }, result: ['frost_sigil', 1] },
+  { pattern: ['SGS', 'GOG', 'SGS'], key: { S: ['stinger'], G: ['gel'], O: ['gold_ingot'] }, result: ['royal_bait', 1] },
   { pattern: [' LG', ' SL', 'S  '], key: { L: ['lapis'], G: ['gel'], S: ['stick'] }, result: ['spark_wand', 1] },
   { pattern: [' EG', ' SE', 'S  '], key: { E: ['ember_crystal'], G: ['gold_ingot'], S: ['stick'] }, result: ['ember_staff', 1] },
   { pattern: ['PP', 'PP'], key: { P: ['planks'] }, result: ['crafting_table', 1] },

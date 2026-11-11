@@ -178,8 +178,11 @@ function moth(s: Species): Model {
     ...[-1, 1].map((sd) => ball([sd * 0.06, 0.02, -0.07], [0.07, 0.07, 0.05], glow, undefined, true)),
     ...[-1, 1].map((sd) => cone([sd * 0.05, 0.13, -0.05], [0.06, 0.2, 0.02], dark, [-0.5, 0, -sd * 0.4])),
   ]);
+  // Hornets: dark bands round the abdomen and a stinger at its tip.
+  const hornet = s.key === 'hornet' || s.key === 'hive_mother';
+  const bands = hornet ? [0.1, 0.24, 0.38].map((z) => ball([0, 0, z], [0.19, 0.19 - z * 0.12, 0.05], dark)).concat(cone([0, -0.01, 0.56], [0.04, 0.16, 0.04], 0x1a140c, [Math.PI / 2, 0, 0])) : [];
   return { plan: 'bat', restDrop: 0, root: joint('root', [0, 0.5, 0], [
-    ball([0, 0, 0.12], [0.18, 0.18, 0.4], fur), ball([0, 0.01, -0.06], [0.2, 0.2, 0.18], 0xe8e0d0),
+    ball([0, 0, 0.12], [0.18, 0.18, 0.4], fur), ball([0, 0.01, -0.06], [0.2, 0.2, 0.18], hornet ? dark : 0xe8e0d0), ...bands,
   ], [head, wing(-1, false), wing(1, false), wing(-1, true), wing(1, true)]) };
 }
 
@@ -362,7 +365,7 @@ MODELS.mimic = { plan: 'slime', restDrop: 0, root: joint('root', [0, 0, 0], [
   ...[-1, 1].map((sd) => ball([sd * 0.22, 0.86, -0.08], [0.07, 0.07, 0.05], 0xffd040, undefined, true)),
 ]) };
 for (const m of [MODELS.rabbit]) m!.hop = true;
-for (const key of ['gloom_moth', 'gloom_matriarch']) MODELS[key] = moth(SPECIES.find((s) => s.key === key)!);
+for (const key of ['gloom_moth', 'gloom_matriarch', 'hornet', 'hive_mother']) MODELS[key] = moth(SPECIES.find((s) => s.key === key)!);
 
 export function hasShapeModel(key: string): boolean { return key in MODELS; }
 
