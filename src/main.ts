@@ -3,9 +3,10 @@ import { Rivers } from './worldgen/rivers';
 import { ClimateSampler } from './worldgen/climate';
 /** How hard a generated river pushes, as a share of flowing water's push. */
 const RIVER_PUSH = 0.6;
-import { REACH_M, DROP_CAP, NIGHT_BEFORE, AUTOSAVE_S, BLOCK_SIZE_M, CAVE_AIR_C, CHUNK_SIZE, DAY_LENGTH_S, DIFFICULTY, HEAT_REACH_M, HEAT_SOURCES_C, cells, type Difficulty, HORIZON_RECENTER_M, MAX_VIEW_CHUNKS, MIN_VIEW_CHUNKS, SIM_HZ, toCells } from './config';
+import { DEPTHS_TOP_M, REACH_M, DROP_CAP, NIGHT_BEFORE, AUTOSAVE_S, BLOCK_SIZE_M, CAVE_AIR_C, CHUNK_SIZE, DAY_LENGTH_S, DIFFICULTY, HEAT_REACH_M, HEAT_SOURCES_C, cells, type Difficulty, HORIZON_RECENTER_M, MAX_VIEW_CHUNKS, MIN_VIEW_CHUNKS, SIM_HZ, toCells } from './config';
 import { Sounds } from './audio/sounds';
-import { Ambience, type Surroundings } from './audio/ambience';
+import { Ambience, musicPlace, type Surroundings } from './audio/ambience';
+import { villageAt } from './worldgen/structures';
 import { chunkKey, forEachChunkReading, localIndex, unpackChunkKey } from './core/coords';
 import { FixedStepLoop } from './core/loop';
 import { BLOCKS } from './engine/blocks';
@@ -16,7 +17,7 @@ import { World } from './engine/world';
 import { COLLISION, loadedBoxAt } from './game/collision';
 import { Input } from './game/input';
 import { blockInteractionHint } from './game/interactionHint';
-import { Play, type Mode } from './game/play';
+import { Play, type Mode, CHALLENGES, type ChallengeGoal, materialPitch } from './game/play';
 import { Player } from './game/player';
 import { Highlight } from './render/highlight';
 import { Renderer } from './render/renderer';
@@ -150,6 +151,7 @@ renderer.setViewDistance(viewChunks * CHUNK_SIZE);
 const WATER = BLOCKS.typeIndex[BLOCKS.state('water')]!, FLOWING = BLOCKS.typeIndex[BLOCKS.state('flowing_water')]!;
 const LADDER = BLOCKS.typeIndex[BLOCKS.state('ladder')]!, CAMPFIRE = BLOCKS.state('campfire'), ARROW = BLOCKS.state('arrow'), MAGIC_BOLT = BLOCKS.state('ember_crystal');
 const climbAt = (x: number, y: number, z: number) => BLOCKS.typeIndex[world.get(x, y, z)] === LADDER;
+const COBWEB = BLOCKS.typeIndex[BLOCKS.state('cobweb')];
 const FLOWING_ID = BLOCKS.state('flowing_water'), LEVELS = 8;
 /** Level of water in a cell for working out flow (a source is full, air is empty, anything else blocks: -1). */
 const levelAt = (x: number, y: number, z: number) => {
@@ -232,7 +234,7 @@ player.flying = usePosition ? params.get('fly') === '1' : saved.flying;
 let placed = Number.isFinite(player.body.y);
 if (!placed) player.body.y = toCells(60);
 const play = new Play(world, (x, y, z, s) => setBlock(x, y, z, s, true), {
-  sound: (name, volume) => sounds.play(name, volume),
+  sound: (name, volume, pitch) => sounds.play(name, volume, pitch),
   // Sleeping: only at night, and the night passes.
   sleep: () => {
     const night = env.clock.dayTime < 0.23 || env.clock.dayTime > 0.77;
@@ -243,7 +245,12 @@ const play = new Play(world, (x, y, z, s) => setBlock(x, y, z, s, true), {
 }, (params.get('mode') as Mode | null) ?? 'survival');
 const urlDifficulty = params.get('difficulty');
 if (urlDifficulty && urlDifficulty in DIFFICULTY) play.difficulty = urlDifficulty as Difficulty;
+// A new challenge world starts its timer at zero; a saved one brings its own back when loaded.
+const urlChallenge = params.get('challenge');
+if (urlChallenge && urlChallenge in CHALLENGES) play.challenge = { goal: urlChallenge as ChallengeGoal, time: 0 };
 let lastBite = -Infinity;
+/** What a boss's named attacks are called on screen, with the way to dodge. */
+const BOSS_CALLS = { slam: 'Slam! Jump or step away', dive: 'Dive! Step aside', stomp: 'Stomp! Step back', boulder: 'Boulder! Dodge it', spit: 'Venom! Dodge it', burrow: 'It burrows! Keep moving', flame: 'Ember bolt! Dodge it' } as const;
 const creatures = new Creatures(world, mulberry32(seed ^ 0xc0ffee), {
   bite: (damage, by, species, biter) => {
     // A moment of safety after each bite, so a crowd cannot take the player down all at once.
@@ -253,7 +260,13 @@ const creatures = new Creatures(world, mulberry32(seed ^ 0xc0ffee), {
     play.bitten(damage, by, species, Math.random, biter);
   },
   sound: (name, volume) => sounds.play(name, volume),
-  shoot: (c, x, y, z) => play.shootAtPlayer(x, y, z, player, c.species.attack, c.species.name),
+  shoot: (c, x, y, z, item) => play.shootAtPlayer(x, y, z, player, c.species.attack, c.species.name, item),
+  boss: (c, what) => {
+    if (what === 'land') {
+      sounds.play('break', 1);
+      caption(`${c.species.name} lands ${direction(c.body.x, c.body.z)}`);
+    } else play.toast(what === 'enraged' ? `${c.species.name} is enraged!` : `${c.species.name}: ${BOSS_CALLS[what]}`, 2.5);
+  },
   // Calls carry 32 m; pitch follows the species' voice.
   call: (c, kind) => {
     const near = 1 - Math.hypot(c.body.x - player.body.x, c.body.y - player.body.y, c.body.z - player.body.z) * BLOCK_SIZE_M / 32;
@@ -362,6 +375,10 @@ function updateExposure(dt: number): void {
     rain: env.falling === 'rain' && !underground ? (sheltered ? 0.35 : 1) : 0,
     water: Math.min(1, water / 6), underground, day: !night,
     wildlife: !underground && (groundKey === 'grass' || column.skyTop[i]! > column.surface[i]! + 2),
+    place: musicPlace({
+      boss: creatures.list.some((c) => c.species.boss && Math.hypot(c.body.x - x, c.body.z - z) < 48), depthM: y * BLOCK_SIZE_M, depthsTopM: DEPTHS_TOP_M, underground,
+      town: (play.town !== null && Math.hypot(play.town[0] - x, play.town[2] - z) < 40) || villageAt(seed, x, z) !== null, day: !night,
+    }),
   };
   feltC = feltTemperature({
     airC, night: night && !underground, sheltered: sheltered || underground, wet: wetS > 0, windM_S: env.sample?.windSpeed ?? 3,
@@ -387,7 +404,10 @@ function update(dt: number): void {
   if (play.mode === 'survival') player.flying = false;
   else if (!active) input.consume('fly');
   const falling = -player.body.vy, bonus = play.bonus;
-  player.speedBonus = bonus.speed;
+  // Cobwebs hold the player: a quarter of the speed, and a slow fall.
+  const pb = player.body, webbed = [pb.y + 0.1, pb.y + pb.height / 2].some((y) => BLOCKS.typeIndex[world.get(Math.floor(pb.x), Math.floor(y), Math.floor(pb.z))] === COBWEB);
+  if (webbed) pb.vy = Math.max(pb.vy, -toCells(1));
+  player.speedBonus = webbed ? -0.75 : bonus.speed;
   player.airJumps = bonus.jumps;
   player.glide = bonus.featherfall;
   player.dash = bonus.dash;
@@ -431,10 +451,14 @@ function update(dt: number): void {
     play.wakeVillagers(player);
     play.noteSeen(player.body.x, player.body.z);
     play.tickEvent(exposureClock, player);
+    play.tickChallenge(exposureClock);
     exposureClock = 0;
   }
   if (play.mode === 'survival' && !play.survival.dead) {
     if (player.body.onGround && falling > 0 && player.submerged < 0.2 && !bonus.featherfall) play.survival.land(falling * BLOCK_SIZE_M);
+    // A landing from a jump or a fall thumps on the ground's material, louder the harder it is.
+    if (player.body.onGround && falling > toCells(4) && player.submerged < 0.2)
+      sounds.play('step', Math.min(3, falling / toCells(4)), 0.7 * materialPitch(world.get(Math.floor(player.body.x), Math.floor(player.body.y - 0.05), Math.floor(player.body.z))));
     const eye = world.get(Math.floor(player.body.x), Math.floor(player.eyeY), Math.floor(player.body.z));
     const feet = world.get(Math.floor(player.body.x), Math.floor(player.body.y + 0.2), Math.floor(player.body.z));
 
@@ -861,10 +885,16 @@ const loop = new FixedStepLoop(1 / 60, 0.25, timedUpdate, (alpha, frameDt) => {
   }
   const burning=creatures.list.filter(c=>c.burning>0).map(c=>({kind:'fire' as const,x:c.body.x,y:c.body.y+c.body.height*.45,z:c.body.z,size:c.body.height*.7}));
   const bolts=play.projectiles.list.filter(p=>p.magic&&!p.item).map(p=>({kind:'sparks' as const,x:p.x,y:p.y,z:p.z,size:.5}));
-  effects.update(frameDt,now/1000,[...burning,...emitters,...bolts]);
+  // A wisp circles the player's head and lights the blocks around it; night vision lifts every shadow.
+  const wisp = play.bonus.wisp ? { kind: 'sparks' as const, x: player.body.x + Math.cos(now / 700) * 0.9, y: player.eyeY + 0.4 + Math.sin(now / 450) * 0.2, z: player.body.z + Math.sin(now / 700) * 0.9, size: 0.35 } : null;
+  (renderer.uniforms.glowPos!.value as THREE.Vector3).set(wisp?.x ?? 0, wisp?.y ?? 0, wisp?.z ?? 0);
+  renderer.uniforms.glowRadius!.value = wisp ? 9 : 0;
+  renderer.uniforms.nightVision!.value = play.survival.has('night_vision') ? 1 : 0;
+  effects.update(frameDt,now/1000,[...burning,...emitters,...bolts,...(wisp ? [wisp] : [])]);
   decorationMeshes.update(play.decorations,world,renderer.camera,lightAt);
   for (const d of creatures.dying) if (!d.puffed) {
     d.puffed = true;
+    if (d.c.species.boss) ambience.sting();
     effects.burst('smoke', d.c.body.x, d.c.body.y + d.c.body.height * 0.4, d.c.body.z, Math.max(0.8, d.c.body.height * 0.8));
   }
   creatureMeshes.update(creatures.list, (c) => lightAt(c.body.x, c.body.y + c.body.height * 0.6, c.body.z), now / 1000, creatures.dying);

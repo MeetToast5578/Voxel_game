@@ -55,7 +55,7 @@ Every task also passes `npm run check`, `npm run benchmark -- --assert` and `npm
 - [x] **R2.1 Enemies that shoot (M).** Done in 0.7.2 for skeletons (arrows sticking in blocks not yet). Skeletons draw and loose arrows that the player can see and dodge. The draw is
   telegraphed (they pause and aim). Arrows stick in blocks for a while.
   **Done when:** a test has a skeleton hit a standing player and miss a moving one.
-- [ ] **R2.2 Telegraphed attacks (M).** Every hostile winds up before it strikes: a crouch, a flash, a sound. Bosses
+- [x] **R2.2 Telegraphed attacks (M).** Done in 0.9.0 (wind-ups, the slam and dive, enraged phase; no wind-up sound yet). Every hostile winds up before it strikes: a crouch, a flash, a sound. Bosses
   get two or three named attacks each, plus a second phase below half health.
   **Done when:** the shape gallery shows each wind-up and a test sees a boss change phase.
 - [x] **R2.3 Status effects (M).** Done in 0.7.2 (a list with timers rather than icons). Five effects, each with an icon on the HUD and a timer:
@@ -66,7 +66,7 @@ Every task also passes `npm run check`, `npm run benchmark -- --assert` and `npm
   - well fed (cooked food, which gives slow regeneration).
 
   **Done when:** each effect starts, ticks and ends in a test.
-- [x] **R2.4 Potions and an alchemy table (M).** Done in 0.7.2: six potions; night vision is not done yet. The table is a new station, crafted from planks, glass and a
+- [x] **R2.4 Potions and an alchemy table (M).** Done in 0.7.2: six potions; night vision in 0.12.0. The table is a new station, crafted from planks, glass and a
   cauldron. Potions:
   - healing (instant);
   - regeneration;
@@ -106,7 +106,7 @@ Every task also passes `npm run check`, `npm run benchmark -- --assert` and `npm
 - [x] **R3.2 Treasure bags (S).** Done in 0.7.6 (no trophy block yet). Each boss drops one bag with its unique loot, so nothing is lost in lava. The bag
   holds a trophy block for display.
   **Done when:** opening a bag gives the listed loot.
-- [ ] **R3.3 New bosses (L, one at a time).**
+- [x] **R3.3 New bosses (L, one at a time).** Done: Frost Colossus (0.9.1), Hive Mother (0.9.2), Sandmaw (0.9.3), the Deep Heart (0.10.1); no arenas of their own yet.
   - **Sandmaw:** a segmented burrowing worm in the desert. It dives under sand and bursts up.
   - **Frost Colossus:** a slow giant in the snow. It throws ice boulders and slows the player.
   - **Hive Mother:** in the jungle or swamp. She spits venom and calls a swarm.
@@ -120,20 +120,20 @@ Every task also passes `npm run check`, `npm run benchmark -- --assert` and `npm
 
   Both are announced on screen and can be turned off by difficulty.
   **Done when:** a test triggers each and sees the spawn rate change.
-- [ ] **R3.5 Town raids (M, after R5.1).** On some red nights monsters march on the biggest town. Defending it earns
+- [x] **R3.5 Town raids (M, after R5.1).** Done in 0.12.0. On some red nights monsters march on the biggest town. Defending it earns
   a reward from the townsfolk.
   **Done when:** a test spawns a raid aimed at a town.
 
 ## R4. A world worth exploring
 
-- [ ] **R4.1 Cave biomes (L).** Underground regions with their own blocks, light, music, creatures and ore:
+- [x] **R4.1 Cave biomes (L).** Done in 0.11.0 (no cave music yet; flooded caves have no fish of their own). Underground regions with their own blocks, light, music, creatures and ore:
   - glowing mushroom caverns;
   - crystal geodes;
   - flooded caves with fish and the gill pendant;
   - spider nests with webs that slow you.
 
   **Done when:** seed 1 has each within 300 m of spawn, and each has its creatures.
-- [ ] **R4.2 The Ember Depths (L).** A lava layer below −200 m with:
+- [x] **R4.2 The Ember Depths (L).** Done in 0.10.0 and 0.10.1: the layer, ember stone, lava lakes, fire bats, emberite and its gear, and the Deep Heart. A lava layer below −200 m with:
   - basalt and ember stone;
   - lava lakes, and fire bats and magma slimes;
   - a new top ore past jade (**Decide** the name; proposed "Emberite");
@@ -144,8 +144,8 @@ Every task also passes `npm run check`, `npm run benchmark -- --assert` and `npm
 - [x] **R4.3 Sky islands (M).** Done in 0.8.0 (no sky slime yet; the nearest on seed 1 is 820 m away). Rare floating islands high above the surface. Each has a small house, a chest with
   flight-themed loot (cloud charm, feather charm, a glider) and a sky slime.
   **Done when:** seed 1 has one within 500 m of spawn.
-- [~] **R4.4 Biome dungeons (M).** 0.8.0: pyramid and overgrown temple with unique charms; ice cave and sunken
-  ship remain; deserts and rainforests are rare near spawn.
+- [x] **R4.4 Biome dungeons (M).** Done: pyramid and overgrown temple (0.8.0), ice cave and shipwreck (0.12.2),
+  each with a unique charm (no pyramid traps yet); deserts and rainforests are rare near spawn.
   - a sand pyramid with traps;
   - an ice cave;
   - a jungle temple;
@@ -193,8 +193,8 @@ Every task also passes `npm run check`, `npm run benchmark -- --assert` and `npm
 
   A homeless villager moves into a valid home. A **House?** tool shows whether a room is valid and why not.
   **Done when:** a test builds a room and a villager moves in.
-- [~] **R5.2 More townsfolk (M).** 0.7.5: Guide, Merchant, Nurse and Alchemist; Tinkerer and Explorer remain,
-  and the Guide does not explain recipes yet. Each arrives when a condition is met:
+- [~] **R5.2 More townsfolk (M).** 0.7.5: Guide, Merchant, Nurse and Alchemist; 0.12.1: Tinkerer and Explorer.
+  The Guide does not explain recipes yet. Each arrives when a condition is met:
   - Guide: from the start; gives tips and explains recipes.
   - Nurse: after a Life Crystal; heals for coins.
   - Tinkerer: after the first boss; combines accessories.
@@ -222,7 +222,7 @@ Every task also passes `npm run check`, `npm run benchmark -- --assert` and `npm
 
 ## R6. Progression and gear
 
-- [ ] **R6.1 A full material ladder (M).** wood → stone → iron → gold → diamond → jade → Depths ore. Each tier has
+- [x] **R6.1 A full material ladder (M).** Done in 0.12.4 (gold tier; no arrows per tier beyond iron, ember and jade). wood → stone → iron → gold → diamond → jade → Depths ore. Each tier has
   tools, a sword, a spear, a hammer, armour and arrows. Gold gets real gear (fast but weak) instead of being only a
   trade good.
   **Done when:** the balance sheet (R1.2) shows each tier clearly better than the last.
@@ -251,7 +251,7 @@ Every task also passes `npm run check`, `npm run benchmark -- --assert` and `npm
   Slime King gives a bouncy mount.
   **Decide** whether this is wanted.
   **Done when:** a test rides a mount across a field.
-- [~] **R6.7 Pets and companions (M)** (idea 14 "Tame wolves"). 0.8.4: tame wolves; light pets remain.
+- [x] **R6.7 Pets and companions (M)** (idea 14 "Tame wolves"). Done: tame wolves (0.8.4), the wisp (0.12.0).
   - A wolf tamed with bones follows the player and fights.
   - Light pets (a wisp) follow the player and give light.
 
@@ -278,7 +278,7 @@ Every task also passes `npm run check`, `npm run benchmark -- --assert` and `npm
   **Done when:** the second act is triggered and the final boss can be beaten.
 - [x] **R7.5 Harder nights over time (S)** (13.4 rest). Done in 0.8.3. Day 20 spawns more than day 1, capped by difficulty.
   **Done when:** the test in `tasks.md` passes.
-- [~] **R7.6 Hardcore and challenge seeds (S each)** (idea 14). 0.8.3: hardcore; challenge seeds remain. Hardcore has one life. Challenge seeds have a goal
+- [x] **R7.6 Hardcore and challenge seeds (S each)** (idea 14). Done: hardcore (0.8.3), challenge goals with a timer (0.12.3). Hardcore has one life. Challenge seeds have a goal
   and a timer.
   **Done when:** a hardcore death deletes the world after a confirmation.
 
@@ -322,9 +322,9 @@ Every task also passes `npm run check`, `npm run benchmark -- --assert` and `npm
 
 ## R9. Sound and music
 
-- [ ] **R9.1 Creature voices (S).** A synthesised idle, hurt and death sound for each species.
-- [ ] **R9.2 Footsteps and impacts (S).** Steps, landings and hits for each material.
-- [ ] **R9.3 Music for each place (M).** Separate synthesised themes for:
+- [x] **R9.1 Creature voices (S).** Done earlier: every species calls, is hurt and dies in its own pitch. A synthesised idle, hurt and death sound for each species.
+- [x] **R9.2 Footsteps and impacts (S).** Done: steps (earlier), landings and block hits (0.12.5). Steps, landings and hits for each material.
+- [x] **R9.3 Music for each place (M).** Done in 0.12.5. Separate synthesised themes for:
   - day and night;
   - caves, the Depths and towns;
   - boss fights;
@@ -348,7 +348,7 @@ Every task also passes `npm run check`, `npm run benchmark -- --assert` and `npm
 - [ ] **R11.1 Split the large files (M).** `main.ts` (881 lines), `play.ts` (1323) and `app.tsx` (509) split by
   concern: combat, items, townsfolk and screens. Behaviour stays the same.
   **Done when:** no file is over about 600 lines and all checks pass.
-- [ ] **R11.2 Error overlay (S).** In development builds, uncaught errors show on screen with a copy button, so the
+- [x] **R11.2 Error overlay (S).** Done in 0.9.0. In development builds, uncaught errors show on screen with a copy button, so the
   owner can paste them.
 
 ## R12. Large and undecided

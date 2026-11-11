@@ -187,6 +187,15 @@ export const AQUIFER_LEVEL_M = -42;
 export const AQUIFER_AMPLITUDE_M = 30;
 export const AQUIFER_SCALE_M = 160;
 export const LAVA_DEPTH_M = -100;
+/**
+ * The Ember Depths: below this the rock turns to basalt seamed with ember stone, caverns open wide, and their lava
+ * pools only below a lava sea (DEPTHS_LAVA_M, varying a few metres), so there is air to explore above it.
+ */
+export const DEPTHS_TOP_M = -220;
+/** Cave biomes: the size of their regions, and the band of depth they decorate (from a little below the surface to the Depths). */
+export const CAVE_BIOME_M = 90;
+export const CAVE_BIOME_TOP_M = -12;
+export const DEPTHS_LAVA_M = -250;
 
 // ---- Trees and features ----
 /** Tree anchors per square metre where the biome grows trees. */
@@ -373,6 +382,14 @@ export const FLEE_M = 8;
 export const HUNT_M = 16;
 export const ATTACK_REACH_M = 0.6;
 export const ATTACK_COOLDOWN_S = 1.2;
+/** Seconds a monster winds up before a bite lands (a step back dodges it), and a boss before a named attack. */
+export const WINDUP_S = 0.35;
+export const BOSS_WINDUP_S = 0.7;
+/** Seconds between a boss's named attacks (less once enraged), and the reach of the Slime King's slam. */
+export const BOSS_SPECIAL_S = 6;
+export const SLAM_RADIUS_M = 2.4;
+/** The Matriarch's dive speed. */
+export const DIVE_M_S = 7;
 /** Creatures do not walk off drops deeper than this. */
 export const CREATURE_FALL_M = 3;
 export const RUN_FACTOR = 1.8;
@@ -391,7 +408,7 @@ export const AXE_DAMAGE = 3;
 export const TOOL_DAMAGE = 2;
 export const SWORD_DAMAGE = 4;
 /** Extra damage per tool tier (wooden, stone, iron, diamond, jade): the steps grow so each tier is felt. */
-export const TIER_DAMAGE = [0, 1, 3, 6, 9] as const;
+export const TIER_DAMAGE = [0, 1, 3, 4, 6, 9, 13] as const;
 /** Arrows: speed at full draw (m/s), seconds to full draw, damage at full draw; projectiles vanish after PROJECTILE_LIFE_S. */
 export const ARROW_SPEED_M_S = 30;
 export const BOW_DRAW_S = 0.8;
@@ -407,6 +424,14 @@ export const FIRE_TICK_S: readonly [number, number] = [0.8, 2], FIRE_AGES = 4, F
 /** World events: the share of nights with a red moon and of days with slime rain (from this day on), the slimes to
  * defeat before the Slime King comes, and seconds between falling slimes. */
 export const RED_NIGHT_CHANCE = 1 / 8;
+/**
+ * Town raids: on a red night, with the player near a town of at least RAID_MIN_HOMES homes they built, this share of
+ * red nights sends RAID_SIZE monsters marching on it from RAID_FROM_M away.
+ */
+export const RAID_SHARE = 0.5;
+export const RAID_MIN_HOMES = 2;
+export const RAID_SIZE = 8;
+export const RAID_FROM_M = 30;
 /** Once a boss is beaten: the share of nights a meteor falls near the player. */
 export const METEOR_CHANCE = 1 / 6;
 export const SLIME_RAIN_CHANCE = 1 / 10;

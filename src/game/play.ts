@@ -1,4 +1,4 @@
-import { METEOR_CHANCE, NIGHT_GROWTH_MAX, NIGHT_GROWTH_PER_DAY, ARROW_KINDS, BOOMERANG_DAMAGE, BOOMERANG_OUT_S, BOOMERANG_SPEED_M_S, EMBER_BURN_S, HAMMER_DAMAGE, HAMMER_SLOW, KNIFE_DAMAGE, KNIFE_SPEED_M_S, SPEAR_ARC_RAD, SPEAR_DAMAGE, SPEAR_REACH, EVENTS_FROM_DAY, RED_NIGHT_CHANCE, SLIME_RAIN_CHANCE, SLIME_RAIN_EVERY_S, SLIME_RAIN_KILLS, HOOK_RANGE_M, TIER_DAMAGE, ARMOUR_CAP, ARMOUR_PER_POINT, MAX_HEALTH, ACCESSORY_SLOTS, AXE_ARC_RAD, CRIT_CHANCE, CRIT_FACTOR, KNOCKBACK_FACTOR, SWORD_ARC_RAD, LIGHTNING_DAMAGE, LIGHTNING_REACH_M, FISH_MAX_S, FISH_MIN_S, BLOCK_SIZE_M, ARROW_DAMAGE, ARROW_SPEED_M_S, BOLT_SPEED_M_S, BOW_DRAW_S, AXE_DAMAGE, BUILD_CELLS_PER_TICK, CAMPFIRE_COOK_S, CAMPFIRE_SLOTS, DIFFICULTY, PLAYER_ATTACK_COOLDOWN_S, SWORD_DAMAGE, type Difficulty, BUILD_MAX_M, DROP_PICKUP_DELAY_S, DROP_THROW_M_S, HAND_DAMAGE, REACH_M, REPEAT_S, TOOL_DAMAGE, UNDO_STEPS, cells, toCells } from '../config';
+import { RAID_FROM_M, RAID_MIN_HOMES, RAID_SHARE, RAID_SIZE, DEPTHS_TOP_M, METEOR_CHANCE, NIGHT_GROWTH_MAX, NIGHT_GROWTH_PER_DAY, ARROW_KINDS, BOOMERANG_DAMAGE, BOOMERANG_OUT_S, BOOMERANG_SPEED_M_S, EMBER_BURN_S, HAMMER_DAMAGE, HAMMER_SLOW, KNIFE_DAMAGE, KNIFE_SPEED_M_S, SPEAR_ARC_RAD, SPEAR_DAMAGE, SPEAR_REACH, EVENTS_FROM_DAY, RED_NIGHT_CHANCE, SLIME_RAIN_CHANCE, SLIME_RAIN_EVERY_S, SLIME_RAIN_KILLS, HOOK_RANGE_M, TIER_DAMAGE, ARMOUR_CAP, ARMOUR_PER_POINT, MAX_HEALTH, ACCESSORY_SLOTS, AXE_ARC_RAD, CRIT_CHANCE, CRIT_FACTOR, KNOCKBACK_FACTOR, SWORD_ARC_RAD, LIGHTNING_DAMAGE, LIGHTNING_REACH_M, FISH_MAX_S, FISH_MIN_S, BLOCK_SIZE_M, ARROW_DAMAGE, ARROW_SPEED_M_S, BOLT_SPEED_M_S, BOW_DRAW_S, AXE_DAMAGE, BUILD_CELLS_PER_TICK, CAMPFIRE_COOK_S, CAMPFIRE_SLOTS, DIFFICULTY, PLAYER_ATTACK_COOLDOWN_S, SWORD_DAMAGE, type Difficulty, BUILD_MAX_M, DROP_PICKUP_DELAY_S, DROP_THROW_M_S, HAND_DAMAGE, REACH_M, REPEAT_S, TOOL_DAMAGE, UNDO_STEPS, cells, toCells } from '../config';
 import { bagLoot, lootOf, type Creature, type Creatures } from '../creatures/creatures';
 import { AIR, BLOCKS, POTIONS, SET_BONUSES, SOLID, type BlockType } from '../engine/blocks';
 import type { World } from '../engine/world';
@@ -27,7 +27,8 @@ import { aimAt, Projectiles } from './projectiles';
 import type { BoxAt } from './collision';
 import { HOUSE_BED, professionAt, sitesNear, structureCells, undergroundFloor } from '../worldgen/structures';
 import { Decorations, SHOPS, TRADE_OFFERS, WORKSHOP_BLOCKS, trade, forge, type TradeOffer, type WorkshopKind } from './workshops';
-import { SPECIES_BY_KEY } from '../creatures/species';
+import { SPECIES, SPECIES_BY_KEY } from '../creatures/species';
+import { Generator } from '../worldgen/generator';
 import { buildingMaterial } from './building';
 
 export type Mode = 'creative' | 'survival';
@@ -64,6 +65,29 @@ const BUCKET = S('bucket'), BOW = S('bow'), ARROW = S('arrow'), BONE_MEAL = S('b
 export const DOOR_CELLS = 4;
 const FACING_OFFSET = [[1, 0], [-1, 0], [0, 1], [0, -1]] as const;
 /** A home the player made: the bed head's cell, which way its sleeper lies, and who lives there. */
+/** Challenge runs: a goal to reach as fast as possible, with a timer. */
+export const CHALLENGES = {
+  boss: { name: 'Beat a boss', met: (p: Play) => [...p.bestiary.keys()].some((k) => SPECIES_BY_KEY.get(k)?.boss) },
+  depths: { name: 'Reach the Ember Depths', met: (p: Play) => p.deepestM <= DEPTHS_TOP_M },
+  beacon: { name: 'Light the beacon', met: (p: Play) => p.beaconLit },
+  deep_heart: { name: 'Defeat the Deep Heart', met: (p: Play) => p.bestiary.has('deep_heart') },
+} as const;
+export type ChallengeGoal = keyof typeof CHALLENGES;
+/** Seconds as m:ss (or h:mm:ss). */
+export const clock = (t: number) => {
+  const s = Math.floor(t), h = Math.floor(s / 3600), m = Math.floor(s / 60) % 60, ss = String(s % 60).padStart(2, '0');
+  return h ? `${h}:${String(m).padStart(2, '0')}:${ss}` : `${m}:${ss}`;
+};
+
+/** How a block sounds when struck: stone rings bright, wood knocks, earth and plants thud, sand and snow hiss soft. */
+export function materialPitch(state: number): number {
+  const t = BLOCKS.type(state);
+  return t.key === 'snow' ? 0.6 : t.falls ? 1.1 : t.mineWith === 'pickaxe' ? 1.8 : t.mineWith === 'axe' ? 1.3 : 0.8;
+}
+
+/** Places a treasure map can show, by name. */
+const MAP_PLACES = { ice_cave: 'An ice cave', shipwreck: 'A shipwreck', pyramid: 'A pyramid', temple: 'An overgrown temple', sky_island: 'A sky island', altar: 'A boss altar', shrine: 'An ember shrine', tower: 'A watchtower', cabin: 'A cabin' } as const;
+
 export interface Home { x: number; y: number; z: number; yaw: number; who: string | null }
 
 /** Everything one player can do with the world: break, place, use blocks, carry and craft. Ported from the old game. */
@@ -164,14 +188,15 @@ export class Play {
   }
 
   /** What the worn accessories (and a full armour set, and status effects) add up to. */
-  get bonus(): { speed: number; jumps: number; featherfall: boolean; protection: number; breath: number; fireproof: boolean; regen: number; crit: number; thorns: number; dash: boolean; wings: boolean; rocket: boolean } {
-    const b = { speed: 0, jumps: 0, featherfall: false, protection: 0, breath: 1, fireproof: false, regen: 1, crit: 0, thorns: 0, dash: false, wings: false, rocket: false };
+  get bonus(): { speed: number; jumps: number; featherfall: boolean; protection: number; breath: number; fireproof: boolean; regen: number; crit: number; thorns: number; dash: boolean; wings: boolean; rocket: boolean; antivenom: boolean; wisp: boolean } {
+    const b = { speed: 0, jumps: 0, featherfall: false, protection: 0, breath: 1, fireproof: false, regen: 1, crit: 0, thorns: 0, dash: false, wings: false, rocket: false, antivenom: false, wisp: false };
     const set = this.armourSet && SET_BONUSES[this.armourSet];
     if (set) {
       b.speed += set.speed ?? 0;
       b.protection += set.protection ?? 0;
       b.crit += set.crit ?? 0;
       b.thorns += set.thorns ?? 0;
+      b.fireproof ||= set.fireproof ?? false;
     }
     for (const s of this.accessories) {
       const a = s && BLOCKS.type(s.state).accessory;
@@ -186,6 +211,8 @@ export class Play {
       b.breath *= a.breath ?? 1;
       b.fireproof ||= a.fireproof ?? false;
       b.regen *= a.regen ?? 1;
+      b.antivenom ||= a.antivenom ?? false;
+      b.wisp ||= a.wisp ?? false;
     }
     // Potions and other status effects add to what is worn.
     const fx = this.survival;
@@ -211,7 +238,7 @@ export class Play {
   readonly campfires = new Map<string, [number, number][]>();
 
   constructor(private readonly world: World, setBlock: (x: number, y: number, z: number, s: number) => void,
-    private readonly events: { sound(name: 'break' | 'place' | 'eat', volume?: number): void; sleep(): boolean; fertilise?(x: number, y: number, z: number): boolean }, mode: Mode = 'creative') {
+    private readonly events: { sound(name: 'break' | 'place' | 'eat', volume?: number, pitch?: number): void; sleep(): boolean; fertilise?(x: number, y: number, z: number): boolean }, mode: Mode = 'creative') {
     this.mode = mode;
     // Every change the player makes is recorded for undo while a group is open.
     this.setBlock = (x, y, z, s) => {
@@ -545,6 +572,12 @@ export class Play {
     entry.kills++;
     for (const q of QUESTS) if (q.kind === 'defeat' && q.key === c.species.key && this.quests.has(q.id)) this.quests.set(q.id, this.quests.get(q.id)! + 1);
     // Event rewards: red nights pay in coins; enough slimes beaten in slime rain bring their king.
+    if (c.raid && this.raidLeft > 0 && --this.raidLeft === 0) {
+      // The last raider falls: the townsfolk reward their defender.
+      this.drop({ state: BLOCKS.state('trade_coin'), count: 30 }, c.body.x, c.body.y, c.body.z);
+      this.drop({ state: BLOCKS.state('life_crystal'), count: 1 }, c.body.x, c.body.y, c.body.z);
+      this.toast('The town is saved! The townsfolk thank you with a gift.', 5);
+    }
     if (this.event === 'red_night' && c.species.hostile && Math.random() < 0.5) this.drop({ state: BLOCKS.state('trade_coin'), count: 1 + Math.floor(Math.random() * 2) }, c.body.x, c.body.y, c.body.z);
     if (this.event === 'slime_rain' && c.species.key === 'slime' && ++this.eventKills >= SLIME_RAIN_KILLS) {
       this.event = null;
@@ -631,7 +664,8 @@ export class Play {
   turnOfDay(night: boolean): void {
     const ended = this.event;
     this.event = null;
-    if (ended === 'red_night') this.toast('The red moon sets.', 3);
+    if (ended === 'red_night') this.toast(this.raidLeft > 0 ? 'The red moon sets, and the raiders slink away.' : 'The red moon sets.', 3);
+    this.raidLeft = 0;
     if (this.mode !== 'survival' || this.difficulty === 'peaceful' || this.stats.days < EVENTS_FROM_DAY) return;
     const roll = hash2(this.seed ^ 0x5eed, this.stats.days, night ? 1 : 0);
     // Once any boss has fallen, a meteor may come down somewhere near.
@@ -639,11 +673,77 @@ export class Play {
     if (night && roll < RED_NIGHT_CHANCE) {
       this.event = 'red_night';
       this.toast('A red moon rises. Monsters swarm tonight!', 5);
+      // Some red nights the monsters march on the player's town, if they are near it.
+      const town = this.town;
+      if (town && Math.hypot(town[0] - this.feet[0], town[2] - this.feet[2]) < toCells(100) && hash2(this.seed ^ 0x4a1d, this.stats.days, 3) < RAID_SHARE) this.startRaid();
     } else if (!night && roll < SLIME_RAIN_CHANCE) {
       this.event = 'slime_rain';
       this.eventKills = 0;
       this.toast('It is raining slimes!', 5);
     }
+  }
+
+  /**
+   * A treasure map marks the nearest place worth finding that is not marked yet (within about 700 m), for the compass.
+   * Returns whether it found one.
+   */
+  readMap(): boolean {
+    const gen = (this.mapGen ??= new Generator(this.seed)), [fx, , fz] = this.feet, r = 1200;
+    const sites = sitesNear(this.seed, Math.floor(fx) - r, Math.floor(fz) - r, Math.floor(fx) + r, Math.floor(fz) + r)
+      .filter((s) => s.kind in MAP_PLACES && !this.markers.some((m) => m.x === s.x + 0.5 && m.z === s.z + 0.5))
+      .sort((a, b) => Math.hypot(a.x - fx, a.z - fz) - Math.hypot(b.x - fx, b.z - fz));
+    for (const s of sites) {
+      const base = gen.structureBase(s.kind, s.x, s.z);
+      if (base === null) continue;
+      const name = MAP_PLACES[s.kind as keyof typeof MAP_PLACES], d = Math.round(Math.hypot(s.x - fx, s.z - fz) * BLOCK_SIZE_M);
+      this.markers.push({ name, x: s.x + 0.5, y: base, z: s.z + 0.5 });
+      this.toast(`The map shows ${name.toLowerCase()} ${d} m away. The compass points to it.`, 5);
+      return true;
+    }
+    this.toast('The map shows nothing new near here.', 3);
+    return false;
+  }
+  private mapGen?: Generator;
+
+  /** A challenge run: its goal, seconds played, and the time it was met in (saved). */
+  challenge: { goal: ChallengeGoal; time: number; done?: number } | null = null;
+
+  /** Counts a challenge's time while the player lives, and notes the moment its goal is met (call each tick). */
+  tickChallenge(dt: number): void {
+    const c = this.challenge;
+    if (!c || c.done !== undefined || this.survival.dead) return;
+    c.time += dt;
+    if (CHALLENGES[c.goal].met(this)) {
+      c.done = c.time;
+      this.toast(`Challenge complete: ${CHALLENGES[c.goal].name} in ${clock(c.time)}!`, 8);
+    }
+  }
+
+  /** Raiders still standing in a raid on the player's town: the raid is won when none are left. */
+  raidLeft = 0;
+
+  /** The player's town: the middle of the homes they built, when there are at least RAID_MIN_HOMES; else null. */
+  get town(): [number, number, number] | null {
+    const homes = [...this.homes.values()];
+    if (homes.length < RAID_MIN_HOMES) return null;
+    const avg = (k: 'x' | 'y' | 'z') => homes.reduce((a, h) => a + h[k], 0) / homes.length;
+    return [avg('x'), avg('y'), avg('z')];
+  }
+
+  /** Monsters gather RAID_FROM_M from the player's town and march on it; returns whether a raid began. */
+  startRaid(rand = Math.random): boolean {
+    const town = this.town, creatures = this.creatures;
+    if (!town || !creatures) return false;
+    const [tx, ty, tz] = town, a = rand() * Math.PI * 2, r = toCells(RAID_FROM_M);
+    const kinds = ['zombie', 'zombie', 'skulker', 'skeleton', this.stats.days > 10 ? 'brute' : 'zombie'];
+    for (let k = 0; k < RAID_SIZE; k++) {
+      const x = tx + Math.cos(a) * r + (rand() - 0.5) * 6, z = tz + Math.sin(a) * r + (rand() - 0.5) * 6;
+      const s = SPECIES_BY_KEY.get(kinds[k % kinds.length]!)!, ground = this.world.surfaceAt(Math.floor(x), Math.floor(z));
+      creatures.add(s, x, (ground ?? ty) + 1, z, s.health).raid = [tx, tz];
+    }
+    this.raidLeft = RAID_SIZE;
+    this.toast('Monsters march on your town! Defend it!', 6);
+    return true;
   }
 
   /** A meteor lands 40 to 80 cells from the player: a crater with meteorite in its floor and fires around it. */
@@ -683,8 +783,9 @@ export class Play {
   private nextArrival(): string {
     const housed = new Set([...this.homes.values()].map((h) => h.who));
     const potions = POTIONS.some(([k]) => this.hasItem(k)) || this.hasItem('glass_bottle') || this.hasItem('alchemy_table');
+    const bossBeaten = [...this.bestiary.keys()].some((k) => SPECIES_BY_KEY.get(k)?.boss);
     const ready: [string, boolean][] = [['guide', true], ['merchant', this.inventory.count(BLOCKS.state('trade_coin')) >= 20], ['nurse', this.survival.maxHealth > MAX_HEALTH],
-      ['alchemist', potions]];
+      ['alchemist', potions], ['tinkerer', bossBeaten], ['explorer', this.biomesSeen.size >= 8]];
     return ready.find(([who, ok]) => ok && !housed.has(who))?.[0] ?? ['farmer', 'smith', 'herbalist'][this.homes.size % 3]!;
   }
 
@@ -892,10 +993,12 @@ export class Play {
   }
 
   /** A creature shoots a bolt at the player's chest from (x, y, z). */
-  shootAtPlayer(x: number, y: number, z: number, player: Player, damage: number, by = 'Skulker'): void {
-    const b = player.body, speed = toCells(BOLT_SPEED_M_S);
+  shootAtPlayer(x: number, y: number, z: number, player: Player, damage: number, by = 'Skulker', item?: string): void {
+    const b = player.body, speed = toCells(BOLT_SPEED_M_S) * (item === 'ice' ? 0.7 : 1);
     const [dx, dy, dz] = aimAt(x, y, z, b.x, b.y + b.height * 0.7, b.z, speed);
     this.projectiles.shoot(x, y, z, dx, dy, dz, speed, damage, false, false, by);
+    // A thrown ice boulder (the Frost Colossus) is slower and hits harder; spat venom (the Hive Mother) poisons.
+    if (item) Object.assign(this.projectiles.list.at(-1)!, { item, damage: item === 'ice' ? damage + 3 : damage });
   }
 
   /** Flies every arrow and bolt; hits hurt creatures or the player, and the player's arrows that miss can be picked up. */
@@ -923,6 +1026,10 @@ export class Play {
         continue;
       }
       if (!p.fromPlayer) {
+        // A thrown ice boulder chills; spat venom poisons (unless a Hive Charm is worn).
+        if (p.item === 'ice') this.survival.addEffect('slowed', 4);
+        if (p.item === 'stinger' && !this.bonus.antivenom) this.survival.addEffect('poisoned', 5);
+        if (p.item === 'ember_crystal' && !this.bonus.fireproof) this.survival.burning = Math.max(this.survival.burning, 4);
         this.survival.hurt(this.protect(p.damage * DIFFICULTY[this.difficulty].damage), `shot by a ${(p.by ?? 'skulker').toLowerCase()}`);
         this.version++;
         continue;
@@ -952,7 +1059,8 @@ export class Play {
 
   /** °C of cold the worn armour keeps off. */
   get warmth(): number {
-    return this.armour.reduce((sum, a) => sum + (a ? BLOCKS.type(a.state).armour!.warmth + (a.upgrade ?? 0) : 0), 0);
+    return this.armour.reduce((sum, a) => sum + (a ? BLOCKS.type(a.state).armour!.warmth + (a.upgrade ?? 0) : 0), 0)
+      + this.accessories.reduce((sum, a) => sum + (a ? BLOCKS.type(a.state).accessory?.warmth ?? 0 : 0), 0);
   }
 
   /** Puts the held armour on, swapping with what was worn there. */
@@ -1050,7 +1158,7 @@ export class Play {
     if (this.chipClock <= 0 && this.breaking < 1) {
       this.chipClock = 0.2;
       this.particles.burst(state, t.x + 0.5, t.y + 0.5, t.z + 0.5, 3);
-      this.events.sound('break', 0.35);
+      this.events.sound('break', 0.35, materialPitch(state));
       this.swings++;
     }
     if (this.breaking >= 1) {
@@ -1086,7 +1194,7 @@ export class Play {
     this.particles.burst(state, x + 0.5, y + 0.5, z + 0.5);
     this.swings++;
     this.setBlock(x, y, z, AIR);
-    this.events.sound('break');
+    this.events.sound('break', 1, materialPitch(state));
     this.version++;
   }
 
@@ -1220,18 +1328,23 @@ export class Play {
       this.version++;
       return;
     }
-    if ((heldType.key === 'slime_crown' || heldType.key === 'moth_lure') && this.creatures) {
-      // Calls a boss: it arrives a little way off, ready to fight. One at a time; the Matriarch only comes at night.
-      const moth = heldType.key === 'moth_lure';
+    if (heldType.key === 'treasure_map') {
+      if (this.readMap() && this.mode === 'survival') this.inventory.useHeld();
+      return;
+    }
+    const boss = SPECIES.find((s) => s.summon?.item === heldType.key);
+    if (boss && this.creatures) {
+      // Calls a boss: it arrives a little way off, ready to fight. One at a time; some only come at night.
       if (this.creatures.list.some((c) => c.species.boss)) this.toast('A boss is already here', 3);
-      else if (moth && this.daylight > 0.35) this.toast('The lure only draws her out at night', 3);
+      else if (boss.summon!.night && this.daylight > 0.35) this.toast(`The ${heldType.name} only works at night`, 3);
+      else if (boss.summon!.depths && this.feet[1] * BLOCK_SIZE_M > DEPTHS_TOP_M) this.toast(`The ${heldType.name} only stirs in the Ember Depths`, 3);
       else {
-        const boss = SPECIES_BY_KEY.get(moth ? 'gloom_matriarch' : 'king_slime')!, [x, y, z] = this.feet, a = Math.random() * Math.PI * 2;
-        const c = this.creatures.add(boss, x + Math.cos(a) * 9, y + (moth ? 10 : 6), z + Math.sin(a) * 9, boss.health);
+        const [x, y, z] = this.feet, a = Math.random() * Math.PI * 2;
+        const c = this.creatures.add(boss, x + Math.cos(a) * 9, y + boss.summon!.height, z + Math.sin(a) * 9, boss.health);
         // Summoned on an altar, a boss leaves two treasure bags.
         c.atAltar = sitesNear(this.seed, Math.floor(x), Math.floor(z), Math.floor(x), Math.floor(z)).some((s) => s.kind === 'altar');
         if (this.mode === 'survival') this.inventory.useHeld();
-        this.toast(`${moth ? 'The Gloom Matriarch descends!' : 'The Slime King has awoken!'}${c.atAltar ? ' The altar answers: twice the treasure.' : ''}`, 4);
+        this.toast(`${boss.summon!.line}${c.atAltar ? ' The altar answers: twice the treasure.' : ''}`, 4);
       }
       return;
     }
@@ -1285,7 +1398,7 @@ export class Play {
     const [effect, seconds, chance] = s?.inflicts ?? ['', 0, 0];
     if (rand() < chance) {
       if (effect === 'burning') { if (!this.bonus.fireproof) this.survival.burning = Math.max(this.survival.burning, seconds); }
-      else if (isEffect(effect)) this.survival.addEffect(effect, seconds);
+      else if (isEffect(effect) && !(effect === 'poisoned' && this.bonus.antivenom)) this.survival.addEffect(effect, seconds);
     }
     this.version++;
   }
@@ -1756,7 +1869,7 @@ export class Play {
   save(): unknown {
     const s = (st: ItemStack | null) => (st ? [BLOCKS.stateName(st.state), st.count] : null);
     return {
-      decorations: this.decorations.save(), mode: this.mode, difficulty: this.difficulty, hints: this.hints.save(), inventory: this.inventory.save(), selected: this.inventory.selected, drops: this.drops.save(),
+      challenge: this.challenge, decorations: this.decorations.save(), mode: this.mode, difficulty: this.difficulty, hints: this.hints.save(), inventory: this.inventory.save(), selected: this.inventory.selected, drops: this.drops.save(),
       health: this.survival.health, maxHealth: this.survival.maxHealth, hunger: this.survival.hunger, air: this.survival.air, effects: { ...this.survival.effects }, burning: this.survival.burning, bodyC: this.survival.temperature.coreC, spawn: this.spawn,
       furnaces: [...this.furnaces].map(([k, f]) => [k, s(f.input), s(f.fuel), s(f.output), f.burn, f.progress]),
       chestNames: [...this.chestNames], waystones: [...this.waystones], markers: this.markers, quests: [...this.quests], questsDone: [...this.questsDone], event: this.event, eventKills: this.eventKills, wardenHealth: [...this.wardenHealth], homes: [...this.homes.values()].map((h) => [h.x, h.y, h.z, h.yaw, h.who]), journal: this.journal.save(), seen: [...this.seen], bestiary: [...this.bestiary].map(([k, e]) => [k, e.kills, [...e.drops]]), stats: this.stats, biomesSeen: [...this.biomesSeen], deepestM: this.deepestM, found: [...this.found], beaconLit: this.beaconLit, endingSeen: this.endingSeen, boating: this.boating,
@@ -1796,6 +1909,8 @@ export class Play {
     if (Array.isArray(p.questsDone)) for (const id of p.questsDone) if (known(id)) this.questsDone.add(id);
     if (Array.isArray(p.wardenHealth)) for (const e of p.wardenHealth) if (Array.isArray(e) && typeof e[0] === 'string' && num(e[1], 0) > 0) this.wardenHealth.set(e[0], num(e[1], 0));
     this.eventKills = Math.max(0, Math.floor(num(p.eventKills, 0)));
+    const ch = p.challenge as { goal?: unknown; time?: unknown; done?: unknown } | null | undefined;
+    if (ch && typeof ch.goal === 'string' && ch.goal in CHALLENGES) this.challenge = { goal: ch.goal as ChallengeGoal, time: num(ch.time, 0), ...(typeof ch.done === 'number' ? { done: ch.done } : {}) };
     if (Array.isArray(p.homes)) for (const h of p.homes) {
       if (!Array.isArray(h) || !h.slice(0, 4).every((v) => typeof v === 'number' && Number.isFinite(v))) continue;
       const who = typeof h[4] === 'string' && SPECIES_BY_KEY.get(h[4])?.villager ? h[4] : null;
@@ -1826,7 +1941,7 @@ export class Play {
       const st = p.stats as Record<string, unknown>;
       for (const k of Object.keys(this.stats) as (keyof Stats)[]) this.stats[k] = Math.max(0, num(st[k], 0));
     }
-    if (Array.isArray(p.found)) for (const f of p.found) if (['surface', 'mine', 'vault', 'shrine', 'sky', 'pyramid', 'temple'].includes(f)) this.found.add(f as LootTable);
+    if (Array.isArray(p.found)) for (const f of p.found) if (['surface', 'mine', 'vault', 'shrine', 'sky', 'pyramid', 'temple', 'ice_cave', 'shipwreck'].includes(f)) this.found.add(f as LootTable);
     this.beaconLit = p.beaconLit === true;
     if (Array.isArray(p.biomesSeen)) for (const b of p.biomesSeen) if (Number.isInteger(b) && b >= 0 && b < 256) this.biomesSeen.add(b);
     this.deepestM = Math.min(0, num(p.deepestM, 0));

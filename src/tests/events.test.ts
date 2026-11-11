@@ -35,6 +35,37 @@ describe('world events', () => {
     for (let day = 2; day < 80; day++) { play.stats.days = day; play.turnOfDay(true); expect(play.event).toBeNull(); }
   });
 
+  it('a raid marches on the player\'s town, and beating every raider earns the townsfolk\'s gift', () => {
+    const { world, play, cs } = setup();
+    for (let cx = -5; cx <= 3; cx++) for (let cz = -2; cz <= 2; cz++) for (let cy = -1; cy <= 0; cy++)
+      if (!world.isLoaded(cx * 16, cy * 16, cz * 16)) world.add(new Chunk(cx, cy, cz, cy < 0 ? S('stone') : 0));
+    expect(play.startRaid()).toBe(false); // no town yet
+    for (const [x, z] of [[4, 4], [8, 4]]) play.homes.set(`${x},0,${z}`, { x, y: 0, z, yaw: 0, who: 'farmer' });
+    expect(play.town).toEqual([6, 0, 4]);
+    expect(play.startRaid(() => 0.5)).toBe(true);
+    const raiders = cs.list.filter((c) => c.raid);
+    expect(raiders).toHaveLength(8);
+    for (const c of raiders) expect(c.raid).toEqual([6, 4]);
+    // Far from the player, they march on the town.
+    const far = (c: (typeof raiders)[number]) => Math.hypot(c.body.x - 6, c.body.z - 4);
+    const before = raiders.map(far);
+    const ctx = { player: { x: 40, y: 0, z: 4, vx: 0, vy: 0, vz: 0, halfWidth: 0.47, height: 2.9, onGround: true }, survival: true, day: false, hostiles: 1,
+      boxAt: () => 0, waterAt: () => false } as const;
+    for (let i = 0; i < 60 * 3; i++) cs.update(1 / 60, { ...ctx, boxAt: (_x: number, y: number) => (y < 0 ? 1 : 0) });
+    expect(raiders.filter((c, i) => far(c) < before[i]!).length).toBeGreaterThan(4);
+    // Beating every raider: coins and a life crystal.
+    const p = player(), actions = new Set<string>();
+    play.inventory.slots[0] = { state: S('jade_sword'), count: 1 };
+    for (const c of raiders) {
+      cs.list.splice(cs.list.indexOf(c), 1);
+      cs.add(c.species, 2.5, 0, 0.5, 1).raid = c.raid;
+      actions.add('break');
+      play.update(1, input(actions), p);
+    }
+    expect(play.raidLeft).toBe(0);
+    expect(play.drops.list.map((d) => BLOCKS.type(d.stack.state).key)).toEqual(expect.arrayContaining(['trade_coin', 'life_crystal']));
+  });
+
   it('beating enough slimes in slime rain brings the Slime King', () => {
     const { play, cs } = setup();
     play.event = 'slime_rain';

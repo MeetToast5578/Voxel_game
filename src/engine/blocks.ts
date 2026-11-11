@@ -233,6 +233,12 @@ export interface Accessory {
   readonly fireproof?: boolean;
   /** Health comes back this many times faster. */
   readonly regen?: number;
+  /** Stings, venom and poisonous bites never poison. */
+  readonly antivenom?: boolean;
+  /** A wisp follows the player and lights the blocks around them. */
+  readonly wisp?: boolean;
+  /** Keeps the cold off, like warm clothes (degrees). */
+  readonly warmth?: number;
 }
 
 /** Potions: [key, name, what it does]. Made at an alchemy table from a glass bottle and two ingredients. */
@@ -243,6 +249,7 @@ export const POTIONS: readonly [string, string, NonNullable<BlockType['potion']>
   ['fire_resistance_potion', 'Fire Resistance Potion', { text: 'Fire and lava do not burn for 120 s', effect: 'fire_resistance', seconds: 120 }],
   ['water_breathing_potion', 'Water Breathing Potion', { text: 'Breathe under water for 120 s', effect: 'water_breathing', seconds: 120 }],
   ['antidote', 'Antidote', { text: 'Cures poison and bleeding; keeps them off for 60 s', effect: 'antidote', seconds: 60, cures: true }],
+  ['night_vision_potion', 'Night Vision Potion', { text: 'See in the dark for 120 s', effect: 'night_vision', seconds: 120 }],
 ];
 
 const ACCESSORIES: readonly [string, string, Accessory][] = [
@@ -259,6 +266,16 @@ const ACCESSORIES: readonly [string, string, Accessory][] = [
   ['storm_charm', 'Storm Charm', { effect: 'Jump once more in mid-air, no fall damage', jumps: 1, featherfall: true }],
   ['scarab_charm', 'Scarab Charm', { effect: '10% faster; stops 6% more harm', speed: 0.1, protection: 2 }],
   ['jungle_idol', 'Jungle Idol', { effect: 'Health returns 50% faster; breath lasts twice as long', regen: 1.5, breath: 2 }],
+  ['glacier_charm', 'Glacier Charm', { effect: 'Keeps the cold off; 10% faster on foot', warmth: 8, speed: 0.1 }],
+  ['captains_compass', "Captain's Compass", { effect: 'Breath lasts twice as long; 10% faster on foot', breath: 2, speed: 0.1 }],
+  ['sprint_boots', 'Sprint Boots', { effect: 'Double-tap a direction to dash; 25% faster on foot', dash: true, speed: 0.25 }],
+  ['guardian_band', 'Guardian Band', { effect: 'Stops 12% more harm; health returns twice as fast', protection: 4, regen: 2 }],
+  ['elemental_amulet', 'Elemental Amulet', { effect: 'Lava and fire do not burn you; breath lasts four times longer', fireproof: true, breath: 4 }],
+  ['wisp_bottle', 'Wisp in a Bottle', { effect: 'A wisp follows you and lights the way', wisp: true }],
+  ['deep_core', 'Deep Core', { effect: 'Lava and fire do not burn you; health returns twice as fast; stops 9% more harm', fireproof: true, regen: 2, protection: 3 }],
+  ['dune_cloak', 'Dune Cloak', { effect: 'Double-tap a direction to dash; 10% faster', dash: true, speed: 0.1 }],
+  ['hive_charm', 'Hive Charm', { effect: 'Stings and venom never poison you; 10% faster', antivenom: true, speed: 0.1 }],
+  ['frost_heart', 'Frost Heart', { effect: 'Stops 9% more harm; health returns 30% faster', protection: 3, regen: 1.3 }],
 ];
 
 /** Flowing fluids have 8 levels, each with a falling and a resting variant. */
@@ -313,11 +330,14 @@ const BASE: BlockSpec[] = [
   stone('lapis_ore', 'Lapis ore', { hardness: 3, needsTier: 1, drops: 'lapis' }),
   // Redstone and emerald ore are no longer generated (they had no use); they stay so old worlds keep them.
   // Ember ore: deep down in deepslate near the lava, glowing faintly; only a diamond pickaxe gets its crystals.
-  stone('ember_ore', 'Ember ore', { hardness: 6, needsTier: 3, drops: 'ember_crystal', lightEmission: 5 }),
+  stone('ember_ore', 'Ember ore', { hardness: 6, needsTier: 4, drops: 'ember_crystal', lightEmission: 5 }),
   // Verdant jade: the deepest gem, past diamond; its tools and armour are the best there are.
   // Meteorite: fallen from the sky after a boss is beaten; hot to stand on, and only iron or better digs it.
   stone('meteorite', 'Meteorite', { hardness: 5, needsTier: 2, drops: 'meteor_shard', lightEmission: 6 }),
-  stone('jade_ore', 'Verdant jade ore', { hardness: 7, needsTier: 3, drops: 'jade' }),
+  stone('jade_ore', 'Verdant jade ore', { hardness: 7, needsTier: 4, drops: 'jade' }),
+  // The Ember Depths: glowing ember stone, and emberite, the top ore, which only a jade pickaxe digs.
+  stone('ember_stone', 'Ember stone', { hardness: 3, needsTier: 1, lightEmission: 11 }),
+  stone('emberite_ore', 'Emberite ore', { hardness: 9, needsTier: 5, drops: 'emberite_ore', smeltsTo: 'emberite_ingot', lightEmission: 4 }),
   { key: 'cactus', name: 'Cactus', tiles: { top: 'saguaro_top', side: 'saguaro_side', bottom: 'saguaro_top' }, hardness: 0.5, density: 700 },
   // Tall grass sometimes gives wheat seeds (handled where blocks are broken).
   plant('tall_grass', 'Tall grass', { drops: '' }),
@@ -327,6 +347,10 @@ const BASE: BlockSpec[] = [
   plant('brown_mushroom', 'Brown mushroom'),
   plant('red_mushroom', 'Red mushroom'),
   plant('reed', 'Reed'),
+  // Cave biomes: glowing mushrooms, crystals that grow from floors and ceilings, and cobwebs that slow you.
+  plant('glow_mushroom', 'Glowing mushroom', { lightEmission: 10 }),
+  plant('cave_crystal', 'Cave crystal', { lightEmission: 8, needsSupport: false, hardness: 1, mineWith: 'pickaxe', drops: 'crystal_shard' }),
+  plant('cobweb', 'Cobweb', { needsSupport: false, hardness: 0.6, mineWith: 'sword', drops: 'string' }),
   thin('lily_pad', 'Lily pad'),
   thin('moss', 'Moss'),
   thin('leaf_litter', 'Leaf litter'),
@@ -340,25 +364,30 @@ const DECOR_PANEL: readonly Box[][] = [[[0,2,2,2,14,14]],[[14,2,2,16,14,14]],[[2
 const TURN = [2, 3, 1, 0];
 const HIGH_HALF: Record<number, Box> = { 0: [8, 8, 0, 16, 16, 16], 1: [0, 8, 0, 8, 16, 16], 2: [0, 8, 8, 16, 16, 16], 3: [0, 8, 0, 16, 16, 8] };
 const STAIR_MATERIALS = ['planks', 'cobblestone', 'stone', 'brick', 'sandstone'];
-export const TOOL_TIERS = ['wooden', 'stone', 'iron', 'diamond', 'jade'] as const;
+// Gold sits between iron and diamond: the fastest to dig with of the early tiers, but it wears out quickly.
+export const TOOL_TIERS = ['wooden', 'stone', 'iron', 'gold', 'diamond', 'jade', 'emberite'] as const;
 export const TOOL_KINDS: readonly ToolKind[] = ['pickaxe', 'axe', 'shovel', 'sword', 'hoe'];
 /** Weapons made in every tier, beside the tools: a long spear and a heavy hammer. */
 export const WEAPON_KINDS: readonly ToolKind[] = ['spear', 'hammer'];
-const DURABILITY = [60, 132, 251, 1561, 2400];
+const DURABILITY = [60, 132, 251, 180, 1561, 2400, 3200];
 /** Armour materials and pieces: protection per piece (head, chest, legs, feet), warmth per piece, and hits it takes. */
 export const ARMOUR_PIECES = ['helmet', 'chestplate', 'leggings', 'boots'] as const;
 /** What a full set of one material adds, beyond its pieces. */
-export const SET_BONUSES: Readonly<Record<string, { text: string; speed?: number; protection?: number; crit?: number; thorns?: number }>> = {
+export const SET_BONUSES: Readonly<Record<string, { text: string; speed?: number; protection?: number; crit?: number; thorns?: number; fireproof?: boolean }>> = {
   leather: { text: '10% faster on foot', speed: 0.1 },
   iron: { text: 'Stops 6% more harm', protection: 2 },
+  gold: { text: '12% faster on foot; 5% more critical hits', speed: 0.12, crit: 0.05 },
   diamond: { text: '10% more critical hits', crit: 0.1 },
   jade: { text: 'Biters take 3 damage back', thorns: 3 },
+  emberite: { text: 'Lava and fire do not burn you; 6% more harm stopped', fireproof: true, protection: 2 },
 };
 export const ARMOUR_MATERIALS = {
   leather: { protection: [1, 3, 2, 1], warmth: [3, 6, 4, 2], durability: 80 },
   iron: { protection: [2, 6, 5, 2], warmth: [0, 1, 1, 0], durability: 240 },
+  gold: { protection: [3, 7, 5, 2], warmth: [0, 1, 1, 0], durability: 150 },
   diamond: { protection: [3, 8, 6, 3], warmth: [0, 1, 1, 0], durability: 500 },
   jade: { protection: [4, 9, 7, 4], warmth: [1, 2, 1, 1], durability: 800 },
+  emberite: { protection: [5, 10, 8, 5], warmth: [2, 3, 2, 2], durability: 1100 },
 } as const;
 export const CROP_STAGES = 4;
 /** Sapling variants: the tree species each grows into. */
@@ -384,7 +413,7 @@ function gameplay(): BlockSpec[] {
       hardness: 0, drops: '', lightEmission: 13, variants: 4, supports: false },
     // A waystone: once touched, it lets the player travel to any other touched waystone.
     { key: 'waystone', name: 'Waystone', tiles: { top: 'waystone_top', side: 'waystone_side', bottom: 'waystone_top' }, hardness: 30, density: 2600,
-      mineWith: 'pickaxe', needsTier: 3, lightEmission: 7 },
+      mineWith: 'pickaxe', needsTier: 4, lightEmission: 7 },
     // Potions are made beside it.
     { key: 'alchemy_table', name: 'Alchemy table', tiles: { top: 'alchemy_table_top', side: 'alchemy_table_side', bottom: 'planks' },
       hardness: 2.5, density: 600, ...wood },
@@ -431,6 +460,15 @@ function gameplay(): BlockSpec[] {
     item('slime_crown', 'Gel Crown', { maxStack: 1 }),
     item('life_crystal', 'Life Crystal', { maxStack: 16 }),
     item('moth_lure', 'Moth Lure', { maxStack: 1 }),
+    item('frost_shard', 'Frost Shard'),
+    item('stinger', 'Stinger'),
+    item('dune_fang', 'Dune Fang'),
+    item('crystal_shard', 'Crystal shard'),
+    item('treasure_map', 'Treasure map'),
+    item('heart_of_embers', 'Heart of Embers', { maxStack: 1 }),
+    item('sand_totem', 'Sand Totem', { maxStack: 1 }),
+    item('royal_bait', 'Royal Bait', { maxStack: 1 }),
+    item('frost_sigil', 'Frost Sigil', { maxStack: 1 }),
     item('spark_wand', 'Spark Wand', { maxStack: 1, spell: { damage: 3.5, mana: 2, cooldown: 0.3, speed: 22 } }),
     item('ember_staff', 'Ember Staff', { maxStack: 1, spell: { damage: 8, mana: 4, cooldown: 0.4, speed: 26 } }),
     item('star_staff', 'Star Staff', { maxStack: 1, spell: { damage: 12, mana: 5, cooldown: 0.35, speed: 30 } }),
@@ -441,6 +479,7 @@ function gameplay(): BlockSpec[] {
     item('gold_ingot', 'Gold ingot'),
     item('diamond', 'Diamond'),
     item('jade', 'Verdant jade'),
+    item('emberite_ingot', 'Emberite ingot'),
     item('lapis', 'Lapis'),
     item('ember_crystal', 'Ember crystal'),
     item('beacon_shard', 'Beacon shard'),
@@ -474,7 +513,7 @@ function gameplay(): BlockSpec[] {
     ...ACCESSORIES.map(([key, name, accessory]) => item(key, name, { maxStack: 1, accessory })),
     item('glass_bottle', 'Glass Bottle'),
     item('grappling_hook', 'Grappling Hook', { maxStack: 1 }),
-    ...([['king_slime', 'Slime King'], ['gloom_matriarch', 'Gloom Matriarch'], ['warden', 'Ember Warden']] as const)
+    ...([['king_slime', 'Slime King'], ['gloom_matriarch', 'Gloom Matriarch'], ['warden', 'Ember Warden'], ['frost_colossus', 'Frost Colossus'], ['hive_mother', 'Hive Mother'], ['sandmaw', 'Sandmaw'], ['deep_heart', 'The Deep Heart']] as const)
       .map(([key, name]) => item(`${key}_bag`, `Treasure Bag (${name})`, { maxStack: 8, bag: key })),
     ...POTIONS.map(([key, name, potion]) => item(key, name, { maxStack: 8, potion })),
     item('bucket', 'Bucket', { maxStack: 16 }),

@@ -6,7 +6,7 @@ import { clickSlot, type ItemStack } from '../game/inventory';
 import { canCraft, CRAFTS, haveFor, timesCraftable } from '../game/crafting';
 import { MILESTONES } from '../game/journal';
 import { version } from '../../package.json';
-import { armourFactor, REFORGE_COINS, WAYSTONE_COINS, type Mode, type Play } from '../game/play';
+import { armourFactor, REFORGE_COINS, WAYSTONE_COINS, type Mode, type Play, CHALLENGES, clock, type ChallengeGoal } from '../game/play';
 import { modifierOf, takesModifier } from '../game/modifiers';
 import { EFFECTS, type Effect } from '../game/effects';
 import { sourcesOf, usesOf } from '../game/guide';
@@ -27,6 +27,8 @@ export interface NewWorld {
   seed: number;
   mode: Mode;
   difficulty: Difficulty;
+  /** A challenge run's goal, if any. */
+  challenge?: ChallengeGoal;
 }
 
 /** The saved worlds and what can be done with them, on the title screen and in the pause menu. */
@@ -66,7 +68,7 @@ export interface UiModel extends WorldsModel {
 /** Placeable blocks and items in the creative palette. */
 const PALETTE = BLOCKS.types.filter((t) => t.layer !== 'none' && !['flowing_water', 'flowing_lava', 'lit_furnace', 'bedrock'].includes(t.key)).flatMap((t) => t.variantFaces ? Array.from({length:t.variants},(_,v)=>t.id+v).filter(s=>t.key!=='leaves'||(s-t.id)%2===0) : [t.id]);
 
-const TIERS = ['wooden', 'stone', 'iron', 'diamond', 'jade'];
+const TIERS = ['wooden', 'stone', 'iron', 'gold', 'diamond', 'jade', 'emberite'];
 /** Rarity as a shape as well as a colour, for players who cannot tell the colours apart. */
 const RARITY_MARKS = ['', '•', '◆', '★', '✦'];
 
@@ -145,6 +147,7 @@ function Hud({ play, hideKey }: { play: Play; hideKey: string }) {
         </div>
       )}
       {play.mode === 'survival' && <Effects s={s} />}
+      {play.challenge && <div class={`challenge${play.challenge.done !== undefined ? ' done' : ''}`} aria-label="Challenge timer">{CHALLENGES[play.challenge.goal].name} · {clock(play.challenge.done ?? play.challenge.time)}{play.challenge.done !== undefined && ' ✓'}</div>}
       <div class="hotbar">{inv.slots.slice(0, 9).map((st, i) => <Slot key={i} stack={st} shortcut={i+1} selected={i === inv.selected} />)}</div>
       {play.breaking > 0 && <div class="progress"><div style={{ width: `${play.breaking * 100}%` }} /></div>}
     </div>
@@ -201,7 +204,7 @@ function WorkshopScreen({play}:{play:Play}) {
     <ScreenHead title={title} subtitle={w.kind==='forge'?'Strengthen the equipment you carry. Each level adds speed, protection and durability.':'Supplies for the journey ahead.'} close={()=>play.closeScreen()}/>
     <p class="pack-summary">{play.inventory.slots.filter(Boolean).length}/36 pack slots · {play.inventory.count(BLOCKS.state('trade_coin'))} coins · {play.inventory.count(BLOCKS.state('ember_crystal'))} ember · {play.inventory.count(BLOCKS.state('iron_ingot'))} iron</p>
     {w.kind==='trade'&&<TownsfolkTalk play={play}/>}
-    {w.kind==='trade'&&<div class="trade-list">{play.offers.map((o,i)=>{const owned=play.inventory.count(BLOCKS.state(o.cost[0]));return <button key={i} disabled={owned<o.cost[1]} onClick={()=>play.performTrade(i)}><span class="offer-item"><img alt="" src={iconUrl(BLOCKS.state(o.gives[0]))}/><b>{o.gives[1]} {BLOCKS.byName(o.gives[0]).name}</b></span><span class="offer-cost"><img alt="" src={iconUrl(BLOCKS.state(o.cost[0]))}/>{o.cost[1]} {BLOCKS.byName(o.cost[0]).name}<small>You have {owned}</small></span></button>;})}</div>}
+    {w.kind==='trade'&&<div class="trade-list">{play.offers.map((o,i)=>{const owned=play.inventory.count(BLOCKS.state(o.cost[0])),also=o.also&&play.inventory.count(BLOCKS.state(o.also[0]));return <button key={i} disabled={owned<o.cost[1]||(o.also!==undefined&&also!<o.also[1])} onClick={()=>play.performTrade(i)}><span class="offer-item"><img alt="" src={iconUrl(BLOCKS.state(o.gives[0]))}/><b>{o.gives[1]} {BLOCKS.byName(o.gives[0]).name}</b></span><span class="offer-cost"><img alt="" src={iconUrl(BLOCKS.state(o.cost[0]))}/>{o.cost[1]} {BLOCKS.byName(o.cost[0]).name}{o.also&&<>{' + '}<img alt="" src={iconUrl(BLOCKS.state(o.also[0]))}/>{o.also[1]} {BLOCKS.byName(o.also[0]).name}</>}<small>You have {owned}{o.also&&` and ${also}`}</small></span></button>;})}</div>}
     {w.kind==='waystone'&&<div class="trade-list">{[...play.waystones].filter((k)=>k!==w.key).map((k)=>{const [x,,z]=k.split(',').map(Number) as [number,number,number],[fx,,fz]=w.key.split(',').map(Number) as [number,number,number];
       return <button key={k} onClick={()=>play.travel(k)}><span class="offer-item"><b>Waystone at {Math.round(x*BLOCK_SIZE_M)}, {Math.round(z*BLOCK_SIZE_M)}</b></span><span class="offer-cost">{Math.round(Math.hypot(x-fx,z-fz)*BLOCK_SIZE_M)} m away<small>{play.mode==='survival'?`${WAYSTONE_COINS} coins`:'free'}</small></span></button>;})}
       {play.waystones.size<2&&<p class="help">Touch another waystone to travel between them. They stand by cabins, towers and camps.</p>}</div>}
@@ -365,13 +368,13 @@ export function freshWorldName(worlds: readonly { name: string }[]): string {
 
 function NewWorldForm({ m }: { m: WorldsModel }) {
   // Form fields live in refs: the menu re-renders while open, and plain variables would reset.
-  const form = useRef({ name: '', seed: '', mode: 'survival' as Mode, difficulty: 'normal' as Difficulty }).current;
+  const form = useRef({ name: '', seed: '', mode: 'survival' as Mode, difficulty: 'normal' as Difficulty, challenge: '' as ChallengeGoal | '' }).current;
   const create = () => {
         const name = form.name.trim() || freshWorldName(m.worlds);
         if (m.worlds.some((w) => w.name === name) && !confirm(`A world named '${name}' exists. Replace it?`)) return;
         const text = form.seed.trim();
         const seed = text === '' ? Math.floor(Math.random() * 2 ** 31) : Number.isFinite(Number(text)) ? Number(text) : hashSeed(text);
-        m.openWorld(name, { seed, mode: form.mode, difficulty: form.difficulty });
+        m.openWorld(name, { seed, mode: form.mode, difficulty: form.difficulty, ...(form.challenge ? { challenge: form.challenge } : {}) });
       };
   return (
     <form class="newworld" onSubmit={e=>{e.preventDefault();create();}}>
@@ -382,6 +385,10 @@ function NewWorldForm({ m }: { m: WorldsModel }) {
         <option value="creative">Creative</option>
       </select></label>
       <label>Challenge<DifficultySelect value={form.difficulty} onChange={(d) => (form.difficulty = d)} /></label>
+      <label>Goal <small>Optional: race the clock</small><select aria-label="Goal" onChange={(e) => (form.challenge = (e.target as HTMLSelectElement).value as ChallengeGoal | '')}>
+        <option value="">None: play at your own pace</option>
+        {(Object.entries(CHALLENGES) as [ChallengeGoal, { name: string }][]).map(([k, c]) => <option key={k} value={k}>{c.name}</option>)}
+      </select></label>
       <button class="create primary" type="submit">Create world <span aria-hidden="true">→</span></button>
     </form>
   );

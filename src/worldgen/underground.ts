@@ -4,9 +4,9 @@ import {
   CAVE_CHEESE_THRESHOLD, CAVE_NOODLE_ROOF_M, CAVE_NOODLE_SCALE_H_M, CAVE_NOODLE_SCALE_V_M, CAVE_NOODLE_STRETCH,
   CAVE_NOODLE_THRESHOLD, CAVE_SCALE_H_M, CAVE_SCALE_V_M, CAVE_THRESHOLD, CHUNK_SIZE, DEEPSLATE_DEPTH_M,
   GEOLOGY_LAYER_M, GEOLOGY_WARP_M, RAVINE_BAND, RAVINE_DEPTH_M, RAVINE_ROOF_M, RAVINE_SCALE_M, AQUIFER_AMPLITUDE_M,
-  AQUIFER_LEVEL_M, AQUIFER_SCALE_M, LAVA_DEPTH_M,
+  AQUIFER_LEVEL_M, AQUIFER_SCALE_M, LAVA_DEPTH_M, DEPTHS_LAVA_M, DEPTHS_TOP_M, CAVE_BIOME_M,
 } from '../config';
-import { mulberry32 } from '../core/random';
+import { hash2, mulberry32 } from '../core/random';
 import { BLOCKS } from '../engine/blocks';
 
 const B = BLOCK_SIZE_M;
@@ -14,6 +14,9 @@ const N = CHUNK_SIZE;
 const ROCKS = ['granite', 'diorite', 'andesite', 'sandstone', 'limestone', 'slate', 'basalt'].map((k) => BLOCKS.state(k));
 const DEEPSLATE = BLOCKS.state('deepslate');
 const STONE = BLOCKS.state('stone');
+const BASALT = BLOCKS.state('basalt');
+/** How much wider the caverns of the Ember Depths open (taken off the cavern threshold, eased in over 30 m). */
+const DEPTHS_OPENING = 0.3;
 /** Rock ores may replace. */
 export const HOST_ROCK = new Set([STONE, DEEPSLATE, ...ROCKS]);
 const CHEESE_PUSH = CAVE_CHEESE_OPENING - CAVE_CHEESE_THRESHOLD;
@@ -32,7 +35,14 @@ const ORES = [
   { key: 'diamond_ore', topM: -160, bottomM: -480, per1000M3: 0.15, cells: 3 },
   // New ores go last, so the veins of the earlier ones keep their places.
   { key: 'jade_ore', topM: -200, bottomM: -480, per1000M3: 0.1, cells: 3 },
+  // The Ember Depths: seams of glowing ember stone, and emberite.
+  { key: 'ember_stone', topM: DEPTHS_TOP_M, bottomM: -1e6, per1000M3: 10, cells: 18 },
+  { key: 'emberite_ore', topM: DEPTHS_TOP_M - 20, bottomM: -1e6, per1000M3: 0.15, cells: 3 },
 ].map((o) => ({ ...o, state: BLOCKS.state(o.key) }));
+
+/** Cave biomes: plain caves, glowing mushroom caverns, crystal geodes, spider nests, and flooded caves. */
+export type CaveBiome = 'none' | 'mushroom' | 'crystal' | 'spider' | 'flooded';
+const CAVE_KINDS: readonly CaveBiome[] = ['mushroom', 'crystal', 'spider', 'flooded'];
 
 /** Rock layers, caves and ores: everything below the surface. Pure and deterministic per seed. */
 export class Underground {
@@ -57,13 +67,21 @@ export class Underground {
     this.aquifer = createNoise2D(mulberry32(seed + 504));
   }
 
+  /** The cave biome under column (x, z): regions about CAVE_BIOME_M across with wavy edges; two in five are plain. */
+  caveBiome(x: number, z: number): CaveBiome {
+    const r = CAVE_BIOME_M / B, w = this.warp((x * B) / 37, (z * B) / 37) * 0.3 * r;
+    const h = hash2(this.seed + 911, Math.floor((x + w) / r), Math.floor((z - w) / r));
+    return h < 0.4 ? 'none' : CAVE_KINDS[Math.min(3, Math.floor((h - 0.4) / 0.15))]!;
+  }
+
   /** Warp of the rock layers at a column cell, in [-1, 1]. */
   warpAt(x: number, z: number): number {
     return this.warp((x * B) / GEOLOGY_WARP_M, (z * B) / GEOLOGY_WARP_M);
   }
 
-  /** The rock at height y (cells): bent strata, and deepslate deep down. */
+  /** The rock at height y (cells): bent strata, deepslate deep down, and basalt in the Ember Depths. */
   rockAt(y: number, warp: number): number {
+    if (y * B < DEPTHS_TOP_M + warp * 8) return BASALT;
     if (y * B < DEEPSLATE_DEPTH_M) return DEEPSLATE;
     const layer = Math.floor((y * B) / GEOLOGY_LAYER_M + 3 * warp);
     return ROCKS[((layer % ROCKS.length) + ROCKS.length) % ROCKS.length]!;
@@ -78,7 +96,8 @@ export class Underground {
     const xm = (x + 0.5) * B, ym = (y + 0.5) * B, zm = (z + 0.5) * B;
     const cheese = this.cheese(xm / CAVE_CHEESE_SCALE_H_M, ym / CAVE_CHEESE_SCALE_V_M, zm / CAVE_CHEESE_SCALE_H_M);
     const fade = coverM >= CAVE_CHEESE_FADE_M ? 0 : CHEESE_PUSH * (1 - coverM / CAVE_CHEESE_FADE_M);
-    if (cheese > CAVE_CHEESE_THRESHOLD + fade) return true;
+    const depths = ym < DEPTHS_TOP_M ? DEPTHS_OPENING * Math.min(1, (DEPTHS_TOP_M - ym) / 30) : 0;
+    if (cheese > CAVE_CHEESE_THRESHOLD + fade - depths) return true;
     if (coverM < CAVE_NOODLE_ROOF_M) return false;
     const nh = CAVE_NOODLE_SCALE_H_M, nv = CAVE_NOODLE_SCALE_V_M * CAVE_NOODLE_STRETCH;
     const a = this.noodleA(xm / nh, ym / nv, zm / nh);
@@ -99,9 +118,15 @@ export class Underground {
     return false;
   }
 
-  /** What fills a carved cave cell: groundwater below the local water table, lava deep down, or air. */
-  caveFill(x: number, y: number, z: number, water: number, lava: number, air: number): number {
+  /**
+   * What fills a carved cave cell: groundwater below the local water table, lava deep down, or air. In the Ember Depths
+   * lava pools only below the lava sea, so its caverns have air above lakes of lava.
+   */
+  caveFill(x: number, y: number, z: number, water: number, lava: number, air: number, flooded = false): number {
     const ym = (y + 0.5) * B;
+    // Flooded caves are full of water from a little below the surface down to the lava.
+    if (flooded && ym < -15 && ym >= LAVA_DEPTH_M) return water;
+    if (ym < DEPTHS_TOP_M) return ym < DEPTHS_LAVA_M + 6 * this.aquifer((x * B) / AQUIFER_SCALE_M, (z * B) / AQUIFER_SCALE_M) ? lava : air;
     if (ym < LAVA_DEPTH_M) return lava;
     const table = AQUIFER_LEVEL_M + AQUIFER_AMPLITUDE_M * this.aquifer((x * B) / AQUIFER_SCALE_M, (z * B) / AQUIFER_SCALE_M);
     return ym < table ? water : air;

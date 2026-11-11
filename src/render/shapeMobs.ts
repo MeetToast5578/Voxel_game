@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { ARCHER_AIM_S, ATTACK_COOLDOWN_S, CREATURE_CAP } from '../config';
-import { DEATH_S, type Creature } from '../creatures/creatures';
+import { DEATH_S, burrowed, type Creature } from '../creatures/creatures';
 import { SPECIES, type Species } from '../creatures/species';
 import { attachWorldFog, type WorldFogUniforms } from './worldFog';
 
@@ -144,8 +144,7 @@ function slime(s: Species): Model {
 }
 
 /** A furry body with big ears and two membrane wings that beat fast. */
-function bat(): Model {
-  const fur = 0x5a4640, skin = 0x4a2e30, bone = 0x2a1c1e;
+function bat(fur = 0x5a4640, skin = 0x4a2e30, bone = 0x2a1c1e): Model {
   const wing = (side: number) => joint('wing', [side * 0.12, 0.04, 0], [
     shape(CAPSULE, [side * 0.36, 0, -0.02], [0.04, 0.72, 0.04], bone, [0, 0, Math.PI / 2]),
     ball([side * 0.32, -0.01, 0.1], [0.64, 0.025, 0.3], skin),
@@ -178,9 +177,42 @@ function moth(s: Species): Model {
     ...[-1, 1].map((sd) => ball([sd * 0.06, 0.02, -0.07], [0.07, 0.07, 0.05], glow, undefined, true)),
     ...[-1, 1].map((sd) => cone([sd * 0.05, 0.13, -0.05], [0.06, 0.2, 0.02], dark, [-0.5, 0, -sd * 0.4])),
   ]);
+  // Hornets: dark bands round the abdomen and a stinger at its tip.
+  const hornet = s.key === 'hornet' || s.key === 'hive_mother';
+  const bands = hornet ? [0.1, 0.24, 0.38].map((z) => ball([0, 0, z], [0.19, 0.19 - z * 0.12, 0.05], dark)).concat(cone([0, -0.01, 0.56], [0.04, 0.16, 0.04], 0x1a140c, [Math.PI / 2, 0, 0])) : [];
   return { plan: 'bat', restDrop: 0, root: joint('root', [0, 0.5, 0], [
-    ball([0, 0, 0.12], [0.18, 0.18, 0.4], fur), ball([0, 0.01, -0.06], [0.2, 0.2, 0.18], 0xe8e0d0),
+    ball([0, 0, 0.12], [0.18, 0.18, 0.4], fur), ball([0, 0.01, -0.06], [0.2, 0.2, 0.18], hornet ? dark : 0xe8e0d0), ...bands,
   ], [head, wing(-1, false), wing(1, false), wing(-1, true), wing(1, true)]) };
+}
+
+/** A floating heart of molten rock: a glowing core in cracked plates, with spikes and burning veins. */
+function heart(s: Species): Model {
+  const c = (v: readonly number[]) => (v[0]! << 16) | (v[1]! << 8) | v[2]!;
+  const core = c(s.colours.body), rock = c(s.colours.head), glow = c(s.colours.legs);
+  const plates = [0, 1, 2, 3, 4, 5].map((k) => box([Math.cos(k * 1.05) * 0.33, Math.sin(k * 2.1) * 0.18, Math.sin(k * 1.05) * 0.33], [0.16, 0.2, 0.08], rock, [k * 0.5, -k * 1.05 + Math.PI / 2, k * 0.3]));
+  const spikes = [0, 1, 2, 3, 4, 5, 6, 7].map((k) => cone([Math.cos(k * 0.785) * 0.42, (k % 2) * 0.2 - 0.1, Math.sin(k * 0.785) * 0.42], [0.08, 0.3, 0.08], rock, [Math.sin(k * 0.785) * 1.4, 0, -Math.cos(k * 0.785) * 1.4]));
+  return { plan: 'bat', restDrop: 0, root: joint('root', [0, 0.55, 0], [
+    ball([0, 0, 0], [0.62, 0.7, 0.62], core, undefined, true), ball([0, 0.05, -0.12], [0.3, 0.3, 0.42], glow, undefined, true), ...plates, ...spikes,
+    ...[-1, 1].map((sd) => ball([sd * 0.12, 0.12, -0.3], [0.1, 0.1, 0.05], 0xfff0a0, undefined, true)),
+  ]) };
+}
+
+/** A great worm: a horned head with a round maw of teeth, and a long chain of segments that sway behind it. */
+function worm(s: Species): Model {
+  const c = (v: readonly number[]) => (v[0]! << 16) | (v[1]! << 8) | v[2]!;
+  const hide = c(s.colours.body), dark = c(s.colours.head), tooth = c(s.colours.legs);
+  let tail: Joint | null = null;
+  for (let k = 7; k >= 1; k--) {
+    const r = 0.5 - k * 0.04;
+    tail = joint('tail', [0, -0.02, 0.4], [ball([0, 0, 0.22], [r * 1.1, r * 1.1, 0.55], k % 2 ? hide : dark), ...[-1, 1].map((sd) => cone([sd * r * 0.5, r * 0.5, 0.22], [0.05, 0.14, 0.05], tooth, [0, 0, -sd * 0.5]))],
+      tail ? [tail] : [], { phase: k * 0.5 });
+  }
+  return { plan: 'fish', restDrop: 0, root: joint('root', [0, 0.5, 0], [
+    ball([0, 0, 0], [0.62, 0.62, 0.7], hide),
+    ball([0, 0, -0.32], [0.48, 0.48, 0.12], 0x2a1410),
+    ...[0, 1, 2, 3, 4, 5, 6, 7].map((k) => cone([Math.cos(k * 0.785) * 0.2, Math.sin(k * 0.785) * 0.2, -0.36], [0.05, 0.14, 0.05], tooth, [-Math.PI / 2, 0, k * 0.785])),
+    ...[-1, 1].map((sd) => cone([sd * 0.24, 0.26, -0.1], [0.07, 0.3, 0.07], dark, [-0.5, 0, -sd * 0.5])),
+  ], [tail!]) };
 }
 
 /** A fish: a long body, a beating tail fin, a back fin and eyes. */
@@ -275,6 +307,15 @@ const MODELS: Record<string, Model> = {
     } }),
   brute: biped({ skin: 0xbcd2e2, shirt: 0xaac4d6, trousers: 0x7890a4, shoe: 0x52667a, eye: 0x9fe8ff, glowEyes: true, bulk: 1.7, hunch: 0.35, armLen: 0.26, headSize: 0.8,
     extra: (root, head) => { root.shapes.push(ball([0, 0.36, 0.04], [0.5, 0.22, 0.32], 0xe2eef6)); for (const s of [-1, 1]) head.shapes.push(cone([s * 0.07, 0.16, 0], [0.04, 0.12, 0.04], 0xf4f8fa, [0, 0, -s * 0.4])); } }),
+  frost_colossus: biped({ skin: 0xc4def0, shirt: 0x9cc4e0, trousers: 0x6e94b4, shoe: 0x4a6a8a, eye: 0x7ff0ff, glowEyes: true, bulk: 2.1, hunch: 0.2, armLen: 0.3,
+    legLen: 0.27, headSize: 0.75,
+    extra: (root, head, arms) => {
+      // Ice crystals jut from the shoulders, back and crown; the fists are blocks of ice.
+      for (const s of [-1, 1]) for (let k = 0; k < 3; k++) root.shapes.push(cone([s * (0.2 + k * 0.06), 0.36 + k * 0.03, 0.04 + k * 0.03], [0.05, 0.16 - k * 0.03, 0.05], 0xe8f8ff, [0.3, 0, -s * (0.5 + k * 0.2)]));
+      for (let k = 0; k < 3; k++) root.shapes.push(cone([0, 0.18 + k * 0.08, 0.14], [0.05, 0.14, 0.05], 0xbfeaff, [0.9, 0, 0]));
+      for (const s of [-1, 0, 1]) head.shapes.push(cone([s * 0.06, 0.18, 0], [0.035, 0.12 - Math.abs(s) * 0.03, 0.035], 0xe8f8ff, [0, 0, -s * 0.35]));
+      for (const a of arms) a.kids[0]!.shapes.push(box([0, -0.3, 0], [0.12, 0.12, 0.12], 0xbfeaff));
+    } }),
   warden: biped({ skin: 0x5a3c40, shirt: 0x523a3e, trousers: 0x3e2c30, shoe: 0x2a1c1e, eye: 0xffa040, glowEyes: true, bulk: 1.8, armLen: 0.28, legLen: 0.26, headSize: 0.9,
     extra: (root, head) => {
       head.shapes.push(ball([0, 0.06, -0.06], [0.14, 0.1, 0.12], 0xff7828, undefined, true), cone([0, 0.25, 0.02], [0.08, 0.16, 0.08], 0xff9a40, undefined));
@@ -331,6 +372,18 @@ const MODELS: Record<string, Model> = {
       root.shapes.push(cone([0, -0.06, 0], [0.32, 0.48, 0.25], 0x235a5a, [Math.PI, 0, 0]), ball([0.14, 0.0, -0.04], [0.05, 0.07, 0.05], 0xe0303c));
       head.shapes.push(ball([0.06, 0.12, -0.11], [0.045, 0.045, 0.03], 0xc89a4a), ball([-0.06, 0.12, -0.11], [0.045, 0.045, 0.03], 0xc89a4a), ball([0, 0.15, 0], [0.18, 0.08, 0.18], 0x7a5a40));
     } }),
+  tinkerer: biped({ skin: 0xe0b890, shirt: 0x8a5a30, trousers: 0x4a3a2a, shoe: 0x2a2018, eye: 0x241a14,
+    extra: (root, head) => {
+      // A leather apron with a wrench at the belt, and big goggles over the eyes.
+      root.shapes.push(box([0, 0.12, -0.12], [0.3, 0.34, 0.03], 0x6a4020), box([-0.15, 0.02, -0.06], [0.03, 0.16, 0.03], 0x9aa3ad));
+      head.shapes.push(ball([0.06, 0.1, -0.13], [0.06, 0.06, 0.04], 0x3ab0c0), ball([-0.06, 0.1, -0.13], [0.06, 0.06, 0.04], 0x3ab0c0), box([0, 0.1, -0.1], [0.24, 0.03, 0.06], 0x5a4030));
+    } }),
+  explorer: biped({ skin: 0xc89a70, shirt: 0x8a8a4a, trousers: 0x6a5a3a, shoe: 0x3a2a1a, eye: 0x241a14,
+    extra: (root, head) => {
+      // A wide-brimmed hat, a scarf, and a rolled map in a satchel.
+      head.shapes.push(box([0, 0.2, 0], [0.34, 0.025, 0.34], 0x7a5a30), box([0, 0.26, 0], [0.18, 0.1, 0.18], 0x7a5a30), box([0, 0.215, 0], [0.19, 0.03, 0.19], 0x3a2a1a));
+      root.shapes.push(ball([0, 0.33, 0], [0.24, 0.07, 0.18], 0xb03a2a), box([0.16, 0.04, 0.04], [0.08, 0.12, 0.14], 0x6a4a28), cone([0.16, 0.16, 0.04], [0.04, 0.16, 0.04], 0xe8dcb8));
+    } }),
   crawler: spider(0x3e3632, 0x4a403a, 0x302a26, 0xff3030, 4, [0.6, 0.4, 0.8]),
   desert_stalker: spider(0xba914b, 0xd2ae62, 0x90693a, 0x301808, 3, [0.5, 0.35, 0.8], (root, head) => {
     // A curled tail over the back ending in a sting, and two claws.
@@ -341,6 +394,7 @@ const MODELS: Record<string, Model> = {
     for (const s of [-1, 1]) head.kids.push(joint('arm', [s * 0.14, -0.02, -0.08], [limb(0.16, 0.03, 0x90693a, 0), ball([0, -0.18, 0], [0.12, 0.08, 0.16], 0xd2ae62)], [], { rot: [-1.4, s * 0.4, 0], side: s }));
   }),
   bat: bat(),
+  fire_bat: bat(0x96321a, 0xe06e1e, 0x3c140a),
 };
 for (const s of SPECIES) if (s.hops) MODELS[s.key] = slime(s);
 // The mimic hops like a slime but is a chest: a wooden box with iron bands, its lid open on a row of teeth and a tongue.
@@ -353,7 +407,9 @@ MODELS.mimic = { plan: 'slime', restDrop: 0, root: joint('root', [0, 0, 0], [
   ...[-1, 1].map((sd) => ball([sd * 0.22, 0.86, -0.08], [0.07, 0.07, 0.05], 0xffd040, undefined, true)),
 ]) };
 for (const m of [MODELS.rabbit]) m!.hop = true;
-for (const key of ['gloom_moth', 'gloom_matriarch']) MODELS[key] = moth(SPECIES.find((s) => s.key === key)!);
+MODELS.sandmaw = worm(SPECIES.find((s) => s.key === 'sandmaw')!);
+MODELS.deep_heart = heart(SPECIES.find((s) => s.key === 'deep_heart')!);
+for (const key of ['gloom_moth', 'gloom_matriarch', 'hornet', 'hive_mother']) MODELS[key] = moth(SPECIES.find((s) => s.key === key)!);
 
 export function hasShapeModel(key: string): boolean { return key in MODELS; }
 
@@ -452,7 +508,7 @@ function animate(j: Joint, p: Pose, out: number[]): void {
 const tmpQ = new THREE.Quaternion(), tmpV = new THREE.Vector3(), tmpS = new THREE.Vector3(), tmpE = new THREE.Euler();
 const local = new THREE.Matrix4(), part = new THREE.Matrix4(), tmpC = new THREE.Color();
 const UP = new THREE.Vector3(0, 1, 0), FORWARD = new THREE.Vector3(0, 0, 1);
-const HURT = new THREE.Color(1, 0.12, 0.1);
+const HURT = new THREE.Color(1, 0.12, 0.1), FLASH = new THREE.Color(1, 1, 0.85);
 const angles = [0, 0, 0];
 
 /** Shape-built creatures in four instanced draws, one per primitive. */
@@ -495,7 +551,7 @@ export class ShapeMobs {
     const deadAt = new Map(dying.map((d) => [d.c, d.t]));
     for (const c of [...list.slice(0, CREATURE_CAP), ...dying.map((d) => d.c)]) {
       const model = MODELS[c.species.key];
-      if (!model) continue;
+      if (!model || burrowed(c)) continue;
       const b = c.body, h = b.height, speed = Math.hypot(b.vx, b.vz) / Math.max(0.5, c.species.speedM_S / 0.6);
       const t = time + c.id * 1.7, sleeping = c.mode === 'sleep';
       // Attack: 1 just as the bite starts, falling to 0 over 0.4 s.
@@ -518,6 +574,13 @@ export class ShapeMobs {
         sx = sz = 1 / Math.sqrt(k);
       }
       if (sleeping && model.plan === 'quad') sy *= 1 + Math.sin(t * 0.9) * 0.015;
+      // A wind-up: it crouches and flashes before the strike lands.
+      const winding = (c.windup ?? 0) > 0 || (c.move !== undefined && c.move.t > 0);
+      if (winding) {
+        sy *= 0.82;
+        sx *= 1.1;
+        sz *= 1.1;
+      }
       const dead = deadAt.get(c);
       if (dead !== undefined) {
         // Defeated: it tips over onto its side, then shrinks away.
@@ -539,6 +602,8 @@ export class ShapeMobs {
       }
       tmpC.setRGB(light, light, light);
       if (c.hurt > 0) tmpC.lerp(HURT, 0.6);
+      else if (winding) tmpC.lerp(FLASH, 0.35 + 0.25 * Math.sin(t * 40));
+      if (c.phase === 2) tmpC.lerp(HURT, 0.2);
       this.draw(model.root, 0, pose, tmpC.clone(), light);
     }
     this.meshes.forEach((m, i) => {

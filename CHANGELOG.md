@@ -3,6 +3,158 @@
 The newest version comes first. `npm run check` fails if the version at the top here is not the one in
 `package.json`, so the two are changed together.
 
+## 0.12.5 — 2026-11-11
+
+Music for each place, and the sound of materials (roadmap R9.3, R9.2).
+
+- Each place has its own synthesised theme: bright by day, softer at night, low and slow in caves, dark and uneasy in
+  the Ember Depths, lively in towns (yours or a village).
+- A boss fight starts fast, low music at once, and it keeps coming back until the fight ends.
+- Beating a boss plays a short rising fanfare.
+- The music volume setting covers all of it.
+- Landings thump and struck blocks sound by material: stone rings, wood knocks, earth thuds, sand and snow hiss
+  (R9.2).
+
+## 0.12.4 — 2026-11-11
+
+Gold gear (roadmap R6.1).
+
+- **Gold** is a gear tier of its own, between iron and diamond: tools, sword, spear, hammer and armour from gold
+  ingots. Gold tools dig fastest of all short of jade but wear out quickly (180 uses). A full gold set makes you 12%
+  faster and gives 5% more critical hits.
+- Diamond, jade and emberite need the same pickaxes as before.
+
+## 0.12.3 — 2026-11-11
+
+Challenge runs (roadmap R7.6).
+
+- A new world can have a **goal**: beat a boss, reach the Ember Depths, light the beacon, or defeat the Deep Heart. A
+  timer in the top right counts the time played (not paused time) and stops with a tick when the goal is met. The
+  time is kept in the save, so a run can be shared by its seed and goal.
+
+## 0.12.2 — 2026-11-11
+
+The last two biome dungeons (roadmap R4.4).
+
+- **Ice caves** in cold lands: a dome of ice half sunk in the snow, with a frozen chest. It always holds the
+  **Glacier Charm** (keeps the cold off like warm clothes, 10% faster), with frost shards, diamonds and more.
+- **Shipwrecks** on the sea floor, at least 6 cells under the surface: a planked hull with a broken mast and a chest in
+  the hold. It always holds the **Captain's Compass** (breath lasts twice as long, 10% faster), with gold, coins and
+  treasure maps.
+- Treasure maps can show both.
+
+## 0.12.1 — 2026-11-11
+
+Two more townsfolk (roadmap R5.2).
+
+- The **Tinkerer** moves into a free home once you have beaten a boss. They combine two accessories into one:
+  - Cloud Charm + Featherfall Charm → **Storm Charm**;
+  - Swiftstep Anklet + Dash Boots → **Sprint Boots** (dash, 25% faster);
+  - Ironskin Band + Heart Locket → **Guardian Band** (stops 12% more harm, health returns twice as fast);
+  - Ember Ring + Gill Pendant → **Elemental Amulet** (fireproof, four times the breath).
+
+  They also sell Dash Boots and Grappling Hooks.
+- The **Explorer** arrives once you have seen eight biomes. They sell **treasure maps**: reading one marks the nearest
+  place not yet marked (a pyramid, temple, sky island, altar, shrine, tower or cabin) for the compass. They buy
+  crystal shards, frost shards and dune fangs, and sell the Wisp in a Bottle.
+
+## 0.12.0 — 2026-11-11
+
+Towns under siege, and light in the dark (roadmap R3.5, R6.7, R2.4).
+
+- **Town raids**: on half of all red nights, if you are near a town of at least two homes you built, eight monsters
+  gather 30 m away and march on it, going for the townsfolk. Beat every raider for the townsfolk's gift: 30 coins and
+  a Life Crystal. At dawn any raiders left slink away.
+- **Wisp in a Bottle** (crystal shards, a glowing mushroom and a bottle): a wisp circles your head and lights the
+  blocks around you.
+- **Night Vision Potion** (a glowing mushroom and a crystal shard): see in the dark for two minutes.
+
+## 0.11.0 — 2026-11-11
+
+Caves with character (roadmap R4.1).
+
+- Underground regions about 90 m across, from a little below the surface down to the Ember Depths, are cave biomes
+  (two in five caves stay plain):
+  - **Glowing mushroom caverns**: blue mushrooms light the floors. **Spore Slimes** (poisonous) live there.
+  - **Crystal geodes**: violet crystals grow from floors and hang from ceilings, lighting the cave. Mining them gives
+    crystal shards. Cave bats gather there.
+  - **Spider nests**: cobwebs strung through the air hold you (a quarter of the speed, a slow fall); swords cut them
+    for string. Cave crawlers live there.
+  - **Flooded caves**: full of water from 15 m down; bring a Gill Pendant or a water breathing potion.
+- Seed 1 has every kind within 300 m of spawn.
+
+## 0.10.1 — 2026-11-11
+
+The final boss (roadmap R4.2, R3.3).
+
+- **The Deep Heart**: a floating heart of molten rock, 540 health, that sets you alight. Its named attacks: **Ember
+  bolt** (dodge it, or wear something fireproof) and **Dive**. Fire Bats come to its aid.
+- Summoned with the **Heart of Embers** (emberite ingots and ember crystals round a life crystal). It only stirs in
+  the Ember Depths.
+- Its treasure bag holds the **Deep Core** accessory: lava and fire do not burn you, health returns twice as fast,
+  and it stops 9% more harm.
+
+## 0.10.0 — 2026-11-11
+
+The Ember Depths (roadmap R4.2, first part).
+
+- Below about 220 m down the rock turns to **basalt**, seamed with glowing **ember stone**. The caverns open wide, with
+  air above and **lakes of lava** below a lava sea at about 250 m down.
+- **Emberite ore**, the new top ore, only in the Depths; only a jade pickaxe digs it. Smelt it into **emberite
+  ingots**.
+- **Emberite gear**, the sixth tier: tools, spear, hammer and armour, the strongest there are. A full emberite set
+  makes you immune to lava and fire, and stops 6% more harm.
+- **Fire Bats** (they set you alight) and Ember Slimes live in the Depths, instead of the usual cave monsters.
+
+## 0.9.3 — 2026-11-11
+
+A fifth boss (roadmap R3.3, third of three before the Depths).
+
+- The **Sandmaw**: a great segmented worm, 380 health, whose bite makes you bleed. Its named attack, **Burrow**: it
+  rears, sinks out of sight (nothing can hurt it underground), tunnels to beneath you and bursts up. Keep moving.
+  Dune Stalkers come to its aid.
+- Summoned with a **Sand Totem**: dune fangs and sand round a gold ingot. Dune Stalkers drop the fangs.
+- Its treasure bag holds the **Dune Cloak** accessory: double-tap to dash, and 10% faster.
+
+## 0.9.2 — 2026-11-11
+
+A fourth boss (roadmap R3.3, second of three).
+
+- The **Hive Mother**: a great hornet queen, 360 health, whose sting poisons. Named attacks: **Dive** and **Venom**
+  (a spat stinger that poisons; dodge it). Jungle Hornets come to her aid.
+- **Jungle Hornets** live in rainforests and swamps by day; their sting poisons and they drop Stingers.
+- Summoned with **Royal Bait**: stingers and gel round a gold ingot.
+- Her treasure bag holds the **Hive Charm** accessory: stings and venom never poison you, and you are 10% faster.
+- The play-through's trade step holds the farmer in front of the player (it used to wander out of reach and fail).
+
+## 0.9.1 — 2026-11-11
+
+A third boss (roadmap R3.3, first of three).
+
+- The **Frost Colossus**: a giant of ice, 420 health. Its bite slows you. Named attacks: **Stomp** (a shock round
+  where it stands; step back) and **Boulder** (a thrown block of ice that hits hard and slows; dodge it). Its brood are
+  Snow Prowlers.
+- Summoned with a **Frost Sigil**: eight Frost Shards round a gold ingot. Frost brutes and Snow Prowlers drop the
+  shards.
+- Its treasure bag holds the **Frost Heart** accessory (stops 9% more harm, health returns 30% faster), diamonds, life
+  crystals and more.
+- Bosses are now described by data (their attacks, brood and summon item), so new ones need no special code.
+
+## 0.9.0 — 2026-11-11
+
+Fights you can read (roadmap R2.2).
+
+- Every melee monster winds up before it bites: it crouches and flashes for a third of a second. Stepping back out
+  of reach in that moment dodges the bite.
+- Bosses have named attacks, announced on screen:
+  - the Slime King's **Slam**: it crouches, leaps at you and hurts anyone on the ground near where it lands;
+  - the Gloom Matriarch's **Dive**: it rises, then swoops at where you stood;
+  - both keep calling their brood as they are struck.
+- Below half health a boss is **enraged**: it turns redder and moves faster, its attacks come sooner, and it calls a
+  brood of three at once.
+- The shape gallery has a wind-up column.
+- Development builds show uncaught errors on screen, with a Copy button for bug reports (R11.2).
+
 ## 0.8.5 — 2026-11-11
 
 Easier to play, and something from the sky (roadmap R8.6, R8.7, R4.10).

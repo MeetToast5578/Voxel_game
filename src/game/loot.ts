@@ -4,9 +4,9 @@ import { BLOCKS } from '../engine/blocks';
 import type { ItemStack } from './inventory';
 import { rollModifier, takesModifier } from './modifiers';
 
-export type LootTable = 'surface' | 'mine' | 'vault' | 'shrine' | 'sky' | 'pyramid' | 'temple';
+export type LootTable = 'surface' | 'mine' | 'vault' | 'shrine' | 'sky' | 'pyramid' | 'temple' | 'ice_cave' | 'shipwreck';
 /** Structures whose chests have their own table, whatever their height. */
-export const SITE_TABLES = ['sky_island', 'pyramid', 'temple'] as const;
+export const SITE_TABLES = ['sky_island', 'pyramid', 'temple', 'ice_cave', 'shipwreck'] as const;
 
 /** Per table: how many rolls, and [item, fewest, most, weight] entries. Deeper tables give better things. */
 const TABLES: Record<LootTable, { rolls: readonly [number, number]; entries: readonly (readonly [string, number, number, number])[]; always?: readonly [string, number][] }> = {
@@ -35,6 +35,12 @@ const TABLES: Record<LootTable, { rolls: readonly [number, number]; entries: rea
     ['lapis', 3, 8, 2], ['gold_ingot', 2, 5, 3], ['regeneration_potion', 1, 2, 2], ['antidote', 1, 3, 2], ['jade', 1, 2, 1],
     ['heart_locket', 1, 1, 0.6], ['trade_coin', 5, 15, 3],
   ] },
+  ice_cave: { rolls: [4, 6], always: [['glacier_charm', 1]], entries: [
+    ['frost_shard', 3, 8, 3], ['diamond', 1, 2, 1], ['iron_ingot', 3, 6, 3], ['life_crystal', 1, 1, 1], ['healing_potion', 1, 2, 2], ['trade_coin', 5, 15, 3],
+  ] },
+  shipwreck: { rolls: [4, 6], always: [['captains_compass', 1]], entries: [
+    ['gold_ingot', 3, 8, 4], ['trade_coin', 10, 25, 4], ['water_breathing_potion', 1, 2, 2], ['gill_pendant', 1, 1, 0.6], ['raw_fish', 2, 6, 2], ['treasure_map', 1, 2, 2],
+  ] },
   shrine: { rolls: [2, 4], always: [['beacon_shard', 1]], entries: [
     ['ember_crystal', 1, 3, 3], ['diamond', 1, 2, 2], ['gold_ingot', 2, 4, 1], ['ember_ring', 1, 1, 1.5], ['cloud_charm', 1, 1, 0.8], ['life_crystal', 1, 2, 2],
   ] },
@@ -42,7 +48,7 @@ const TABLES: Record<LootTable, { rolls: readonly [number, number]; entries: rea
 
 /** Every item each table can hold, for the item guide. */
 export const LOOT_ITEMS: Readonly<Record<LootTable, readonly string[]>> = {
-  surface: keysOf('surface'), mine: keysOf('mine'), vault: keysOf('vault'), shrine: keysOf('shrine'), sky: keysOf('sky'), pyramid: keysOf('pyramid'), temple: keysOf('temple'),
+  surface: keysOf('surface'), mine: keysOf('mine'), vault: keysOf('vault'), shrine: keysOf('shrine'), sky: keysOf('sky'), pyramid: keysOf('pyramid'), temple: keysOf('temple'), ice_cave: keysOf('ice_cave'), shipwreck: keysOf('shipwreck'),
 };
 function keysOf(t: LootTable): string[] {
   return [...(TABLES[t].always ?? []).map(([key]) => key), ...TABLES[t].entries.map(([key]) => key)];

@@ -67,4 +67,24 @@ describe('a harder world', () => {
     play.difficulty = 'peaceful';
     expect(play.hostileShare).toBe(0);
   });
+
+  it('the tinkerer puts two accessories into one, and the explorer\'s map marks a place for the compass', async () => {
+    const { trade, SHOPS } = await import('../game/workshops');
+    const { play } = setup();
+    const tinker = SHOPS.tinkerer!, storm = tinker.findIndex((o) => o.gives[0] === 'storm_charm');
+    play.inventory.slots[0] = { state: S('cloud_charm'), count: 1 };
+    expect(trade(play.inventory, storm, tinker)).toBe(false); // the featherfall charm is missing
+    expect(play.inventory.count(S('cloud_charm'))).toBe(1);
+    play.inventory.slots[1] = { state: S('feather_charm'), count: 1 };
+    expect(trade(play.inventory, storm, tinker)).toBe(true);
+    expect(play.inventory.count(S('storm_charm'))).toBe(1);
+    expect(play.inventory.count(S('cloud_charm')) + play.inventory.count(S('feather_charm'))).toBe(0);
+    // A map marks the nearest unmarked place; a second marks another one.
+    play.seed = 1;
+    expect(play.readMap()).toBe(true);
+    expect(play.readMap()).toBe(true);
+    expect(play.markers).toHaveLength(2);
+    expect(play.markers[0]!.name).not.toBe('');
+    expect(play.markers[0]!.x).not.toBe(play.markers[1]!.x);
+  });
 });

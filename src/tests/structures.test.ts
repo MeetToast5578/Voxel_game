@@ -6,8 +6,8 @@ import { World } from '../engine/world';
 import { Journal, MILESTONES, type JournalFacts } from '../game/journal';
 import { lootTableFor, rollLoot } from '../game/loot';
 import { Play } from '../game/play';
-import { Generator } from '../worldgen/generator';
-import { HOUSE_BED, siteIn, sitesNear, structureCells, villageAt } from '../worldgen/structures';
+import { Generator, SEA_CELL } from '../worldgen/generator';
+import { HOUSE_BED, siteIn, sitesNear, structureCells, STRUCTURE_KINDS, villageAt } from '../worldgen/structures';
 
 const S = (key: string, v = 0) => BLOCKS.state(key, v);
 
@@ -26,7 +26,7 @@ function statesAround(gen: Generator, x: number, z: number, cy0: number, cy1: nu
 
 describe('structures', () => {
   it('stay within reach of their anchor, so every column that holds a part of one finds it', () => {
-    for (const kind of ['cabin', 'tower', 'camp', 'mine', 'vault', 'shrine', 'house', 'sky_island', 'pyramid', 'temple', 'altar'] as const) {
+    for (const kind of STRUCTURE_KINDS) {
       for (const [dx, , dz] of structureCells(1, kind, 0, 0, 0)) expect(Math.max(Math.abs(dx), Math.abs(dz))).toBeLessThanOrEqual(8);
     }
   });
@@ -71,6 +71,17 @@ describe('structures', () => {
     expect((base - gen.column(Math.floor(island.x / 16), Math.floor(island.z / 16)).top.reduce((a, b) => Math.max(a, b))) * BLOCK_SIZE_M).toBeGreaterThan(25);
     const chest = structureCells(1, 'sky_island', island.x, island.z, base).find(([, , , st]) => BLOCKS.type(st).key === 'chest');
     expect(chest).toBeDefined();
+  });
+
+  it('sinks shipwrecks on the sea floor and builds ice caves in the cold, each with a chest', () => {
+    for (const [kind, seed] of [['shipwreck', 1], ['ice_cave', 1]] as const) {
+      const gen = new Generator(seed), half = Math.round(3000 / BLOCK_SIZE_M);
+      const site = sitesNear(seed, -half, -half, half, half).find((s) => s.kind === kind && gen.structureBase(kind, s.x, s.z) !== null);
+      expect(site, kind).toBeDefined();
+      const base = gen.structureBase(kind, site!.x, site!.z)!;
+      if (kind === 'shipwreck') expect(base).toBeLessThan(SEA_CELL - 5);
+      expect(structureCells(seed, kind, site!.x, site!.z, base).some(([, , , st]) => BLOCKS.type(st).key === 'chest'), kind).toBe(true);
+    }
   });
 
   it('builds an ember shrine deep down with its ancient chest', () => {

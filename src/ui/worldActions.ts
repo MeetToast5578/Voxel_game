@@ -11,7 +11,7 @@ export function worldActions(store: WorldStore, opts: { beforeLeave(): Promise<v
     async openWorld(name: string, create?: NewWorld): Promise<void> {
       await opts.beforeLeave();
       const q = new URLSearchParams({ world: name });
-      if (create) Object.entries({ new: '1', seed: String(create.seed), mode: create.mode, difficulty: create.difficulty }).forEach(([k, v]) => q.set(k, v));
+      if (create) Object.entries({ new: '1', seed: String(create.seed), mode: create.mode, difficulty: create.difficulty, challenge: create.challenge ?? '' }).forEach(([k, v]) => v && q.set(k, v));
       location.search = q.toString();
     },
     async deleteWorld(name: string): Promise<void> {

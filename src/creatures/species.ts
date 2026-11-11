@@ -1,6 +1,9 @@
 type RGB = readonly [number, number, number];
 
 /** How a species lives, with sizes and speeds in meters. Ported from the old game. */
+/** A boss's named attacks: a leap that lands hard, a swooping dive, a ground stomp, a thrown ice boulder, spat venom, a dive underground that bursts up beneath the player, and a burning ember bolt. */
+export type BossMove = 'slam' | 'dive' | 'stomp' | 'boulder' | 'spit' | 'burrow' | 'flame';
+
 export interface Species {
   key: string;
   name: string;
@@ -53,6 +56,12 @@ export interface Species {
   fireproof?: boolean;
   /** A boss: its health shows in a bar across the top of the screen. */
   boss?: boolean;
+  /** A boss's named attacks (see Creatures.bossMove), and the smaller kind it calls as it is struck. */
+  moves?: readonly BossMove[];
+  brood?: string;
+  /** A boss: the item that calls it, whether it only comes at night, how high above the player it arrives, and the
+   * line announcing it. */
+  summon?: { readonly item: string; readonly night?: boolean; readonly depths?: boolean; readonly height: number; readonly line: string };
   /** Lives in a village house: stays near home by day and sleeps in its bed at night. Never spawns on its own. */
   villager?: boolean;
   /** Which shop list a trader offers (see workshops.ts); the general list when unset. */
@@ -99,19 +108,19 @@ export const SPECIES: readonly Species[] = [
     meat: 0, loot: [['string', 2], ['swift_anklet', 1, 0.015]], voice: 0.85 },
   { ...BASE, key: 'brute', name: 'Frost brute', halfWidthM: 0.5, heightM: 2.2, speedM_S: 1.1, health: 40, hostile: true, nocturnal: true, inflicts: ['slowed', 4, 0.6],
     attack: 7, biomes: ['deep', 'tundra', 'snowy_taiga', 'glacier', 'snowcapped_peaks'], group: [1, 1],
-    colours: { body: [170, 196, 214], head: [210, 226, 236], legs: [120, 140, 160] }, meat: 0, loot: [['bone', 3], ['iron_band', 1, 0.04]], voice: 0.1 },
+    colours: { body: [170, 196, 214], head: [210, 226, 236], legs: [120, 140, 160] }, meat: 0, loot: [['bone', 3], ['frost_shard', 2, 0.6], ['iron_band', 1, 0.04]], voice: 0.1 },
   { ...BASE, key: 'warden', name: 'Ember Warden', halfWidthM: 0.55, heightM: 2.5, speedM_S: 1.3, health: 160, hostile: true, guardian: true,
     attack: 8, biomes: [], group: [1, 1], colours: { body: [58, 40, 44], head: [255, 120, 40], legs: [40, 30, 34] }, meat: 0,
     loot: [['ember_crystal', 3], ['diamond', 2], ['life_crystal', 3], ['ember_ring', 1], ['heart_locket', 1, 0.5]], voice: 0.05 },
   { ...BASE, key: 'desert_stalker', name: 'Dune Stalker', halfWidthM:.48, heightM:.8, speedM_S:2.4, health:24, inflicts: ['bleeding', 6, 0.35],
-    hostile:true, nocturnal:true, attack:4, biomes:['desert','badlands'], group:[1,2], meat:0, loot:[['iron_ingot',1],['swift_anklet',1,0.04]],
+    hostile:true, nocturnal:true, attack:4, biomes:['desert','badlands'], group:[1,2], meat:0, loot:[['iron_ingot',1],['dune_fang',1,0.5],['swift_anklet',1,0.04]],
     colours:{body:[186,145,75],head:[210,174,98],legs:[144,106,53]}, voice:.65 },
   { ...BASE, key:'swamp_hollow', name:'Mire Hollow', halfWidthM:.4, heightM:2.1, speedM_S:1.3, health:32, inflicts: ['poisoned', 8, 0.5],
     hostile:true, nocturnal:true, attack:5, biomes:['swamp'], group:[1,2], meat:0, loot:[['moss',3],['bone',1],['gill_pendant',1,0.05]],
     colours:{body:[72,95,44],head:[80,110,48],legs:[64,78,36]}, voice:.25 },
   { ...BASE, key:'snow_prowler', name:'Snow Prowler', halfWidthM:.38, heightM:1.15, speedM_S:2.8, health:26, inflicts: ['slowed', 3, 0.5],
     hostile:true, nocturnal:true, attack:4, biomes:['snowy_taiga','tundra','glacier','snowcapped_peaks'], group:[1,2],meat:0,
-    loot:[['leather',2],['bone',1],['feather_charm',1,0.03]],colours:{body:[223,234,239],head:[238,244,248],legs:[193,213,226]},voice:.4 },
+    loot:[['leather',2],['bone',1],['frost_shard',1,0.5],['feather_charm',1,0.03]],colours:{body:[223,234,239],head:[238,244,248],legs:[193,213,226]},voice:.4 },
   { ...BASE, key:'trader',name:'Traveling Trader',halfWidthM:.28,heightM:1.8,speedM_S:.8,health:30,trader:true,
     biomes:['plains','meadow','temperate_deciduous','birch','savanna'],group:[1,1],meat:0,
     colours:{body:[45,99,111],head:[207,162,116],legs:[57,54,66]},voice:.5 },
@@ -123,23 +132,54 @@ export const SPECIES: readonly Species[] = [
     attack: 3, biomes: ['cave'], group: [1, 2], colours: { body: [80, 140, 230], head: [44, 90, 180], legs: [20, 40, 80] },
     meat: 0, loot: [['gel', 3], ['iron_ingot', 1, 0.2], ['iron_band', 1, 0.015]], voice: 0.85 },
   { ...BASE, key: 'ember_slime', name: 'Ember Slime', halfWidthM: 0.4, heightM: 0.75, speedM_S: 2.6, health: 22, hostile: true, hops: true, fireproof: true, inflicts: ['burning', 3, 0.5],
-    attack: 5, biomes: ['deep'], group: [1, 2], colours: { body: [240, 120, 40], head: [200, 60, 20], legs: [255, 220, 120] },
+    attack: 5, biomes: ['deep', 'depths'], group: [1, 2], colours: { body: [240, 120, 40], head: [200, 60, 20], legs: [255, 220, 120] },
     meat: 0, loot: [['gel', 3], ['ember_crystal', 1, 0.25], ['ember_ring', 1, 0.02]], voice: 0.7 },
-  ...(['farmer', 'smith', 'herbalist', 'guide', 'merchant', 'nurse', 'alchemist'] as const).map((job): Species => ({ ...BASE, key: job, name: job[0]!.toUpperCase() + job.slice(1),
+  ...(['farmer', 'smith', 'herbalist', 'guide', 'merchant', 'nurse', 'alchemist', 'tinkerer', 'explorer'] as const).map((job): Species => ({ ...BASE, key: job, name: job[0]!.toUpperCase() + job.slice(1),
     halfWidthM: 0.28, heightM: 1.8, speedM_S: 0.9, health: 30, trader: true, villager: true, shop: job, biomes: [], group: [1, 1], meat: 0,
     colours: { body: [80, 110, 70], head: [207, 162, 116], legs: [70, 60, 50] }, voice: 0.5 })),
   { ...BASE, key: 'mimic', name: 'Mimic', halfWidthM: 0.45, heightM: 0.9, speedM_S: 3.2, health: 90, hostile: true, daytime: true, hops: true,
     attack: 7, biomes: [], group: [1, 1], colours: { body: [138, 90, 44], head: [106, 110, 116], legs: [240, 234, 216] }, meat: 0,
     loot: [['gold_ingot', 4], ['life_crystal', 1, 0.5], ['cloud_charm', 1, 0.3], ['heart_locket', 1, 0.3], ['ember_ring', 1, 0.2], ['iron_band', 1, 0.3]], voice: 0.35 },
   { ...BASE, key: 'king_slime', name: 'Slime King', halfWidthM: 1.0, heightM: 1.7, speedM_S: 2.8, health: 240, hostile: true, daytime: true, hops: true,
-    boss: true, attack: 6, biomes: [], group: [1, 1], colours: { body: [80, 150, 240], head: [40, 90, 200], legs: [200, 230, 255] },
+    boss: true, moves: ['slam'], brood: 'slime', summon: { item: 'slime_crown', height: 6, line: 'The Slime King has awoken!' },
+    attack: 6, biomes: [], group: [1, 1], colours: { body: [80, 150, 240], head: [40, 90, 200], legs: [200, 230, 255] },
     meat: 0, loot: [['gel', 30], ['life_crystal', 2], ['cloud_charm', 1], ['swift_anklet', 1, 0.6], ['heart_locket', 1, 0.3], ['gold_ingot', 4]], voice: 0.3 },
   { ...BASE, key: 'gloom_moth', name: 'Gloom Moth', halfWidthM: 0.3, heightM: 0.5, speedM_S: 2.8, health: 10, hostile: true, nocturnal: true, flies: true,
     attack: 2, biomes: [...FORESTS, 'swamp', 'plains', 'meadow'], group: [1, 2], colours: { body: [96, 84, 120], head: [70, 60, 90], legs: [200, 220, 120] },
     meat: 0, loot: [['string', 1, 0.6], ['feather', 1, 0.5], ['feather_charm', 1, 0.02]], voice: 0.95 },
   { ...BASE, key: 'gloom_matriarch', name: 'Gloom Matriarch', halfWidthM: 1.1, heightM: 1.5, speedM_S: 3.4, health: 320, hostile: true, nocturnal: true,
-    flies: true, boss: true, attack: 7, biomes: [], group: [1, 1], colours: { body: [120, 96, 150], head: [80, 64, 110], legs: [230, 250, 140] },
+    flies: true, boss: true, moves: ['dive'], brood: 'gloom_moth', summon: { item: 'moth_lure', night: true, height: 10, line: 'The Gloom Matriarch descends!' },
+    attack: 7, biomes: [], group: [1, 1], colours: { body: [120, 96, 150], head: [80, 64, 110], legs: [230, 250, 140] },
     meat: 0, loot: [['life_crystal', 3], ['feather_charm', 1], ['ember_staff', 1, 0.5], ['cloud_charm', 1, 0.5], ['gold_ingot', 6]], voice: 0.2 },
+  { ...BASE, key: 'frost_colossus', name: 'Frost Colossus', halfWidthM: 0.9, heightM: 3.4, speedM_S: 1.5, health: 420, hostile: true, daytime: true,
+    boss: true, moves: ['stomp', 'boulder'], brood: 'snow_prowler', inflicts: ['slowed', 4, 0.6],
+    summon: { item: 'frost_sigil', height: 3, line: 'The Frost Colossus rises from the snow!' },
+    attack: 9, biomes: [], group: [1, 1], colours: { body: [170, 205, 230], head: [220, 238, 250], legs: [110, 140, 170] },
+    meat: 0, loot: [['frost_shard', 12], ['life_crystal', 2], ['frost_heart', 1], ['iron_band', 1, 0.5], ['diamond', 3], ['gold_ingot', 6]], voice: 0.05 },
+  { ...BASE, key: 'sandmaw', name: 'Sandmaw', halfWidthM: 0.7, heightM: 1.2, speedM_S: 3.2, health: 380, hostile: true, daytime: true,
+    boss: true, moves: ['burrow'], brood: 'desert_stalker', inflicts: ['bleeding', 5, 0.5],
+    summon: { item: 'sand_totem', height: 2, line: 'The ground trembles: the Sandmaw is coming!' },
+    attack: 8, biomes: [], group: [1, 1], colours: { body: [196, 150, 90], head: [120, 80, 50], legs: [240, 220, 180] },
+    meat: 0, loot: [['dune_fang', 10], ['life_crystal', 2], ['dune_cloak', 1], ['gold_ingot', 8], ['diamond', 2]], voice: 0.1 },
+  { ...BASE, key: 'spore_slime', name: 'Spore Slime', halfWidthM: 0.32, heightM: 0.6, speedM_S: 2.2, health: 16, hostile: true, hops: true,
+    inflicts: ['poisoned', 4, 0.4], attack: 3, biomes: ['mushroom_cave'], group: [1, 3], colours: { body: [90, 170, 230], head: [40, 90, 160], legs: [200, 240, 255] },
+    meat: 0, loot: [['gel', 2], ['glow_mushroom', 1, 0.5]], voice: 0.8 },
+  { ...BASE, key: 'deep_heart', name: 'The Deep Heart', halfWidthM: 1.1, heightM: 2.2, speedM_S: 2.2, health: 540, hostile: true, daytime: true, flies: true,
+    fireproof: true, boss: true, moves: ['flame', 'dive', 'flame'], brood: 'fire_bat', inflicts: ['burning', 4, 0.7],
+    summon: { item: 'heart_of_embers', depths: true, height: 6, line: 'The Deep Heart wakes, and the Depths burn brighter!' },
+    attack: 11, biomes: [], group: [1, 1], colours: { body: [220, 60, 30], head: [96, 70, 64], legs: [255, 190, 80] },
+    meat: 0, loot: [['emberite_ingot', 8], ['life_crystal', 3], ['deep_core', 1], ['ember_crystal', 10], ['diamond', 4]], voice: 0.02 },
+  { ...BASE, key: 'hornet', name: 'Jungle Hornet', halfWidthM: 0.25, heightM: 0.45, speedM_S: 3.4, health: 9, hostile: true, daytime: true, flies: true,
+    inflicts: ['poisoned', 5, 0.5], attack: 3, biomes: ['tropical_rainforest', 'swamp'], group: [1, 3],
+    colours: { body: [230, 180, 40], head: [40, 32, 20], legs: [255, 230, 120] }, meat: 0, loot: [['stinger', 1, 0.6]], voice: 1 },
+  { ...BASE, key: 'hive_mother', name: 'Hive Mother', halfWidthM: 1.0, heightM: 1.4, speedM_S: 3.6, health: 360, hostile: true, daytime: true, flies: true,
+    boss: true, moves: ['dive', 'spit'], brood: 'hornet', inflicts: ['poisoned', 6, 0.6],
+    summon: { item: 'royal_bait', height: 8, line: 'The Hive Mother answers, humming with fury!' },
+    attack: 7, biomes: [], group: [1, 1], colours: { body: [240, 170, 30], head: [50, 36, 20], legs: [255, 240, 160] },
+    meat: 0, loot: [['stinger', 10], ['life_crystal', 2], ['hive_charm', 1], ['swift_anklet', 1, 0.4], ['gold_ingot', 6]], voice: 0.9 },
+  { ...BASE, key: 'fire_bat', name: 'Fire Bat', halfWidthM: 0.22, heightM: 0.45, speedM_S: 3.6, health: 14, hostile: true, flies: true, fireproof: true,
+    inflicts: ['burning', 3, 0.5], attack: 4, biomes: ['depths'], group: [1, 3], colours: { body: [150, 50, 20], head: [230, 110, 30], legs: [60, 20, 10] },
+    meat: 0, loot: [['ember_crystal', 1, 0.2], ['leather', 1, 0.3], ['ember_ring', 1, 0.01]], voice: 1 },
   { ...BASE, key: 'bat', name: 'Cave Bat', halfWidthM: 0.2, heightM: 0.4, speedM_S: 3.2, health: 4, hostile: true, flies: true,
     attack: 1, biomes: ['cave'], group: [1, 3], colours: { body: [70, 56, 52], head: [86, 68, 60], legs: [50, 40, 40] },
     meat: 0, loot: [['leather', 1, 0.3], ['cloud_charm', 1, 0.015]], voice: 1 },

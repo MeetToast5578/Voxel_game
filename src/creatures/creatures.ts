@@ -1,5 +1,5 @@
 import {
-  BREED_COOLDOWN_S, FED_S, FOLLOW_M, GROW_UP_S, ARCHER_AIM_S, ARCHER_FAR_M, ARCHER_NEAR_M, ARCHER_SHOT_S, ATTACK_COOLDOWN_S, ATTACK_REACH_M, BLOCK_SIZE_M, BURN_PER_S, BURN_S, DEPTH_TOUGHNESS_PER_100M, SAFE_LIGHT, CREATURE_CAP, CREATURE_FALL_M, DESPAWN_M, FLEE_M, GRAVITY_M_S2, HOSTILE_CAP, HUNT_M,
+  BOSS_SPECIAL_S, BOSS_WINDUP_S, DEPTHS_TOP_M, DIVE_M_S, SLAM_RADIUS_M, WINDUP_S, BREED_COOLDOWN_S, FED_S, FOLLOW_M, GROW_UP_S, ARCHER_AIM_S, ARCHER_FAR_M, ARCHER_NEAR_M, ARCHER_SHOT_S, ATTACK_COOLDOWN_S, ATTACK_REACH_M, BLOCK_SIZE_M, BURN_PER_S, BURN_S, DEPTH_TOUGHNESS_PER_100M, SAFE_LIGHT, CREATURE_CAP, CREATURE_FALL_M, DESPAWN_M, FLEE_M, GRAVITY_M_S2, HOSTILE_CAP, HUNT_M,
   KNOCKBACK_M_S, RUN_FACTOR, SPAWN_INTERVAL_S, SPAWN_MAX_M, SPAWN_MIN_M, STEP_HEIGHT_M, cells, toCells,
 } from '../config';
 import { columnIndex, localIndex, toChunk, toLocal } from '../core/coords';
@@ -9,7 +9,7 @@ import type { BoxAt } from '../game/collision';
 import { moveBody, type Body } from '../game/physics';
 import { biomeByIndex } from '../worldgen/biomes';
 import { findPath } from './pathfinding';
-import { SPECIES, SPECIES_BY_KEY, type Species } from './species';
+import { SPECIES, SPECIES_BY_KEY, type BossMove, type Species } from './species';
 
 export type Mode = 'wander' | 'idle' | 'flee' | 'hunt' | 'sleep' | 'follow';
 
@@ -51,6 +51,15 @@ export interface Creature {
   atAltar?: boolean;
   /** Which way it lies in its bed (default: head toward +x, as in village houses). */
   homeYaw?: number;
+  /** Seconds left in a wind-up before its bite lands. */
+  windup?: number;
+  /** A boss's named attack under way: seconds left in its wind-up, where it aims, and whether it has struck. */
+  move?: { kind: BossMove; t: number; aim: [number, number, number]; struck?: boolean };
+  /** A raider: the town it marches on (x, z), going for its townsfolk. */
+  raid?: [number, number];
+  /** Seconds until a boss's next named attack, and its phase (2: enraged, below half health). */
+  special?: number;
+  phase?: number;
 }
 
 /** What creatures need to know about the world and the player each tick. */
@@ -97,7 +106,9 @@ export class Creatures {
       /** A creature calls, is hurt or dies (for its sound). */
       call?(c: Creature, kind: 'call' | 'hurt' | 'death'): void;
       /** A ranged creature shoots at the player from (x, y, z). */
-      shoot?(c: Creature, x: number, y: number, z: number): void;
+      shoot?(c: Creature, x: number, y: number, z: number, item?: string): void;
+      /** A boss starts a named attack, lands one, or turns enraged. */
+      boss?(c: Creature, what: BossMove | 'land' | 'enraged'): void;
     }) {}
 
   update(dt: number, ctx: CreatureContext): void {
@@ -223,6 +234,15 @@ export class Creatures {
       c.target = 'player';
       return;
     }
+    if (c.raid) {
+      // A raider: at the townsfolk when it sees one, else on towards the town.
+      const folk = this.list.find((o) => o.species.villager && near(o.body.x, o.body.z, 10));
+      if (folk) { c.mode = 'hunt'; c.target = folk; return; }
+      c.mode = 'wander';
+      c.target = null;
+      c.goal = [...c.raid];
+      return;
+    }
     if (s.prey.length) {
       const prey = this.list.find((o) => s.prey.includes(o.species.key) && near(o.body.x, o.body.z, HUNT_M));
       if (prey) {
@@ -269,7 +289,8 @@ export class Creatures {
 
   private move(c: Creature, dt: number, ctx: CreatureContext): void {
     const s = c.species, b = c.body;
-    let speed = toCells(s.speedM_S);
+    if (s.boss && c.mode === 'hunt' && c.target === 'player' && this.bossMove(c, dt, ctx)) return;
+    let speed = toCells(s.speedM_S) * (c.phase === 2 ? 1.25 : 1);
     let goal = c.goal;
     if (c.mode === 'hunt' && c.target && s.ranged && c.target === 'player') {
       // Archers keep between the near and far distance, and shoot when they can see the player.
@@ -293,11 +314,19 @@ export class Creatures {
       if (s.medium === 'land' && !s.climbs && !s.flies) goal = this.waypoint(c, t, dt, ctx) ?? goal;
       const reach = toCells(ATTACK_REACH_M) + b.halfWidth + t.halfWidth;
       const level = s.flies ? Math.abs(t.y + t.height * 0.6 - b.y) < 1.6 : Math.abs(t.y - b.y) < b.height;
-      if (Math.hypot(t.x - b.x, t.z - b.z) < reach && level && c.cooldown <= 0) {
-        c.cooldown = ATTACK_COOLDOWN_S;
-        if (c.target === 'player') this.events.bite(s.attack, s.name, s, c);
-        else this.damage(c.target, s.attack, b.x, b.z);
-      }
+      const dist = Math.hypot(t.x - b.x, t.z - b.z);
+      if (c.windup) {
+        // Winding up: it holds still, then strikes only if the target is still within reach (a step back dodges).
+        goal = null;
+        if ((c.windup -= dt) <= 0) {
+          c.windup = 0;
+          c.cooldown = ATTACK_COOLDOWN_S;
+          if (dist < reach * 1.15 && level) {
+            if (c.target === 'player') this.events.bite(s.attack, s.name, s, c);
+            else this.damage(c.target, s.attack, b.x, b.z);
+          }
+        }
+      } else if (dist < reach && level && c.cooldown <= 0) c.windup = s.boss ? BOSS_WINDUP_S * 0.6 : WINDUP_S;
     }
     else if (goal && s.medium === 'land' && !s.flies && (c.mode === 'flee' || c.mode === 'wander' || c.mode === 'follow')) {
       // Walking somewhere: along a path round walls and up ledges, when one is found.
@@ -388,6 +417,96 @@ export class Creatures {
     c.walk += Math.hypot(b.vx, b.vz) * dt * 3;
   }
 
+  /**
+   * A boss's named attacks, every few seconds while it hunts: the Slime King crouches and leaps at the player, and its
+   * landing hurts anyone on the ground near it (jump or step away); the Matriarch rises and dives at where the player
+   * stood; the Frost Colossus stomps (the same shock where it stands) or hurls an ice boulder. Returns whether one is
+   * under way (it then moves the boss itself).
+   */
+  private bossMove(c: Creature, dt: number, ctx: CreatureContext): boolean {
+    const b = c.body, p = ctx.player, s = c.species;
+    if (!c.move) {
+      c.special = (c.special ?? BOSS_SPECIAL_S / 2) - dt;
+      if (c.special > 0 || c.windup || (!s.flies && !b.onGround) || Math.hypot(p.x - b.x, p.z - b.z) > toCells(12)) return false;
+      c.special = BOSS_SPECIAL_S * (c.phase === 2 ? 0.6 : 1);
+      const moves = s.moves ?? ['slam'];
+      c.move = { kind: moves[Math.floor(this.rand() * moves.length)]!, t: BOSS_WINDUP_S, aim: [p.x, p.y + p.height * 0.5, p.z] };
+      this.events.boss?.(c, c.move.kind);
+    }
+    const m = c.move;
+    m.t -= dt;
+    const dx = m.aim[0] - b.x, dy = m.aim[1] - b.y, dz = m.aim[2] - b.z, len = Math.hypot(dx, dz) || 1;
+    c.yaw = Math.atan2(-dx, -dz);
+    if (m.kind === 'burrow') {
+      // Rears up, sinks under the ground, tunnels to beneath where the player now stands, and bursts up through them.
+      if (m.t > 0) b.vx = b.vz = 0;
+      else if (m.t > -BURROW_S) {
+        Object.assign(b, { x: b.x + Math.sign(p.x - b.x) * Math.min(Math.abs(p.x - b.x), toCells(8) * dt), z: b.z + Math.sign(p.z - b.z) * Math.min(Math.abs(p.z - b.z), toCells(8) * dt), vx: 0, vy: 0, vz: 0 });
+        m.aim = [b.x, p.y, b.z];
+        return true;
+      } else if (!m.struck) {
+        m.struck = true;
+        Object.assign(b, { y: m.aim[1], vy: toCells(9), vx: 0, vz: 0 });
+        if (Math.hypot(p.x - b.x, p.z - b.z) < toCells(SLAM_RADIUS_M) + b.halfWidth && Math.abs(p.y - b.y) < 1.5) this.events.bite(Math.round(s.attack * 1.5), s.name, s, c);
+        this.events.boss?.(c, 'land');
+      } else if (b.onGround) c.move = undefined;
+      b.vy -= GRAVITY * dt;
+    } else if (m.kind === 'stomp' || m.kind === 'boulder' || m.kind === 'spit' || m.kind === 'flame') {
+      // Planted while it winds up (a flier hangs still), then the stomp shakes the ground round it, or the boulder or
+      // venom flies at the player.
+      b.vx = b.vz = 0;
+      if (m.t <= 0) {
+        if (m.kind !== 'stomp') this.events.shoot?.(c, b.x, b.y + b.height * 0.5, b.z, m.kind === 'boulder' ? 'ice' : m.kind === 'spit' ? 'stinger' : 'ember_crystal');
+        else {
+          if (Math.hypot(p.x - b.x, p.z - b.z) < toCells(SLAM_RADIUS_M * 1.4) + b.halfWidth && Math.abs(p.y - b.y) < 1) this.events.bite(s.attack, s.name, s, c);
+          this.events.boss?.(c, 'land');
+        }
+        c.move = undefined;
+      }
+      if (s.flies) b.vy *= 0.9;
+      else b.vy -= GRAVITY * dt;
+    } else if (m.kind === 'slam') {
+      if (m.t > 0) {
+        // The crouch: it sits still, gathering itself.
+        b.vx = b.vz = 0;
+      } else if (!m.struck) {
+        // The leap: high, and far enough to come down where the player stood.
+        m.struck = true;
+        b.vy = toCells(8);
+        const air = (2 * b.vy) / GRAVITY, v = Math.min(len / air, toCells(9));
+        b.vx = (dx / len) * v;
+        b.vz = (dz / len) * v;
+      } else if (b.onGround && m.t < -0.2) {
+        const d = Math.hypot(p.x - b.x, p.z - b.z);
+        if (d < toCells(SLAM_RADIUS_M) + b.halfWidth && p.y - b.y < 1 && p.y - b.y > -1.5) this.events.bite(Math.round(s.attack * 1.5), s.name, s, c);
+        this.events.boss?.(c, 'land');
+        c.move = undefined;
+      }
+      b.vy -= GRAVITY * dt;
+    } else {
+      if (m.t > 0) {
+        // Rising before the dive.
+        b.vx *= 0.9;
+        b.vz *= 0.9;
+        b.vy = toCells(2.5);
+      } else {
+        const d3 = Math.hypot(dx, dy, dz) || 1, v = toCells(DIVE_M_S) * (c.phase === 2 ? 1.3 : 1);
+        b.vx = (dx / d3) * v;
+        b.vy = (dy / d3) * v;
+        b.vz = (dz / d3) * v;
+        const reach = toCells(ATTACK_REACH_M) + b.halfWidth + p.halfWidth;
+        if (!m.struck && Math.hypot(p.x - b.x, p.z - b.z) < reach && Math.abs(p.y + p.height * 0.5 - b.y) < 1.6) {
+          m.struck = true;
+          this.events.bite(s.attack + 2, s.name, s, c);
+        }
+        if (d3 < 0.8 || m.t < -2) c.move = undefined;
+      }
+    }
+    moveBody(b, dt, ctx.boxAt, 0);
+    c.walk += Math.hypot(b.vx, b.vz) * dt * 3;
+    return true;
+  }
+
   /** Feeds an animal its food: it is ready to breed for a while. Returns whether it took the food. */
   feed(c: Creature): boolean {
     if (c.young > 0 || c.fed !== 0 || !c.species.food) return false;
@@ -444,6 +563,7 @@ export class Creatures {
 
   /** Hurts a creature, knocking it away from (fromX, fromZ); returns whether it died (and was removed). */
   damage(c: Creature, amount: number, fromX: number, fromZ: number, knock = 1): boolean {
+    if (burrowed(c)) return false;
     c.health -= amount;
     c.hurt = 0.3;
     // Heavy creatures are pushed less.
@@ -456,10 +576,17 @@ export class Creatures {
       c.mode = 'flee';
       c.goal = [c.body.x + (dx / len) * toCells(12), c.body.z + (dz / len) * toCells(12)];
     }
-    if (c.health > 0 && c.species.boss && this.rand() < 0.4 && this.list.length < CREATURE_CAP) {
+    if (c.health > 0 && c.species.boss) {
+      // Below half health a boss is enraged: faster, its named attacks come sooner, and it calls a whole brood at once.
+      const enrage = c.phase !== 2 && c.health < c.maxHealth / 2;
+      if (enrage) {
+        c.phase = 2;
+        this.events.boss?.(c, 'enraged');
+      }
       // Bosses call their brood as they are struck: the Slime King sheds slimes, the Matriarch calls moths.
-      const small = SPECIES_BY_KEY.get(c.species.key === 'king_slime' ? 'slime' : 'gloom_moth')!;
-      this.add(small, c.body.x + (this.rand() - 0.5) * 2, c.body.y + 1, c.body.z + (this.rand() - 0.5) * 2, small.health);
+      const small = SPECIES_BY_KEY.get(c.species.brood ?? 'slime')!;
+      for (let k = enrage ? 3 : this.rand() < 0.4 ? 1 : 0; k > 0 && this.list.length < CREATURE_CAP; k--)
+        this.add(small, c.body.x + (this.rand() - 0.5) * 2, c.body.y + 1, c.body.z + (this.rand() - 0.5) * 2, small.health);
     }
     if (c.health > 0) {
       this.events.call?.(c, 'hurt');
@@ -549,7 +676,23 @@ export class Creatures {
     const [sky, block] = this.lightAt(x, y, z);
     if (sky > 0 || block >= SAFE_LIGHT) return;
     const deep = y * BLOCK_SIZE_M < -60;
-    this.spawnGroup(SPECIES.filter((s) => s.hostile && (s.biomes.includes('dark') || s.biomes.includes('cave') || (deep && s.biomes.includes('deep')))), x, y, z, ctx.boxAt);
+    // The Ember Depths have creatures of their own, and so do cave biomes: crawlers in spider nests, spore slimes among
+    // glowing mushrooms, bats in crystal geodes.
+    const depths = y * BLOCK_SIZE_M < DEPTHS_TOP_M, nest = this.caveBiomeNear(x, y, z);
+    if (nest && this.rand() < 0.75) return this.spawnGroup(SPECIES.filter((s) => s.key === nest), x, y, z, ctx.boxAt);
+    this.spawnGroup(SPECIES.filter((s) => s.hostile && (depths ? s.biomes.includes('depths')
+      : s.biomes.includes('dark') || s.biomes.includes('cave') || (deep && s.biomes.includes('deep')))), x, y, z, ctx.boxAt);
+  }
+
+  /** The creature a cave biome around (x, y, z) breeds, judged by what grows there; null in a plain cave. */
+  private caveBiomeNear(x: number, y: number, z: number): string | null {
+    for (let dy = -1; dy <= 2; dy++) for (let dz = -3; dz <= 3; dz++) for (let dx = -3; dx <= 3; dx++) {
+      const k = BLOCKS.type(this.world.get(x + dx, y + dy, z + dz)).key;
+      if (k === 'cobweb') return 'crawler';
+      if (k === 'glow_mushroom') return 'spore_slime';
+      if (k === 'cave_crystal') return 'bat';
+    }
+    return null;
   }
 
   private spawnGroup(options: readonly Species[], x: number, y: number, z: number, boxAt: CreatureContext['boxAt']): void {
@@ -608,6 +751,13 @@ export function meatOf(c: Creature): { state: number; count: number } | null {
 }
 
 /** Everything a dead creature leaves: meat, leather from hides, and its own loot. */
+/** Seconds the Sandmaw tunnels underground before it bursts up. */
+const BURROW_S = 1.6;
+/** Under the ground: unseen and unharmed. */
+export function burrowed(c: Creature): boolean {
+  return c.move?.kind === 'burrow' && c.move.t <= 0 && !c.move.struck;
+}
+
 /** What a boss's treasure bag holds when opened: its loot (rare things by chance) and coins. */
 export function bagLoot(s: Species, rand: () => number = Math.random): { state: number; count: number }[] {
   return [...(s.loot ?? []).filter(([, , chance]) => chance === undefined || rand() < chance).map(([key, count]) => ({ state: BLOCKS.state(key), count })),

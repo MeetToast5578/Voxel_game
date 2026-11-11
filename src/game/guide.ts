@@ -6,7 +6,7 @@ import { LOOT_ITEMS, type LootTable } from './loot';
 import { SHOPS, TRADE_OFFERS } from './workshops';
 
 const PLACES: Record<LootTable, string> = { surface: 'chests in ruins and camps', mine: 'chests in old mines', vault: 'deep vault chests', shrine: 'ember shrine chests',
-  sky: 'chests on sky islands', pyramid: 'desert pyramid chests', temple: 'jungle temple chests' };
+  sky: 'chests on sky islands', pyramid: 'desert pyramid chests', temple: 'jungle temple chests', ice_cave: 'ice cave chests', shipwreck: 'shipwreck chests' };
 const name = (key: string) => BLOCKS.byName(key).name;
 const unique = <T,>(list: T[]) => [...new Set(list)];
 // Tooltips ask for the same items on every redraw; the tables never change.

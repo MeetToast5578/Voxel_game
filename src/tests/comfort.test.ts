@@ -110,3 +110,32 @@ describe('pets and late movement', () => {
     expect(rocket.body.y).toBeGreaterThan(100);
   });
 });
+
+describe('light in the dark', () => {
+  it('a wisp in a bottle, made from geode crystals, gives a wisp; glowing mushrooms brew night vision', () => {
+    const { play } = setup();
+    expect(CRAFTS.some((r) => BLOCKS.type(BLOCKS.state(r.result[0])).key === 'wisp_bottle')).toBe(true);
+    expect(play.bonus.wisp).toBe(false);
+    play.accessories[0] = { state: S('wisp_bottle'), count: 1 };
+    expect(play.bonus.wisp).toBe(true);
+    expect(CRAFTS.some((r) => BLOCKS.type(BLOCKS.state(r.result[0])).key === 'night_vision_potion')).toBe(true);
+    expect(BLOCKS.type(S('night_vision_potion')).potion!.effect).toBe('night_vision');
+  });
+});
+
+describe('challenge runs', () => {
+  it('time the run until the goal is met, and keep the time in saves', () => {
+    const { play, world } = setup();
+    play.challenge = { goal: 'depths', time: 0 };
+    play.tickChallenge(5);
+    expect(play.challenge.done).toBeUndefined();
+    play.deepestM = -230;
+    play.tickChallenge(5);
+    expect(play.challenge.done).toBe(10);
+    play.tickChallenge(5);
+    expect(play.challenge.time).toBe(10);
+    const back = new Play(world, () => undefined, { sound: () => undefined, sleep: () => true }, 'survival');
+    back.load(JSON.parse(JSON.stringify(play.save())));
+    expect(back.challenge).toEqual({ goal: 'depths', time: 10, done: 10 });
+  });
+});

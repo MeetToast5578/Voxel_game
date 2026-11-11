@@ -87,6 +87,8 @@ h3 small{font-weight:400;color:var(--muted);letter-spacing:0}.section-copy,.help
 @container(max-width:400px){.recipe-detail{grid-template-columns:1fr}.recipe-detail>img{width:32px;height:32px}.craft-buttons,.recipe-tools,.needs li{flex-wrap:wrap}.crafting h3{flex-wrap:wrap;gap:4px}.screen .craft-cats button{padding:3px 7px}.crafting,.crafting *{min-width:0}.needs span{white-space:normal}}
 .station.alchemy{background:#2c2446;color:#c8b4ff;margin-left:6px}
 .effects{position:fixed;left:16px;top:16px;display:flex;flex-direction:column;gap:4px;list-style:none;margin:0;padding:0;pointer-events:none}
+.challenge{position:fixed;right:16px;top:16px;padding:4px 10px;border-radius:6px;background:rgba(12,22,24,.72);color:#f2e6c8;font:600 13px/1.4 inherit;font-variant-numeric:tabular-nums;pointer-events:none}
+.challenge.done{color:#9fe08a}
 .effects li{font-size:12px;padding:3px 9px;border-radius:4px;background:#102024de;border:1px solid var(--line);color:#cfe8d4}
 .effects li.bad{color:#ffb0a0;border-color:#6a2a24}.effects small{color:var(--muted);margin-left:4px}
 .bestiary{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:8px}
