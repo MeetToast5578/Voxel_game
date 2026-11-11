@@ -9,6 +9,8 @@ iron, real danger, places worth finding and an end point. Onboarding, sound and 
 **New direction (owner, 2026-11-04):** a 3D Terraria: an adventure RPG with many creatures and their loot, gear tiers,
 bosses and NPC towns, not a Minecraft copy. Milestone 18 is the plan; feel comes first. Art requests: `docs/art-wishlist.md`.
 
+**Roadmap after 0.7.0 (2026-11-10):** every open idea and task, in order: [`roadmap.md`](roadmap.md).
+
 **How to use this list**
 - Milestones are in order. Inside a milestone, tasks are in order unless they say otherwise.
 - Each task ends with **Done when**. Every task also passes `npm run check`, `npm run benchmark -- --assert` and
@@ -311,7 +313,7 @@ All of it stays procedural: no asset files.
 - [~] **13.4 Monsters by biome and a harder night.** Three biome monsters built in 0.6.0; increasing danger by world age remains open. One new monster each for deserts, swamps and snow; nights get a
   little harder the longer the world runs, capped by difficulty.
   **Done when:** each biome spawns its monster in a test, and day 20 spawns more than day 1.
-- [ ] **13.5 Rewards for the journal.** Each milestone gives something useful (a map, a stack of torches, a recipe).
+- [x] **13.5 Rewards for the journal.** Done in 0.7.3. Each milestone gives something useful (a map, a stack of torches, a recipe).
   **Done when:** reaching a milestone puts its reward in the inventory.
 
 ## 14. More ideas (not decided)
@@ -457,8 +459,8 @@ The owner named all four as bad:
   flying moth called at night with a Moth Lure, calls Gloom Moths. The Ember Warden shows the bar too. Arenas remain.
 - [~] **18.D5 NPC towns:** villagers who move into suitable houses, sell goods and sleep at night. 0.7.0: generated
   villages (houses with pitched roofs in tree-free clearings); a farmer, smith or herbalist per house with their own
-  shop, out near home by day and asleep in their bed at night. A villager returns while its bed stands. Moving into
-  houses the player builds is still to do.
+  shop, out near home by day and asleep in their bed at night. A villager returns while its bed stands. 0.7.5: townsfolk move
+  into homes the player builds (see roadmap R5).
 
 ## 19. New and improved art — production backlog
 

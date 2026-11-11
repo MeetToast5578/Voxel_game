@@ -1,7 +1,7 @@
 import {
   AIR_ACCEL, AIR_JUMP_FACTOR, EYE_HEIGHT_M, GLIDE_FALL_M_S, FALL_GRAVITY_FACTOR, JUMP_CUT, FLY_FAST_FACTOR, FLY_SPEED_M_S, GRAVITY_M_S2, GROUND_ACCEL, JUMP_SPEED_M_S, JUMP_GRACE_S, JUMP_BUFFER_S, PLAYER_DENSITY,
   PLAYER_HALF_WIDTH_M, PLAYER_HEIGHT_M, SPRINT_SPEED_M_S, STEP_HEIGHT_M, STEP_SMOOTH_S, SWIM_THRUST_M_S2, SWIM_UP_M_S2,
-  TERMINAL_SPEED_M_S, WALK_SPEED_M_S, BOAT_SPEED_M_S, WATER_DENSITY, WATER_DRAG_PER_M, toCells, BLOCK_SIZE_M, CROUCH_FACTOR, CLIMB_SPEED_M_S, CURRENT_ACCEL_M_S2,
+  TERMINAL_SPEED_M_S, WALK_SPEED_M_S, BOAT_SPEED_M_S, WATER_DENSITY, WATER_DRAG_PER_M, toCells, BLOCK_SIZE_M, CROUCH_FACTOR, CLIMB_SPEED_M_S, CURRENT_ACCEL_M_S2, HOOK_HOLD_M, HOOK_PULL_M_S, HOOK_RANGE_M
 } from '../config';
 import type { BoxAt } from './collision';
 import type { Input } from './input';
@@ -52,6 +52,8 @@ export class Player {
   airJumps = 0;
   glide = false;
   private airJumpsUsed = 0;
+  /** Where the grappling hook holds fast (cells), or null: it pulls the player there and holds them until a jump. */
+  hook: [number, number, number] | null = null;
   /** Set when an air jump happens, for a puff of effect; the game clears it. */
   airJumped = false;
 
@@ -142,6 +144,23 @@ export class Player {
       // No stepping: a bank higher than the water stops the boat.
       this.move(dt, boxAt, 0);
       if (afloat && b.vy === 0) b.onGround = true;
+    } else if (this.hook) {
+      // On the hook: pulled toward its point, then held there. A jump lets go with a hop; air jumps come back.
+      this.airJumpsUsed = 0;
+      const [hx, hy, hz] = this.hook, dx = hx - b.x, dy = hy - (b.y + b.height * 0.5), dz = hz - b.z, d = Math.hypot(dx, dy, dz) || 1;
+      if (pressed || d > toCells(HOOK_RANGE_M) + 2) {
+        this.hook = null;
+        if (pressed) {
+          b.vy = toCells(JUMP_SPEED_M_S);
+          this.jumping = true;
+        }
+      } else {
+        const pull = d < toCells(HOOK_HOLD_M) ? 0 : toCells(HOOK_PULL_M_S), blend = Math.min(1, 10 * dt);
+        b.vx += ((dx / d) * pull - b.vx) * blend;
+        b.vy += ((dy / d) * pull - b.vy) * blend;
+        b.vz += ((dz / d) * pull - b.vz) * blend;
+      }
+      this.move(dt, boxAt, toCells(STEP_HEIGHT_M));
     } else if (this.submerged > 0.05) {
       const thrust = toCells(SWIM_THRUST_M_S2);
       b.vx += wx * thrust * dt;

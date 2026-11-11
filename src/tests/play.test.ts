@@ -150,7 +150,7 @@ describe('play', () => {
     play.cursor = { state: S('swift_anklet'), count: 1 };
     play.clickAccessory(1, false);
     expect(play.bonus).toMatchObject({ speed: 0.2, protection: 3 });
-    expect(play.protect(10)).toBeCloseTo(10 * (1 - 0.12));
+    expect(play.protect(10)).toBeCloseTo(10 * (1 - 0.09));
     const copy = setup('survival').play;
     copy.load(JSON.parse(JSON.stringify(play.save())));
     expect(copy.accessories.slice(0, 2)).toEqual([{ state: S('iron_band'), count: 1 }, { state: S('swift_anklet'), count: 1 }]);

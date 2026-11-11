@@ -36,11 +36,33 @@ export const SHOPS: Readonly<Record<string, readonly TradeOffer[]>> = {
     offer('Buy an iron chestplate', ['trade_coin', 18], ['iron_chestplate', 1]), offer('Buy an Ironskin Band', ['trade_coin', 35], ['iron_band', 1]),
     offer('Buy a bucket', ['trade_coin', 5], ['bucket', 1]), offer('Buy a lantern', ['trade_coin', 4], ['lantern', 1]),
   ],
+  guide: [
+    offer('Buy torches', ['trade_coin', 1], ['torch', 8]), offer('Buy wheat seeds', ['trade_coin', 1], ['wheat', 6]),
+    offer('Buy a map', ['trade_coin', 5], ['map', 1]), offer('Buy a compass', ['trade_coin', 5], ['compass', 1]),
+    offer('Sell logs', ['log', 16], ['trade_coin', 1]),
+  ],
+  merchant: [
+    offer('Buy arrows', ['trade_coin', 2], ['arrow', 16]), offer('Buy a bucket', ['trade_coin', 6], ['bucket', 1]),
+    offer('Buy a Grappling Hook', ['trade_coin', 20], ['grappling_hook', 1]), offer('Buy string', ['trade_coin', 1], ['string', 3]),
+    offer('Sell gold', ['gold_ingot', 1], ['trade_coin', 4]), offer('Sell diamonds', ['diamond', 1], ['trade_coin', 10]),
+  ],
+  nurse: [
+    offer('Buy a Healing Potion', ['trade_coin', 4], ['healing_potion', 1]), offer('Buy an Antidote', ['trade_coin', 4], ['antidote', 1]),
+    offer('Buy a Regeneration Potion', ['trade_coin', 6], ['regeneration_potion', 1]), offer('Buy a Life Crystal', ['trade_coin', 50], ['life_crystal', 1]),
+  ],
+  alchemist: [
+    offer('Buy red mushrooms', ['trade_coin', 1], ['red_mushroom', 2]), offer('Buy poppies', ['trade_coin', 1], ['poppy', 2]),
+    offer('Buy dandelions', ['trade_coin', 1], ['dandelion', 2]), offer('Buy brown mushrooms', ['trade_coin', 1], ['brown_mushroom', 2]),
+    offer('Buy a Swiftness Potion', ['trade_coin', 7], ['swiftness_potion', 1]), offer('Buy a Water Breathing Potion', ['trade_coin', 8], ['water_breathing_potion', 1]),
+    offer('Buy a Fire Resistance Potion', ['trade_coin', 10], ['fire_resistance_potion', 1]),
+  ],
   herbalist: [
     offer('Sell feathers', ['feather', 6], ['trade_coin', 1]), offer('Sell gel', ['gel', 8], ['trade_coin', 1]),
     offer('Buy cooked fish', ['trade_coin', 2], ['cooked_fish', 3]), offer('Buy a Gill Pendant', ['trade_coin', 25], ['gill_pendant', 1]),
     offer('Buy a Featherfall Charm', ['trade_coin', 30], ['feather_charm', 1]), offer('Buy a Heart Locket', ['trade_coin', 45], ['heart_locket', 1]),
     offer('Buy a Life Crystal', ['trade_coin', 55], ['life_crystal', 1]), offer('Buy a Gel Crown', ['trade_coin', 18], ['slime_crown', 1]),
+    offer('Buy glass bottles', ['trade_coin', 2], ['glass_bottle', 3]), offer('Buy a Healing Potion', ['trade_coin', 6], ['healing_potion', 1]),
+    offer('Buy an Antidote', ['trade_coin', 5], ['antidote', 1]),
   ],
 };
 const copy = (inv: Inventory) => {const other=new Inventory();inv.slots.forEach((s,i)=>other.slots[i]=s?{...s}:null);other.selected=inv.selected;return other;};

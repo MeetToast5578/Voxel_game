@@ -3,6 +3,87 @@
 The newest version comes first. `npm run check` fails if the version at the top here is not the one in
 `package.json`, so the two are changed together.
 
+## 0.7.6 — 2026-11-10
+
+Events and boss rewards (roadmap R3.2, R3.4).
+
+- Red Night: from the third day, about one night in eight brings a red moon. The sky and fog turn red, twice as many
+  monsters come, and they often drop extra coins. It ends at dawn.
+- Slime Rain: about one day in ten, slimes fall from the sky around you. Beat 25 and the Slime King comes for you.
+- Bosses (the Slime King, the Gloom Matriarch, the Ember Warden) leave one treasure bag instead of scattered loot, so
+  nothing is lost in lava or water. Right click opens it.
+- Neither event happens on peaceful.
+- Mouse look ignores the sudden jumps of half the window some browsers report under pointer lock, which could spin
+  the view on a click.
+
+## 0.7.5 — 2026-11-10
+
+Towns the player builds (roadmap R5.1, R5.2).
+
+- A bed you place makes a home once its room is one: closed all round (walls, floor and roof), at least 24 cells of
+  space, with a door, a light, and a table or workbench. Placing the bed says what the room still needs. When it is a
+  home, someone moves in and sleeps in that bed at night; they come back while the bed stands.
+- Four new townsfolk with their own shops, each arriving when the time is right: the Guide (from the start: torches,
+  seeds, a map and compass), the Merchant (once you carry 20 coins: arrows, a bucket, string, a Grappling Hook; buys
+  gold and diamonds), the Nurse (after a Life Crystal: healing potions, antidotes, Life Crystals) and the Alchemist
+  (once you have a bottle or potion: ingredients and potions). After them, farmers, smiths and herbalists move in.
+
+## 0.7.4 — 2026-11-10
+
+Getting around and dressing for it (roadmap R6.4, R6.2).
+
+- Grappling Hook (three iron ingots and two string, at a workbench): right click throws it at a block up to 14 m away
+  and pulls you there, then holds you against it. Jump to let go with a hop (air jumps come back); right click again
+  takes it back. It lets go if the block breaks. A rope shows where it holds.
+- Full armour sets add a bonus, shown in the tooltip and under Equipment: leather 10% faster on foot, iron 6% more
+  harm stopped, diamond 10% more critical hits, jade hurts whatever bites you for 3.
+
+## 0.7.3 — 2026-11-10
+
+Reasons to keep going (roadmap R7.1–R7.3).
+
+- Every journal milestone gives a reward, shown beside it in the journal: torches for the first wood and stone tools,
+  potions, a bucket, arrows, lanterns, a map, coins, Life Crystals, diamonds, a Heart Locket and more.
+- A Bestiary tab in the pause menu: every creature, unknown until seen; then its health, attack and home, how many you
+  have defeated, and the drops found so far. After 25 kills it shows each drop's chance.
+- Item tooltips say where an item comes from (crafted, smelted, dug up, dropped by, found in chests, sold by, a
+  milestone reward) and what it is used in. A test checks that every item can be got in survival.
+- The journal no longer shows the stats line twice.
+
+## 0.7.2 — 2026-11-10
+
+Combat with more to it (roadmap R2.1, R2.3, R2.4).
+
+- Skeletons are archers: they keep their distance, stop and raise their arms to draw, then shoot. Step aside during the
+  draw and the arrow misses. Death messages name the shooter.
+- Status effects, listed at the top left with the seconds left: poisoned, bleeding, slowed, burning, well fed, and the
+  potion effects. Cave crawlers and Mire Hollows can poison, Frost brutes and Snow Prowlers slow, Dune Stalkers cause
+  bleeding, Ember Slimes set you alight. A cooked meal leaves you well fed (health returns faster for 90 s).
+- Potions, made at a new alchemy table (two glass bottles over three planks) from a glass bottle and two ingredients:
+  Healing (red mushroom, gel), Regeneration (poppy, gel), Swiftness (dandelion, feather), Fire Resistance (ember
+  crystal, coal), Water Breathing (raw fish, reed) and Antidote (brown mushroom, bone meal). Right click drinks one.
+  A healing potion brings 30 s of potion sickness. Glass makes bottles; the herbalist sells bottles, healing potions and
+  antidotes, and chests hold potions.
+- The inventory's defense figure and armour tooltips use the new armour numbers.
+
+## 0.7.1 — 2026-11-10
+
+Checks that the game works end to end, and the fixes they found (roadmap R1).
+
+- Any rock makes stone tools and a furnace: granite, basalt, slate and the other stones count as cobblestone. Worlds
+  that start on granite could not make stone tools before.
+- Sword hits pass through grass and flowers; only solid blocks shield a creature.
+- Shift-click puts on armour (swapping what is worn) and accessories.
+- Gear tiers are felt more: swords hit for 4, 5, 7, 10 and 13 from wood to jade (was 4 to 8). Armour stops 3% per
+  point, up to 85% (was 4%, up to 80%), so jade armour now protects better than diamond.
+- Monsters in a group never spawn inside a block, and dropped items rest at the edge of unloaded ground instead of
+  falling through it.
+- The boss health bar sits below the hint banner instead of over it. With an item held, the flat hand picture no longer
+  flashes beside the 3D item.
+- `npm run playthrough` plays a new survival world with real mouse and keys (trees, crafting, digging, fights, the
+  Slime King, a trade, save and reload) and writes a screenshot report; CI runs it. `docs/balance.md` is a generated
+  table of hits and bites per tier.
+
 ## 0.7.0 — 2026-11-09
 
 The "3D Terraria" pass (Milestone 18).

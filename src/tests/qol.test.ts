@@ -32,6 +32,16 @@ describe('inventory quality of life',()=>{
   p.quickMove(chest,0);expect(p.inventory.count(S('dirt'))).toBe(30);expect(chest[0]).toBeNull();
   p.cursor={state:S('stone'),count:1};p.quickMove(p.inventory.slots,0);expect(p.inventory.count(S('dirt'))).toBe(30);
  });
+ it('puts on armour and accessories with Shift-click, swapping worn armour',()=>{
+  const p=play();p.openScreen('inventory');
+  p.inventory.slots[9]={state:S('iron_helmet'),count:1};p.quickMove(p.inventory.slots,9);
+  expect(p.armour[0]?.state).toBe(S('iron_helmet'));expect(p.inventory.slots[9]).toBeNull();
+  p.inventory.slots[9]={state:S('jade_helmet'),count:1};p.quickMove(p.inventory.slots,9);
+  expect(p.armour[0]?.state).toBe(S('jade_helmet'));expect(p.inventory.slots[9]?.state).toBe(S('iron_helmet'));
+  p.inventory.slots[10]={state:S('cloud_charm'),count:1};p.inventory.slots[11]={state:S('cloud_charm'),count:1};
+  p.quickMove(p.inventory.slots,10);p.quickMove(p.inventory.slots,11);
+  expect(p.accessories.filter((a)=>a?.state===S('cloud_charm')).length).toBe(1);expect(p.inventory.slots[11]).toBeNull();
+ });
  it('routes furnace inputs/fuel and collects output without overflowing the cursor',()=>{
   const p=play(),f=newFurnace();p.furnaces.set('0,0,0',f);p.openFurnace='0,0,0';p.openScreen('furnace');
   p.inventory.slots[9]={state:S('iron_ore'),count:5};p.inventory.slots[10]={state:S('coal'),count:4};

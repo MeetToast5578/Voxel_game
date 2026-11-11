@@ -292,6 +292,9 @@ export const DIFFICULTY: Readonly<Record<Difficulty, { hostiles: number; damage:
   normal: { hostiles: 1, damage: 1, hunger: 1 },
   hard: { hostiles: 1.5, damage: 1.5, hunger: 1.25 },
 };
+/** Each armour point stops this share of a hit, up to ARMOUR_CAP: full jade (24 points) stops 72%. */
+export const ARMOUR_PER_POINT = 0.03;
+export const ARMOUR_CAP = 0.85;
 export const MAX_HEALTH = 20;
 export const MAX_HUNGER = 20;
 /** Hunger lost per second, and extra while sprinting. */
@@ -383,6 +386,8 @@ export const HAND_DAMAGE = 1;
 export const AXE_DAMAGE = 3;
 export const TOOL_DAMAGE = 2;
 export const SWORD_DAMAGE = 4;
+/** Extra damage per tool tier (wooden, stone, iron, diamond, jade): the steps grow so each tier is felt. */
+export const TIER_DAMAGE = [0, 1, 3, 6, 9] as const;
 /** Arrows: speed at full draw (m/s), seconds to full draw, damage at full draw; projectiles vanish after PROJECTILE_LIFE_S. */
 export const ARROW_SPEED_M_S = 30;
 export const BOW_DRAW_S = 0.8;
@@ -392,6 +397,19 @@ export const PROJECTILE_LIFE_S = 8;
 export const ARCHER_NEAR_M = 7;
 export const ARCHER_FAR_M = 15;
 export const ARCHER_SHOT_S = 2.5;
+/** World events: the share of nights with a red moon and of days with slime rain (from this day on), the slimes to
+ * defeat before the Slime King comes, and seconds between falling slimes. */
+export const RED_NIGHT_CHANCE = 1 / 8;
+export const SLIME_RAIN_CHANCE = 1 / 10;
+export const EVENTS_FROM_DAY = 2;
+export const SLIME_RAIN_KILLS = 25;
+export const SLIME_RAIN_EVERY_S = 3;
+/** Grappling hook: how far it reaches (m), how fast it pulls (m/s), and how close it holds the player to its point (m). */
+export const HOOK_RANGE_M = 14;
+export const HOOK_PULL_M_S = 13;
+export const HOOK_HOLD_M = 1.1;
+/** Archers stop and draw for this long before each shot, so the player can see it coming and step aside. */
+export const ARCHER_AIM_S = 0.7;
 export const BOLT_SPEED_M_S = 30;
 /** Hostiles get tougher with depth: this much more health per 100 m below sea level. */
 export const DEPTH_TOUGHNESS_PER_100M = 0.5;

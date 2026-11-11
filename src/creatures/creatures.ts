@@ -1,5 +1,5 @@
 import {
-  BREED_COOLDOWN_S, FED_S, FOLLOW_M, GROW_UP_S, ARCHER_FAR_M, ARCHER_NEAR_M, ARCHER_SHOT_S, ATTACK_COOLDOWN_S, ATTACK_REACH_M, BLOCK_SIZE_M, BURN_PER_S, BURN_S, DEPTH_TOUGHNESS_PER_100M, SAFE_LIGHT, CREATURE_CAP, CREATURE_FALL_M, DESPAWN_M, FLEE_M, GRAVITY_M_S2, HOSTILE_CAP, HUNT_M,
+  BREED_COOLDOWN_S, FED_S, FOLLOW_M, GROW_UP_S, ARCHER_AIM_S, ARCHER_FAR_M, ARCHER_NEAR_M, ARCHER_SHOT_S, ATTACK_COOLDOWN_S, ATTACK_REACH_M, BLOCK_SIZE_M, BURN_PER_S, BURN_S, DEPTH_TOUGHNESS_PER_100M, SAFE_LIGHT, CREATURE_CAP, CREATURE_FALL_M, DESPAWN_M, FLEE_M, GRAVITY_M_S2, HOSTILE_CAP, HUNT_M,
   KNOCKBACK_M_S, RUN_FACTOR, SPAWN_INTERVAL_S, SPAWN_MAX_M, SPAWN_MIN_M, STEP_HEIGHT_M, cells, toCells,
 } from '../config';
 import { columnIndex, localIndex, toChunk, toLocal } from '../core/coords';
@@ -43,6 +43,8 @@ export interface Creature {
   maxHealth: number;
   /** A villager's bed: where it goes at night and stays near by day. */
   home?: readonly [number, number, number];
+  /** Which way it lies in its bed (default: head toward +x, as in village houses). */
+  homeYaw?: number;
 }
 
 /** What creatures need to know about the world and the player each tick. */
@@ -82,7 +84,7 @@ export class Creatures {
 
   constructor(private readonly world: World, private readonly rand: () => number,
     private readonly events: {
-      bite(damage: number, by: string): void;
+      bite(damage: number, by: string, species?: Species, biter?: Creature): void;
       sound(name: 'break' | 'place' | 'step', volume: number): void;
       /** A creature calls, is hurt or dies (for its sound). */
       call?(c: Creature, kind: 'call' | 'hurt' | 'death'): void;
@@ -149,7 +151,7 @@ export class Creatures {
           c.mode = 'sleep';
           c.goal = null;
           // Head on the pillow (+x), lying along the bed.
-          c.yaw = Math.PI;
+          c.yaw = c.homeYaw ?? Math.PI;
         } else {
           c.mode = 'wander';
           c.goal = [hx, hz];
@@ -256,9 +258,15 @@ export class Creatures {
       goal = d < toCells(ARCHER_NEAR_M) ? [b.x - (t.x - b.x), b.z - (t.z - b.z)] : d > toCells(ARCHER_FAR_M) ? this.waypoint(c, t, dt, ctx) ?? [t.x, t.z] : null;
       c.yaw = Math.atan2(-(t.x - b.x), -(t.z - b.z));
       const eye = b.y + b.height * 0.85;
-      if (c.cooldown <= 0 && d < toCells(ARCHER_FAR_M + 4) && this.sees(b.x, eye, b.z, t.x, t.y + t.height * 0.8, t.z, ctx)) {
-        c.cooldown = ARCHER_SHOT_S;
-        this.events.shoot?.(c, b.x, eye, b.z);
+      const sees = d < toCells(ARCHER_FAR_M + 4) && this.sees(b.x, eye, b.z, t.x, t.y + t.height * 0.8, t.z, ctx);
+      // The draw: it stands still for the last ARCHER_AIM_S, and holds the draw until it sees the player.
+      if (!sees) c.cooldown = Math.max(c.cooldown, ARCHER_AIM_S);
+      else if (c.cooldown <= ARCHER_AIM_S) {
+        goal = null;
+        if (c.cooldown <= 0) {
+          c.cooldown = ARCHER_SHOT_S;
+          this.events.shoot?.(c, b.x, eye, b.z);
+        }
       }
     } else if (c.mode === 'hunt' && c.target) {
       const t = c.target === 'player' ? ctx.player : c.target.body;
@@ -268,7 +276,7 @@ export class Creatures {
       const level = s.flies ? Math.abs(t.y + t.height * 0.6 - b.y) < 1.6 : Math.abs(t.y - b.y) < b.height;
       if (Math.hypot(t.x - b.x, t.z - b.z) < reach && level && c.cooldown <= 0) {
         c.cooldown = ATTACK_COOLDOWN_S;
-        if (c.target === 'player') this.events.bite(s.attack, s.name);
+        if (c.target === 'player') this.events.bite(s.attack, s.name, s, c);
         else this.damage(c.target, s.attack, b.x, b.z);
       }
     }
@@ -509,7 +517,7 @@ export class Creatures {
     const options = SPECIES.filter((s) => (water ? s.medium === 'water' : s.medium === 'land' && (s.hostile
       ? room && (dark || s.daytime) && (s.biomes.includes('dark') || s.biomes.includes(biome))
       : s.biomes.includes(biome))));
-    this.spawnGroup(options, x, y, z);
+    this.spawnGroup(options, x, y, z, ctx.boxAt);
   }
 
   /** A monster in a dark cave cell near (x, z), within a few meters up or down of the player. */
@@ -522,16 +530,23 @@ export class Creatures {
     const [sky, block] = this.lightAt(x, y, z);
     if (sky > 0 || block >= SAFE_LIGHT) return;
     const deep = y * BLOCK_SIZE_M < -60;
-    this.spawnGroup(SPECIES.filter((s) => s.hostile && (s.biomes.includes('dark') || s.biomes.includes('cave') || (deep && s.biomes.includes('deep')))), x, y, z);
+    this.spawnGroup(SPECIES.filter((s) => s.hostile && (s.biomes.includes('dark') || s.biomes.includes('cave') || (deep && s.biomes.includes('deep')))), x, y, z, ctx.boxAt);
   }
 
-  private spawnGroup(options: readonly Species[], x: number, y: number, z: number): void {
+  private spawnGroup(options: readonly Species[], x: number, y: number, z: number, boxAt: CreatureContext['boxAt']): void {
     if (options.length === 0) return;
     const s = options[Math.floor(this.rand() * options.length)]!;
+    const tall = Math.ceil(toCells(s.heightM)), clear = (cx: number, cz: number) => {
+      for (let h = 0; h < tall; h++) if (boxAt(cx, y + h, cz) !== 0) return false;
+      return true;
+    };
     const n = s.group[0] + Math.floor(this.rand() * (s.group[1] - s.group[0] + 1));
     const tough = s.hostile ? 1 + Math.max(0, -y * BLOCK_SIZE_M) / 100 * DEPTH_TOUGHNESS_PER_100M : 1;
     for (let k = 0; k < n && this.list.length < CREATURE_CAP; k++) {
-      this.add(s, x + 0.5 + (this.rand() - 0.5) * 3, y, z + 0.5 + (this.rand() - 0.5) * 3, Math.round(s.health * tough));
+      // Group members spread out, but only onto open cells: otherwise they share the first one's spot.
+      let px = x + 0.5 + (this.rand() - 0.5) * 3, pz = z + 0.5 + (this.rand() - 0.5) * 3;
+      if (!clear(Math.floor(px), Math.floor(pz))) [px, pz] = [x + 0.5, z + 0.5];
+      this.add(s, px, y, pz, Math.round(s.health * tough));
     }
   }
 
@@ -571,6 +586,12 @@ export function meatOf(c: Creature): { state: number; count: number } | null {
 }
 
 /** Everything a dead creature leaves: meat, leather from hides, and its own loot. */
+/** What a boss's treasure bag holds when opened: its loot (rare things by chance) and coins. */
+export function bagLoot(s: Species, rand: () => number = Math.random): { state: number; count: number }[] {
+  return [...(s.loot ?? []).filter(([, , chance]) => chance === undefined || rand() < chance).map(([key, count]) => ({ state: BLOCKS.state(key), count })),
+    { state: BLOCKS.state('trade_coin'), count: 25 }];
+}
+
 export function lootOf(c: Creature, rand: () => number = Math.random): { state: number; count: number }[] {
   const meat = meatOf(c);
   const s = c.species;

@@ -53,7 +53,7 @@ describe('progression past iron', () => {
     expect(play.protect(10)).toBe(10);
     play.armour[1] = one('iron_chestplate');
     play.armour[0] = one('leather_helmet');
-    expect(play.protect(10)).toBeCloseTo(10 * (1 - 7 * 0.04));
+    expect(play.protect(10)).toBeCloseTo(10 * (1 - 7 * 0.03));
     expect(play.warmth).toBe(4);
     const back = new Play(world, () => undefined, { sound: () => undefined, sleep: () => true });
     back.load(JSON.parse(JSON.stringify(play.save())));

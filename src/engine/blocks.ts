@@ -71,6 +71,11 @@ export interface BlockType {
   readonly spell?: { readonly damage: number; readonly mana: number; readonly cooldown: number; readonly speed: number };
   /** Worn in an accessory slot: what it does while worn. */
   readonly accessory?: Accessory;
+  /** A potion, drunk with right click: a status effect for some seconds (see game/effects.ts), health back at once, or
+   * poison and bleeding cured. */
+  /** A boss's treasure bag: right click opens it for the loot of that species (its key). */
+  readonly bag?: string;
+  readonly potion?: { readonly text: string; readonly effect?: string; readonly seconds?: number; readonly heal?: number; readonly cures?: boolean };
   /** Seconds it burns in a furnace. */
   readonly fuel?: number;
   /** What is left when it is used up as fuel or emptied (a bucket). */
@@ -225,11 +230,21 @@ export interface Accessory {
   readonly regen?: number;
 }
 
+/** Potions: [key, name, what it does]. Made at an alchemy table from a glass bottle and two ingredients. */
+export const POTIONS: readonly [string, string, NonNullable<BlockType['potion']>][] = [
+  ['healing_potion', 'Healing Potion', { text: 'Restores 8 health at once', heal: 8 }],
+  ['regeneration_potion', 'Regeneration Potion', { text: 'Heals slowly for 45 s', effect: 'regeneration', seconds: 45 }],
+  ['swiftness_potion', 'Swiftness Potion', { text: '30% faster for 90 s', effect: 'swiftness', seconds: 90 }],
+  ['fire_resistance_potion', 'Fire Resistance Potion', { text: 'Fire and lava do not burn for 120 s', effect: 'fire_resistance', seconds: 120 }],
+  ['water_breathing_potion', 'Water Breathing Potion', { text: 'Breathe under water for 120 s', effect: 'water_breathing', seconds: 120 }],
+  ['antidote', 'Antidote', { text: 'Cures poison and bleeding; keeps them off for 60 s', effect: 'antidote', seconds: 60, cures: true }],
+];
+
 const ACCESSORIES: readonly [string, string, Accessory][] = [
   ['swift_anklet', 'Swiftstep Anklet', { effect: '20% faster on foot', speed: 0.2 }],
   ['cloud_charm', 'Cloud Charm', { effect: 'Jump once more in mid-air', jumps: 1 }],
   ['feather_charm', 'Featherfall Charm', { effect: 'No fall damage; hold jump to glide', featherfall: true }],
-  ['iron_band', 'Ironskin Band', { effect: 'Stops 12% more harm', protection: 3 }],
+  ['iron_band', 'Ironskin Band', { effect: 'Stops 9% more harm', protection: 3 }],
   ['gill_pendant', 'Gill Pendant', { effect: 'Breath lasts four times longer', breath: 4 }],
   ['ember_ring', 'Ember Ring', { effect: 'Lava and fire do not burn you', fireproof: true }],
   ['heart_locket', 'Heart Locket', { effect: 'Health returns twice as fast', regen: 2 }],
@@ -317,6 +332,13 @@ export const TOOL_KINDS: readonly ToolKind[] = ['pickaxe', 'axe', 'shovel', 'swo
 const DURABILITY = [60, 132, 251, 1561, 2400];
 /** Armour materials and pieces: protection per piece (head, chest, legs, feet), warmth per piece, and hits it takes. */
 export const ARMOUR_PIECES = ['helmet', 'chestplate', 'leggings', 'boots'] as const;
+/** What a full set of one material adds, beyond its pieces. */
+export const SET_BONUSES: Readonly<Record<string, { text: string; speed?: number; protection?: number; crit?: number; thorns?: number }>> = {
+  leather: { text: '10% faster on foot', speed: 0.1 },
+  iron: { text: 'Stops 6% more harm', protection: 2 },
+  diamond: { text: '10% more critical hits', crit: 0.1 },
+  jade: { text: 'Biters take 3 damage back', thorns: 3 },
+};
 export const ARMOUR_MATERIALS = {
   leather: { protection: [1, 3, 2, 1], warmth: [3, 6, 4, 2], durability: 80 },
   iron: { protection: [2, 6, 5, 2], warmth: [0, 1, 1, 0], durability: 240 },
@@ -341,6 +363,9 @@ function gameplay(): BlockSpec[] {
     { key: 'ancient_chest', name: 'Ancient chest', tiles: { top: 'ancient_chest_top', side: 'ancient_chest_side', bottom: 'ancient_chest_top' },
       front: 'ancient_chest_front', variants: 4, hardness: 5, density: 2600, mineWith: 'pickaxe', drops: 'obsidian' },
     { key: 'crafting_table', name: 'Crafting table', tiles: { top: 'crafting_table_top', side: 'crafting_table_side', bottom: 'planks' },
+      hardness: 2.5, density: 600, ...wood },
+    // Potions are made beside it.
+    { key: 'alchemy_table', name: 'Alchemy table', tiles: { top: 'alchemy_table_top', side: 'alchemy_table_side', bottom: 'planks' },
       hardness: 2.5, density: 600, ...wood },
     stone('furnace', 'Furnace', { tiles: { top: 'furnace_top', side: 'furnace_side', bottom: 'furnace_top' }, front: 'furnace_front', variants: 4, hardness: 3.5 }),
     stone('lit_furnace', 'Lit furnace', { tiles: { top: 'furnace_top', side: 'furnace_side', bottom: 'furnace_top' }, front: 'furnace_front_lit',
@@ -416,6 +441,11 @@ function gameplay(): BlockSpec[] {
         maxStack: 1, armour: { slot, protection: a.protection[slot]!, warmth: a.warmth[slot]!, durability: a.durability },
       }))),
     ...ACCESSORIES.map(([key, name, accessory]) => item(key, name, { maxStack: 1, accessory })),
+    item('glass_bottle', 'Glass Bottle'),
+    item('grappling_hook', 'Grappling Hook', { maxStack: 1 }),
+    ...([['king_slime', 'Slime King'], ['gloom_matriarch', 'Gloom Matriarch'], ['warden', 'Ember Warden']] as const)
+      .map(([key, name]) => item(`${key}_bag`, `Treasure Bag (${name})`, { maxStack: 8, bag: key })),
+    ...POTIONS.map(([key, name, potion]) => item(key, name, { maxStack: 8, potion })),
     item('bucket', 'Bucket', { maxStack: 16 }),
     item('water_bucket', 'Water bucket', { maxStack: 1, emptiesTo: 'bucket' }),
     item('lava_bucket', 'Lava bucket', { maxStack: 1, emptiesTo: 'bucket', fuel: 200 }),

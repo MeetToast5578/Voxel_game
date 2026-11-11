@@ -1,6 +1,6 @@
-import { MAX_HEALTH, ACCESSORY_SLOTS, AXE_ARC_RAD, CRIT_CHANCE, CRIT_FACTOR, KNOCKBACK_FACTOR, SWORD_ARC_RAD, LIGHTNING_DAMAGE, LIGHTNING_REACH_M, FISH_MAX_S, FISH_MIN_S, BLOCK_SIZE_M, ARROW_DAMAGE, ARROW_SPEED_M_S, BOLT_SPEED_M_S, BOW_DRAW_S, AXE_DAMAGE, BUILD_CELLS_PER_TICK, CAMPFIRE_COOK_S, CAMPFIRE_SLOTS, DIFFICULTY, PLAYER_ATTACK_COOLDOWN_S, SWORD_DAMAGE, type Difficulty, BUILD_MAX_M, DROP_PICKUP_DELAY_S, DROP_THROW_M_S, HAND_DAMAGE, REACH_M, REPEAT_S, TOOL_DAMAGE, UNDO_STEPS, cells, toCells } from '../config';
-import { lootOf, type Creature, type Creatures } from '../creatures/creatures';
-import { AIR, BLOCKS, SOLID } from '../engine/blocks';
+import { EVENTS_FROM_DAY, RED_NIGHT_CHANCE, SLIME_RAIN_CHANCE, SLIME_RAIN_EVERY_S, SLIME_RAIN_KILLS, HOOK_RANGE_M, TIER_DAMAGE, ARMOUR_CAP, ARMOUR_PER_POINT, MAX_HEALTH, ACCESSORY_SLOTS, AXE_ARC_RAD, CRIT_CHANCE, CRIT_FACTOR, KNOCKBACK_FACTOR, SWORD_ARC_RAD, LIGHTNING_DAMAGE, LIGHTNING_REACH_M, FISH_MAX_S, FISH_MIN_S, BLOCK_SIZE_M, ARROW_DAMAGE, ARROW_SPEED_M_S, BOLT_SPEED_M_S, BOW_DRAW_S, AXE_DAMAGE, BUILD_CELLS_PER_TICK, CAMPFIRE_COOK_S, CAMPFIRE_SLOTS, DIFFICULTY, PLAYER_ATTACK_COOLDOWN_S, SWORD_DAMAGE, type Difficulty, BUILD_MAX_M, DROP_PICKUP_DELAY_S, DROP_THROW_M_S, HAND_DAMAGE, REACH_M, REPEAT_S, TOOL_DAMAGE, UNDO_STEPS, cells, toCells } from '../config';
+import { bagLoot, lootOf, type Creature, type Creatures } from '../creatures/creatures';
+import { AIR, BLOCKS, POTIONS, SET_BONUSES, SOLID, type BlockType } from '../engine/blocks';
 import type { World } from '../engine/world';
 import { COLLISION, FULL } from './collision';
 import { craft, type Craft, type Station } from './crafting';
@@ -14,9 +14,12 @@ import { overlapsSolid } from './physics';
 import type { Player } from './player';
 import { raycast, TARGET, type RayHit } from './raycast';
 import { Survival } from './survival';
+import { hash2 } from '../core/random';
+import { checkRoom } from './housing';
+import { isEffect, POTION_SICKNESS_S, SLOWED_SPEED, SWIFT_SPEED } from './effects';
 import { Particles } from './particles';
 import { lootTableFor, rollLoot, type LootTable } from './loot';
-import { Journal, type Stats } from './journal';
+import { Journal, MILESTONES, type Stats } from './journal';
 import { aimAt, Projectiles } from './projectiles';
 import type { BoxAt } from './collision';
 import { HOUSE_BED, professionAt, sitesNear, undergroundFloor } from '../worldgen/structures';
@@ -33,7 +36,9 @@ const BEACON = S('beacon'), LIT_BEACON = S('lit_beacon');
 /** The beacon must be lit at least this high (m), under open sky. */
 export const BEACON_MIN_M = 150;
 export const CHEST_SLOTS = 27;
-const TABLE = S('crafting_table'), TORCH = S('torch'), GRASS = S('grass'), DIRT = S('dirt'), CAMPFIRE = S('campfire'), FARMLAND = S('farmland');
+/** Cooked meals that leave the player well fed, and for how long. */
+const WELL_FED_FOODS = new Set(['cooked_meat', 'cooked_fish', 'baked_potato']), WELL_FED_S = 90;
+const TABLE = S('crafting_table'), ALCHEMY = S('alchemy_table'), TORCH = S('torch'), GRASS = S('grass'), DIRT = S('dirt'), CAMPFIRE = S('campfire'), FARMLAND = S('farmland');
 const ROD = S('fishing_rod'), FISH = S('raw_fish'), BOAT = S('boat');
 const WARDEN = SPECIES_BY_KEY.get('warden')!;
 /** What a lightning strike turns the ground it hits into. */
@@ -48,6 +53,8 @@ const BUCKET = S('bucket'), BOW = S('bow'), ARROW = S('arrow'), BONE_MEAL = S('b
 /** Cells a door is tall: 2.1 m at 0.6 m cells rounds up to 4. */
 export const DOOR_CELLS = 4;
 const FACING_OFFSET = [[1, 0], [-1, 0], [0, 1], [0, -1]] as const;
+/** A home the player made: the bed head's cell, which way its sleeper lies, and who lives there. */
+export interface Home { x: number; y: number; z: number; yaw: number; who: string | null }
 
 /** Everything one player can do with the world: break, place, use blocks, carry and craft. Ported from the old game. */
 export class Play {
@@ -125,14 +132,37 @@ export class Play {
   fishingS = 0;
   /** Seconds the bow has been drawn, while right click is held with it. */
   drawS = 0;
+  /** The bestiary: kinds of creature seen near the player, and for each one killed, how many and what it dropped. */
+  readonly seen = new Set<string>();
+  readonly bestiary = new Map<string, { kills: number; drops: Set<string> }>();
+  /** Writes every creature within 24 cells of the player in the bestiary as seen. */
+  noteSeen(x: number, z: number): void {
+    for (const c of this.creatures?.list ?? []) if (!this.seen.has(c.species.key) && Math.hypot(c.body.x - x, c.body.z - z) < 24) {
+      this.seen.add(c.species.key);
+      this.version++;
+    }
+  }
   /** Worn armour: head, chest, legs, feet. */
   readonly armour: (ItemStack | null)[] = [null, null, null, null];
   /** Worn accessories; each kind at most once. */
   readonly accessories: (ItemStack | null)[] = new Array(ACCESSORY_SLOTS).fill(null);
 
-  /** What the worn accessories add up to. */
-  get bonus(): { speed: number; jumps: number; featherfall: boolean; protection: number; breath: number; fireproof: boolean; regen: number } {
-    const b = { speed: 0, jumps: 0, featherfall: false, protection: 0, breath: 1, fireproof: false, regen: 1 };
+  /** The material of a full set of worn armour (all four pieces alike), or null. */
+  get armourSet(): string | null {
+    const keys = this.armour.map((a) => (a ? BLOCKS.type(a.state).key.split('_')[0]! : null));
+    return keys[0] && keys.every((k) => k === keys[0]) ? keys[0] : null;
+  }
+
+  /** What the worn accessories (and a full armour set, and status effects) add up to. */
+  get bonus(): { speed: number; jumps: number; featherfall: boolean; protection: number; breath: number; fireproof: boolean; regen: number; crit: number; thorns: number } {
+    const b = { speed: 0, jumps: 0, featherfall: false, protection: 0, breath: 1, fireproof: false, regen: 1, crit: 0, thorns: 0 };
+    const set = this.armourSet && SET_BONUSES[this.armourSet];
+    if (set) {
+      b.speed += set.speed ?? 0;
+      b.protection += set.protection ?? 0;
+      b.crit += set.crit ?? 0;
+      b.thorns += set.thorns ?? 0;
+    }
     for (const s of this.accessories) {
       const a = s && BLOCKS.type(s.state).accessory;
       if (!a) continue;
@@ -144,6 +174,12 @@ export class Play {
       b.fireproof ||= a.fireproof ?? false;
       b.regen *= a.regen ?? 1;
     }
+    // Potions and other status effects add to what is worn.
+    const fx = this.survival;
+    if (fx.has('swiftness')) b.speed += SWIFT_SPEED;
+    if (fx.has('slowed')) b.speed += SLOWED_SPEED;
+    b.fireproof ||= fx.has('fire_resistance');
+    if (fx.has('water_breathing')) b.breath = Infinity;
     return b;
   }
 
@@ -324,6 +360,8 @@ export class Play {
   }
 
   update(dt: number, input: Input, player: Player, roll = Math.random()): void {
+    // The hook lets go when the block it holds is gone.
+    if (player.hook && this.hookCell && COLLISION[this.world.get(...this.hookCell)] === 0) player.hook = null;
     if (this.mode === 'creative') {
       this.build(input);
       this.drainQueue();
@@ -381,12 +419,14 @@ export class Play {
   private attack(ox: number, oy: number, oz: number, dx: number, dy: number, dz: number): boolean {
     const held = this.held, tool = held ? BLOCKS.type(held.state).tool : undefined;
     const arc = tool?.kind === 'sword' ? SWORD_ARC_RAD : tool?.kind === 'axe' ? AXE_ARC_RAD : 0, reach = toCells(REACH_M);
-    const wall = this.target ? this.target.distance + 0.5 : Infinity;
+    // Only a solid block shields creatures behind it: a swing goes through grass and flowers.
+    const t = this.target, wall = t && BLOCKS.type(this.world.get(t.x, t.y, t.z)).solid ? t.distance + 0.5 : Infinity;
     let victims: Creature[];
     if (arc) {
       victims = this.creatures!.list.filter((c) => {
         const cx = c.body.x - ox, cy = c.body.y + c.body.height * 0.5 - oy, cz = c.body.z - oz, d = Math.hypot(cx, cy, cz);
-        if (d - c.body.halfWidth > reach || d > wall) return false;
+        // Measured to the creature's near side, as the crosshair prompt is: big creatures are not hidden by their own size.
+        if (d - c.body.halfWidth > reach || d - c.body.halfWidth > wall) return false;
         return d < c.body.halfWidth + 0.6 || Math.acos(Math.max(-1, Math.min(1, (cx * dx + cy * dy + cz * dz) / d))) <= arc;
       });
       // Swinging at nothing still slashes the air, when no block is in reach to dig.
@@ -398,13 +438,13 @@ export class Play {
       }
     } else {
       const hit = this.creatures!.raycast(ox, oy, oz, dx, dy, dz, reach);
-      victims = hit && !(this.target && this.target.distance < hit.distance) ? [hit.creature] : [];
+      victims = hit && hit.distance < wall ? [hit.creature] : [];
     }
     if (!victims.length) return false;
     // Quick swings land weaker blows: the hit's strength recovers over the cooldown.
     const strength = Math.max(0.2, Math.min(1, this.sinceAttack / PLAYER_ATTACK_COOLDOWN_S));
     this.sinceAttack = 0;
-    const crit = Math.random() < CRIT_CHANCE, damage = strength * weaponDamage(held) * (crit ? CRIT_FACTOR : 1);
+    const crit = Math.random() < CRIT_CHANCE + this.bonus.crit, damage = strength * weaponDamage(held) * (crit ? CRIT_FACTOR : 1);
     const knock = (KNOCKBACK_FACTOR[tool?.kind ?? 'hand'] ?? 1) * (0.5 + strength * 0.5);
     if (arc) this.slashes++;
     for (const c of victims) {
@@ -413,7 +453,6 @@ export class Play {
       if (this.hits.length < 32) this.hits.push({ x: c.body.x, y: top, z: c.body.z, amount: Math.max(1, Math.round(damage)), crit, age: 0 });
       if (this.creatures!.damage(c, damage, ox, oz, knock) && this.mode === 'survival') {
         this.defeated(c);
-        for (const loot of lootOf(c)) this.drop(loot, c.body.x, c.body.y, c.body.z);
       }
     }
     if (held && tool && this.mode === 'survival' && !wearTool(held)) this.inventory.slots[this.inventory.selected] = null;
@@ -423,13 +462,21 @@ export class Play {
     return true;
   }
 
-  /** Marks milestones reached since last time, with a message for each. */
+  /** Marks milestones reached since last time, with a message for each, and gives their rewards. */
   checkJournal(): void {
+    const before = new Set(this.journal.done);
     const fresh = this.journal.update({
       has: (k) => this.hasItem(k), stats: this.stats, deepestM: this.deepestM, biomes: this.biomesSeen.size, found: this.found,
       armour: this.armour.some((a) => a !== null), beacon: this.beaconLit,
     });
-    if (fresh.length) this.toast(`Milestone: ${fresh.join(', ')}`);
+    if (!fresh.length) return;
+    const gifts: string[] = [];
+    for (const m of MILESTONES) {
+      if (before.has(m.id) || !this.journal.done.has(m.id)) continue;
+      this.give({ state: BLOCKS.state(m.reward[0]), count: m.reward[1] }, ...this.feet);
+      gifts.push(`${m.reward[1]} ${BLOCKS.byName(m.reward[0]).name}`);
+    }
+    this.toast(`Milestone: ${fresh.join(', ')} · reward: ${gifts.join(', ')}`, 5);
   }
 
   /** The line is out: a fish bites after a while, unless the rod was put away. */
@@ -466,8 +513,26 @@ export class Play {
   }
 
   /** Counts a creature the player defeated. */
+  /** A creature killed by the player: counted, its loot dropped, and both written in the bestiary. */
   private defeated(c: Creature): void {
     this.stats.killed++;
+    const entry = this.bestiary.get(c.species.key) ?? { kills: 0, drops: new Set<string>() };
+    this.bestiary.set(c.species.key, entry);
+    entry.kills++;
+    // Event rewards: red nights pay in coins; enough slimes beaten in slime rain bring their king.
+    if (this.event === 'red_night' && c.species.hostile && Math.random() < 0.5) this.drop({ state: BLOCKS.state('trade_coin'), count: 1 + Math.floor(Math.random() * 2) }, c.body.x, c.body.y, c.body.z);
+    if (this.event === 'slime_rain' && c.species.key === 'slime' && ++this.eventKills >= SLIME_RAIN_KILLS) {
+      this.event = null;
+      const king = SPECIES_BY_KEY.get('king_slime')!;
+      this.creatures?.add(king, c.body.x, c.body.y + toCells(8), c.body.z, king.health);
+      this.toast('The slimes stop falling... the Slime King has come!', 5);
+    }
+    // A boss leaves one treasure bag, so nothing it drops is lost in lava or water.
+    const loots = c.species.boss || c.species.guardian ? [{ state: BLOCKS.state(`${c.species.key}_bag`), count: 1 }] : lootOf(c);
+    for (const loot of loots) {
+      entry.drops.add(BLOCKS.type(loot.state).key);
+      this.drop(loot, c.body.x, c.body.y, c.body.z);
+    }
     if (c.species.guardian) {
       this.stats.wardens++;
       this.toast('The Ember Warden falls. The shrine is yours.', 4);
@@ -513,6 +578,78 @@ export class Play {
       const species = SPECIES_BY_KEY.get(professionAt(this.seed, site.x, site.z))!;
       const c = creatures.add(species, site.x + 0.5, bed, site.z + 0.5, species.health);
       c.home = [bx + 1.5, bed, bz + 0.5];
+    }
+    this.wakeHomes(player);
+  }
+
+  /** A world event under way: a red night (twice the monsters, more coins) or slime rain (slimes fall by day until
+   * enough are beaten, then the Slime King comes). */
+  event: 'red_night' | 'slime_rain' | null = null;
+  private eventKills = 0;
+  private eventClock = 0;
+
+  /** Night falls (`night`) or day breaks: an event may start, by the world seed and the day, and the last one ends. */
+  turnOfDay(night: boolean): void {
+    const ended = this.event;
+    this.event = null;
+    if (ended === 'red_night') this.toast('The red moon sets.', 3);
+    if (this.mode !== 'survival' || this.difficulty === 'peaceful' || this.stats.days < EVENTS_FROM_DAY) return;
+    const roll = hash2(this.seed ^ 0x5eed, this.stats.days, night ? 1 : 0);
+    if (night && roll < RED_NIGHT_CHANCE) {
+      this.event = 'red_night';
+      this.toast('A red moon rises. Monsters swarm tonight!', 5);
+    } else if (!night && roll < SLIME_RAIN_CHANCE) {
+      this.event = 'slime_rain';
+      this.eventKills = 0;
+      this.toast('It is raining slimes!', 5);
+    }
+  }
+
+  /** Slime rain drops a slime somewhere near the player every few seconds. */
+  tickEvent(dt: number, player: Player): void {
+    if (this.event !== 'slime_rain' || !this.creatures || (this.eventClock += dt) < SLIME_RAIN_EVERY_S) return;
+    this.eventClock = 0;
+    const a = Math.random() * Math.PI * 2, r = toCells(6 + Math.random() * 14), slime = SPECIES_BY_KEY.get('slime')!;
+    this.creatures.add(slime, player.body.x + Math.cos(a) * r, player.body.y + toCells(14), player.body.z + Math.sin(a) * r, slime.health);
+  }
+
+  /** Homes made by placing a bed, by the bed head's cell: who lives there (null until someone moves in). */
+  readonly homes = new Map<string, Home>();
+
+  /** The room check for a home's bed: from the open cell just above the bed head. */
+  private roomOf(h: Home) {
+    return checkRoom((x, y, z) => (this.world.isLoaded(x, y, z) ? this.world.get(x, y, z) : 0), h.x, h.y + 1, h.z);
+  }
+
+  /** Who moves into the next new home: the first townsfolk whose time has come and who has no home yet, else a villager. */
+  private nextArrival(): string {
+    const housed = new Set([...this.homes.values()].map((h) => h.who));
+    const potions = POTIONS.some(([k]) => this.hasItem(k)) || this.hasItem('glass_bottle') || this.hasItem('alchemy_table');
+    const ready: [string, boolean][] = [['guide', true], ['merchant', this.inventory.count(BLOCKS.state('trade_coin')) >= 20], ['nurse', this.survival.maxHealth > MAX_HEALTH],
+      ['alchemist', potions]];
+    return ready.find(([who, ok]) => ok && !housed.has(who))?.[0] ?? ['farmer', 'smith', 'herbalist'][this.homes.size % 3]!;
+  }
+
+  /**
+   * Player-built homes near the player (call about once a second): a home whose bed is gone is no more; one whose room
+   * is a home and whose resident is not about gets them back (or a new arrival), by the bed.
+   */
+  private wakeHomes(player: Player): void {
+    const creatures = this.creatures!;
+    for (const [key, h] of this.homes) {
+      if (Math.hypot(h.x - player.body.x, h.z - player.body.z) > 64 || !this.world.isLoaded(h.x, h.y, h.z)) continue;
+      if (BLOCKS.type(this.world.get(h.x, h.y, h.z)) !== BED) {
+        this.homes.delete(key);
+        continue;
+      }
+      const at: [number, number, number] = [h.x + 0.5, h.y, h.z + 0.5];
+      if (creatures.list.some((c) => c.home && c.home[0] === at[0] && c.home[1] === at[1] && c.home[2] === at[2]) || !this.roomOf(h).ok) continue;
+      const arriving = h.who === null;
+      h.who ??= this.nextArrival();
+      const species = SPECIES_BY_KEY.get(h.who)!, c = creatures.add(species, at[0], h.y + 1, at[2], species.health);
+      c.home = at;
+      c.homeYaw = h.yaw;
+      if (arriving) this.toast(`The ${species.name.toLowerCase()} has moved in!`, 4);
     }
   }
 
@@ -635,10 +772,10 @@ export class Play {
   }
 
   /** A creature shoots a bolt at the player's chest from (x, y, z). */
-  shootAtPlayer(x: number, y: number, z: number, player: Player, damage: number): void {
+  shootAtPlayer(x: number, y: number, z: number, player: Player, damage: number, by = 'Skulker'): void {
     const b = player.body, speed = toCells(BOLT_SPEED_M_S);
     const [dx, dy, dz] = aimAt(x, y, z, b.x, b.y + b.height * 0.7, b.z, speed);
-    this.projectiles.shoot(x, y, z, dx, dy, dz, speed, damage, false);
+    this.projectiles.shoot(x, y, z, dx, dy, dz, speed, damage, false, false, by);
   }
 
   /** Flies every arrow and bolt; hits hurt creatures or the player, and the player's arrows that miss can be picked up. */
@@ -654,7 +791,7 @@ export class Play {
         continue;
       }
       if (!p.fromPlayer) {
-        this.survival.hurt(this.protect(p.damage * DIFFICULTY[this.difficulty].damage), 'shot by a skulker');
+        this.survival.hurt(this.protect(p.damage * DIFFICULTY[this.difficulty].damage), `shot by a ${(p.by ?? 'skulker').toLowerCase()}`);
         this.version++;
         continue;
       }
@@ -662,12 +799,11 @@ export class Play {
       if (c && this.hits.length < 32) this.hits.push({ x: c.body.x, y: c.body.y + c.body.height, z: c.body.z, amount: Math.max(1, Math.round(p.damage)), crit: false, age: 0 });
       if (c && creatures!.damage(c, p.damage, p.x - p.vx, p.z - p.vz) && this.mode === 'survival') {
         this.defeated(c);
-        for (const loot of lootOf(c)) this.drop(loot, c.body.x, c.body.y, c.body.z);
       }
     }
   }
 
-  /** Damage left after worn armour (each protection point stops 4%, at most 80%); every hit wears each piece. */
+  /** Damage left after worn armour (see `armourFactor`); every hit wears each piece. */
   protect(damage: number): number {
     let points = this.bonus.protection;
     this.armour.forEach((a, i) => {
@@ -678,7 +814,7 @@ export class Play {
       if (a.wear >= def.durability * (1 + (a.upgrade ?? 0) * .5)) this.armour[i] = null;
     });
     this.version++;
-    return damage * (1 - Math.min(0.8, points * 0.04));
+    return damage * armourFactor(points);
   }
 
   /** °C of cold the worn armour keeps off. */
@@ -914,6 +1050,23 @@ export class Play {
       this.wear(held);
       return;
     }
+    if (heldType.key === 'grappling_hook') {
+      this.fireHook(player);
+      return;
+    }
+    if (heldType.potion) {
+      this.drink(heldType.potion);
+      return;
+    }
+    if (heldType.bag) {
+      const s = SPECIES_BY_KEY.get(heldType.bag)!;
+      if (this.mode === 'survival') this.inventory.useHeld();
+      for (const loot of bagLoot(s)) this.give(loot, ...this.feet);
+      this.toast(`The ${s.name}'s treasure!`, 3);
+      this.events.sound('place');
+      this.version++;
+      return;
+    }
     if (heldType.key === 'life_crystal') {
       if (this.survival.growHeart()) {
         if (this.mode === 'survival') this.inventory.useHeld();
@@ -965,6 +1118,8 @@ export class Play {
       const ground = t ? this.world.get(t.x, t.y, t.z) : AIR;
       const planting = heldType.variantTiles !== undefined && t !== null && t.ny === 1 && (ground === GRASS || ground === DIRT || ground === FARMLAND);
       if (!planting && this.survival.eat(heldType.food)) {
+        // A cooked meal leaves the player well fed: health comes back faster for a while.
+        if (WELL_FED_FOODS.has(heldType.key)) this.survival.addEffect('well_fed', WELL_FED_S);
         this.events.sound('eat');
         this.consumeHeld();
         return;
@@ -972,6 +1127,63 @@ export class Play {
     }
     if (!t || heldType.item) return;
     this.place(t, held, player);
+  }
+
+  /** A creature's bite lands: its damage through armour, and maybe the status effect it carries. */
+  bitten(damage: number, by: string, s?: { inflicts?: readonly [string, number, number] }, rand = Math.random, biter?: Creature): void {
+    if (this.mode !== 'survival' || this.survival.dead) return;
+    this.survival.hurt(this.protect(damage * DIFFICULTY[this.difficulty].damage), `killed by a ${by.toLowerCase()}`);
+    // Jade armour bites back.
+    const thorns = this.bonus.thorns;
+    if (thorns && biter && biter.health > 0 && this.creatures?.damage(biter, thorns, this.feet[0], this.feet[2], 0.5)) this.defeated(biter);
+    const [effect, seconds, chance] = s?.inflicts ?? ['', 0, 0];
+    if (rand() < chance) {
+      if (effect === 'burning') { if (!this.bonus.fireproof) this.survival.burning = Math.max(this.survival.burning, seconds); }
+      else if (isEffect(effect)) this.survival.addEffect(effect, seconds);
+    }
+    this.version++;
+  }
+
+  /** The block the grappling hook holds. */
+  private hookCell: [number, number, number] | null = null;
+  /** Throws the grappling hook at the solid block in view within reach, or takes it back if it is out. */
+  private fireHook(player: Player): void {
+    if (player.hook) {
+      player.hook = null;
+      return;
+    }
+    const [dx, dy, dz] = player.direction(), b = player.body;
+    const hit = raycast(b.x, player.eyeY, b.z, dx, dy, dz, toCells(HOOK_RANGE_M), (x, y, z) => COLLISION[this.world.get(x, y, z)]!);
+    if (!hit) {
+      this.toast('Nothing in reach to hook onto', 2);
+      return;
+    }
+    // Just outside the face it hit, so the point is in open air and the player is pulled flat against the block.
+    const d = hit.distance - 0.05;
+    player.hook = [b.x + dx * d, player.eyeY + dy * d, b.z + dz * d];
+    this.hookCell = [hit.x, hit.y, hit.z];
+    this.events.sound('place', 0.5);
+  }
+
+  /** Drinks the held potion. A healing potion brings Potion sickness, and none is drunk while it lasts. */
+  private drink(p: NonNullable<BlockType['potion']>): void {
+    const s = this.survival;
+    if (p.heal && s.has('potion_sickness')) {
+      this.toast(`Too soon for another: ${Math.ceil(s.effects.potion_sickness!)} s of potion sickness left`, 3);
+      return;
+    }
+    if (p.heal) {
+      s.health = Math.min(s.maxHealth, s.health + p.heal);
+      s.addEffect('potion_sickness', POTION_SICKNESS_S);
+    }
+    if (p.cures) {
+      delete s.effects.poisoned;
+      delete s.effects.bleeding;
+    }
+    if (p.effect && isEffect(p.effect)) s.addEffect(p.effect, p.seconds ?? 30);
+    if (this.mode === 'survival') this.inventory.useHeld();
+    this.events.sound('eat');
+    this.version++;
   }
 
   /** Right click with an animal's food on the animal in view: it eats it and is ready to breed. */
@@ -1051,6 +1263,11 @@ export class Play {
       this.setBlock(x + ox, y, z + oz, BED.id + facing + 4);
       this.consumeHeld(true);
       this.events.sound('place');
+      // A bed makes a home: someone moves in once the room around it is one.
+      const home: Home = { x: x + ox, y, z: z + oz, yaw: Math.PI + Math.atan2(-oz, ox), who: null };
+      this.homes.set(`${home.x},${home.y},${home.z}`, home);
+      const room = this.roomOf(home);
+      this.toast(room.ok ? 'A fine home: someone will move in soon.' : `Not a home yet: it needs ${room.missing.join(', ')}.`, 5);
       return;
     }
     // A ladder goes on the side of a wall, hanging on the face that was clicked.
@@ -1122,6 +1339,7 @@ export class Play {
     this.screen = screen;
     // A workbench within a few steps counts, as in Terraria.
     this.craftSize = craftSize === 3 || (screen === 'inventory' && this.near(TABLE, 4)) ? 3 : 2;
+    this.alchemy = screen === 'inventory' && this.near(ALCHEMY, 4);
     this.version++;
   }
 
@@ -1149,10 +1367,16 @@ export class Play {
   get station(): Station {
     return this.craftSize === 3 ? 'table' : 'hand';
   }
+  /** An alchemy table within a few steps when the inventory opened: potions can be made. */
+  alchemy = false;
+  /** Every station at hand: the workbench (or hand) and the alchemy table. */
+  get stations(): Station[] {
+    return this.alchemy ? [this.station, 'alchemy'] : [this.station];
+  }
 
   /** Makes `c` from the inventory, `times` times at most; what does not fit stays unmade. Returns how many were made. */
   craftItem(c: Craft, times = 1): number {
-    const made = craft(c, this.inventory, this.station, times);
+    const made = craft(c, this.inventory, this.stations, times);
     if (made) {
       this.events.sound('place');
       this.version++;
@@ -1198,6 +1422,10 @@ export class Play {
       const t=BLOCKS.type(s.state),field=t.smeltsTo?'input':t.fuel?'fuel':null;
       if(field){const box=[f[field]];moveStack(slots,index,box);f[field]=box[0]!;this.version++;return;}
     }
+    // With no container open, armour and accessories go on: armour swaps with what is worn.
+    const t=BLOCKS.type(s.state),free=this.accessories.findIndex((a)=>!a);
+    if(t.armour){slots[index]=this.armour[t.armour.slot]??null;this.armour[t.armour.slot]=s;this.version++;return;}
+    if(t.accessory&&free>=0&&!this.accessories.some((a)=>a?.state===s.state)){this.accessories[free]=s;slots[index]=null;this.version++;return;}
     moveStack(slots,index,slots,index<9?9:0,index<9?36:9);this.version++;
   }
   takeFurnaceOutput(right=false,quick=false):void {
@@ -1229,9 +1457,9 @@ export class Play {
     const s = (st: ItemStack | null) => (st ? [BLOCKS.stateName(st.state), st.count] : null);
     return {
       decorations: this.decorations.save(), mode: this.mode, difficulty: this.difficulty, hints: this.hints.save(), inventory: this.inventory.save(), selected: this.inventory.selected, drops: this.drops.save(),
-      health: this.survival.health, maxHealth: this.survival.maxHealth, hunger: this.survival.hunger, air: this.survival.air, bodyC: this.survival.temperature.coreC, spawn: this.spawn,
+      health: this.survival.health, maxHealth: this.survival.maxHealth, hunger: this.survival.hunger, air: this.survival.air, effects: { ...this.survival.effects }, burning: this.survival.burning, bodyC: this.survival.temperature.coreC, spawn: this.spawn,
       furnaces: [...this.furnaces].map(([k, f]) => [k, s(f.input), s(f.fuel), s(f.output), f.burn, f.progress]),
-      journal: this.journal.save(), stats: this.stats, biomesSeen: [...this.biomesSeen], deepestM: this.deepestM, found: [...this.found], beaconLit: this.beaconLit, endingSeen: this.endingSeen, boating: this.boating,
+      event: this.event, eventKills: this.eventKills, homes: [...this.homes.values()].map((h) => [h.x, h.y, h.z, h.yaw, h.who]), journal: this.journal.save(), seen: [...this.seen], bestiary: [...this.bestiary].map(([k, e]) => [k, e.kills, [...e.drops]]), stats: this.stats, biomesSeen: [...this.biomesSeen], deepestM: this.deepestM, found: [...this.found], beaconLit: this.beaconLit, endingSeen: this.endingSeen, boating: this.boating,
       armour: this.armour.map((a) => (a ? [BLOCKS.stateName(a.state), 1, a.wear ?? 0, a.upgrade ?? 0] : null)),
       accessories: this.accessories.map((a) => (a ? [BLOCKS.stateName(a.state), 1] : null)),
       campfires: [...this.campfires].map(([k, c]) => [k, c.map(([st, left]) => [BLOCKS.stateName(st), left])]),
@@ -1256,6 +1484,21 @@ export class Play {
     this.survival.health = Math.min(this.survival.maxHealth, num(p.health, this.survival.health));
     this.survival.hunger = num(p.hunger, this.survival.hunger);
     this.survival.air = num(p.air, this.survival.air);
+    this.survival.burning = Math.max(0, num(p.burning, 0));
+    if (p.event === 'red_night' || p.event === 'slime_rain') this.event = p.event;
+    this.eventKills = Math.max(0, Math.floor(num(p.eventKills, 0)));
+    if (Array.isArray(p.homes)) for (const h of p.homes) {
+      if (!Array.isArray(h) || !h.slice(0, 4).every((v) => typeof v === 'number' && Number.isFinite(v))) continue;
+      const who = typeof h[4] === 'string' && SPECIES_BY_KEY.get(h[4])?.villager ? h[4] : null;
+      this.homes.set(`${h[0]},${h[1]},${h[2]}`, { x: h[0], y: h[1], z: h[2], yaw: h[3], who });
+    }
+    if (Array.isArray(p.seen)) for (const k of p.seen) if (typeof k === 'string' && SPECIES_BY_KEY.has(k)) this.seen.add(k);
+    if (Array.isArray(p.bestiary)) for (const e of p.bestiary) {
+      if (!Array.isArray(e) || typeof e[0] !== 'string' || !SPECIES_BY_KEY.has(e[0])) continue;
+      this.bestiary.set(e[0], { kills: Math.max(0, Math.floor(num(e[1], 0))), drops: new Set(Array.isArray(e[2]) ? e[2].filter((d: unknown) => typeof d === 'string') : []) });
+    }
+    this.survival.effects = {};
+    if (typeof p.effects === 'object' && p.effects !== null) for (const [k, v] of Object.entries(p.effects)) if (isEffect(k) && num(v, 0) > 0) this.survival.effects[k] = num(v, 0);
     this.survival.temperature.coreC = Math.max(30, Math.min(42, num(p.bodyC, this.survival.temperature.coreC)));
     if (Array.isArray(p.spawn) && p.spawn.length === 3 && p.spawn.every((v) => typeof v === 'number')) this.spawn = p.spawn as [number, number, number];
     const stack = (e: unknown): ItemStack | null => {
@@ -1316,8 +1559,11 @@ export class Play {
 }
 
 /** Damage of one full-strength hit with `held` (or a bare hand): swords best, then axes, then other tools; more per tier. */
+/** The share of a hit that gets through `points` of armour. */
+export const armourFactor = (points: number): number => 1 - Math.min(ARMOUR_CAP, points * ARMOUR_PER_POINT);
+
 export function weaponDamage(held: ItemStack | null): number {
   const tool = held ? BLOCKS.type(held.state).tool : undefined;
   if (!tool) return HAND_DAMAGE;
-  return (tool.kind === 'sword' ? SWORD_DAMAGE : tool.kind === 'axe' ? AXE_DAMAGE : TOOL_DAMAGE) + tool.tier + (held?.upgrade ?? 0);
+  return (tool.kind === 'sword' ? SWORD_DAMAGE : tool.kind === 'axe' ? AXE_DAMAGE : TOOL_DAMAGE) + (TIER_DAMAGE[tool.tier] ?? tool.tier) + (held?.upgrade ?? 0);
 }

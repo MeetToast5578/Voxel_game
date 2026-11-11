@@ -81,6 +81,9 @@ export class Input {
     addEventListener('mousemove', (e) => {
       if (Math.abs(e.movementX) + Math.abs(e.movementY) > 2) this.padActive = false;
       if (document.pointerLockElement !== canvas) return;
+      // Browsers sometimes report a jump of half the window in one event under pointer lock (a recentring, not a hand
+      // movement); no real flick moves a third of the window between two events, so such a jump is ignored.
+      if (Math.abs(e.movementX) > innerWidth / 3 || Math.abs(e.movementY) > innerHeight / 3) return;
       this.lookYaw -= e.movementX * this.sensitivity;
       this.lookPitch -= e.movementY * this.sensitivity * (this.invertY ? -1 : 1);
     });

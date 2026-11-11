@@ -1,7 +1,7 @@
 {
   "name": "voxel-game",
   "private": true,
-  "version": "0.7.0",
+  "version": "0.7.6",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -11,7 +11,8 @@
     "test": "vitest run",
     "check": "node scripts/check-version.mjs && node scripts/check-core-textures.mjs && node scripts/check-rework.mjs && npm run typecheck && npm run test && npm run build",
     "smoke": "npm run build && node scripts/smoke.mjs",
-    "benchmark": "node scripts/benchmark.mjs"
+    "benchmark": "node scripts/benchmark.mjs",
+    "playthrough": "npm run build && node scripts/playthrough.mjs"
   },
   "dependencies": {
     "preact": "10.29.8",

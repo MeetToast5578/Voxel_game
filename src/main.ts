@@ -1,3 +1,4 @@
+import * as THREE from 'three';
 import { REACH_M, DROP_CAP, NIGHT_BEFORE, AUTOSAVE_S, BLOCK_SIZE_M, CAVE_AIR_C, CHUNK_SIZE, DAY_LENGTH_S, DIFFICULTY, HEAT_REACH_M, HEAT_SOURCES_C, cells, type Difficulty, HORIZON_RECENTER_M, MAX_VIEW_CHUNKS, MIN_VIEW_CHUNKS, SIM_HZ, toCells } from './config';
 import { Sounds } from './audio/sounds';
 import { Ambience, type Surroundings } from './audio/ambience';
@@ -8,7 +9,7 @@ import { LightEngine } from './engine/light';
 import { Streamer } from './engine/streaming';
 import { ALL_CONNECTED, visibleChunks } from './engine/visibility';
 import { World } from './engine/world';
-import { COLLISION } from './game/collision';
+import { COLLISION, loadedBoxAt } from './game/collision';
 import { Input } from './game/input';
 import { blockInteractionHint } from './game/interactionHint';
 import { Play, type Mode } from './game/play';
@@ -170,6 +171,7 @@ const currentAt = (x: number, y: number, z: number): [number, number, number] | 
   return len ? [fx / len, 0, fz / len] : null;
 };
 const boxAt = (x: number, y: number, z: number) => COLLISION[world.get(x, y, z)]!;
+const dropBoxAt = loadedBoxAt(world);
 const waterAt = (x: number, y: number, z: number) => {
   const t = BLOCKS.typeIndex[world.get(x, y, z)];
   return t === WATER || t === FLOWING;
@@ -232,18 +234,15 @@ const urlDifficulty = params.get('difficulty');
 if (urlDifficulty && urlDifficulty in DIFFICULTY) play.difficulty = urlDifficulty as Difficulty;
 let lastBite = -Infinity;
 const creatures = new Creatures(world, mulberry32(seed ^ 0xc0ffee), {
-  bite: (damage, by) => {
+  bite: (damage, by, species, biter) => {
     // A moment of safety after each bite, so a crowd cannot take the player down all at once.
     if (performance.now() - lastBite < 500) return;
     lastBite = performance.now();
-    if (play.mode === 'survival' && !play.survival.dead) {
-      play.survival.hurt(play.protect(damage * DIFFICULTY[play.difficulty].damage), `killed by a ${by.toLowerCase()}`);
-      sounds.play('break', 0.6);
-      play.version++;
-    }
+    if (play.mode === 'survival' && !play.survival.dead) sounds.play('break', 0.6);
+    play.bitten(damage, by, species, Math.random, biter);
   },
   sound: (name, volume) => sounds.play(name, volume),
-  shoot: (c, x, y, z) => play.shootAtPlayer(x, y, z, player, c.species.attack),
+  shoot: (c, x, y, z) => play.shootAtPlayer(x, y, z, player, c.species.attack, c.species.name),
   // Calls carry 32 m; pitch follows the species' voice.
   call: (c, kind) => {
     const near = 1 - Math.hypot(c.body.x - player.body.x, c.body.y - player.body.y, c.body.z - player.body.z) * BLOCK_SIZE_M / 32;
@@ -256,6 +255,10 @@ const creatureMeshes = new ShapeMobs(renderer.scene, renderer.uniforms);
 const effects = new WorldEffects(renderer.scene, renderer.uniforms);
 const decorationMeshes = new DecorationMeshes(renderer.scene, renderer.uniforms);
 const boatMesh = new BoatMesh(renderer.scene, renderer.uniforms);
+// The grappling hook's rope: from just below and right of the eye to where the hook holds.
+const rope = new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3()]), new THREE.LineBasicMaterial({ color: 0x3a2818 }));
+rope.frustumCulled = false;
+renderer.scene.add(rope);
 /** The boat turns to where it is going, not where the rider looks. */
 let boatYaw = 0;
 const dropMeshes = new DropMeshes(renderer.scene, renderer.uniforms.tiles!.value as ConstructorParameters<typeof DropMeshes>[1], renderer.uniforms);
@@ -360,15 +363,17 @@ function update(dt: number): void {
   play.tickProjectiles(dt, boxAt, player);
   play.particles.update(dt);
   creatures.update(dt, {
-    player: player.body, survival: play.mode === 'survival', day: env.atmosphere.sun[1] > -0.05, hostiles: DIFFICULTY[play.difficulty].hostiles, boxAt, waterAt,
+    player: player.body, survival: play.mode === 'survival', day: env.atmosphere.sun[1] > -0.05, hostiles: DIFFICULTY[play.difficulty].hostiles * (play.event === 'red_night' ? 2 : 1), boxAt, waterAt,
     playerHolds: play.held ? BLOCKS.type(play.held.state).key : null,
   });
-  if (play.drops.update(dt, boxAt, play.survival.dead ? null : player.body, play.inventory)) play.version++;
+  if (play.drops.update(dt, dropBoxAt, play.survival.dead ? null : player.body, play.inventory)) play.version++;
   exposureClock += dt;
   if (exposureClock >= 0.5) {
     updateExposure(exposureClock);
     play.wakeGuardians(player);
     play.wakeVillagers(player);
+    play.noteSeen(player.body.x, player.body.z);
+    play.tickEvent(exposureClock, player);
     exposureClock = 0;
   }
   if (play.mode === 'survival' && !play.survival.dead) {
@@ -406,6 +411,7 @@ function update(dt: number): void {
     // The journal: a day survived at each dawn, the deepest point, biomes walked in, then milestones.
     const night = env.clock.dayTime > 1 - NIGHT_BEFORE || env.clock.dayTime < NIGHT_BEFORE;
     if (wasNight && !night) play.stats.days++;
+    if (wasNight !== night) play.turnOfDay(night);
     wasNight = night;
     play.deepestM = Math.min(play.deepestM, player.body.y * BLOCK_SIZE_M);
     const column = world.column(Math.floor(player.body.x) >> 4, Math.floor(player.body.z) >> 4);
@@ -642,7 +648,6 @@ const interactionHint=document.createElement('div');interactionHint.id='interact
 let handSwings = 0;
 const combat = new CombatOverlay();
 const heldItem = new HeldItem();
-let heldShown = false;
 /**
  * Automatic resolution: with frames slower than about 45 fps for a couple of seconds, render fewer pixels; with plenty
  * of headroom, more again. Drawing, not the main thread, is what limits most machines.
@@ -661,7 +666,7 @@ function updateHand():void {
   const state=play.held?.state??-1;
   const armour=play.armour[1],key=armour?BLOCKS.type(armour.state).key:'bare';
   const material=key.startsWith('diamond')?'diamond':key.startsWith('iron')?'iron':key.startsWith('leather')?'leather':'bare';
-  hand.style.display=input.playing&&!player.flying&&play.screen==='none'&&!heldShown?'':'none';
+  hand.style.display=input.playing&&!player.flying&&play.screen==='none'&&!play.held?'':'none';
   if(play.swings!==handSwings||(play.breaking>0&&!hand.classList.contains('swing'))){
     handSwings=play.swings;hand.classList.remove('swing');void hand.offsetWidth;hand.classList.add('swing');
   }
@@ -808,6 +813,17 @@ const loop = new FixedStepLoop(1 / 60, 0.25, timedUpdate, (alpha, frameDt) => {
   // Real drops first: when over the cap, arrows and bits are what is left out.
   const drawn = flying.length ? [...play.drops.list, ...flying].slice(0, DROP_CAP) : play.drops.list;
   if (Math.hypot(player.body.vx, player.body.vz) > 0.5) boatYaw = Math.atan2(-player.body.vx, -player.body.vz);
+  // A red moon colours the night sky and the fog with it, fading in and out.
+  const redMoon = renderer.sky.redMoon + ((play.event === 'red_night' ? 1 : 0) - renderer.sky.redMoon) * Math.min(1, frameDt * 0.5);
+  renderer.sky.redMoon = redMoon;
+  rope.visible = player.hook !== null;
+  if (player.hook) {
+    const at = rope.geometry.getAttribute('position') as THREE.BufferAttribute, cam = renderer.camera;
+    const hand = new THREE.Vector3(0.35, -0.4, -0.6).applyQuaternion(cam.quaternion).add(cam.position);
+    at.setXYZ(0, hand.x, hand.y, hand.z);
+    at.setXYZ(1, ...player.hook);
+    at.needsUpdate = true;
+  }
   boatMesh.update(player.boating, player.body.x, player.body.y, player.body.z, boatYaw, lightAt(player.body.x, player.body.y + 0.5, player.body.z));
   dropMeshes.update(drawn, now / 1000, (d) => lightAt(d.body.x, d.body.y + d.body.height / 2, d.body.z));
   cull();
@@ -820,7 +836,8 @@ const loop = new FixedStepLoop(1 / 60, 0.25, timedUpdate, (alpha, frameDt) => {
     env.atmosphere.cloudCover, sample?.windSpeed ?? 3, (x, z) => world.column(x >> 4, z >> 4)?.skyTop[((z & 15) << 4) | (x & 15)] ?? -Infinity);
   updateHorizon(cam.x, cam.z);
   renderer.render(now / 1000);
-  heldShown = heldItem.update(frameDt, play.held, {
+  // A held item is drawn in 3D; the flat hand picture shows only for an empty hand (decided above, in the same frame).
+  heldItem.update(frameDt, play.held, {
     swings: play.swings, slashes: play.slashes, breaking: play.breaking > 0, bob: bobPhase, bobAmount: settings.viewBob ? bobAmount : 0,
     light: lightAt(player.body.x, player.eyeY, player.body.z), fov: renderer.camera.fov, aspect: renderer.camera.aspect,
     visible: input.playing && !player.flying && play.screen === 'none' && !play.survival.dead,
