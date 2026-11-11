@@ -144,8 +144,8 @@ Every task also passes `npm run check`, `npm run benchmark -- --assert` and `npm
 - [x] **R4.3 Sky islands (M).** Done in 0.8.0 (no sky slime yet; the nearest on seed 1 is 820 m away). Rare floating islands high above the surface. Each has a small house, a chest with
   flight-themed loot (cloud charm, feather charm, a glider) and a sky slime.
   **Done when:** seed 1 has one within 500 m of spawn.
-- [~] **R4.4 Biome dungeons (M).** 0.8.0: pyramid and overgrown temple with unique charms; ice cave and sunken
-  ship remain; deserts and rainforests are rare near spawn.
+- [x] **R4.4 Biome dungeons (M).** Done: pyramid and overgrown temple (0.8.0), ice cave and shipwreck (0.12.2),
+  each with a unique charm (no pyramid traps yet); deserts and rainforests are rare near spawn.
   - a sand pyramid with traps;
   - an ice cave;
   - a jungle temple;

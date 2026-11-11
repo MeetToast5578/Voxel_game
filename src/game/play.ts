@@ -66,7 +66,7 @@ export const DOOR_CELLS = 4;
 const FACING_OFFSET = [[1, 0], [-1, 0], [0, 1], [0, -1]] as const;
 /** A home the player made: the bed head's cell, which way its sleeper lies, and who lives there. */
 /** Places a treasure map can show, by name. */
-const MAP_PLACES = { pyramid: 'A pyramid', temple: 'An overgrown temple', sky_island: 'A sky island', altar: 'A boss altar', shrine: 'An ember shrine', tower: 'A watchtower', cabin: 'A cabin' } as const;
+const MAP_PLACES = { ice_cave: 'An ice cave', shipwreck: 'A shipwreck', pyramid: 'A pyramid', temple: 'An overgrown temple', sky_island: 'A sky island', altar: 'A boss altar', shrine: 'An ember shrine', tower: 'A watchtower', cabin: 'A cabin' } as const;
 
 export interface Home { x: number; y: number; z: number; yaw: number; who: string | null }
 
@@ -1025,7 +1025,8 @@ export class Play {
 
   /** °C of cold the worn armour keeps off. */
   get warmth(): number {
-    return this.armour.reduce((sum, a) => sum + (a ? BLOCKS.type(a.state).armour!.warmth + (a.upgrade ?? 0) : 0), 0);
+    return this.armour.reduce((sum, a) => sum + (a ? BLOCKS.type(a.state).armour!.warmth + (a.upgrade ?? 0) : 0), 0)
+      + this.accessories.reduce((sum, a) => sum + (a ? BLOCKS.type(a.state).accessory?.warmth ?? 0 : 0), 0);
   }
 
   /** Puts the held armour on, swapping with what was worn there. */
@@ -1904,7 +1905,7 @@ export class Play {
       const st = p.stats as Record<string, unknown>;
       for (const k of Object.keys(this.stats) as (keyof Stats)[]) this.stats[k] = Math.max(0, num(st[k], 0));
     }
-    if (Array.isArray(p.found)) for (const f of p.found) if (['surface', 'mine', 'vault', 'shrine', 'sky', 'pyramid', 'temple'].includes(f)) this.found.add(f as LootTable);
+    if (Array.isArray(p.found)) for (const f of p.found) if (['surface', 'mine', 'vault', 'shrine', 'sky', 'pyramid', 'temple', 'ice_cave', 'shipwreck'].includes(f)) this.found.add(f as LootTable);
     this.beaconLit = p.beaconLit === true;
     if (Array.isArray(p.biomesSeen)) for (const b of p.biomesSeen) if (Number.isInteger(b) && b >= 0 && b < 256) this.biomesSeen.add(b);
     this.deepestM = Math.min(0, num(p.deepestM, 0));

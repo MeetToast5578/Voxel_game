@@ -18,7 +18,7 @@ import { isUnderground, sitesNear, SKY_ISLAND_M, SKY_ISLAND_MAX_GROUND_M, struct
 const N = CHUNK_SIZE;
 const AREA = CHUNK_AREA;
 const B = BLOCK_SIZE_M;
-const CLEARED = new Set<StructureKind>(['altar', 'pyramid', 'temple']);
+const CLEARED = new Set<StructureKind>(['altar', 'pyramid', 'temple', 'ice_cave']);
 const S = (key: string) => BLOCKS.state(key);
 const AIR = S('air'), STONE = S('stone'), DIRT = S('dirt'), GRASS = S('grass'), SAND = S('sand'), GRAVEL = S('gravel');
 const WATER = S('water'), LOG = S('log'), LEAVES = S('leaves'), COBBLE = S('cobblestone'), CLAY = S('clay');
@@ -227,6 +227,8 @@ export class Generator {
     const [c, i] = this.cellBase(x, z), ground = c.top[i]!;
     if (isUnderground(kind)) return undergroundFloor(this.seed, kind, x, z, ground);
     if (kind === 'sky_island') return ground * B > SKY_ISLAND_MAX_GROUND_M ? null : Math.round(SKY_ISLAND_M / B);
+    // A shipwreck lies on the sea floor, at least 6 cells under the surface.
+    if (kind === 'shipwreck') return c.water[i] === SEA_CELL && SEA_CELL - ground >= 6 && !c.open[i] ? ground : null;
     const biomes = structureBiomes(kind);
     if (biomes && !biomes.includes(biomeByIndex(c.biome[i]!).key)) return null;
     if (ground + 1 < c.water[i]! || c.open[i] || c.shore[i]) return null;

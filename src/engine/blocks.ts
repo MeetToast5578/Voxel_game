@@ -237,6 +237,8 @@ export interface Accessory {
   readonly antivenom?: boolean;
   /** A wisp follows the player and lights the blocks around them. */
   readonly wisp?: boolean;
+  /** Keeps the cold off, like warm clothes (degrees). */
+  readonly warmth?: number;
 }
 
 /** Potions: [key, name, what it does]. Made at an alchemy table from a glass bottle and two ingredients. */
@@ -264,6 +266,8 @@ const ACCESSORIES: readonly [string, string, Accessory][] = [
   ['storm_charm', 'Storm Charm', { effect: 'Jump once more in mid-air, no fall damage', jumps: 1, featherfall: true }],
   ['scarab_charm', 'Scarab Charm', { effect: '10% faster; stops 6% more harm', speed: 0.1, protection: 2 }],
   ['jungle_idol', 'Jungle Idol', { effect: 'Health returns 50% faster; breath lasts twice as long', regen: 1.5, breath: 2 }],
+  ['glacier_charm', 'Glacier Charm', { effect: 'Keeps the cold off; 10% faster on foot', warmth: 8, speed: 0.1 }],
+  ['captains_compass', "Captain's Compass", { effect: 'Breath lasts twice as long; 10% faster on foot', breath: 2, speed: 0.1 }],
   ['sprint_boots', 'Sprint Boots', { effect: 'Double-tap a direction to dash; 25% faster on foot', dash: true, speed: 0.25 }],
   ['guardian_band', 'Guardian Band', { effect: 'Stops 12% more harm; health returns twice as fast', protection: 4, regen: 2 }],
   ['elemental_amulet', 'Elemental Amulet', { effect: 'Lava and fire do not burn you; breath lasts four times longer', fireproof: true, breath: 4 }],

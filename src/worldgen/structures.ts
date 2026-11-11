@@ -2,7 +2,7 @@ import { BLOCK_SIZE_M, TREE_REACH_CELLS } from '../config';
 import { hash2 } from '../core/random';
 import { BLOCKS } from '../engine/blocks';
 
-export type StructureKind = 'cabin' | 'tower' | 'camp' | 'mine' | 'vault' | 'shrine' | 'house' | 'sky_island' | 'pyramid' | 'temple' | 'altar';
+export type StructureKind = 'cabin' | 'tower' | 'camp' | 'mine' | 'vault' | 'shrine' | 'house' | 'sky_island' | 'pyramid' | 'temple' | 'altar' | 'ice_cave' | 'shipwreck';
 
 /** A structure cell relative to the site: x and z from its anchor, y absolute; then the state. */
 export type StructureCell = readonly [dx: number, y: number, dz: number, state: number];
@@ -26,6 +26,9 @@ const KINDS: Record<StructureKind, { gridM: number; chance: number; salt: number
   pyramid: { gridM: 300, chance: 0.6, salt: 79, biomes: ['desert', 'badlands'] },
   temple: { gridM: 300, chance: 0.6, salt: 80, biomes: ['tropical_rainforest', 'swamp', 'old_growth_dark_forest', 'temperate_deciduous'] },
   altar: { gridM: 360, chance: 0.6, salt: 81 },
+  // An ice cave in the cold lands, and a ship sunk on the sea floor.
+  ice_cave: { gridM: 300, chance: 0.6, salt: 82, biomes: ['tundra', 'snowy_taiga', 'glacier', 'snowcapped_peaks', 'taiga'] },
+  shipwreck: { gridM: 240, chance: 0.7, salt: 83 },
 };
 
 /** The biomes a kind's anchor must stand in, if it is particular. */
@@ -219,6 +222,27 @@ export function structureCells(seed: number, kind: StructureKind, x: number, z: 
     put(0, base, 3, S('chest', 3));
     put(-4, base, -4, TORCH);
     put(4, base, -4, TORCH);
+  } else if (kind === 'ice_cave') {
+    // A dome of ice half sunk in the ground, a doorway on the north side, a frozen chest inside.
+    box(5, base - 1, base + 5, (dx, y, dz) => {
+      const r = Math.hypot(dx, (y - base) * 1.2, dz);
+      if (r > 5.3) return null;
+      if (dz <= -3 && Math.abs(dx) <= 1 && y >= base + 1 && y <= base + 2) return AIR;
+      return r > 4.2 || y === base - 1 ? S('ice') : y === base ? S('snow') : AIR;
+    });
+    put(0, base + 1, 2, S('chest', 3));
+    put(-2, base + 1, 1, S('lantern'));
+  } else if (kind === 'shipwreck') {
+    // A sunken ship on the sea floor, listing a little: a planked hull, a broken mast and a chest in the hold.
+    box(6, base, base + 4, (dx, y, dz) => {
+      const half = Math.max(0, 2.6 - Math.abs(dx) * 0.35) + (y - base) * 0.4;
+      if (Math.abs(dx) > 5 || Math.abs(dz) > half + 0.5) return null;
+      const hull = Math.abs(dz) > half - 0.5 || y === base;
+      if (y === base + 4) return hash2(seed + 520, x + dx, z + dz) < 0.6 ? S('planks') : null;
+      return hull ? (hash2(seed + 521 + y, x + dx, z + dz) < 0.15 ? null : S('planks')) : AIR;
+    });
+    for (let y = base + 1; y <= base + 7; y++) put(1, y, 0, LOG);
+    put(-3, base + 1, 0, S('chest', 3));
   } else if (kind === 'altar') {
     // A boss altar: a round floor of slate with a ring of pillars and a glowing stone in the middle.
     for (let dz = -7; dz <= 7; dz++) for (let dx = -7; dx <= 7; dx++) {

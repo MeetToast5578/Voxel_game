@@ -3,6 +3,17 @@
 The newest version comes first. `npm run check` fails if the version at the top here is not the one in
 `package.json`, so the two are changed together.
 
+## 0.12.2 — 2026-11-11
+
+The last two biome dungeons (roadmap R4.4).
+
+- **Ice caves** in cold lands: a dome of ice half sunk in the snow, with a frozen chest. It always holds the
+  **Glacier Charm** (keeps the cold off like warm clothes, 10% faster), with frost shards, diamonds and more.
+- **Shipwrecks** on the sea floor, at least 6 cells under the surface: a planked hull with a broken mast and a chest in
+  the hold. It always holds the **Captain's Compass** (breath lasts twice as long, 10% faster), with gold, coins and
+  treasure maps.
+- Treasure maps can show both.
+
 ## 0.12.1 — 2026-11-11
 
 Two more townsfolk (roadmap R5.2).
