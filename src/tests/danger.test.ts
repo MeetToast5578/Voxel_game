@@ -159,6 +159,12 @@ describe('the Ember Warden', () => {
     const wardens = cs.list.filter((c) => c.species.key === 'warden');
     expect(wardens.length).toBe(1);
     expect(cs.guardianNear(sx + 0.5, floor, sz + 0.5, 4)).toBe(true);
+    // Wounded, then gone while the player was away: it comes back as hurt as it was.
+    wardens[0]!.health = 57;
+    play.wakeGuardians(player);
+    cs.list.length = 0;
+    play.wakeGuardians(player);
+    expect(cs.list[0]?.health).toBe(57);
     // Far away it does not wake; with the warden gone and the chest opened, it never comes back.
     cs.list.length = 0;
     play.wakeGuardians(new Player(sx + 300, floor, sz));

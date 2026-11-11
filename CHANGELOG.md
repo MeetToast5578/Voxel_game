@@ -3,6 +3,18 @@
 The newest version comes first. `npm run check` fails if the version at the top here is not the one in
 `package.json`, so the two are changed together.
 
+## 0.8.2 — 2026-11-11
+
+A world that keeps going (roadmap R4.7, R4.8, R4.9; tasks 12.2, 12.3, 12.5–12.7).
+
+- Fire: a flame block that spreads to wood, leaves, plants, wool and beds (never chests), licks through the air to
+  the next thing that burns, creeps over grass leaving dirt, and burns out by itself. Rain from open sky and water
+  beside it put it out. Lightning, moving lava and ember arrows start fires; standing in one sets you burning.
+- Generated rivers flow: their water carries swimmers and boats downstream.
+- Saplings grow into trees while their chunk is unloaded, as crops already did.
+- The Ember Warden keeps its wounds: hurt it, leave, come back, and it is as hurt as before.
+- Only chests that a structure placed hold loot; any other chest, also one placed in an old world, opens empty.
+
 ## 0.8.1 — 2026-11-11
 
 A fuller combat kit (roadmap R2.5, R2.6, R2.8, R8.3).

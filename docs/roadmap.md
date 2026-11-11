@@ -158,19 +158,20 @@ Every task also passes `npm run check`, `npm run benchmark -- --assert` and `npm
 - [ ] **R4.6 Map markers and waystones (M).** Pin places on the full map, and the compass points to a pin. Waystones are
   found in ruins. Once activated, they let the player travel between them for a cost. Covers idea 14 "Map markers".
   **Done when:** a test teleports between two activated waystones.
-- [ ] **R4.7 Fire (M)** (12.2). A fire block that:
+- [x] **R4.7 Fire (M)** (12.2). Done in 0.8.2. A fire block that:
   - spreads to wood, leaves and grass;
   - burns out by itself;
   - is put out by rain and water.
 
   Lightning, lava and ember arrows can start it.
   **Done when:** a test burns a wooden hut down and the fire goes out by itself.
-- [ ] **R4.8 Water and boats (S each)** (12.3, 12.4).
+- [~] **R4.8 Water and boats (S each)** (12.3, 12.4). 0.8.2: rivers push swimmers and boats; drops do not drift, and
+  boats do not stay yet.
   - **Rivers push:** generated rivers carry the player, boats and drops downstream.
   - **Boats stay:** a boat you step out of stays on the water.
 
   **Done when:** the earlier tests in `tasks.md` pass.
-- [ ] **R4.9 Catch-up and persistence (S each)** (12.5, 12.6, 12.7).
+- [x] **R4.9 Catch-up and persistence (S each)** (12.5, 12.6, 12.7). Done in 0.8.2 (grass regrowth does not catch up).
   - growth catches up while unloaded;
   - old chests stay empty;
   - the Ember Warden keeps its wounds.

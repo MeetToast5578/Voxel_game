@@ -73,6 +73,23 @@ export class Rivers {
     return n;
   }
 
+  /** The way a river runs at a place in meters (a unit vector x, z), if the place is in a river's channel. */
+  flowAt(xM0: number, zM0: number): [number, number] | null {
+    const w = RIVER_MEANDER_WAVELENGTH_M;
+    const xM = xM0 + this.warpX(xM0 / w, zM0 / w) * RIVER_MEANDER_M, zM = zM0 + this.warpZ(xM0 / w, zM0 / w) * RIVER_MEANDER_M;
+    for (let level = 0; level < RIVER_LEVELS.length; level++) {
+      const def = RIVER_LEVELS[level]!, ci = Math.floor(xM / def.spacingM), cj = Math.floor(zM / def.spacingM);
+      for (let di = -1; di <= 1; di++) for (let dj = -1; dj <= 1; dj++) {
+        const a = this.node(level, ci + di, cj + dj), b = a.down;
+        if (a.h <= SEA_LEVEL_M || !b || !a.flows) continue;
+        const dx = b.x - a.x, dz = b.z - a.z, len = Math.hypot(dx, dz);
+        const t = Math.max(0, Math.min(1, ((xM - a.x) * dx + (zM - a.z) * dz) / (len * len)));
+        if (Math.hypot(xM - (a.x + dx * t), zM - (a.z + dz * t)) <= def.widthM / 2) return [dx / len, dz / len];
+      }
+    }
+    return null;
+  }
+
   /** Rivers and lakes at a place in meters, given the ground height there before any carving. */
   sample(xM0: number, zM0: number, groundM: number, out: WaterSample): WaterSample {
     // Meanders: the place is shifted by a smooth noise before measuring distances to the straight segments.

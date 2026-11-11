@@ -1,4 +1,8 @@
 import * as THREE from 'three';
+import { Rivers } from './worldgen/rivers';
+import { ClimateSampler } from './worldgen/climate';
+/** How hard a generated river pushes, as a share of flowing water's push. */
+const RIVER_PUSH = 0.6;
 import { REACH_M, DROP_CAP, NIGHT_BEFORE, AUTOSAVE_S, BLOCK_SIZE_M, CAVE_AIR_C, CHUNK_SIZE, DAY_LENGTH_S, DIFFICULTY, HEAT_REACH_M, HEAT_SOURCES_C, cells, type Difficulty, HORIZON_RECENTER_M, MAX_VIEW_CHUNKS, MIN_VIEW_CHUNKS, SIM_HZ, toCells } from './config';
 import { Sounds } from './audio/sounds';
 import { Ambience, type Surroundings } from './audio/ambience';
@@ -31,7 +35,7 @@ import { mulberry32 } from './core/random';
 import { Environment } from './sim/environment';
 import { climateTemperature } from './sim/weather';
 import { biomeByIndex } from './worldgen/biomes';
-import { Simulation } from './sim/simulation';
+import { Simulation, isFire } from './sim/simulation';
 import { feltTemperature } from './game/bodyTemperature';
 import { drawTitle, drawUi, type UiModel, type WorldsModel } from './ui/app';
 import { worldActions } from './ui/worldActions';
@@ -153,9 +157,15 @@ const levelAt = (x: number, y: number, z: number) => {
   if (BLOCKS.typeIndex[s] === FLOWING) return ((s - FLOWING_ID) % LEVELS) + 1;
   return COLLISION[s] === 0 ? 0 : -1;
 };
-/** Flow of flowing water: down where it falls, otherwise toward lower neighbours. Still water does not push. */
+/** Flow of flowing water: down where it falls, otherwise toward lower neighbours; still water in a river follows it. */
+// Generated rivers run downhill: their still water carries swimmers and boats along the channel.
+let rivers: Rivers | null = null;
 const currentAt = (x: number, y: number, z: number): [number, number, number] | null => {
   const s = world.get(x, y, z);
+  if (BLOCKS.typeIndex[s] === WATER) {
+    const flow = (rivers ??= new Rivers(seed, new ClimateSampler(seed))).flowAt((x + 0.5) * BLOCK_SIZE_M, (z + 0.5) * BLOCK_SIZE_M);
+    return flow && [flow[0] * RIVER_PUSH, 0, flow[1] * RIVER_PUSH];
+  }
   if (BLOCKS.typeIndex[s] !== FLOWING) return null;
   if (s - FLOWING_ID >= LEVELS) return [0, -1, 0];
   const here = levelAt(x, y, z);
@@ -391,7 +401,7 @@ function update(dt: number): void {
 
     play.survival.update(dt, {
       feltC, sprinting: input.sprint && player.body.onGround, inWater: player.submerged > 0.3,
-      inFire: feet === CAMPFIRE || world.get(Math.floor(player.body.x), Math.floor(player.body.y - 0.05), Math.floor(player.body.z)) === CAMPFIRE, headInWater: waterAt(Math.floor(player.body.x), Math.floor(player.eyeY), Math.floor(player.body.z)),
+      inFire: feet === CAMPFIRE || isFire(feet) || world.get(Math.floor(player.body.x), Math.floor(player.body.y - 0.05), Math.floor(player.body.z)) === CAMPFIRE, headInWater: waterAt(Math.floor(player.body.x), Math.floor(player.eyeY), Math.floor(player.body.z)),
       inLava: BLOCKS.type(eye).key.endsWith('lava') || BLOCKS.type(feet).key.endsWith('lava'),
       breath: bonus.breath, fireproof: bonus.fireproof, regen: bonus.regen,
     });

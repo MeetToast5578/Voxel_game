@@ -113,18 +113,25 @@ describe('loot', () => {
     expect(shrine.some((s) => s?.state === S('beacon_shard'))).toBe(true);
   });
 
-  it('fills a generated chest on first opening, and leaves a placed one empty', () => {
+  it('fills a generated chest on first opening, and leaves any other chest empty (also one from an old save)', () => {
+    // The chest of the cabin nearest seed 9's start, with the player two cells beside it.
+    const cabin = sitesNear(9, -600, -600, 600, 600).find((s) => s.kind === 'cabin')!;
+    const [dx, , dz] = structureCells(9, 'cabin', cabin.x, cabin.z, 0).find(([, , , st]) => BLOCKS.type(st).key === 'chest')!;
+    const cx = cabin.x + dx - 2, cz = cabin.z + dz;
     const world = new World();
-    for (let cx = -1; cx <= 1; cx++) for (let cz = -1; cz <= 1; cz++) for (let cy = -1; cy <= 0; cy++) world.add(new Chunk(cx, cy, cz, cy < 0 ? S('stone') : 0));
+    for (let x = Math.floor(cx / 16) - 1; x <= Math.floor(cx / 16) + 1; x++) for (let z = Math.floor(cz / 16) - 1; z <= Math.floor(cz / 16) + 1; z++)
+      for (let cy = -1; cy <= 0; cy++) world.add(new Chunk(x, cy, z, cy < 0 ? S('stone') : 0));
     const play = new Play(world, (x, y, z, s) => world.set(x, y, z, s), { sound: () => undefined, sleep: () => true }, 'survival');
     play.seed = 9;
-    world.set(2, 0, 0, S('chest', 1));
+    world.set(cx + 2, 0, cz, S('chest', 1));
+    world.set(cx - 2, 0, cz, S('chest', 1));
+    expect((play as unknown as { chestSlots(k: string, s: number): unknown[] }).chestSlots(`${cx - 2},0,${cz}`, S('chest', 1)).every((s) => s === null)).toBe(true);
     const input = { slot: -1, breaking: false, placing: false, consume: (a: string) => a === 'place' } as never;
-    const player = { body: { x: 0.5, y: 0, z: 0.5, vx: 0, vy: 0, vz: 0, halfWidth: 0.4, height: 2.9, onGround: true }, eyeY: 2.7,
+    const player = { body: { x: cx + 0.5, y: 0, z: cz + 0.5, vx: 0, vy: 0, vz: 0, halfWidth: 0.4, height: 2.9, onGround: true }, eyeY: 2.7,
       direction: () => [Math.cos(0.85), -Math.sin(0.85), 0] as [number, number, number] } as never;
     play.update(0, input, player);
     expect(play.screen).toBe('chest');
-    expect(play.chests.get('2,0,0')!.some((s) => s !== null)).toBe(true);
+    expect(play.chests.get(`${cx + 2},0,${cz}`)!.some((s) => s !== null)).toBe(true);
     expect(play.found.has('surface')).toBe(true);
   });
 });

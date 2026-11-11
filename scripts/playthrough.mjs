@@ -77,7 +77,7 @@ async function collect() {
   for (let i = 0; i < 40; i++) {
     const left = await near();
     if (!left.length) return;
-    await game((d) => { const n = window.__game; Object.assign(n.player.body, { x: d[0], y: d[1], z: d[2], vx: 0, vy: 0, vz: 0 }); }, left[0]);
+    await game((d) => { const n = window.__game; Object.assign(n.player.body, { x: Math.floor(d[0]) + 0.5, y: d[1], z: Math.floor(d[2]) + 0.5, vx: 0, vy: 0, vz: 0 }); }, left[0]);
     // Real frames as well as time: on a slow machine the game runs fewer steps per second.
     await page.waitForTimeout(250);
     await frames(10);

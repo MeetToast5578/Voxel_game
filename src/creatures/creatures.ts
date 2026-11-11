@@ -43,6 +43,8 @@ export interface Creature {
   maxHealth: number;
   /** A villager's bed: where it goes at night and stays near by day. */
   home?: readonly [number, number, number];
+  /** A guardian's shrine (its anchor, "x,z"). */
+  site?: string;
   /** A boss summoned at an altar: it leaves twice the treasure. */
   atAltar?: boolean;
   /** Which way it lies in its bed (default: head toward +x, as in village houses). */

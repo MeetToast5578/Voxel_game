@@ -397,6 +397,9 @@ export const PROJECTILE_LIFE_S = 8;
 export const ARCHER_NEAR_M = 7;
 export const ARCHER_FAR_M = 15;
 export const ARCHER_SHOT_S = 2.5;
+/** Fire: seconds between a fire's ticks (random between the two), ticks it lives (one per variant), and the chance on
+ * each tick to catch each burnable neighbour. */
+export const FIRE_TICK_S: readonly [number, number] = [0.8, 2], FIRE_AGES = 4, FIRE_SPREAD_CHANCE = 0.22;
 /** World events: the share of nights with a red moon and of days with slime rain (from this day on), the slimes to
  * defeat before the Slime King comes, and seconds between falling slimes. */
 export const RED_NIGHT_CHANCE = 1 / 8;

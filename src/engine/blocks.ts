@@ -371,6 +371,9 @@ function gameplay(): BlockSpec[] {
       front: 'ancient_chest_front', variants: 4, hardness: 5, density: 2600, mineWith: 'pickaxe', drops: 'obsidian' },
     { key: 'crafting_table', name: 'Crafting table', tiles: { top: 'crafting_table_top', side: 'crafting_table_side', bottom: 'planks' },
       hardness: 2.5, density: 600, ...wood },
+    // Fire: burns what it touches and spreads (see sim/simulation.ts); its variant is its age.
+    { key: 'fire', name: 'Fire', tiles: all('fire_block'), shape: 'cross', layer: 'cutout', solid: false, opaque: false, blocksSky: false,
+      hardness: 0, drops: '', lightEmission: 13, variants: 4, supports: false },
     // Potions are made beside it.
     { key: 'alchemy_table', name: 'Alchemy table', tiles: { top: 'alchemy_table_top', side: 'alchemy_table_side', bottom: 'planks' },
       hardness: 2.5, density: 600, ...wood },

@@ -15,6 +15,7 @@ import type { Player } from './player';
 import { raycast, TARGET, type RayHit } from './raycast';
 import { Survival } from './survival';
 import { hash2 } from '../core/random';
+import { canIgnite, FIRE } from '../sim/simulation';
 import { checkRoom } from './housing';
 import { isEffect, POTION_SICKNESS_S, SLOWED_SPEED, SWIFT_SPEED } from './effects';
 import { Particles } from './particles';
@@ -22,7 +23,7 @@ import { lootTableFor, rollLoot, SITE_TABLES, type LootTable } from './loot';
 import { Journal, MILESTONES, type Stats } from './journal';
 import { aimAt, Projectiles } from './projectiles';
 import type { BoxAt } from './collision';
-import { HOUSE_BED, professionAt, sitesNear, undergroundFloor } from '../worldgen/structures';
+import { HOUSE_BED, professionAt, sitesNear, structureCells, undergroundFloor } from '../worldgen/structures';
 import { Decorations, SHOPS, TRADE_OFFERS, WORKSHOP_BLOCKS, trade, forge, type TradeOffer, type WorkshopKind } from './workshops';
 import { SPECIES_BY_KEY } from '../creatures/species';
 import { buildingMaterial } from './building';
@@ -546,6 +547,7 @@ export class Play {
       this.drop(loot, c.body.x, c.body.y, c.body.z);
     }
     if (c.species.guardian) {
+      if (c.site) this.wardenHealth.delete(c.site);
       this.stats.wardens++;
       this.toast('The Ember Warden falls. The shrine is yours.', 4);
     }
@@ -565,11 +567,18 @@ export class Play {
       if (ground === undefined) continue;
       const floor = undergroundFloor(this.seed, 'shrine', site.x, site.z, ground);
       if (Math.abs(b.y - floor) > r || BLOCKS.type(this.world.get(site.x, floor + 1, site.z)) !== ANCIENT) continue;
-      if (this.chests.has(`${site.x},${floor + 1},${site.z}`) || creatures.guardianNear(site.x + 0.5, floor, site.z + 0.5, r)) continue;
-      creatures.add(WARDEN, site.x + 0.5, floor, site.z - 1.5, WARDEN.health);
+      const key = `${site.x},${site.z}`, near = creatures.list.find((c) => c.species.guardian && Math.hypot(c.body.x - site.x - 0.5, c.body.z - site.z - 0.5) < r);
+      // A warden keeps its wounds: its health is noted while it is about, and it wakes with what it had.
+      if (near) { this.wardenHealth.set(key, near.health); continue; }
+      if (this.chests.has(`${site.x},${floor + 1},${site.z}`)) continue;
+      const c = creatures.add(WARDEN, site.x + 0.5, floor, site.z - 1.5, this.wardenHealth.get(key) ?? WARDEN.health);
+      c.maxHealth = WARDEN.health;
+      c.site = key;
       this.toast('Something stirs in the shrine…', 3);
     }
   }
+  /** Each wounded Ember Warden's health, by its shrine's anchor (saved). */
+  readonly wardenHealth = new Map<string, number>();
 
   /**
    * Brings each village house near the player to life (call about once a second): a house whose bed still stands and
@@ -679,6 +688,8 @@ export class Play {
     if (top === undefined || !this.world.isLoaded(cx, top, cz)) return;
     const scorched = SCORCH.get(this.world.get(cx, top, cz));
     if (scorched !== undefined) this.setBlock(cx, top, cz, scorched);
+    // Lightning may set the ground alight.
+    if (Math.random() < 0.5) this.ignite(cx, top + 1, cz);
     const reach = toCells(LIGHTNING_REACH_M), y = top + 1;
     const open = (b: { x: number; y: number; z: number }) => (this.skyTop(Math.floor(b.x), Math.floor(b.z)) ?? Infinity) < b.y + 0.01;
     const near = (b: { x: number; y: number; z: number }) => Math.hypot(b.x - x, b.y - y, b.z - z) < reach && open(b);
@@ -749,8 +760,11 @@ export class Play {
       // Chests in a sky island, pyramid or temple have that place's table; others go by depth.
       const site = sitesNear(this.seed, x, z, x, z).find((s) => (SITE_TABLES as readonly string[]).includes(s.kind));
       const table: LootTable = site ? (site.kind === 'sky_island' ? 'sky' : site.kind as LootTable) : lootTableFor(BLOCKS.type(state).key, y);
-      slots = rollLoot(this.seed, x, y, z, table, CHEST_SLOTS);
-      this.found.add(table);
+      // Only a chest that a structure placed has loot: any other (placed by the player, in this world or an old one) is empty.
+      const generated = sitesNear(this.seed, x, z, x, z).some((s) => structureCells(this.seed, s.kind, s.x, s.z, 0).some(([dx, , dz, st]) =>
+        s.x + dx === x && s.z + dz === z && (BLOCKS.type(st) === CHEST || BLOCKS.type(st) === ANCIENT)));
+      slots = generated ? rollLoot(this.seed, x, y, z, table, CHEST_SLOTS) : new Array(CHEST_SLOTS).fill(null);
+      if (generated) this.found.add(table);
       this.chests.set(key, slots);
     }
     return slots;
@@ -804,6 +818,11 @@ export class Play {
     this.version++;
   }
 
+  /** Starts a fire at (x, y, z) if it can burn there. */
+  ignite(x: number, y: number, z: number): void {
+    if (this.world.isLoaded(x, y, z) && canIgnite((a, b, c) => this.world.get(a, b, c), x, y, z)) this.setBlock(x, y, z, FIRE);
+  }
+
   /** The inventory slot of the best arrows carried, or -1. */
   arrowSlot(): number {
     let best = -1, bestDamage = 0;
@@ -853,7 +872,11 @@ export class Play {
       const p = h.p;
       if (p.magic && this.visualEvents.length < 64) this.visualEvents.push({ kind: 'sparks', x: p.x, y: p.y, z: p.z });
       if (h.kind === 'ground') {
-        if (p.fromPlayer && !p.magic && this.mode === 'survival') this.drops.spawn({ state: p.item ? BLOCKS.state(p.item) : ARROW, count: 1 }, p.x, p.y, p.z);
+        // Ember arrows set alight where they land (just in front of what they hit); others can be picked up.
+        if (p.item === 'ember_arrow') {
+          const v = Math.hypot(p.vx, p.vy, p.vz) || 1;
+          this.ignite(Math.floor(p.x - (p.vx / v) * 0.5), Math.floor(p.y - (p.vy / v) * 0.5), Math.floor(p.z - (p.vz / v) * 0.5));
+        } else if (p.fromPlayer && !p.magic && this.mode === 'survival') this.drops.spawn({ state: p.item ? BLOCKS.state(p.item) : ARROW, count: 1 }, p.x, p.y, p.z);
         continue;
       }
       if (!p.fromPlayer) {
@@ -1533,7 +1556,7 @@ export class Play {
       decorations: this.decorations.save(), mode: this.mode, difficulty: this.difficulty, hints: this.hints.save(), inventory: this.inventory.save(), selected: this.inventory.selected, drops: this.drops.save(),
       health: this.survival.health, maxHealth: this.survival.maxHealth, hunger: this.survival.hunger, air: this.survival.air, effects: { ...this.survival.effects }, burning: this.survival.burning, bodyC: this.survival.temperature.coreC, spawn: this.spawn,
       furnaces: [...this.furnaces].map(([k, f]) => [k, s(f.input), s(f.fuel), s(f.output), f.burn, f.progress]),
-      event: this.event, eventKills: this.eventKills, homes: [...this.homes.values()].map((h) => [h.x, h.y, h.z, h.yaw, h.who]), journal: this.journal.save(), seen: [...this.seen], bestiary: [...this.bestiary].map(([k, e]) => [k, e.kills, [...e.drops]]), stats: this.stats, biomesSeen: [...this.biomesSeen], deepestM: this.deepestM, found: [...this.found], beaconLit: this.beaconLit, endingSeen: this.endingSeen, boating: this.boating,
+      event: this.event, eventKills: this.eventKills, wardenHealth: [...this.wardenHealth], homes: [...this.homes.values()].map((h) => [h.x, h.y, h.z, h.yaw, h.who]), journal: this.journal.save(), seen: [...this.seen], bestiary: [...this.bestiary].map(([k, e]) => [k, e.kills, [...e.drops]]), stats: this.stats, biomesSeen: [...this.biomesSeen], deepestM: this.deepestM, found: [...this.found], beaconLit: this.beaconLit, endingSeen: this.endingSeen, boating: this.boating,
       armour: this.armour.map((a) => (a ? [BLOCKS.stateName(a.state), 1, a.wear ?? 0, a.upgrade ?? 0] : null)),
       accessories: this.accessories.map((a) => (a ? [BLOCKS.stateName(a.state), 1] : null)),
       campfires: [...this.campfires].map(([k, c]) => [k, c.map(([st, left]) => [BLOCKS.stateName(st), left])]),
@@ -1560,6 +1583,7 @@ export class Play {
     this.survival.air = num(p.air, this.survival.air);
     this.survival.burning = Math.max(0, num(p.burning, 0));
     if (p.event === 'red_night' || p.event === 'slime_rain') this.event = p.event;
+    if (Array.isArray(p.wardenHealth)) for (const e of p.wardenHealth) if (Array.isArray(e) && typeof e[0] === 'string' && num(e[1], 0) > 0) this.wardenHealth.set(e[0], num(e[1], 0));
     this.eventKills = Math.max(0, Math.floor(num(p.eventKills, 0)));
     if (Array.isArray(p.homes)) for (const h of p.homes) {
       if (!Array.isArray(h) || !h.slice(0, 4).every((v) => typeof v === 'number' && Number.isFinite(v))) continue;

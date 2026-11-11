@@ -161,6 +161,12 @@ export class Player {
       const blend = Math.min(1, 1.5 * dt);
       b.vx += (wx * speed - b.vx) * blend;
       b.vz += (wz * speed - b.vz) * blend;
+      // A current carries the boat along.
+      const flow = afloat ? currentAt(x, feet - 1, z) ?? currentAt(x, feet, z) : null;
+      if (flow) {
+        b.vx += flow[0] * toCells(CURRENT_ACCEL_M_S2) * dt;
+        b.vz += flow[2] * toCells(CURRENT_ACCEL_M_S2) * dt;
+      }
       // The hull rides on the surface: rise while the feet are under water, rest on it, fall when off it.
       if (waterAt(x, feet, z)) b.vy = Math.min(toCells(3), b.vy + toCells(20) * dt);
       else if (afloat) {
