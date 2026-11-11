@@ -66,7 +66,7 @@ export interface UiModel extends WorldsModel {
 /** Placeable blocks and items in the creative palette. */
 const PALETTE = BLOCKS.types.filter((t) => t.layer !== 'none' && !['flowing_water', 'flowing_lava', 'lit_furnace', 'bedrock'].includes(t.key)).flatMap((t) => t.variantFaces ? Array.from({length:t.variants},(_,v)=>t.id+v).filter(s=>t.key!=='leaves'||(s-t.id)%2===0) : [t.id]);
 
-const TIERS = ['wooden', 'stone', 'iron', 'diamond', 'jade'];
+const TIERS = ['wooden', 'stone', 'iron', 'diamond', 'jade', 'emberite'];
 /** Rarity as a shape as well as a colour, for players who cannot tell the colours apart. */
 const RARITY_MARKS = ['', '•', '◆', '★', '✦'];
 

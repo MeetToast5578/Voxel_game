@@ -1,5 +1,5 @@
 import {
-  BOSS_SPECIAL_S, BOSS_WINDUP_S, DIVE_M_S, SLAM_RADIUS_M, WINDUP_S, BREED_COOLDOWN_S, FED_S, FOLLOW_M, GROW_UP_S, ARCHER_AIM_S, ARCHER_FAR_M, ARCHER_NEAR_M, ARCHER_SHOT_S, ATTACK_COOLDOWN_S, ATTACK_REACH_M, BLOCK_SIZE_M, BURN_PER_S, BURN_S, DEPTH_TOUGHNESS_PER_100M, SAFE_LIGHT, CREATURE_CAP, CREATURE_FALL_M, DESPAWN_M, FLEE_M, GRAVITY_M_S2, HOSTILE_CAP, HUNT_M,
+  BOSS_SPECIAL_S, BOSS_WINDUP_S, DEPTHS_TOP_M, DIVE_M_S, SLAM_RADIUS_M, WINDUP_S, BREED_COOLDOWN_S, FED_S, FOLLOW_M, GROW_UP_S, ARCHER_AIM_S, ARCHER_FAR_M, ARCHER_NEAR_M, ARCHER_SHOT_S, ATTACK_COOLDOWN_S, ATTACK_REACH_M, BLOCK_SIZE_M, BURN_PER_S, BURN_S, DEPTH_TOUGHNESS_PER_100M, SAFE_LIGHT, CREATURE_CAP, CREATURE_FALL_M, DESPAWN_M, FLEE_M, GRAVITY_M_S2, HOSTILE_CAP, HUNT_M,
   KNOCKBACK_M_S, RUN_FACTOR, SPAWN_INTERVAL_S, SPAWN_MAX_M, SPAWN_MIN_M, STEP_HEIGHT_M, cells, toCells,
 } from '../config';
 import { columnIndex, localIndex, toChunk, toLocal } from '../core/coords';
@@ -665,7 +665,10 @@ export class Creatures {
     const [sky, block] = this.lightAt(x, y, z);
     if (sky > 0 || block >= SAFE_LIGHT) return;
     const deep = y * BLOCK_SIZE_M < -60;
-    this.spawnGroup(SPECIES.filter((s) => s.hostile && (s.biomes.includes('dark') || s.biomes.includes('cave') || (deep && s.biomes.includes('deep')))), x, y, z, ctx.boxAt);
+    // The Ember Depths have creatures of their own.
+    const depths = y * BLOCK_SIZE_M < DEPTHS_TOP_M;
+    this.spawnGroup(SPECIES.filter((s) => s.hostile && (depths ? s.biomes.includes('depths')
+      : s.biomes.includes('dark') || s.biomes.includes('cave') || (deep && s.biomes.includes('deep')))), x, y, z, ctx.boxAt);
   }
 
   private spawnGroup(options: readonly Species[], x: number, y: number, z: number, boxAt: CreatureContext['boxAt']): void {

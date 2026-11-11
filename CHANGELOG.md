@@ -3,6 +3,18 @@
 The newest version comes first. `npm run check` fails if the version at the top here is not the one in
 `package.json`, so the two are changed together.
 
+## 0.10.0 — 2026-11-11
+
+The Ember Depths (roadmap R4.2, first part).
+
+- Below about 220 m down the rock turns to **basalt**, seamed with glowing **ember stone**. The caverns open wide, with
+  air above and **lakes of lava** below a lava sea at about 250 m down.
+- **Emberite ore**, the new top ore, only in the Depths; only a jade pickaxe digs it. Smelt it into **emberite
+  ingots**.
+- **Emberite gear**, the sixth tier: tools, spear, hammer and armour, the strongest there are. A full emberite set
+  makes you immune to lava and fire, and stops 6% more harm.
+- **Fire Bats** (they set you alight) and Ember Slimes live in the Depths, instead of the usual cave monsters.
+
 ## 0.9.3 — 2026-11-11
 
 A fifth boss (roadmap R3.3, third of three before the Depths).

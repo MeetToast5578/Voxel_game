@@ -417,6 +417,40 @@ const ICONS: Readonly<Record<string, Icon>> = {
     '......y.........',
     '................',
     '................']],
+  ember_stone: [{ d: '#1e1a1c', s: '#2e2a2c', S: '#443c3c', r: '#e04818', y: '#ffa030', Y: '#ffe090' }, [
+    'ssdsssSsssdssrys',
+    'sSssdssssssssyss',
+    'ssryyssSsssdssss',
+    'dsrYyrsssdsssSss',
+    'sssryssssssrysss',
+    'sSssssdsssryYyss',
+    'ssssSsssssyrssds',
+    'sdsssssSssssssss',
+    'ssssryssdssSssss',
+    'sSsyYyrssssssdss',
+    'ssssyrssSsssssss',
+    'dsssssssssryssSs',
+    'ssSssdssssyYrsss',
+    'sssssssssrysssds',
+    'sdssSsssssssSsss',
+    'ssssssdsssssssss']],
+  emberite_ingot: [{ h: '#e8582a', H: '#ffc890', d: '#902a10' }, [
+    '................',
+    '................',
+    '................',
+    '................',
+    '.....HHHHHHH....',
+    '....HHhhhhhhd...',
+    '...Hhhhhhhhddd..',
+    '..hhhhhhhhhdd...',
+    '..hhhhhhhhdd....',
+    '..dddddddddd....',
+    '................',
+    '................',
+    '................',
+    '................',
+    '................',
+    '................']],
   meteorite: [{ d: '#2a2028', s: '#40343c', S: '#5a4a50', r: '#e05020', y: '#ffb040' }, [
     'ssssdssssSssssds',
     'sSssdsryssSsddss',
@@ -690,7 +724,7 @@ const HAMMER = [
   '................'];
 const TIER_COLOURS: Readonly<Record<string, [string, string, string]>> = {
   wooden: ['#a07040', '#c89a60', '#6a4a2a'], stone: ['#8a8a8a', '#c0c0c0', '#5a5a5a'], iron: ['#c8ccd2', '#f4f6f8', '#7a808a'],
-  diamond: ['#4ae0e0', '#c0fffa', '#1a8a90'], jade: ['#3ac070', '#a8f4c8', '#1a7040'],
+  diamond: ['#4ae0e0', '#c0fffa', '#1a8a90'], jade: ['#3ac070', '#a8f4c8', '#1a7040'], emberite: ['#e8582a', '#ffc890', '#902a10'],
 };
 for (const [tier, [h, H, d]] of Object.entries(TIER_COLOURS)) {
   (ICONS as Record<string, Icon>)[`${tier}_spear`] = [{ h, H, d, w: '#8a6040' }, SPEAR];
@@ -810,7 +844,8 @@ const WOOD = { w: '#9a6a3c', W: '#b88452', d: '#6a4424' };
 const hex = (c: string): number[] => [1, 3, 5].map((i) => parseInt(c.slice(i, i + 2), 16)).concat(255);
 
 /** Art made by recolouring other art: [source tile, hue in degrees given to its blue-green gem colours]. */
-const RECOLOURED: readonly [RegExp, (name: string) => string, number][] = [[/^jade(_|$)/, (n) => n.replace(/^jade/, 'diamond'), 138]];
+const RECOLOURED: readonly [RegExp, (name: string) => string, number][] = [[/^jade(_|$)/, (n) => n.replace(/^jade/, 'diamond'), 138],
+  [/^emberite_(?!ingot)/, (n) => n.replace(/^emberite/, 'diamond'), 16]];
 
 /** The source tile a recoloured tile is made from, if it is one. */
 export function recolourSource(name: string): { from: string; hue: number } | undefined {

@@ -26,9 +26,9 @@ const BREWS: readonly [potion: string, a: readonly string[], b: readonly string[
 
 /** Any rock dug from the ground counts as stone for tools and furnaces: many places have granite or basalt, not stone. */
 const ROCK = ['cobblestone', 'granite', 'diorite', 'andesite', 'limestone', 'slate', 'basalt', 'deepslate'];
-const TOOL_HEADS = { wooden: ['planks'], stone: ROCK, iron: ['iron_ingot'], diamond: ['diamond'], jade: ['jade'] } as const;
+const TOOL_HEADS = { wooden: ['planks'], stone: ROCK, iron: ['iron_ingot'], diamond: ['diamond'], jade: ['jade'], emberite: ['emberite_ingot'] } as const;
 const ARMOUR_PATTERNS = [['MMM', 'M M'], ['M M', 'MMM', 'MMM'], ['MMM', 'M M', 'M M'], ['M M', 'M M']] as const;
-const ARMOUR_FROM = { leather: 'leather', iron: 'iron_ingot', diamond: 'diamond', jade: 'jade' } as const;
+const ARMOUR_FROM = { leather: 'leather', iron: 'iron_ingot', diamond: 'diamond', jade: 'jade', emberite: 'emberite_ingot' } as const;
 const TOOL_PATTERNS = { pickaxe: ['MMM', ' S ', ' S '], axe: ['MM', 'MS', ' S'], shovel: ['M', 'S', 'S'], sword: ['M', 'M', 'S'], hoe: ['MM', ' S', ' S'],
   spear: ['  M', ' S ', 'S  '], hammer: ['MMM', 'MSM', ' S '] } as const;
 

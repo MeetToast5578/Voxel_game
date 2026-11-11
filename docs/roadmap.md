@@ -133,7 +133,7 @@ Every task also passes `npm run check`, `npm run benchmark -- --assert` and `npm
   - spider nests with webs that slow you.
 
   **Done when:** seed 1 has each within 300 m of spawn, and each has its creatures.
-- [ ] **R4.2 The Ember Depths (L).** A lava layer below −200 m with:
+- [~] **R4.2 The Ember Depths (L).** 0.10.0: the layer, ember stone, lava lakes, fire bats, emberite and its gear; the Deep Heart remains. A lava layer below −200 m with:
   - basalt and ember stone;
   - lava lakes, and fire bats and magma slimes;
   - a new top ore past jade (**Decide** the name; proposed "Emberite");

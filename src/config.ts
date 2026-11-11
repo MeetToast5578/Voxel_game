@@ -187,6 +187,12 @@ export const AQUIFER_LEVEL_M = -42;
 export const AQUIFER_AMPLITUDE_M = 30;
 export const AQUIFER_SCALE_M = 160;
 export const LAVA_DEPTH_M = -100;
+/**
+ * The Ember Depths: below this the rock turns to basalt seamed with ember stone, caverns open wide, and their lava
+ * pools only below a lava sea (DEPTHS_LAVA_M, varying a few metres), so there is air to explore above it.
+ */
+export const DEPTHS_TOP_M = -220;
+export const DEPTHS_LAVA_M = -250;
 
 // ---- Trees and features ----
 /** Tree anchors per square metre where the biome grows trees. */
@@ -399,7 +405,7 @@ export const AXE_DAMAGE = 3;
 export const TOOL_DAMAGE = 2;
 export const SWORD_DAMAGE = 4;
 /** Extra damage per tool tier (wooden, stone, iron, diamond, jade): the steps grow so each tier is felt. */
-export const TIER_DAMAGE = [0, 1, 3, 6, 9] as const;
+export const TIER_DAMAGE = [0, 1, 3, 6, 9, 13] as const;
 /** Arrows: speed at full draw (m/s), seconds to full draw, damage at full draw; projectiles vanish after PROJECTILE_LIFE_S. */
 export const ARROW_SPEED_M_S = 30;
 export const BOW_DRAW_S = 0.8;

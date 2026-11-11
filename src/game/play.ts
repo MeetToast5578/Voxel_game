@@ -172,6 +172,7 @@ export class Play {
       b.protection += set.protection ?? 0;
       b.crit += set.crit ?? 0;
       b.thorns += set.thorns ?? 0;
+      b.fireproof ||= set.fireproof ?? false;
     }
     for (const s of this.accessories) {
       const a = s && BLOCKS.type(s.state).accessory;

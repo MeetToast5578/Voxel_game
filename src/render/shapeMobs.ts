@@ -144,8 +144,7 @@ function slime(s: Species): Model {
 }
 
 /** A furry body with big ears and two membrane wings that beat fast. */
-function bat(): Model {
-  const fur = 0x5a4640, skin = 0x4a2e30, bone = 0x2a1c1e;
+function bat(fur = 0x5a4640, skin = 0x4a2e30, bone = 0x2a1c1e): Model {
   const wing = (side: number) => joint('wing', [side * 0.12, 0.04, 0], [
     shape(CAPSULE, [side * 0.36, 0, -0.02], [0.04, 0.72, 0.04], bone, [0, 0, Math.PI / 2]),
     ball([side * 0.32, -0.01, 0.1], [0.64, 0.025, 0.3], skin),
@@ -371,6 +370,7 @@ const MODELS: Record<string, Model> = {
     for (const s of [-1, 1]) head.kids.push(joint('arm', [s * 0.14, -0.02, -0.08], [limb(0.16, 0.03, 0x90693a, 0), ball([0, -0.18, 0], [0.12, 0.08, 0.16], 0xd2ae62)], [], { rot: [-1.4, s * 0.4, 0], side: s }));
   }),
   bat: bat(),
+  fire_bat: bat(0x96321a, 0xe06e1e, 0x3c140a),
 };
 for (const s of SPECIES) if (s.hops) MODELS[s.key] = slime(s);
 // The mimic hops like a slime but is a chest: a wooden box with iron bands, its lid open on a row of teeth and a tongue.
