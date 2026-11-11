@@ -116,6 +116,29 @@ describe('telegraphed attacks', () => {
     expect(shots).toContain('stinger');
   });
 
+  it('the Sandmaw burrows, unseen and unharmed, and bursts up beneath the player', async () => {
+    const { burrowed } = await import('../creatures/creatures');
+    const world = plain();
+    let bitten = 0, wasUnder = false;
+    const said: string[] = [];
+    const cs = new Creatures(world, mulberry32(4), { bite: (d) => (bitten += d), sound: () => undefined, boss: (_c, w) => said.push(w) });
+    const worm = cs.add(SPECIES_BY_KEY.get('sandmaw')!, 10, 0, 0.5, 380);
+    worm.special = 0;
+    const c = ctx(world);
+    for (let i = 0; i < 60 * 6 && !said.includes('land'); i++) {
+      cs.update(1 / 60, c);
+      if (burrowed(worm)) {
+        wasUnder = true;
+        expect(cs.damage(worm, 50, 0, 0)).toBe(false);
+        expect(worm.health).toBe(380);
+      }
+    }
+    expect(said.slice(0, 2)).toEqual(['burrow', 'land']);
+    expect(wasUnder).toBe(true);
+    expect(Math.hypot(worm.body.x - 0.5, worm.body.z - 0.5)).toBeLessThan(2);
+    expect(bitten).toBeGreaterThan(0);
+  });
+
   it('every boss has a summon item that is made somewhere, and a treasure bag', async () => {
     const { SPECIES } = await import('../creatures/species');
     const { RECIPES } = await import('../game/crafting');

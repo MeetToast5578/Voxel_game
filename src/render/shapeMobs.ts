@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { ARCHER_AIM_S, ATTACK_COOLDOWN_S, CREATURE_CAP } from '../config';
-import { DEATH_S, type Creature } from '../creatures/creatures';
+import { DEATH_S, burrowed, type Creature } from '../creatures/creatures';
 import { SPECIES, type Species } from '../creatures/species';
 import { attachWorldFog, type WorldFogUniforms } from './worldFog';
 
@@ -186,6 +186,24 @@ function moth(s: Species): Model {
   ], [head, wing(-1, false), wing(1, false), wing(-1, true), wing(1, true)]) };
 }
 
+/** A great worm: a horned head with a round maw of teeth, and a long chain of segments that sway behind it. */
+function worm(s: Species): Model {
+  const c = (v: readonly number[]) => (v[0]! << 16) | (v[1]! << 8) | v[2]!;
+  const hide = c(s.colours.body), dark = c(s.colours.head), tooth = c(s.colours.legs);
+  let tail: Joint | null = null;
+  for (let k = 7; k >= 1; k--) {
+    const r = 0.5 - k * 0.04;
+    tail = joint('tail', [0, -0.02, 0.4], [ball([0, 0, 0.22], [r * 1.1, r * 1.1, 0.55], k % 2 ? hide : dark), ...[-1, 1].map((sd) => cone([sd * r * 0.5, r * 0.5, 0.22], [0.05, 0.14, 0.05], tooth, [0, 0, -sd * 0.5]))],
+      tail ? [tail] : [], { phase: k * 0.5 });
+  }
+  return { plan: 'fish', restDrop: 0, root: joint('root', [0, 0.5, 0], [
+    ball([0, 0, 0], [0.62, 0.62, 0.7], hide),
+    ball([0, 0, -0.32], [0.48, 0.48, 0.12], 0x2a1410),
+    ...[0, 1, 2, 3, 4, 5, 6, 7].map((k) => cone([Math.cos(k * 0.785) * 0.2, Math.sin(k * 0.785) * 0.2, -0.36], [0.05, 0.14, 0.05], tooth, [-Math.PI / 2, 0, k * 0.785])),
+    ...[-1, 1].map((sd) => cone([sd * 0.24, 0.26, -0.1], [0.07, 0.3, 0.07], dark, [-0.5, 0, -sd * 0.5])),
+  ], [tail!]) };
+}
+
 /** A fish: a long body, a beating tail fin, a back fin and eyes. */
 function fish(s: Species): Model {
   const c = (v: readonly number[]) => (v[0]! << 16) | (v[1]! << 8) | v[2]!;
@@ -365,6 +383,7 @@ MODELS.mimic = { plan: 'slime', restDrop: 0, root: joint('root', [0, 0, 0], [
   ...[-1, 1].map((sd) => ball([sd * 0.22, 0.86, -0.08], [0.07, 0.07, 0.05], 0xffd040, undefined, true)),
 ]) };
 for (const m of [MODELS.rabbit]) m!.hop = true;
+MODELS.sandmaw = worm(SPECIES.find((s) => s.key === 'sandmaw')!);
 for (const key of ['gloom_moth', 'gloom_matriarch', 'hornet', 'hive_mother']) MODELS[key] = moth(SPECIES.find((s) => s.key === key)!);
 
 export function hasShapeModel(key: string): boolean { return key in MODELS; }
@@ -507,7 +526,7 @@ export class ShapeMobs {
     const deadAt = new Map(dying.map((d) => [d.c, d.t]));
     for (const c of [...list.slice(0, CREATURE_CAP), ...dying.map((d) => d.c)]) {
       const model = MODELS[c.species.key];
-      if (!model) continue;
+      if (!model || burrowed(c)) continue;
       const b = c.body, h = b.height, speed = Math.hypot(b.vx, b.vz) / Math.max(0.5, c.species.speedM_S / 0.6);
       const t = time + c.id * 1.7, sleeping = c.mode === 'sleep';
       // Attack: 1 just as the bite starts, falling to 0 over 0.4 s.

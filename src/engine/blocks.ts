@@ -261,6 +261,7 @@ const ACCESSORIES: readonly [string, string, Accessory][] = [
   ['storm_charm', 'Storm Charm', { effect: 'Jump once more in mid-air, no fall damage', jumps: 1, featherfall: true }],
   ['scarab_charm', 'Scarab Charm', { effect: '10% faster; stops 6% more harm', speed: 0.1, protection: 2 }],
   ['jungle_idol', 'Jungle Idol', { effect: 'Health returns 50% faster; breath lasts twice as long', regen: 1.5, breath: 2 }],
+  ['dune_cloak', 'Dune Cloak', { effect: 'Double-tap a direction to dash; 10% faster', dash: true, speed: 0.1 }],
   ['hive_charm', 'Hive Charm', { effect: 'Stings and venom never poison you; 10% faster', antivenom: true, speed: 0.1 }],
   ['frost_heart', 'Frost Heart', { effect: 'Stops 9% more harm; health returns 30% faster', protection: 3, regen: 1.3 }],
 ];
@@ -437,6 +438,8 @@ function gameplay(): BlockSpec[] {
     item('moth_lure', 'Moth Lure', { maxStack: 1 }),
     item('frost_shard', 'Frost Shard'),
     item('stinger', 'Stinger'),
+    item('dune_fang', 'Dune Fang'),
+    item('sand_totem', 'Sand Totem', { maxStack: 1 }),
     item('royal_bait', 'Royal Bait', { maxStack: 1 }),
     item('frost_sigil', 'Frost Sigil', { maxStack: 1 }),
     item('spark_wand', 'Spark Wand', { maxStack: 1, spell: { damage: 3.5, mana: 2, cooldown: 0.3, speed: 22 } }),
@@ -482,7 +485,7 @@ function gameplay(): BlockSpec[] {
     ...ACCESSORIES.map(([key, name, accessory]) => item(key, name, { maxStack: 1, accessory })),
     item('glass_bottle', 'Glass Bottle'),
     item('grappling_hook', 'Grappling Hook', { maxStack: 1 }),
-    ...([['king_slime', 'Slime King'], ['gloom_matriarch', 'Gloom Matriarch'], ['warden', 'Ember Warden'], ['frost_colossus', 'Frost Colossus'], ['hive_mother', 'Hive Mother']] as const)
+    ...([['king_slime', 'Slime King'], ['gloom_matriarch', 'Gloom Matriarch'], ['warden', 'Ember Warden'], ['frost_colossus', 'Frost Colossus'], ['hive_mother', 'Hive Mother'], ['sandmaw', 'Sandmaw']] as const)
       .map(([key, name]) => item(`${key}_bag`, `Treasure Bag (${name})`, { maxStack: 8, bag: key })),
     ...POTIONS.map(([key, name, potion]) => item(key, name, { maxStack: 8, potion })),
     item('bucket', 'Bucket', { maxStack: 16 }),

@@ -3,6 +3,16 @@
 The newest version comes first. `npm run check` fails if the version at the top here is not the one in
 `package.json`, so the two are changed together.
 
+## 0.9.3 — 2026-11-11
+
+A fifth boss (roadmap R3.3, third of three before the Depths).
+
+- The **Sandmaw**: a great segmented worm, 380 health, whose bite makes you bleed. Its named attack, **Burrow**: it
+  rears, sinks out of sight (nothing can hurt it underground), tunnels to beneath you and bursts up. Keep moving.
+  Dune Stalkers come to its aid.
+- Summoned with a **Sand Totem**: dune fangs and sand round a gold ingot. Dune Stalkers drop the fangs.
+- Its treasure bag holds the **Dune Cloak** accessory: double-tap to dash, and 10% faster.
+
 ## 0.9.2 — 2026-11-11
 
 A fourth boss (roadmap R3.3, second of three).

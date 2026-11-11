@@ -426,7 +426,21 @@ export class Creatures {
     m.t -= dt;
     const dx = m.aim[0] - b.x, dy = m.aim[1] - b.y, dz = m.aim[2] - b.z, len = Math.hypot(dx, dz) || 1;
     c.yaw = Math.atan2(-dx, -dz);
-    if (m.kind === 'stomp' || m.kind === 'boulder' || m.kind === 'spit') {
+    if (m.kind === 'burrow') {
+      // Rears up, sinks under the ground, tunnels to beneath where the player now stands, and bursts up through them.
+      if (m.t > 0) b.vx = b.vz = 0;
+      else if (m.t > -BURROW_S) {
+        Object.assign(b, { x: b.x + Math.sign(p.x - b.x) * Math.min(Math.abs(p.x - b.x), toCells(8) * dt), z: b.z + Math.sign(p.z - b.z) * Math.min(Math.abs(p.z - b.z), toCells(8) * dt), vx: 0, vy: 0, vz: 0 });
+        m.aim = [b.x, p.y, b.z];
+        return true;
+      } else if (!m.struck) {
+        m.struck = true;
+        Object.assign(b, { y: m.aim[1], vy: toCells(9), vx: 0, vz: 0 });
+        if (Math.hypot(p.x - b.x, p.z - b.z) < toCells(SLAM_RADIUS_M) + b.halfWidth && Math.abs(p.y - b.y) < 1.5) this.events.bite(Math.round(s.attack * 1.5), s.name, s, c);
+        this.events.boss?.(c, 'land');
+      } else if (b.onGround) c.move = undefined;
+      b.vy -= GRAVITY * dt;
+    } else if (m.kind === 'stomp' || m.kind === 'boulder' || m.kind === 'spit') {
       // Planted while it winds up (a flier hangs still), then the stomp shakes the ground round it, or the boulder or
       // venom flies at the player.
       b.vx = b.vz = 0;
@@ -538,6 +552,7 @@ export class Creatures {
 
   /** Hurts a creature, knocking it away from (fromX, fromZ); returns whether it died (and was removed). */
   damage(c: Creature, amount: number, fromX: number, fromZ: number, knock = 1): boolean {
+    if (burrowed(c)) return false;
     c.health -= amount;
     c.hurt = 0.3;
     // Heavy creatures are pushed less.
@@ -709,6 +724,13 @@ export function meatOf(c: Creature): { state: number; count: number } | null {
 }
 
 /** Everything a dead creature leaves: meat, leather from hides, and its own loot. */
+/** Seconds the Sandmaw tunnels underground before it bursts up. */
+const BURROW_S = 1.6;
+/** Under the ground: unseen and unharmed. */
+export function burrowed(c: Creature): boolean {
+  return c.move?.kind === 'burrow' && c.move.t <= 0 && !c.move.struck;
+}
+
 /** What a boss's treasure bag holds when opened: its loot (rare things by chance) and coins. */
 export function bagLoot(s: Species, rand: () => number = Math.random): { state: number; count: number }[] {
   return [...(s.loot ?? []).filter(([, , chance]) => chance === undefined || rand() < chance).map(([key, count]) => ({ state: BLOCKS.state(key), count })),

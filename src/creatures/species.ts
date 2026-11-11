@@ -1,8 +1,8 @@
 type RGB = readonly [number, number, number];
 
 /** How a species lives, with sizes and speeds in meters. Ported from the old game. */
-/** A boss's named attacks: a leap that lands hard, a swooping dive, a ground stomp, a thrown ice boulder, spat venom. */
-export type BossMove = 'slam' | 'dive' | 'stomp' | 'boulder' | 'spit';
+/** A boss's named attacks: a leap that lands hard, a swooping dive, a ground stomp, a thrown ice boulder, spat venom, and a dive underground that bursts up beneath the player. */
+export type BossMove = 'slam' | 'dive' | 'stomp' | 'boulder' | 'spit' | 'burrow';
 
 export interface Species {
   key: string;
@@ -113,7 +113,7 @@ export const SPECIES: readonly Species[] = [
     attack: 8, biomes: [], group: [1, 1], colours: { body: [58, 40, 44], head: [255, 120, 40], legs: [40, 30, 34] }, meat: 0,
     loot: [['ember_crystal', 3], ['diamond', 2], ['life_crystal', 3], ['ember_ring', 1], ['heart_locket', 1, 0.5]], voice: 0.05 },
   { ...BASE, key: 'desert_stalker', name: 'Dune Stalker', halfWidthM:.48, heightM:.8, speedM_S:2.4, health:24, inflicts: ['bleeding', 6, 0.35],
-    hostile:true, nocturnal:true, attack:4, biomes:['desert','badlands'], group:[1,2], meat:0, loot:[['iron_ingot',1],['swift_anklet',1,0.04]],
+    hostile:true, nocturnal:true, attack:4, biomes:['desert','badlands'], group:[1,2], meat:0, loot:[['iron_ingot',1],['dune_fang',1,0.5],['swift_anklet',1,0.04]],
     colours:{body:[186,145,75],head:[210,174,98],legs:[144,106,53]}, voice:.65 },
   { ...BASE, key:'swamp_hollow', name:'Mire Hollow', halfWidthM:.4, heightM:2.1, speedM_S:1.3, health:32, inflicts: ['poisoned', 8, 0.5],
     hostile:true, nocturnal:true, attack:5, biomes:['swamp'], group:[1,2], meat:0, loot:[['moss',3],['bone',1],['gill_pendant',1,0.05]],
@@ -156,6 +156,11 @@ export const SPECIES: readonly Species[] = [
     summon: { item: 'frost_sigil', height: 3, line: 'The Frost Colossus rises from the snow!' },
     attack: 9, biomes: [], group: [1, 1], colours: { body: [170, 205, 230], head: [220, 238, 250], legs: [110, 140, 170] },
     meat: 0, loot: [['frost_shard', 12], ['life_crystal', 2], ['frost_heart', 1], ['iron_band', 1, 0.5], ['diamond', 3], ['gold_ingot', 6]], voice: 0.05 },
+  { ...BASE, key: 'sandmaw', name: 'Sandmaw', halfWidthM: 0.7, heightM: 1.2, speedM_S: 3.2, health: 380, hostile: true, daytime: true,
+    boss: true, moves: ['burrow'], brood: 'desert_stalker', inflicts: ['bleeding', 5, 0.5],
+    summon: { item: 'sand_totem', height: 2, line: 'The ground trembles: the Sandmaw is coming!' },
+    attack: 8, biomes: [], group: [1, 1], colours: { body: [196, 150, 90], head: [120, 80, 50], legs: [240, 220, 180] },
+    meat: 0, loot: [['dune_fang', 10], ['life_crystal', 2], ['dune_cloak', 1], ['gold_ingot', 8], ['diamond', 2]], voice: 0.1 },
   { ...BASE, key: 'hornet', name: 'Jungle Hornet', halfWidthM: 0.25, heightM: 0.45, speedM_S: 3.4, health: 9, hostile: true, daytime: true, flies: true,
     inflicts: ['poisoned', 5, 0.5], attack: 3, biomes: ['tropical_rainforest', 'swamp'], group: [1, 3],
     colours: { body: [230, 180, 40], head: [40, 32, 20], legs: [255, 230, 120] }, meat: 0, loot: [['stinger', 1, 0.6]], voice: 1 },
