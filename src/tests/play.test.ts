@@ -234,6 +234,13 @@ describe('play', () => {
     play.update(0, input, player);
     expect(cs.list.map((c) => c.species.key)).toEqual(['king_slime']);
     expect(play.inventory.slots[0]).toBeNull();
+    // The Heart of Embers only stirs in the Ember Depths: on the surface it stays in hand.
+    cs.list.length = 0;
+    play.inventory.slots[0] = { state: S('heart_of_embers'), count: 1 };
+    press('place');
+    play.update(0, input, player);
+    expect(cs.list).toHaveLength(0);
+    expect(play.inventory.slots[0]).not.toBeNull();
   });
 
   it('cooks raw food on a campfire, and gives it back raw if the fire goes', () => {

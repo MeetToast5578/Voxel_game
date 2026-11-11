@@ -245,7 +245,7 @@ const urlDifficulty = params.get('difficulty');
 if (urlDifficulty && urlDifficulty in DIFFICULTY) play.difficulty = urlDifficulty as Difficulty;
 let lastBite = -Infinity;
 /** What a boss's named attacks are called on screen, with the way to dodge. */
-const BOSS_CALLS = { slam: 'Slam! Jump or step away', dive: 'Dive! Step aside', stomp: 'Stomp! Step back', boulder: 'Boulder! Dodge it', spit: 'Venom! Dodge it', burrow: 'It burrows! Keep moving' } as const;
+const BOSS_CALLS = { slam: 'Slam! Jump or step away', dive: 'Dive! Step aside', stomp: 'Stomp! Step back', boulder: 'Boulder! Dodge it', spit: 'Venom! Dodge it', burrow: 'It burrows! Keep moving', flame: 'Ember bolt! Dodge it' } as const;
 const creatures = new Creatures(world, mulberry32(seed ^ 0xc0ffee), {
   bite: (damage, by, species, biter) => {
     // A moment of safety after each bite, so a crowd cannot take the player down all at once.

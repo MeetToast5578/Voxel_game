@@ -3,6 +3,17 @@
 The newest version comes first. `npm run check` fails if the version at the top here is not the one in
 `package.json`, so the two are changed together.
 
+## 0.10.1 — 2026-11-11
+
+The final boss (roadmap R4.2, R3.3).
+
+- **The Deep Heart**: a floating heart of molten rock, 540 health, that sets you alight. Its named attacks: **Ember
+  bolt** (dodge it, or wear something fireproof) and **Dive**. Fire Bats come to its aid.
+- Summoned with the **Heart of Embers** (emberite ingots and ember crystals round a life crystal). It only stirs in
+  the Ember Depths.
+- Its treasure bag holds the **Deep Core** accessory: lava and fire do not burn you, health returns twice as fast,
+  and it stops 9% more harm.
+
 ## 0.10.0 — 2026-11-11
 
 The Ember Depths (roadmap R4.2, first part).

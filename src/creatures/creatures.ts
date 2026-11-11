@@ -440,12 +440,12 @@ export class Creatures {
         this.events.boss?.(c, 'land');
       } else if (b.onGround) c.move = undefined;
       b.vy -= GRAVITY * dt;
-    } else if (m.kind === 'stomp' || m.kind === 'boulder' || m.kind === 'spit') {
+    } else if (m.kind === 'stomp' || m.kind === 'boulder' || m.kind === 'spit' || m.kind === 'flame') {
       // Planted while it winds up (a flier hangs still), then the stomp shakes the ground round it, or the boulder or
       // venom flies at the player.
       b.vx = b.vz = 0;
       if (m.t <= 0) {
-        if (m.kind !== 'stomp') this.events.shoot?.(c, b.x, b.y + b.height * 0.5, b.z, m.kind === 'boulder' ? 'ice' : 'stinger');
+        if (m.kind !== 'stomp') this.events.shoot?.(c, b.x, b.y + b.height * 0.5, b.z, m.kind === 'boulder' ? 'ice' : m.kind === 'spit' ? 'stinger' : 'ember_crystal');
         else {
           if (Math.hypot(p.x - b.x, p.z - b.z) < toCells(SLAM_RADIUS_M * 1.4) + b.halfWidth && Math.abs(p.y - b.y) < 1) this.events.bite(s.attack, s.name, s, c);
           this.events.boss?.(c, 'land');

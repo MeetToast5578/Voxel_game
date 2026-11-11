@@ -139,6 +139,18 @@ describe('telegraphed attacks', () => {
     expect(bitten).toBeGreaterThan(0);
   });
 
+  it('the Deep Heart hurls ember bolts and dives', () => {
+    const world = plain();
+    const said: string[] = [], shots: (string | undefined)[] = [];
+    const cs = new Creatures(world, mulberry32(11), { bite: () => undefined, sound: () => undefined, boss: (_c, w) => said.push(w),
+      shoot: (_c, _x, _y, _z, item) => shots.push(item) });
+    cs.add(SPECIES_BY_KEY.get('deep_heart')!, 6, 3, 0.5, 540);
+    const c = ctx(world);
+    for (let i = 0; i < 60 * 60 && !(said.includes('flame') && said.includes('dive') && shots.length); i++) cs.update(1 / 60, c);
+    expect(said).toContain('flame');
+    expect(shots).toContain('ember_crystal');
+  });
+
   it('every boss has a summon item that is made somewhere, and a treasure bag', async () => {
     const { SPECIES } = await import('../creatures/species');
     const { RECIPES } = await import('../game/crafting');

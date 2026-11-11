@@ -1,8 +1,8 @@
 type RGB = readonly [number, number, number];
 
 /** How a species lives, with sizes and speeds in meters. Ported from the old game. */
-/** A boss's named attacks: a leap that lands hard, a swooping dive, a ground stomp, a thrown ice boulder, spat venom, and a dive underground that bursts up beneath the player. */
-export type BossMove = 'slam' | 'dive' | 'stomp' | 'boulder' | 'spit' | 'burrow';
+/** A boss's named attacks: a leap that lands hard, a swooping dive, a ground stomp, a thrown ice boulder, spat venom, a dive underground that bursts up beneath the player, and a burning ember bolt. */
+export type BossMove = 'slam' | 'dive' | 'stomp' | 'boulder' | 'spit' | 'burrow' | 'flame';
 
 export interface Species {
   key: string;
@@ -61,7 +61,7 @@ export interface Species {
   brood?: string;
   /** A boss: the item that calls it, whether it only comes at night, how high above the player it arrives, and the
    * line announcing it. */
-  summon?: { readonly item: string; readonly night?: boolean; readonly height: number; readonly line: string };
+  summon?: { readonly item: string; readonly night?: boolean; readonly depths?: boolean; readonly height: number; readonly line: string };
   /** Lives in a village house: stays near home by day and sleeps in its bed at night. Never spawns on its own. */
   villager?: boolean;
   /** Which shop list a trader offers (see workshops.ts); the general list when unset. */
@@ -161,6 +161,11 @@ export const SPECIES: readonly Species[] = [
     summon: { item: 'sand_totem', height: 2, line: 'The ground trembles: the Sandmaw is coming!' },
     attack: 8, biomes: [], group: [1, 1], colours: { body: [196, 150, 90], head: [120, 80, 50], legs: [240, 220, 180] },
     meat: 0, loot: [['dune_fang', 10], ['life_crystal', 2], ['dune_cloak', 1], ['gold_ingot', 8], ['diamond', 2]], voice: 0.1 },
+  { ...BASE, key: 'deep_heart', name: 'The Deep Heart', halfWidthM: 1.1, heightM: 2.2, speedM_S: 2.2, health: 540, hostile: true, daytime: true, flies: true,
+    fireproof: true, boss: true, moves: ['flame', 'dive', 'flame'], brood: 'fire_bat', inflicts: ['burning', 4, 0.7],
+    summon: { item: 'heart_of_embers', depths: true, height: 6, line: 'The Deep Heart wakes, and the Depths burn brighter!' },
+    attack: 11, biomes: [], group: [1, 1], colours: { body: [220, 60, 30], head: [96, 70, 64], legs: [255, 190, 80] },
+    meat: 0, loot: [['emberite_ingot', 8], ['life_crystal', 3], ['deep_core', 1], ['ember_crystal', 10], ['diamond', 4]], voice: 0.02 },
   { ...BASE, key: 'hornet', name: 'Jungle Hornet', halfWidthM: 0.25, heightM: 0.45, speedM_S: 3.4, health: 9, hostile: true, daytime: true, flies: true,
     inflicts: ['poisoned', 5, 0.5], attack: 3, biomes: ['tropical_rainforest', 'swamp'], group: [1, 3],
     colours: { body: [230, 180, 40], head: [40, 32, 20], legs: [255, 230, 120] }, meat: 0, loot: [['stinger', 1, 0.6]], voice: 1 },

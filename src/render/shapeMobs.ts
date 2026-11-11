@@ -185,6 +185,18 @@ function moth(s: Species): Model {
   ], [head, wing(-1, false), wing(1, false), wing(-1, true), wing(1, true)]) };
 }
 
+/** A floating heart of molten rock: a glowing core in cracked plates, with spikes and burning veins. */
+function heart(s: Species): Model {
+  const c = (v: readonly number[]) => (v[0]! << 16) | (v[1]! << 8) | v[2]!;
+  const core = c(s.colours.body), rock = c(s.colours.head), glow = c(s.colours.legs);
+  const plates = [0, 1, 2, 3, 4, 5].map((k) => box([Math.cos(k * 1.05) * 0.33, Math.sin(k * 2.1) * 0.18, Math.sin(k * 1.05) * 0.33], [0.16, 0.2, 0.08], rock, [k * 0.5, -k * 1.05 + Math.PI / 2, k * 0.3]));
+  const spikes = [0, 1, 2, 3, 4, 5, 6, 7].map((k) => cone([Math.cos(k * 0.785) * 0.42, (k % 2) * 0.2 - 0.1, Math.sin(k * 0.785) * 0.42], [0.08, 0.3, 0.08], rock, [Math.sin(k * 0.785) * 1.4, 0, -Math.cos(k * 0.785) * 1.4]));
+  return { plan: 'bat', restDrop: 0, root: joint('root', [0, 0.55, 0], [
+    ball([0, 0, 0], [0.62, 0.7, 0.62], core, undefined, true), ball([0, 0.05, -0.12], [0.3, 0.3, 0.42], glow, undefined, true), ...plates, ...spikes,
+    ...[-1, 1].map((sd) => ball([sd * 0.12, 0.12, -0.3], [0.1, 0.1, 0.05], 0xfff0a0, undefined, true)),
+  ]) };
+}
+
 /** A great worm: a horned head with a round maw of teeth, and a long chain of segments that sway behind it. */
 function worm(s: Species): Model {
   const c = (v: readonly number[]) => (v[0]! << 16) | (v[1]! << 8) | v[2]!;
@@ -384,6 +396,7 @@ MODELS.mimic = { plan: 'slime', restDrop: 0, root: joint('root', [0, 0, 0], [
 ]) };
 for (const m of [MODELS.rabbit]) m!.hop = true;
 MODELS.sandmaw = worm(SPECIES.find((s) => s.key === 'sandmaw')!);
+MODELS.deep_heart = heart(SPECIES.find((s) => s.key === 'deep_heart')!);
 for (const key of ['gloom_moth', 'gloom_matriarch', 'hornet', 'hive_mother']) MODELS[key] = moth(SPECIES.find((s) => s.key === key)!);
 
 export function hasShapeModel(key: string): boolean { return key in MODELS; }

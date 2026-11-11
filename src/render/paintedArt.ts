@@ -77,6 +77,40 @@ const ICONS: Readonly<Record<string, Icon>> = {
     '................',
     '................',
     '................']],
+  heart_of_embers: [{ r: '#c02818', R: '#ff6a30', y: '#ffd060', d: '#5a1a10', i: '#e8582a', ...GOLD }, [
+    '................',
+    '................',
+    '...dd....dd.....',
+    '..dRRd..dRRd....',
+    '.dRyRRddRRRrd...',
+    '.dRyyRRRRRRrd...',
+    '.dRRyRRRRRrrd...',
+    '.drRRRRRRRrrd...',
+    '..drRRRRRrrd....',
+    '...drRRRrrd.....',
+    '....drRrrd......',
+    '.....drrd.......',
+    '......dd........',
+    '................',
+    '................',
+    '................']],
+  deep_core: [{ r: '#c02818', R: '#ff6a30', y: '#ffe090', d: '#2e2224', s: '#4a3c3c' }, [
+    '................',
+    '......ssss......',
+    '....ssddddss....',
+    '...sddrrrrdds...',
+    '..sddrRRRRrdds..',
+    '..sdrRRyyRRrds..',
+    '.sdrRRyyyyRRrds.',
+    '.sdrRyyyyyyRrds.',
+    '.sdrRRyyyyRRrds.',
+    '..sdrRRyyRRrds..',
+    '..sddrRRRRrdds..',
+    '...sddrrrrdds...',
+    '....ssddddss....',
+    '......ssss......',
+    '................',
+    '................']],
   dune_fang: [{ w: '#f4ead0', W: '#ffffff', d: '#b8a070', r: '#8a5a30' }, [
     '................',
     '................',
@@ -685,7 +719,7 @@ const BAG = [
   '................',
   '................'];
 for (const [key, B, b, t] of [['king_slime_bag', '#4a8ae0', '#2a5ab8', '#e8b84a'], ['gloom_matriarch_bag', '#8a70b0', '#5a4880', '#e8ff90'],
-  ['warden_bag', '#c04a20', '#7a2a10', '#ffb050'], ['frost_colossus_bag', '#7ab8e0', '#3a6a98', '#e8f6ff'], ['hive_mother_bag', '#e0a828', '#8a5a10', '#3a2a14'], ['sandmaw_bag', '#d0a060', '#8a6030', '#f4e8c8']] as const) (ICONS as Record<string, Icon>)[key] = [{ B, b, t, ...GOLD }, BAG];
+  ['warden_bag', '#c04a20', '#7a2a10', '#ffb050'], ['frost_colossus_bag', '#7ab8e0', '#3a6a98', '#e8f6ff'], ['hive_mother_bag', '#e0a828', '#8a5a10', '#3a2a14'], ['sandmaw_bag', '#d0a060', '#8a6030', '#f4e8c8'], ['deep_heart_bag', '#c03020', '#601810', '#ffb040']] as const) (ICONS as Record<string, Icon>)[key] = [{ B, b, t, ...GOLD }, BAG];
 
 /** Spears and hammers in every tier: one picture each, its head in the tier's colours (h, H shine, d shade). */
 const SPEAR = [
