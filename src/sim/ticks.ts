@@ -6,6 +6,7 @@ export const enum TickKind {
   Fall = 1,
   Support = 2,
   Decay = 3,
+  Fire = 4,
 }
 
 export interface Tick {

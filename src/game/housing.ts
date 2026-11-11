@@ -4,7 +4,7 @@ import { COLLISION } from './collision';
 /** A room is a home with at least this many open cells inside, and at most this many (more means it is not closed). */
 export const MIN_ROOM_CELLS = 24;
 export const MAX_ROOM_CELLS = 600;
-const TABLES = new Set(['crafting_table', 'alchemy_table']);
+const TABLES = new Set(['crafting_table', 'alchemy_table', 'wooden_table']);
 
 export interface RoomCheck { ok: boolean; cells: number; missing: string[] }
 

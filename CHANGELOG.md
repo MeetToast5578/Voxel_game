@@ -3,6 +3,91 @@
 The newest version comes first. `npm run check` fails if the version at the top here is not the one in
 `package.json`, so the two are changed together.
 
+## 0.8.5 — 2026-11-11
+
+Easier to play, and something from the sky (roadmap R8.6, R8.7, R4.10).
+
+- Accessibility settings: subtitles for sounds (with the direction of creature calls), reduce motion (no view kick and
+  softer hurt flashes), and sprint and crouch that toggle on a press. Item rarity shows as a mark (• ◆ ★ ✦) as well as
+  a colour.
+- The first-steps hints go on further: torches, a furnace and iron, and building a first home.
+- Meteors: once you have beaten a boss, a meteor sometimes falls at night 40–80 cells away. Its crater holds meteorite,
+  hot to stand on, that only an iron pickaxe or better digs; the compass points to it. Meteor shards make the Star
+  Staff (12 damage bolts) or sell to the merchant.
+
+## 0.8.4 — 2026-11-11
+
+Comfort and choices (roadmap R8.4, R6.3, R4.6, R6.5, R6.7).
+
+- Chests: Take all, Deposit all (the whole backpack), Sort, and a name for each chest. Quick stack (in the inventory)
+  puts backpack items into every chest within six cells that already holds that kind of item.
+- Weapon modifiers: swords, axes, spears and hammers come out of crafting and chests with one — Keen (+10% crit),
+  Heavy (more knockback), Swift (faster swings), Mighty (+15% damage) or, sometimes, Dull (−15%). The ember forge
+  reforges a weapon for 5 coins. The modifier shows in the name and the tooltip.
+- Waystones stand by cabins and towers. Touch one to wake it; at any woken waystone, travel to another for 2 coins.
+- Markers: pin a spot by name from the pause menu (Journey); the compass points to the latest marker.
+- A flower or a tuft of grass in front of a villager or an animal no longer stops trading with or feeding it.
+- Glider Wings (found on sky islands): hold jump while falling to glide slowly and fast. Rocket Boots (leather boots,
+  two ember crystals and gold): with your jumps spent, hold jump to climb for a moment. The Storm Charm combines the
+  Cloud and Featherfall Charms.
+- Pets: feed a wolf a bone and it follows you, fights monsters near you, catches up if left behind, and stays with
+  you across saves. Your swings pass it by.
+
+## 0.8.3 — 2026-11-11
+
+Towns with something to say, and worlds that get harder (roadmap R5.3, R5.4, R5.5, R7.5, R7.6).
+
+- Townsfolk talk: each says something fitting for their trade, the night, the rain or a red night, shown when you
+  trade with them.
+- Tasks: every townsperson has tasks, one after another: bring wheat, iron, gel, logs, gold, mushrooms or poppies;
+  defeat zombies, skeletons, gloom moths, slimes or a mimic. Accept them in the trade screen, follow them in the
+  journal, and hand them in for coins and goods (Dash Boots, a Featherfall Charm, a Life Crystal...).
+- Furniture: chairs (facing you as placed), tables and candles (string over gel). A table counts for a home.
+- Nights grow harder as a world ages: 2.5% more monsters per day, up to 60% more.
+- Hardcore (one life): pick it for a new world; dying deletes the world. Its difficulty cannot be changed in the menu.
+
+## 0.8.2 — 2026-11-11
+
+A world that keeps going (roadmap R4.7, R4.8, R4.9; tasks 12.2, 12.3, 12.5–12.7).
+
+- Fire: a flame block that spreads to wood, leaves, plants, wool and beds (never chests), licks through the air to
+  the next thing that burns, creeps over grass leaving dirt, and burns out by itself. Rain from open sky and water
+  beside it put it out. Lightning, moving lava and ember arrows start fires; standing in one sets you burning.
+- Generated rivers flow: their water carries swimmers and boats downstream.
+- Saplings grow into trees while their chunk is unloaded, as crops already did.
+- The Ember Warden keeps its wounds: hurt it, leave, come back, and it is as hurt as before.
+- Only chests that a structure placed hold loot; any other chest, also one placed in an old world, opens empty.
+
+## 0.8.1 — 2026-11-11
+
+A fuller combat kit (roadmap R2.5, R2.6, R2.8, R8.3).
+
+- Spears and hammers in every tier (wood to jade). A spear reaches 60% further in a narrow thrust; a hammer hits
+  hardest and knocks furthest but recovers slowly. Spear: a head on two sticks, diagonal; hammer: a head of three over
+  two, on a stick.
+- Throwing Knives (an iron ingot over a stick makes six): right click throws one. The Boomerang (three planks): right
+  click throws it and it flies back to your hand.
+- Arrows by kind: iron (+50%), ember (+30%, sets the target alight) and jade (double damage), each made from arrows and
+  the material. The bow shoots the best arrows you carry, and the HUD counts them while it is held.
+- Dash Boots (leather and feathers): double-tap a direction to dash, with a moment no bite can land.
+- Dying no longer scatters everything: half the coins you carry drop where you fell, and you keep the rest. The death
+  screen says how many.
+
+## 0.8.0 — 2026-11-11
+
+Places worth finding (roadmap R4.3, R4.4, R4.5, R3.1).
+
+- Sky islands float 130 m up, about two per square kilometre: grassy discs on rocky undersides, each with a glass hut
+  and a chest of sky treasure (always a Featherfall Charm; cloud charms, Life Crystals, gold). Reach them with a
+  grappling hook, by building up, or with a double jump and a glide.
+- Desert pyramids (in deserts and badlands) and overgrown temples (in rainforests, swamps and deep forests) each hold
+  a chest with something found nowhere else: the Scarab Charm (10% faster, 6% more harm stopped) and the Jungle Idol
+  (faster healing, longer breath).
+- Mimics: some chests in vaults, pyramids and temples jump up as a monster when first opened. A mimic hits hard and
+  drops gold and good accessories.
+- Boss altars: round slate floors ringed by torch-lit pillars. A boss summoned on an altar leaves two treasure bags.
+- Trees keep clear of altars, pyramids and temples. The creature gallery shows all 31 creatures.
+
 ## 0.7.6 — 2026-11-10
 
 Events and boss rewards (roadmap R3.2, R3.4).

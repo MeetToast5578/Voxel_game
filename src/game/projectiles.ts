@@ -16,6 +16,8 @@ export interface Projectile {
   age: number;
   /** A magic bolt: flies straight, and leaves nothing where it lands. */
   magic?: boolean;
+  /** The item it was (an arrow kind, a knife, the boomerang): what lands, and how it behaves. */
+  item?: string;
   /** The name of the creature that shot it, for the death message. */
   by?: string;
 }

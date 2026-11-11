@@ -1,7 +1,7 @@
 import {
   BLOCK_SIZE_M, CHUNK_SIZE, FALL_DELAY_S, GRASS_MIN_LIGHT, LAVA_FLOW_M_S, LEAF_REACH_M, MAX_TICKS_PER_STEP,
   REGROW_CHANCE, CROP_GROW_CHANCE, ICE_FREEZE_CHANCE, ICE_THAW_CHANCE, SAPLING_GROW_CHANCE, RANDOM_TICKS_PER_CHUNK, SIM_HZ, SIM_RADIUS_CHUNKS, SNOW_MELT_CHANCE,
-  SNOW_SETTLE_CHANCE, WATER_FLOW_M_S, WEATHER_TICKS_PER_COLUMN, cells,
+  SNOW_SETTLE_CHANCE, WATER_FLOW_M_S, WEATHER_TICKS_PER_COLUMN, cells, FIRE_AGES, FIRE_SPREAD_CHANCE, FIRE_TICK_S
 } from '../config';
 import { localIndex, toChunk, toLocal } from '../core/coords';
 import type { Chunk } from '../engine/chunk';
@@ -26,6 +26,23 @@ const flowDelay = (speed: number) => Math.max(1, Math.round((BLOCK_SIZE_M / spee
 const WATER: Fluid = { source: S('water'), flowing: S('flowing_water'), delay: flowDelay(WATER_FLOW_M_S), drop: 1 };
 const LAVA: Fluid = { source: S('lava'), flowing: S('flowing_lava'), delay: flowDelay(LAVA_FLOW_M_S), drop: 2 };
 const FALLING_FLAG = FLUID_LEVELS;
+/** Fire, by age (its variant), and what it burns: wood, leaves, plants and wool; not chests or other blocks with contents. */
+export const FIRE = S('fire');
+export const isFire = (s: number) => s >= FIRE && s < FIRE + FIRE_AGES;
+const KEEPS = new Set(['chest', 'ancient_chest', 'trading_post', 'sign', 'item_frame', 'fire']);
+export const BURNS = new Uint8Array(BLOCKS.stateCount);
+/** Whether a fire can start at (x, y, z): open air on something solid, or beside something that burns. */
+export function canIgnite(get: (x: number, y: number, z: number) => number, x: number, y: number, z: number): boolean {
+  if (get(x, y, z) !== AIR) return false;
+  if ((FLAGS[get(x, y - 1, z)]! & SOLID) !== 0) return true;
+  for (let d = 0; d < 6; d++) if (BURNS[get(x + DX[d]!, y + DY[d]!, z + DZ[d]!)]) return true;
+  return false;
+}
+for (const t of BLOCKS.types) {
+  if (KEEPS.has(t.key) || t.item) continue;
+  const plant = t.shape === 'cross' && !!t.needsSupport && !t.flows;
+  if (t.mineWith === 'axe' || plant || ['leaves', 'wool', 'bed'].includes(t.key)) for (let v = 0; v < t.variants; v++) BURNS[t.id + v] = 1;
+}
 
 /** Fluid of a state, or null. */
 function fluidOf(state: number): Fluid | null {
@@ -123,25 +140,66 @@ export class Simulation {
     if (f) this.ticks.schedule(x, y, z, TickKind.Flow, f.delay);
     else if (SAND.has(s)) this.ticks.schedule(x, y, z, TickKind.Fall, FALL_DELAY_S * SIM_HZ);
     else if (NEEDS_SUPPORT[s]) this.ticks.schedule(x, y, z, TickKind.Support, 1);
+    else if (isFire(s)) this.ticks.schedule(x, y, z, TickKind.Fire, Math.round((FIRE_TICK_S[0] + this.rand() * (FIRE_TICK_S[1] - FIRE_TICK_S[0])) * SIM_HZ));
+  }
+
+  private touchesFuel(x: number, y: number, z: number): boolean {
+    for (let d = 0; d < 6; d++) if (BURNS[this.world.get(x + DX[d]!, y + DY[d]!, z + DZ[d]!)]) return true;
+    return false;
+  }
+
+  /**
+   * A fire's tick: water beside it or rain from open sky puts it out; otherwise each burnable neighbour may catch,
+   * it may creep over the grass beside it (leaving dirt), and it grows older, burning out at the last age or once
+   * nothing holds it up.
+   */
+  private fire(x: number, y: number, z: number): void {
+    const s = this.world.get(x, y, z);
+    if (!isFire(s)) return;
+    let wet = this.weather?.precipitation === 'rain' && (this.world.column(x >> 4, z >> 4)?.skyTop[((z & 15) << 4) | (x & 15)] ?? Infinity) <= y;
+    for (let d = 0; d < 6 && !wet; d++) wet = fluidOf(this.world.get(x + DX[d]!, y + DY[d]!, z + DZ[d]!)) === WATER;
+    if (wet) {
+      this.setBlock(x, y, z, AIR);
+      return;
+    }
+    for (let d = 0; d < 6; d++) {
+      const nx = x + DX[d]!, ny = y + DY[d]!, nz = z + DZ[d]!, n = this.world.get(nx, ny, nz);
+      if (BURNS[n] && this.rand() < FIRE_SPREAD_CHANCE) this.setBlock(nx, ny, nz, FIRE);
+      // Flames also lick through the air to the next thing that burns.
+      else if (n === AIR && this.rand() < FIRE_SPREAD_CHANCE && this.touchesFuel(nx, ny, nz)) this.setBlock(nx, ny, nz, FIRE);
+      else if (n === AIR && DY[d] === 0 && this.world.get(nx, ny - 1, nz) === GRASS && this.rand() < FIRE_SPREAD_CHANCE / 2) {
+        this.setBlock(nx, ny - 1, nz, DIRT);
+        this.setBlock(nx, ny, nz, FIRE);
+      }
+    }
+    const held = (FLAGS[this.world.get(x, y - 1, z)]! & SOLID) !== 0 || this.touchesFuel(x, y, z);
+    const age = s - FIRE + 1;
+    this.setBlock(x, y, z, age >= FIRE_AGES || !held ? AIR : FIRE + age);
   }
 
   /** A chunk unloads: if crops grow in it, remember when. */
   parkGrowth(chunk: Chunk): void {
-    if (chunk.states.some((s) => CROP[s])) this.parkedCrops.set(chunk.key, this.ticks.now);
+    if (chunk.states.some((s) => CROP[s] || BLOCKS.typeIndex[s] === SAPLING_TYPE)) this.parkedCrops.set(chunk.key, this.ticks.now);
   }
 
   /**
    * A chunk loads again: its crops grow the stages they would have grown meanwhile, on average (as random ticks would
-   * with light; shortcut: light and water are not checked, and saplings wait until loaded).
+   * with light), and saplings become trees as often as they would have (shortcut: light and water are not checked).
    */
   catchUp(chunk: Chunk): void {
     const parked = this.parkedCrops.get(chunk.key);
     if (parked === undefined) return;
     this.parkedCrops.delete(chunk.key);
-    const expected = ((this.ticks.now - parked) * RANDOM_TICKS_PER_CHUNK * CROP_GROW_CHANCE) / 4096;
+    const ticks = ((this.ticks.now - parked) * RANDOM_TICKS_PER_CHUNK) / 4096, expected = ticks * CROP_GROW_CHANCE;
     if (expected <= 0) return;
+    // A sapling has grown by now with the chance that one of its random ticks grew it.
+    const treeChance = 1 - Math.exp(-ticks * SAPLING_GROW_CHANCE);
     for (let i = 0; i < 4096; i++) {
       const s = chunk.get(i);
+      if (BLOCKS.typeIndex[s] === SAPLING_TYPE) {
+        if (this.rand() < treeChance) this.growTree(chunk.cx * CHUNK_SIZE + (i & 15), chunk.cy * CHUNK_SIZE + (i >> 8), chunk.cz * CHUNK_SIZE + ((i >> 4) & 15), s);
+        continue;
+      }
       if (!CROP[s]) continue;
       const t = BLOCKS.type(s), stages = Math.floor(expected + this.rand());
       if (stages <= 0) continue;
@@ -171,6 +229,7 @@ export class Simulation {
       if (t.kind === TickKind.Flow) this.flow(t.x, t.y, t.z);
       else if (t.kind === TickKind.Fall) this.fall(t.x, t.y, t.z);
       else if (t.kind === TickKind.Decay) { if (naturalLeaf(this.world.get(t.x, t.y, t.z))) this.leaves(t.x, t.y, t.z); }
+      else if (t.kind === TickKind.Fire) this.fire(t.x, t.y, t.z);
       else this.support(t.x, t.y, t.z);
     }
     this.randomTicks(toChunk(Math.floor(px)), toChunk(Math.floor(pz)));
@@ -217,6 +276,8 @@ export class Simulation {
     let s = this.world.get(x, y, z);
     const f = fluidOf(s);
     if (!f) return;
+    // Moving lava sets burnable things beside it alight.
+    if (f === LAVA) for (let d = 0; d < 6; d++) if (DY[d] === 0 && BURNS[this.world.get(x + DX[d]!, y, z + DZ[d]!)] && this.rand() < 0.3) this.setBlock(x + DX[d]!, y, z + DZ[d]!, FIRE);
     if (s !== f.source) {
       // A flowing cell takes the strongest supply around it, or dries up.
       let target: number;

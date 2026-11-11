@@ -229,3 +229,49 @@ describe('species-specific leaves',()=>{
     expect(world.get(1,0,0)).toBe(0);expect(world.get(2,0,0)).toBe(S('leaves',11));
   });
 });
+
+describe('fire', () => {
+  /** A 5×4×5 hut of planks on stone, with a log post: everything in it burns. */
+  const hut = (world: World) => {
+    let wood = 0;
+    for (let x = 0; x < 5; x++) for (let z = 0; z < 5; z++) for (let y = 0; y < 4; y++) {
+      if (x === 0 || x === 4 || z === 0 || z === 4 || y === 3) { world.set(x, y, z, S('planks')); wood++; }
+    }
+    return wood;
+  };
+  const woodLeft = (world: World) => {
+    let n = 0;
+    for (let x = 0; x < 5; x++) for (let z = 0; z < 5; z++) for (let y = 0; y < 4; y++) if (BLOCKS.type(world.get(x, y, z)).key === 'planks') n++;
+    return n;
+  };
+  const fires = (world: World) => {
+    let n = 0;
+    for (let x = -4; x < 9; x++) for (let z = -4; z < 9; z++) for (let y = -1; y < 6; y++) if (BLOCKS.type(world.get(x, y, z)).key === 'fire') n++;
+    return n;
+  };
+
+  it('burns a wooden hut down and goes out by itself', async () => {
+    const { canIgnite } = await import('../sim/simulation');
+    const { world, setBlock, run } = setup();
+    const wood = hut(world);
+    expect(canIgnite((x, y, z) => world.get(x, y, z), 2, 0, 2)).toBe(true);
+    setBlock(2, 0, 2, S('fire'));
+    run(20 * 120);
+    expect(woodLeft(world)).toBeLessThan(wood / 4);
+    expect(fires(world)).toBe(0);
+  });
+
+  it('is put out by rain from open sky and by water beside it', () => {
+    const { world, sim, setBlock, run } = setup();
+    world.column(0, 0)!.skyTop.fill(-1);
+    sim.weather = { precipitation: 'rain', seasonC: 0 };
+    setBlock(3, 0, 3, S('fire'));
+    run(20 * 3);
+    expect(BLOCKS.type(world.get(3, 0, 3)).key).not.toBe('fire');
+    sim.weather = null;
+    setBlock(6, 0, 6, S('water'));
+    setBlock(7, 0, 6, S('fire'));
+    run(20 * 3);
+    expect(BLOCKS.type(world.get(7, 0, 6)).key).not.toBe('fire');
+  });
+});

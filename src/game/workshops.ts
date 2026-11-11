@@ -1,8 +1,8 @@
 import { BLOCKS } from '../engine/blocks';
 import { Inventory, type ItemStack } from './inventory';
 
-export type WorkshopKind = 'trade' | 'forge' | 'sign' | 'frame';
-export const WORKSHOP_BLOCKS: Readonly<Record<string, WorkshopKind>> = { trading_post:'trade', ember_forge:'forge', sign:'sign', item_frame:'frame' };
+export type WorkshopKind = 'trade' | 'forge' | 'sign' | 'frame' | 'waystone';
+export const WORKSHOP_BLOCKS: Readonly<Record<string, WorkshopKind>> = { trading_post:'trade', ember_forge:'forge', sign:'sign', item_frame:'frame', waystone:'waystone' };
 export interface TradeOffer { name: string; cost: readonly [string,number]; gives: readonly [string,number] }
 export const TRADE_OFFERS: readonly TradeOffer[] = [
   {name:'Sell wheat',cost:['wheat',8],gives:['trade_coin',1]},
@@ -45,6 +45,7 @@ export const SHOPS: Readonly<Record<string, readonly TradeOffer[]>> = {
     offer('Buy arrows', ['trade_coin', 2], ['arrow', 16]), offer('Buy a bucket', ['trade_coin', 6], ['bucket', 1]),
     offer('Buy a Grappling Hook', ['trade_coin', 20], ['grappling_hook', 1]), offer('Buy string', ['trade_coin', 1], ['string', 3]),
     offer('Sell gold', ['gold_ingot', 1], ['trade_coin', 4]), offer('Sell diamonds', ['diamond', 1], ['trade_coin', 10]),
+    offer('Sell meteor shards', ['meteor_shard', 1], ['trade_coin', 6]),
   ],
   nurse: [
     offer('Buy a Healing Potion', ['trade_coin', 4], ['healing_potion', 1]), offer('Buy an Antidote', ['trade_coin', 4], ['antidote', 1]),

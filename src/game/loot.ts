@@ -2,8 +2,11 @@ import { hash2, mulberry32 } from '../core/random';
 import { BLOCK_SIZE_M } from '../config';
 import { BLOCKS } from '../engine/blocks';
 import type { ItemStack } from './inventory';
+import { rollModifier, takesModifier } from './modifiers';
 
-export type LootTable = 'surface' | 'mine' | 'vault' | 'shrine';
+export type LootTable = 'surface' | 'mine' | 'vault' | 'shrine' | 'sky' | 'pyramid' | 'temple';
+/** Structures whose chests have their own table, whatever their height. */
+export const SITE_TABLES = ['sky_island', 'pyramid', 'temple'] as const;
 
 /** Per table: how many rolls, and [item, fewest, most, weight] entries. Deeper tables give better things. */
 const TABLES: Record<LootTable, { rolls: readonly [number, number]; entries: readonly (readonly [string, number, number, number])[]; always?: readonly [string, number][] }> = {
@@ -19,6 +22,19 @@ const TABLES: Record<LootTable, { rolls: readonly [number, number]; entries: rea
     ['diamond', 1, 3, 2], ['gold_ingot', 2, 5, 3], ['iron_ingot', 2, 6, 3], ['iron_chestplate', 1, 1, 1], ['iron_helmet', 1, 1, 1],
     ['bow', 1, 1, 1.5], ['arrow', 4, 12, 2], ['ember_crystal', 1, 2, 0.6], ['bone_meal', 3, 6, 1], ['lantern', 1, 2, 1], ['cloud_charm', 1, 1, 0.8], ['heart_locket', 1, 1, 0.4], ['life_crystal', 1, 2, 1.5], ['ember_staff', 1, 1, 0.4], ['fire_resistance_potion', 1, 2, 1], ['regeneration_potion', 1, 2, 0.8],
   ] },
+  // The sky, the desert pyramid and the jungle temple: each with something found nowhere else.
+  sky: { rolls: [3, 5], always: [['feather_charm', 1]], entries: [
+    ['cloud_charm', 1, 1, 2], ['glider_wings', 1, 1, 1.2], ['swift_anklet', 1, 1, 1], ['life_crystal', 1, 2, 2], ['gold_ingot', 2, 5, 2], ['feather', 3, 8, 3],
+    ['swiftness_potion', 1, 2, 2], ['arrow', 4, 12, 2],
+  ] },
+  pyramid: { rolls: [4, 6], always: [['scarab_charm', 1]], entries: [
+    ['gold_ingot', 3, 8, 4], ['diamond', 1, 2, 1], ['lapis', 3, 8, 2], ['fire_resistance_potion', 1, 2, 2], ['bone', 2, 6, 2],
+    ['life_crystal', 1, 1, 1], ['trade_coin', 5, 15, 3],
+  ] },
+  temple: { rolls: [4, 6], always: [['jungle_idol', 1]], entries: [
+    ['lapis', 3, 8, 2], ['gold_ingot', 2, 5, 3], ['regeneration_potion', 1, 2, 2], ['antidote', 1, 3, 2], ['jade', 1, 2, 1],
+    ['heart_locket', 1, 1, 0.6], ['trade_coin', 5, 15, 3],
+  ] },
   shrine: { rolls: [2, 4], always: [['beacon_shard', 1]], entries: [
     ['ember_crystal', 1, 3, 3], ['diamond', 1, 2, 2], ['gold_ingot', 2, 4, 1], ['ember_ring', 1, 1, 1.5], ['cloud_charm', 1, 1, 0.8], ['life_crystal', 1, 2, 2],
   ] },
@@ -26,7 +42,7 @@ const TABLES: Record<LootTable, { rolls: readonly [number, number]; entries: rea
 
 /** Every item each table can hold, for the item guide. */
 export const LOOT_ITEMS: Readonly<Record<LootTable, readonly string[]>> = {
-  surface: keysOf('surface'), mine: keysOf('mine'), vault: keysOf('vault'), shrine: keysOf('shrine'),
+  surface: keysOf('surface'), mine: keysOf('mine'), vault: keysOf('vault'), shrine: keysOf('shrine'), sky: keysOf('sky'), pyramid: keysOf('pyramid'), temple: keysOf('temple'),
 };
 function keysOf(t: LootTable): string[] {
   return [...(TABLES[t].always ?? []).map(([key]) => key), ...TABLES[t].entries.map(([key]) => key)];
@@ -49,7 +65,8 @@ export function rollLoot(seed: number, x: number, y: number, z: number, table: L
   for (let r = 0; r < rolls; r++) {
     let pick = rand() * total;
     const e = t.entries.find((en) => (pick -= en[3]) < 0) ?? t.entries[t.entries.length - 1]!;
-    items.push({ state: BLOCKS.state(e[0]), count: e[1] + Math.floor(rand() * (e[2] - e[1] + 1)) });
+    const state = BLOCKS.state(e[0]);
+    items.push({ state, count: e[1] + Math.floor(rand() * (e[2] - e[1] + 1)), ...(takesModifier(state) ? { mod: rollModifier(rand) } : {}) });
   }
   // Scattered over the slots.
   for (const item of items) {

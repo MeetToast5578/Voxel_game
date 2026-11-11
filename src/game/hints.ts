@@ -11,6 +11,8 @@ export interface HintFacts {
   /** Evening or night. */
   night: boolean;
   hunger: number;
+  /** Homes the player has made (beds in rooms). */
+  homes?: number;
 }
 
 interface Hint {
@@ -44,6 +46,9 @@ export const HINTS: readonly Hint[] = [
     text: () => 'Craft a crafting table from four planks and place it with right click. Standing near it unlocks tools and many more recipes.' },
   { id: 'pickaxe', done: (f) => anyOf(f, ...PICKAXES), text: () => 'At the table make sticks (two planks), then a wooden pickaxe: three planks over two sticks.' },
   { id: 'stone', done: (f) => anyOf(f, 'stone_pickaxe', 'iron_pickaxe'), text: () => 'Mine stone with your pickaxe for cobblestone, and make stone tools: they are faster and last longer.' },
+  { id: 'torch', done: (f) => anyOf(f, 'torch', 'lantern'), text: () => 'Dig for coal (dark specks in stone) and make torches: coal over a stick. Light keeps monsters away.' },
+  { id: 'furnace', done: (f) => anyOf(f, 'furnace', 'iron_ingot', 'iron_pickaxe'), text: () => 'Make a furnace from eight stones in a ring. Smelt iron ore in it for iron tools and armour.' },
+  { id: 'home', done: (f) => (f.homes ?? 0) > 0, text: () => 'Build a room with walls and a roof, a door, a light and a table, then place a bed in it: someone will move in and trade with you.' },
 ];
 
 /** Which hint to show, which are done (saved per world), and how long the current one has been up. */

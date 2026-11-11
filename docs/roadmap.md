@@ -79,7 +79,7 @@ Every task also passes `npm run check`, `npm run benchmark -- --assert` and `npm
   Ingredients are flowers, mushrooms, gel, ember dust and fish. Drinking one gives a short sickness so potions cannot
   be chained. Covers idea 14 "Brewing".
   **Done when:** each potion is craftable at the table and its effect shows in a test.
-- [ ] **R2.5 More weapon kinds (M).** Each weapon kind plays differently:
+- [x] **R2.5 More weapon kinds (M).** Done in 0.8.1 (the hammer does not break 3×3 yet). Each weapon kind plays differently:
   - a spear: long reach, a narrow thrust;
   - a hammer: slow, big knockback, and it breaks blocks in a 3×3 area;
   - throwing knives: thrown, and they stack;
@@ -87,19 +87,19 @@ Every task also passes `npm run check`, `npm run benchmark -- --assert` and `npm
 
   The same material tiers apply to all of them.
   **Done when:** each is craftable and its attack shape is tested.
-- [ ] **R2.6 Better bow (S).** Hold to draw, release to shoot. A drawn shot flies further and hits harder. Arrow types:
+- [x] **R2.6 Better bow (S).** Done in 0.8.1 (the draw already existed). Hold to draw, release to shoot. A drawn shot flies further and hits harder. Arrow types:
   flint, iron, ember (sets things alight), jade (pierces). An ammo count shows next to the hotbar.
   **Done when:** a test shows a full draw fly further than a tap.
 - [ ] **R2.7 Hit feel (S, owner to judge).** Hit-stop (a 40 ms freeze on a heavy hit), a small camera kick, a hurt
   sound for each species, and a red edge on the screen when the player is low on health. Each one can be switched off in
   the settings.
   **Done when:** the owner signs it off in play.
-- [ ] **R2.8 Dodge (S).** The Dash Boots accessory gives a double-tap dash with brief invulnerability and a cooldown.
+- [x] **R2.8 Dodge (S).** Done in 0.8.1. The Dash Boots accessory gives a double-tap dash with brief invulnerability and a cooldown.
   **Done when:** a test dashes through an attack unharmed.
 
 ## R3. Bosses and events
 
-- [ ] **R3.1 Boss arenas (M)** (18.D4 rest). An altar structure appears in each biome region: a flat ring with
+- [~] **R3.1 Boss arenas (M)** (18.D4 rest). 0.8.0: altars (two bags for a boss summoned there); no barrier yet. An altar structure appears in each biome region: a flat ring with
   pillars. Using a summon item away from an altar asks the player to find one, or works with a weaker reward
   (**Decide**). The fight closes the arena with a temporary barrier.
   **Done when:** a test summons at an altar, and the barrier lifts on a win or on death.
@@ -141,10 +141,11 @@ Every task also passes `npm run check`, `npm run benchmark -- --assert` and `npm
 
   Covers idea 14 "The Ember Depths".
   **Done when:** the layer generates, the ore tier is complete, and the boss can be reached.
-- [ ] **R4.3 Sky islands (M).** Rare floating islands high above the surface. Each has a small house, a chest with
+- [x] **R4.3 Sky islands (M).** Done in 0.8.0 (no sky slime yet; the nearest on seed 1 is 820 m away). Rare floating islands high above the surface. Each has a small house, a chest with
   flight-themed loot (cloud charm, feather charm, a glider) and a sky slime.
   **Done when:** seed 1 has one within 500 m of spawn.
-- [ ] **R4.4 Biome dungeons (M).**
+- [~] **R4.4 Biome dungeons (M).** 0.8.0: pyramid and overgrown temple with unique charms; ice cave and sunken
+  ship remain; deserts and rainforests are rare near spawn.
   - a sand pyramid with traps;
   - an ice cave;
   - a jungle temple;
@@ -152,30 +153,32 @@ Every task also passes `npm run check`, `npm run benchmark -- --assert` and `npm
 
   Each holds a biome chest with an item found nowhere else.
   **Done when:** each generates on seed 1 and its chest rolls its own loot.
-- [ ] **R4.5 Mimics (S).** Rarely, a chest in a dungeon is a mimic. It bites when opened and drops a good accessory.
+- [x] **R4.5 Mimics (S).** Done in 0.8.0. Rarely, a chest in a dungeon is a mimic. It bites when opened and drops a good accessory.
   **Done when:** a test opens one and it attacks.
-- [ ] **R4.6 Map markers and waystones (M).** Pin places on the full map, and the compass points to a pin. Waystones are
+- [x] **R4.6 Map markers and waystones (M).** Done in 0.8.4 (markers are listed in the pause menu, not drawn on
+  the map). Pin places on the full map, and the compass points to a pin. Waystones are
   found in ruins. Once activated, they let the player travel between them for a cost. Covers idea 14 "Map markers".
   **Done when:** a test teleports between two activated waystones.
-- [ ] **R4.7 Fire (M)** (12.2). A fire block that:
+- [x] **R4.7 Fire (M)** (12.2). Done in 0.8.2. A fire block that:
   - spreads to wood, leaves and grass;
   - burns out by itself;
   - is put out by rain and water.
 
   Lightning, lava and ember arrows can start it.
   **Done when:** a test burns a wooden hut down and the fire goes out by itself.
-- [ ] **R4.8 Water and boats (S each)** (12.3, 12.4).
+- [~] **R4.8 Water and boats (S each)** (12.3, 12.4). 0.8.2: rivers push swimmers and boats; drops do not drift, and
+  boats do not stay yet.
   - **Rivers push:** generated rivers carry the player, boats and drops downstream.
   - **Boats stay:** a boat you step out of stays on the water.
 
   **Done when:** the earlier tests in `tasks.md` pass.
-- [ ] **R4.9 Catch-up and persistence (S each)** (12.5, 12.6, 12.7).
+- [x] **R4.9 Catch-up and persistence (S each)** (12.5, 12.6, 12.7). Done in 0.8.2 (grass regrowth does not catch up).
   - growth catches up while unloaded;
   - old chests stay empty;
   - the Ember Warden keeps its wounds.
 
   **Done when:** the earlier tests in `tasks.md` pass.
-- [ ] **R4.10 Meteor fall (S).** After the first boss, a meteor sometimes lands at night. It leaves a crater of rare
+- [x] **R4.10 Meteor fall (S).** Done in 0.8.5. After the first boss, a meteor sometimes lands at night. It leaves a crater of rare
   ore that is hot to stand on.
   **Done when:** a test spawns one and mines it.
 
@@ -199,17 +202,17 @@ Every task also passes `npm run check`, `npm run benchmark -- --assert` and `npm
   - Explorer: after the first dungeon; sells maps to unvisited places.
 
   **Done when:** each arrives under its condition in a test.
-- [ ] **R5.3 Quests and bounties (M).** Townsfolk post simple tasks with coin and item rewards:
+- [x] **R5.3 Quests and bounties (M).** Done in 0.8.3 (tasks show in the journal, not a separate tab). Townsfolk post simple tasks with coin and item rewards:
   - bring 10 gel;
   - kill a Gloom Moth;
   - find the pyramid.
 
   A Quests tab lists them.
   **Done when:** a test accepts, completes and turns in a quest.
-- [ ] **R5.4 Townsfolk talk (S).** Short spoken lines that depend on the time, the weather, nearby events and their
+- [x] **R5.4 Townsfolk talk (S).** Done in 0.8.3 (in the trade screen, not a speech bubble). Short spoken lines that depend on the time, the weather, nearby events and their
   job, shown in a speech bubble.
   **Done when:** each NPC has at least eight lines and the bubble shows.
-- [ ] **R5.5 Furniture (M).** A furniture set in each wood type:
+- [~] **R5.5 Furniture (M).** 0.8.3: chair, table and candle; shelves, banners, chandeliers and paintings remain. A furniture set in each wood type:
   - chairs, tables and shelves;
   - banners, candles and chandeliers;
   - paintings that use existing art.
@@ -231,14 +234,14 @@ Every task also passes `npm run check`, `npm run benchmark -- --assert` and `npm
 
   The tooltip shows the bonus.
   **Done when:** a test equips each full set.
-- [ ] **R6.3 Modifiers (M).** Weapons and accessories roll a modifier when made or found, for example: Keen (+crit),
+- [x] **R6.3 Modifiers (M).** Done in 0.8.4 for weapons (reforged at the ember forge; accessories have none). Weapons and accessories roll a modifier when made or found, for example: Keen (+crit),
   Heavy (+knockback), Swift (+speed), Sturdy (+defense). At an anvil the player can pay coins to roll again. The
   modifier shows in the name and the rarity colour.
   **Done when:** rolls are seeded and saved, and a reforge test passes.
 - [x] **R6.4 Grappling hook (M).** Done in 0.7.4: pull and hold; swinging on release is not done. Fire a hook at a block and get pulled to it. Release in mid-air to swing. It is the
   most "3D Terraria" movement tool.
   **Done when:** a test pulls the player up a cliff.
-- [ ] **R6.5 Late movement (M).**
+- [x] **R6.5 Late movement (M).** Done in 0.8.4.
   - **Glider wings:** hold jump to glide far, made from sky-island loot.
   - **Rocket boots:** short flight with a fuel bar.
   - **Tinkered combinations:** cloud charm + feather charm = Storm Charm.
@@ -248,7 +251,7 @@ Every task also passes `npm run check`, `npm run benchmark -- --assert` and `npm
   Slime King gives a bouncy mount.
   **Decide** whether this is wanted.
   **Done when:** a test rides a mount across a field.
-- [ ] **R6.7 Pets and companions (M)** (idea 14 "Tame wolves").
+- [~] **R6.7 Pets and companions (M)** (idea 14 "Tame wolves"). 0.8.4: tame wolves; light pets remain.
   - A wolf tamed with bones follows the player and fights.
   - Light pets (a wisp) follow the player and give light.
 
@@ -273,9 +276,9 @@ Every task also passes `npm run check`, `npm run benchmark -- --assert` and `npm
   Credits play after the final boss, and the player can keep playing.
   **Decide** the story and the name.
   **Done when:** the second act is triggered and the final boss can be beaten.
-- [ ] **R7.5 Harder nights over time (S)** (13.4 rest). Day 20 spawns more than day 1, capped by difficulty.
+- [x] **R7.5 Harder nights over time (S)** (13.4 rest). Done in 0.8.3. Day 20 spawns more than day 1, capped by difficulty.
   **Done when:** the test in `tasks.md` passes.
-- [ ] **R7.6 Hardcore and challenge seeds (S each)** (idea 14). Hardcore has one life. Challenge seeds have a goal
+- [~] **R7.6 Hardcore and challenge seeds (S each)** (idea 14). 0.8.3: hardcore; challenge seeds remain. Hardcore has one life. Challenge seeds have a goal
   and a timer.
   **Done when:** a hardcore death deletes the world after a confirmation.
 
@@ -290,13 +293,13 @@ Every task also passes `npm run check`, `npm run benchmark -- --assert` and `npm
   - an option for half-rate shadows or effects.
 
   **Done when:** 60 fps on the owner's machine in a normal scene.
-- [ ] **R8.3 Death and respawn (S).** On death:
+- [x] **R8.3 Death and respawn (S).** Done in 0.8.1 with the default: half the coins (no respawn timer). On death:
   - drop half the coins where you died (**Decide**: coins only, or the whole inventory as now);
   - show a death screen with the cause;
   - start a respawn timer.
 
   **Done when:** a test dies and finds the coins.
-- [ ] **R8.4 Chests (S).**
+- [x] **R8.4 Chests (S).** Done in 0.8.4.
   - Quick stack to all chests nearby.
   - Name a chest.
   - Sort a chest.
@@ -306,14 +309,14 @@ Every task also passes `npm run check`, `npm run benchmark -- --assert` and `npm
 - [ ] **R8.5 Controller play (M).** Full play with a gamepad: aim assist on targets, radial hotbar, menu navigation
   (part exists in `padMenu.ts`).
   **Done when:** the scripted play-through (R1.1) passes using pad input only.
-- [ ] **R8.6 Accessibility (S)** (idea 14).
+- [x] **R8.6 Accessibility (S)** (idea 14). Done in 0.8.5.
   - subtitles for sounds;
   - colour-blind safe rarity marks (a symbol as well as a colour);
   - hold-to-toggle for held keys;
   - reduced screen shake.
 
   **Done when:** each is a setting and is tested.
-- [ ] **R8.7 Tutorial (M).** The Guide NPC and short on-screen goals take a new player through the first night. No
+- [~] **R8.7 Tutorial (M).** 0.8.5: the hints run on to torches, iron and a first home; the Guide does not lead it. The Guide NPC and short on-screen goals take a new player through the first night. No
   wall of text.
   **Done when:** a new world shows the first goal, and each goal clears when it is done.
 

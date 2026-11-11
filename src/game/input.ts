@@ -31,6 +31,12 @@ export class Input {
   private padPlace = false;
   /** Look up moves the view down, and the other way round. */
   invertY = false;
+  /** Sprint and crouch toggle on each press instead of being held. */
+  toggleKeys = false;
+  private sprintOn = false;
+  private crouchOn = false;
+  private sprintWas = false;
+  private crouchWas = false;
   private keyMap: Record<Binding, string> = { ...DEFAULT_KEYS };
   private pressMap = new Map<string, Action>();
 
@@ -115,8 +121,17 @@ export class Input {
     this.moveZ = Math.max(-1, Math.min(1, h('forward') - h('back') + this.stickZ));
     this.moveX = Math.max(-1, Math.min(1, h('right') - h('left') + this.stickX));
     this.jump = this.held('jump');
-    this.descend = this.held('descend');
-    this.sprint = this.held('sprint');
+    const crouchKey = this.held('descend'), sprintKey = this.held('sprint');
+    if (this.toggleKeys) {
+      if (crouchKey && !this.crouchWas) this.crouchOn = !this.crouchOn;
+      if (sprintKey && !this.sprintWas) this.sprintOn = !this.sprintOn;
+      // Stopping ends a toggled sprint.
+      if (this.moveZ <= 0) this.sprintOn = false;
+    }
+    this.crouchWas = crouchKey;
+    this.sprintWas = sprintKey;
+    this.descend = this.toggleKeys ? this.crouchOn : crouchKey;
+    this.sprint = this.toggleKeys ? this.sprintOn : sprintKey;
     const pad = navigator.getGamepads?.().find((p) => p?.connected);
     if (!pad) return;
     const axis = (i: number) => (Math.abs(pad.axes[i] ?? 0) > DEADZONE ? pad.axes[i]! : 0);

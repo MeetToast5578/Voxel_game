@@ -343,6 +343,15 @@ const MODELS: Record<string, Model> = {
   bat: bat(),
 };
 for (const s of SPECIES) if (s.hops) MODELS[s.key] = slime(s);
+// The mimic hops like a slime but is a chest: a wooden box with iron bands, its lid open on a row of teeth and a tongue.
+MODELS.mimic = { plan: 'slime', restDrop: 0, root: joint('root', [0, 0, 0], [
+  box([0, 0.25, 0], [0.9, 0.5, 0.7], 0x8a5a2c), box([0, 0.12, -0.36], [0.92, 0.06, 0.02], 0x6a6e74), box([0, 0.4, -0.36], [0.92, 0.05, 0.02], 0x6a6e74),
+  box([0, 0.72, 0.12], [0.9, 0.12, 0.7], 0x9a6a38, [-0.55, 0, 0]), box([0, 0.66, -0.12], [0.92, 0.04, 0.02], 0x6a6e74, [-0.55, 0, 0]),
+  ...[-0.3, -0.15, 0, 0.15, 0.3].map((x) => cone([x, 0.54, -0.3], [0.06, 0.12, 0.06], 0xf0ead8)),
+  ...[-0.22, 0, 0.22].map((x) => cone([x, 0.6, -0.26], [0.05, 0.1, 0.05], 0xf0ead8, [Math.PI, 0, 0])),
+  ball([0, 0.5, -0.2], [0.18, 0.04, 0.22], 0xc03040),
+  ...[-1, 1].map((sd) => ball([sd * 0.22, 0.86, -0.08], [0.07, 0.07, 0.05], 0xffd040, undefined, true)),
+]) };
 for (const m of [MODELS.rabbit]) m!.hop = true;
 for (const key of ['gloom_moth', 'gloom_matriarch']) MODELS[key] = moth(SPECIES.find((s) => s.key === key)!);
 

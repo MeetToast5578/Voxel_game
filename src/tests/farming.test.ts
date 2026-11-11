@@ -96,4 +96,14 @@ describe('growth while away', () => {
     sim.catchUp(chunk);
     expect(world.get(3, 0, 3)).toBe(S('wheat', 3));
   });
+
+  it('a sapling left unloaded for days is a tree when the player comes back', () => {
+    const world = plain(), sim = new Simulation(world, (x, y, z, s) => world.set(x, y, z, s), 1);
+    world.set(5, 0, 5, S('sapling'));
+    const chunk = world.chunkAt(5, 0, 5)!;
+    sim.parkGrowth(chunk);
+    sim.ticks.now += 3 * 20 * 60 * 20; // three days: it would surely have grown by now
+    sim.catchUp(chunk);
+    expect(BLOCKS.type(world.get(5, 0, 5)).key).toBe('log');
+  });
 });

@@ -5,7 +5,7 @@
 
 export type RenderLayer = 'none' | 'opaque' | 'cutout' | 'water' | 'ice';
 export type BlockShape = 'cube' | 'cross' | 'layer' | 'slab' | 'boxes';
-export type ToolKind = 'pickaxe' | 'axe' | 'shovel' | 'sword' | 'hoe';
+export type ToolKind = 'pickaxe' | 'axe' | 'shovel' | 'sword' | 'hoe' | 'spear' | 'hammer';
 /** A box inside a cell, in sixteenths: [x0, y0, z0, x1, y1, z1]. */
 export type Box = readonly [number, number, number, number, number, number];
 
@@ -220,7 +220,12 @@ export interface Accessory {
   readonly jumps?: number;
   /** No fall damage, and holding jump while falling glides. */
   readonly featherfall?: boolean;
-  /** Armour points (4% of harm each). */
+  /** A double tap of a direction dashes. */
+  readonly dash?: boolean;
+  /** Glider wings, or rocket boots (see Player). */
+  readonly wings?: boolean;
+  readonly rocket?: boolean;
+  /** Armour points (3% of harm each). */
   readonly protection?: number;
   /** Breath lasts this many times longer. */
   readonly breath?: number;
@@ -248,6 +253,12 @@ const ACCESSORIES: readonly [string, string, Accessory][] = [
   ['gill_pendant', 'Gill Pendant', { effect: 'Breath lasts four times longer', breath: 4 }],
   ['ember_ring', 'Ember Ring', { effect: 'Lava and fire do not burn you', fireproof: true }],
   ['heart_locket', 'Heart Locket', { effect: 'Health returns twice as fast', regen: 2 }],
+  ['dash_boots', 'Dash Boots', { effect: 'Double-tap a direction to dash', dash: true }],
+  ['glider_wings', 'Glider Wings', { effect: 'Hold jump while falling to glide far and fast', wings: true, featherfall: true }],
+  ['rocket_boots', 'Rocket Boots', { effect: 'Hold jump in the air to fly up for a moment', rocket: true }],
+  ['storm_charm', 'Storm Charm', { effect: 'Jump once more in mid-air, no fall damage', jumps: 1, featherfall: true }],
+  ['scarab_charm', 'Scarab Charm', { effect: '10% faster; stops 6% more harm', speed: 0.1, protection: 2 }],
+  ['jungle_idol', 'Jungle Idol', { effect: 'Health returns 50% faster; breath lasts twice as long', regen: 1.5, breath: 2 }],
 ];
 
 /** Flowing fluids have 8 levels, each with a falling and a resting variant. */
@@ -304,6 +315,8 @@ const BASE: BlockSpec[] = [
   // Ember ore: deep down in deepslate near the lava, glowing faintly; only a diamond pickaxe gets its crystals.
   stone('ember_ore', 'Ember ore', { hardness: 6, needsTier: 3, drops: 'ember_crystal', lightEmission: 5 }),
   // Verdant jade: the deepest gem, past diamond; its tools and armour are the best there are.
+  // Meteorite: fallen from the sky after a boss is beaten; hot to stand on, and only iron or better digs it.
+  stone('meteorite', 'Meteorite', { hardness: 5, needsTier: 2, drops: 'meteor_shard', lightEmission: 6 }),
   stone('jade_ore', 'Verdant jade ore', { hardness: 7, needsTier: 3, drops: 'jade' }),
   { key: 'cactus', name: 'Cactus', tiles: { top: 'saguaro_top', side: 'saguaro_side', bottom: 'saguaro_top' }, hardness: 0.5, density: 700 },
   // Tall grass sometimes gives wheat seeds (handled where blocks are broken).
@@ -329,6 +342,8 @@ const HIGH_HALF: Record<number, Box> = { 0: [8, 8, 0, 16, 16, 16], 1: [0, 8, 0, 
 const STAIR_MATERIALS = ['planks', 'cobblestone', 'stone', 'brick', 'sandstone'];
 export const TOOL_TIERS = ['wooden', 'stone', 'iron', 'diamond', 'jade'] as const;
 export const TOOL_KINDS: readonly ToolKind[] = ['pickaxe', 'axe', 'shovel', 'sword', 'hoe'];
+/** Weapons made in every tier, beside the tools: a long spear and a heavy hammer. */
+export const WEAPON_KINDS: readonly ToolKind[] = ['spear', 'hammer'];
 const DURABILITY = [60, 132, 251, 1561, 2400];
 /** Armour materials and pieces: protection per piece (head, chest, legs, feet), warmth per piece, and hits it takes. */
 export const ARMOUR_PIECES = ['helmet', 'chestplate', 'leggings', 'boots'] as const;
@@ -364,6 +379,12 @@ function gameplay(): BlockSpec[] {
       front: 'ancient_chest_front', variants: 4, hardness: 5, density: 2600, mineWith: 'pickaxe', drops: 'obsidian' },
     { key: 'crafting_table', name: 'Crafting table', tiles: { top: 'crafting_table_top', side: 'crafting_table_side', bottom: 'planks' },
       hardness: 2.5, density: 600, ...wood },
+    // Fire: burns what it touches and spreads (see sim/simulation.ts); its variant is its age.
+    { key: 'fire', name: 'Fire', tiles: all('fire_block'), shape: 'cross', layer: 'cutout', solid: false, opaque: false, blocksSky: false,
+      hardness: 0, drops: '', lightEmission: 13, variants: 4, supports: false },
+    // A waystone: once touched, it lets the player travel to any other touched waystone.
+    { key: 'waystone', name: 'Waystone', tiles: { top: 'waystone_top', side: 'waystone_side', bottom: 'waystone_top' }, hardness: 30, density: 2600,
+      mineWith: 'pickaxe', needsTier: 3, lightEmission: 7 },
     // Potions are made beside it.
     { key: 'alchemy_table', name: 'Alchemy table', tiles: { top: 'alchemy_table_top', side: 'alchemy_table_side', bottom: 'planks' },
       hardness: 2.5, density: 600, ...wood },
@@ -373,6 +394,14 @@ function gameplay(): BlockSpec[] {
     // A door is a column of door cells (variant: facing + 4 when open); it collides as its panel.
     { key: 'door', name: 'Door', tiles: all('door'), shape: 'boxes', variants: 8, hardness: 3, density: 600, mineWith: 'axe',
       boxes: (v) => [PANEL[v < 4 ? v : TURN[v - 4]!]!], fuel: 10 },
+    // Furniture: a chair (variant: which way its back is), a table on one leg, and a candle that lights a room.
+    { key: 'chair', name: 'Chair', tiles: all('planks'), shape: 'boxes', variants: 4, hardness: 1.5, density: 600, ...wood, blocksSky: false, opaque: false,
+      boxes: (v) => [[2, 7, 2, 14, 9, 14], [2, 0, 2, 4, 7, 4], [12, 0, 2, 14, 7, 4], [2, 0, 12, 4, 7, 14], [12, 0, 12, 14, 7, 14],
+        ([[14, 9, 1, 16, 16, 15], [0, 9, 1, 2, 16, 15], [1, 9, 14, 15, 16, 16], [1, 9, 0, 15, 16, 2]] as const)[v]!] },
+    { key: 'wooden_table', name: 'Table', tiles: all('planks'), shape: 'boxes', hardness: 1.5, density: 600, ...wood, blocksSky: false, opaque: false,
+      boxes: () => [[0, 13, 0, 16, 16, 16], [6, 0, 6, 10, 13, 10]] },
+    { key: 'candle', name: 'Candle', tiles: all('candle'), shape: 'boxes', hardness: 0, density: 300, lightEmission: 11, needsSupport: true,
+      solid: false, blocksSky: false, opaque: false, supports: false, layer: 'cutout', boxes: () => [[6, 0, 6, 10, 7, 10]] },
     // A bed covers two cells: variant facing + 4 for the head end.
     { key: 'bed', name: 'Bed', tiles: { top: 'bed_top', side: 'bed_side', bottom: 'planks' }, shape: 'boxes', variants: 8,
       variantFaces:Array.from({length:8},(_,v)=>({top:v<4?'bed_top':'bed_head_'+(v-4),side:'bed_side',bottom:'planks'})),
@@ -404,6 +433,8 @@ function gameplay(): BlockSpec[] {
     item('moth_lure', 'Moth Lure', { maxStack: 1 }),
     item('spark_wand', 'Spark Wand', { maxStack: 1, spell: { damage: 3.5, mana: 2, cooldown: 0.3, speed: 22 } }),
     item('ember_staff', 'Ember Staff', { maxStack: 1, spell: { damage: 8, mana: 4, cooldown: 0.4, speed: 26 } }),
+    item('star_staff', 'Star Staff', { maxStack: 1, spell: { damage: 12, mana: 5, cooldown: 0.35, speed: 30 } }),
+    item('meteor_shard', 'Meteor Shard'),
     item('stick', 'Stick', { fuel: 5 }),
     item('coal', 'Coal', { fuel: 80 }),
     item('iron_ingot', 'Iron ingot'),
@@ -452,7 +483,10 @@ function gameplay(): BlockSpec[] {
     item('baked_potato', 'Baked potato', { food: 5 }),
     item('raw_meat', 'Raw meat', { food: 2, smeltsTo: 'cooked_meat' }),
     item('cooked_meat', 'Cooked meat', { food: 6 }),
-    ...TOOL_TIERS.flatMap((tier, t) => TOOL_KINDS.map((kind) => item(`${tier}_${kind}`, `${tier[0]!.toUpperCase()}${tier.slice(1)} ${kind}`, {
+    item('throwing_knife', 'Throwing Knife', { maxStack: 32 }),
+    item('boomerang', 'Boomerang', { maxStack: 1 }),
+    ...['iron_arrow', 'ember_arrow', 'jade_arrow'].map((k) => item(k, k === 'iron_arrow' ? 'Iron arrow' : k === 'ember_arrow' ? 'Ember arrow' : 'Jade arrow')),
+    ...TOOL_TIERS.flatMap((tier, t) => [...TOOL_KINDS, ...WEAPON_KINDS].map((kind) => item(`${tier}_${kind}`, `${tier[0]!.toUpperCase()}${tier.slice(1)} ${kind}`, {
       maxStack: 1, tool: { kind, tier: t, durability: DURABILITY[t]! }, fuel: tier === 'wooden' ? 10 : undefined,
     }))),
   ];

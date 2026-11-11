@@ -1,4 +1,8 @@
 import * as THREE from 'three';
+import { Rivers } from './worldgen/rivers';
+import { ClimateSampler } from './worldgen/climate';
+/** How hard a generated river pushes, as a share of flowing water's push. */
+const RIVER_PUSH = 0.6;
 import { REACH_M, DROP_CAP, NIGHT_BEFORE, AUTOSAVE_S, BLOCK_SIZE_M, CAVE_AIR_C, CHUNK_SIZE, DAY_LENGTH_S, DIFFICULTY, HEAT_REACH_M, HEAT_SOURCES_C, cells, type Difficulty, HORIZON_RECENTER_M, MAX_VIEW_CHUNKS, MIN_VIEW_CHUNKS, SIM_HZ, toCells } from './config';
 import { Sounds } from './audio/sounds';
 import { Ambience, type Surroundings } from './audio/ambience';
@@ -31,7 +35,7 @@ import { mulberry32 } from './core/random';
 import { Environment } from './sim/environment';
 import { climateTemperature } from './sim/weather';
 import { biomeByIndex } from './worldgen/biomes';
-import { Simulation } from './sim/simulation';
+import { Simulation, isFire } from './sim/simulation';
 import { feltTemperature } from './game/bodyTemperature';
 import { drawTitle, drawUi, type UiModel, type WorldsModel } from './ui/app';
 import { worldActions } from './ui/worldActions';
@@ -132,6 +136,7 @@ function applySettings(): void {
   renderer.camera.updateProjectionMatrix();
   input.sensitivity = settings.mouseSensitivity;
   input.invertY = settings.invertY;
+  input.toggleKeys = settings.toggleKeys;
   input.bindings = settings.keys;
   sounds.volume = settings.effectsVolume;
   ambience.musicVolume = settings.musicVolume;
@@ -153,9 +158,15 @@ const levelAt = (x: number, y: number, z: number) => {
   if (BLOCKS.typeIndex[s] === FLOWING) return ((s - FLOWING_ID) % LEVELS) + 1;
   return COLLISION[s] === 0 ? 0 : -1;
 };
-/** Flow of flowing water: down where it falls, otherwise toward lower neighbours. Still water does not push. */
+/** Flow of flowing water: down where it falls, otherwise toward lower neighbours; still water in a river follows it. */
+// Generated rivers run downhill: their still water carries swimmers and boats along the channel.
+let rivers: Rivers | null = null;
 const currentAt = (x: number, y: number, z: number): [number, number, number] | null => {
   const s = world.get(x, y, z);
+  if (BLOCKS.typeIndex[s] === WATER) {
+    const flow = (rivers ??= new Rivers(seed, new ClimateSampler(seed))).flowAt((x + 0.5) * BLOCK_SIZE_M, (z + 0.5) * BLOCK_SIZE_M);
+    return flow && [flow[0] * RIVER_PUSH, 0, flow[1] * RIVER_PUSH];
+  }
   if (BLOCKS.typeIndex[s] !== FLOWING) return null;
   if (s - FLOWING_ID >= LEVELS) return [0, -1, 0];
   const here = levelAt(x, y, z);
@@ -246,7 +257,10 @@ const creatures = new Creatures(world, mulberry32(seed ^ 0xc0ffee), {
   // Calls carry 32 m; pitch follows the species' voice.
   call: (c, kind) => {
     const near = 1 - Math.hypot(c.body.x - player.body.x, c.body.y - player.body.y, c.body.z - player.body.z) * BLOCK_SIZE_M / 32;
-    if (near > 0) sounds.call(c.species.voice, kind, near);
+    if (near > 0) {
+      sounds.call(c.species.voice, kind, near);
+      caption(`${c.species.name} ${kind === 'death' ? 'dies' : 'calls'} ${direction(c.body.x, c.body.z)}`);
+    }
   },
 });
 creatures.load(saver.worldMeta.creatures);
@@ -255,6 +269,28 @@ const creatureMeshes = new ShapeMobs(renderer.scene, renderer.uniforms);
 const effects = new WorldEffects(renderer.scene, renderer.uniforms);
 const decorationMeshes = new DecorationMeshes(renderer.scene, renderer.uniforms);
 const boatMesh = new BoatMesh(renderer.scene, renderer.uniforms);
+// Subtitles: a caption for each sound heard, for a few seconds, when the setting is on.
+const subtitles = document.createElement('ul');
+subtitles.id = 'subtitles';
+subtitles.setAttribute('aria-live', 'polite');
+document.body.append(subtitles);
+const CAPTIONS: Partial<Record<string, string>> = { break: 'Something breaks', place: 'Block placed', splash: 'Splash', thunder: 'Thunder rumbles', hurt: 'You are hurt', eat: 'Eating' };
+function caption(text: string): void {
+  if (!settings.subtitles) return;
+  const same = [...subtitles.children].find((li) => li.textContent === text);
+  if (same) same.remove();
+  const li = document.createElement('li');
+  li.textContent = text;
+  subtitles.append(li);
+  while (subtitles.children.length > 5) subtitles.firstElementChild!.remove();
+  setTimeout(() => li.remove(), 2500);
+}
+/** Which way something is from where the player looks: ahead, behind, to the left or right. */
+function direction(x: number, z: number): string {
+  const a = Math.atan2(-(x - player.body.x), -(z - player.body.z)) - player.yaw, r = Math.atan2(Math.sin(a), Math.cos(a));
+  return Math.abs(r) < 0.8 ? 'ahead' : Math.abs(r) > 2.3 ? 'behind' : r > 0 ? 'to the left' : 'to the right';
+}
+sounds.onPlay = (name) => { const c = CAPTIONS[name]; if (c) caption(c); };
 // The grappling hook's rope: from just below and right of the eye to where the hook holds.
 const rope = new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3()]), new THREE.LineBasicMaterial({ color: 0x3a2818 }));
 rope.frustumCulled = false;
@@ -273,7 +309,10 @@ const env = new Environment(seed, Number(params.get('time') ?? saver.worldMeta.d
 
 /** Saves the world; a small "Saving" note shows while it writes. */
 const savingNote = document.querySelector<HTMLDivElement>('#saving')!;
+/** A lost hardcore world is never saved again. */
+let lost = false;
 function save(): Promise<void> {
+  if (lost) return Promise.resolve();
   const b = player.body;
   savingNote.style.opacity = '1';
   return saver.save(world, {
@@ -351,8 +390,26 @@ function update(dt: number): void {
   player.speedBonus = bonus.speed;
   player.airJumps = bonus.jumps;
   player.glide = bonus.featherfall;
+  player.dash = bonus.dash;
+  player.wings = bonus.wings;
+  player.rocket = bonus.rocket;
   player.update(dt, active ? input : idleInput, boxAt, waterAt, climbAt, currentAt);
   if (active) play.update(dt, input, player);
+  if (play.pendingTeleport) {
+    const [tx, ty, tz] = play.pendingTeleport;
+    play.pendingTeleport = null;
+    player.hook = null;
+    player.body.x = tx; player.body.y = ty; player.body.z = tz;
+    player.body.vx = player.body.vy = player.body.vz = 0;
+    sounds.play('place', 0.6);
+  }
+  if (player.dashed) {
+    // A dash: a puff of dust, and a moment no bite can land.
+    player.dashed = false;
+    lastBite = performance.now();
+    play.particles.burst(BLOCKS.state('dirt'), player.body.x - 0.5, player.body.y, player.body.z - 0.5, 8);
+    sounds.play('place', 0.3);
+  }
   if (player.airJumped) {
     player.airJumped = false;
     play.particles.burst(BLOCKS.state('snow'), player.body.x - 0.5, player.body.y - 0.6, player.body.z - 0.5, 10);
@@ -363,7 +420,7 @@ function update(dt: number): void {
   play.tickProjectiles(dt, boxAt, player);
   play.particles.update(dt);
   creatures.update(dt, {
-    player: player.body, survival: play.mode === 'survival', day: env.atmosphere.sun[1] > -0.05, hostiles: DIFFICULTY[play.difficulty].hostiles * (play.event === 'red_night' ? 2 : 1), boxAt, waterAt,
+    player: player.body, survival: play.mode === 'survival', day: env.atmosphere.sun[1] > -0.05, hostiles: play.hostileShare, boxAt, waterAt,
     playerHolds: play.held ? BLOCKS.type(play.held.state).key : null,
   });
   if (play.drops.update(dt, dropBoxAt, play.survival.dead ? null : player.body, play.inventory)) play.version++;
@@ -383,7 +440,7 @@ function update(dt: number): void {
 
     play.survival.update(dt, {
       feltC, sprinting: input.sprint && player.body.onGround, inWater: player.submerged > 0.3,
-      inFire: feet === CAMPFIRE || world.get(Math.floor(player.body.x), Math.floor(player.body.y - 0.05), Math.floor(player.body.z)) === CAMPFIRE, headInWater: waterAt(Math.floor(player.body.x), Math.floor(player.eyeY), Math.floor(player.body.z)),
+      inFire: feet === CAMPFIRE || isFire(feet) || BLOCKS.type(world.get(Math.floor(player.body.x), Math.floor(player.body.y - 0.05), Math.floor(player.body.z))).key === 'meteorite' || world.get(Math.floor(player.body.x), Math.floor(player.body.y - 0.05), Math.floor(player.body.z)) === CAMPFIRE, headInWater: waterAt(Math.floor(player.body.x), Math.floor(player.eyeY), Math.floor(player.body.z)),
       inLava: BLOCKS.type(eye).key.endsWith('lava') || BLOCKS.type(feet).key.endsWith('lava'),
       breath: bonus.breath, fireproof: bonus.fireproof, regen: bonus.regen,
     });
@@ -422,7 +479,7 @@ function update(dt: number): void {
     if (play.mode === 'survival' && settings.hints && !play.survival.dead) {
       const changed = play.hints.update(hintClock, {
         walkedM: walkedTotal, has: (k) => play.hasItem(k), screen: play.screen, craftSize: play.craftSize,
-        night: env.clock.dayTime > 1 - NIGHT_BEFORE || env.clock.dayTime < NIGHT_BEFORE, hunger: play.survival.hunger,
+        night: env.clock.dayTime > 1 - NIGHT_BEFORE || env.clock.dayTime < NIGHT_BEFORE, hunger: play.survival.hunger, homes: play.homes.size,
       }, (b) => keyLabel(settings.keys[b]));
       if (changed) play.version++;
     } else if (play.hints.text) {
@@ -529,6 +586,11 @@ const ui: UiModel & { refreshWorlds(): void } = {
   },
   quitToTitle() {
     void save().then(() => (location.search = ''));
+  },
+  loseWorld() {
+    // Hardcore: the world goes for good; nothing is saved again on the way out.
+    lost = true;
+    void actions.deleteWorld(worldName).then(() => (location.search = ''));
   },
   openWorld: (name, create) => void actions.openWorld(name, create),
   deleteWorld: (name) => void actions.deleteWorld(name),
@@ -684,7 +746,8 @@ let mapClock = 0;
 function updateHeldTools(now: number): void {
   const key = play.held ? BLOCKS.type(play.held.state).key : '';
   const visible = input.playing && play.screen === 'none' && !play.survival.dead;
-  const target = play.spawn ?? worldSpawn;
+  // The compass points to the last marker, else to where the player wakes.
+  const marker = play.markers.at(-1), target = marker ? [marker.x, marker.y, marker.z] : play.spawn ?? worldSpawn;
   compass.style.display = visible && key === 'compass' && target ? '' : 'none';
   if (key === 'compass' && target) compass.style.transform = `rotate(${bearing(player.body.x, player.body.z, player.yaw, target[0], target[2])}rad)`;
   minimap.canvas.style.display = visible && key === 'map' ? 'block' : 'none';
@@ -733,12 +796,12 @@ const loop = new FixedStepLoop(1 / 60, 0.25, timedUpdate, (alpha, frameDt) => {
   const health = play.survival.health, lost = lastHealth - health;
   if (lost >= 0.5 && play.mode === 'survival') {
     hurtFlash.style.transition = 'none';
-    hurtFlash.style.opacity = String(Math.min(0.6, 0.15 + lost * 0.08));
+    hurtFlash.style.opacity = String(Math.min(settings.reduceMotion ? 0.25 : 0.6, 0.15 + lost * 0.08));
     void hurtFlash.offsetWidth;
     hurtFlash.style.transition = 'opacity 0.5s';
     hurtFlash.style.opacity = '0';
     sounds.play('hurt', Math.min(1, lost / 2));
-    kick = Math.min(0.12, kick + 0.03 * lost);
+    if (!settings.reduceMotion) kick = Math.min(0.12, kick + 0.03 * lost);
     lastHealth = health;
   } else if (lost < 0) lastHealth = health;
   kick *= Math.max(0, 1 - frameDt * 8);
@@ -760,7 +823,7 @@ const loop = new FixedStepLoop(1 / 60, 0.25, timedUpdate, (alpha, frameDt) => {
     if(play.target)hint=blockInteractionHint(world.get(play.target.x,play.target.y,play.target.z),heldBlock?{crouchKey:keyLabel(settings.keys.descend),crouching:input.descend}:undefined);
     const [dx,dy,dz]=player.direction();
     const hit=creatures.raycast(player.body.x,player.eyeY,player.body.z,dx,dy,dz,toCells(REACH_M));
-    if(hit&&(!play.target||hit.distance<play.target.distance)&&!(heldBlock&&input.descend&&play.target)){
+    if(hit&&(!play.target||hit.distance<play.target.distance||!BLOCKS.type(world.get(play.target.x,play.target.y,play.target.z)).solid)&&!(heldBlock&&input.descend&&play.target)){
       const s=hit.creature.species,held=play.held?BLOCKS.type(play.held.state).key:null;
       hint=s.trader?`${s.name} · Right click: Trade`:held&&s.food?.includes(held)?`${s.name} · Right click: Feed`:`${s.name} · Left click: Attack`;
     }
@@ -773,6 +836,7 @@ const loop = new FixedStepLoop(1 / 60, 0.25, timedUpdate, (alpha, frameDt) => {
   renderer.setAtmosphere(env.frame(frameDt, atmosphereCamera.x, atmosphereCamera.y, atmosphereCamera.z, world));
   const daylight = renderer.uniforms.daylight!.value as number;
   play.daylight = daylight;
+  play.raining = env.falling === 'rain';
   /** Brightness (0..1) of a cell for things drawn outside the terrain. */
   const lightAt = (cx: number, cy: number, cz: number) => {
     const x = Math.floor(cx), y = Math.floor(cy), z = Math.floor(cz);
@@ -796,7 +860,7 @@ const loop = new FixedStepLoop(1 / 60, 0.25, timedUpdate, (alpha, frameDt) => {
     }
   }
   const burning=creatures.list.filter(c=>c.burning>0).map(c=>({kind:'fire' as const,x:c.body.x,y:c.body.y+c.body.height*.45,z:c.body.z,size:c.body.height*.7}));
-  const bolts=play.projectiles.list.filter(p=>p.magic).map(p=>({kind:'sparks' as const,x:p.x,y:p.y,z:p.z,size:.5}));
+  const bolts=play.projectiles.list.filter(p=>p.magic&&!p.item).map(p=>({kind:'sparks' as const,x:p.x,y:p.y,z:p.z,size:.5}));
   effects.update(frameDt,now/1000,[...burning,...emitters,...bolts]);
   decorationMeshes.update(play.decorations,world,renderer.camera,lightAt);
   for (const d of creatures.dying) if (!d.puffed) {
@@ -806,7 +870,7 @@ const loop = new FixedStepLoop(1 / 60, 0.25, timedUpdate, (alpha, frameDt) => {
   creatureMeshes.update(creatures.list, (c) => lightAt(c.body.x, c.body.y + c.body.height * 0.6, c.body.z), now / 1000, creatures.dying);
   // Arrows in flight and bits of broken blocks are drawn like dropped items, smaller.
   const flying = [
-    ...play.projectiles.list.map((p) => ({ state: p.magic ? MAGIC_BOLT : ARROW, x: p.x, y: p.y, z: p.z, size: p.magic ? 0.3 : 0.4 })),
+    ...play.projectiles.list.map((p) => ({ state: p.item ? BLOCKS.state(p.item) : p.magic ? MAGIC_BOLT : ARROW, x: p.x, y: p.y, z: p.z, size: p.magic ? 0.3 : 0.4 })),
     ...play.particles.list.map((p) => ({ state: p.state, x: p.x, y: p.y, z: p.z, size: 0.15 })),
   ].map((f) => ({ stack: { state: f.state, count: 1 }, age: 0, wait: 0,
     body: { x: f.x, y: f.y, z: f.z, vx: 0, vy: 0, vz: 0, halfWidth: f.size / 2, height: f.size, onGround: false } }));

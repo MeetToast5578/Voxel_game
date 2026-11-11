@@ -285,13 +285,17 @@ export const LILY_PAD_CHANCE = 0.04;
 // ---- Survival ----
 /** How far from the origin a new world looks for dry, open, level ground to start the player on. */
 export const SPAWN_SEARCH_M = 2000;
-export type Difficulty = 'peaceful' | 'normal' | 'hard';
+export type Difficulty = 'peaceful' | 'normal' | 'hard' | 'hardcore';
 /** Per difficulty: share of the hostile cap that may spawn, damage they deal, and how fast hunger drains. */
 export const DIFFICULTY: Readonly<Record<Difficulty, { hostiles: number; damage: number; hunger: number }>> = {
   peaceful: { hostiles: 0, damage: 0, hunger: 0.5 },
   normal: { hostiles: 1, damage: 1, hunger: 1 },
   hard: { hostiles: 1.5, damage: 1.5, hunger: 1.25 },
+  // As hard, with one life: the world is lost on death.
+  hardcore: { hostiles: 1.5, damage: 1.5, hunger: 1.25 },
 };
+/** Nights grow harder as a world ages: more monsters, by this share per day, up to NIGHT_GROWTH_MAX times as many. */
+export const NIGHT_GROWTH_PER_DAY = 0.025, NIGHT_GROWTH_MAX = 1.6;
 /** Each armour point stops this share of a hit, up to ARMOUR_CAP: full jade (24 points) stops 72%. */
 export const ARMOUR_PER_POINT = 0.03;
 export const ARMOUR_CAP = 0.85;
@@ -397,9 +401,14 @@ export const PROJECTILE_LIFE_S = 8;
 export const ARCHER_NEAR_M = 7;
 export const ARCHER_FAR_M = 15;
 export const ARCHER_SHOT_S = 2.5;
+/** Fire: seconds between a fire's ticks (random between the two), ticks it lives (one per variant), and the chance on
+ * each tick to catch each burnable neighbour. */
+export const FIRE_TICK_S: readonly [number, number] = [0.8, 2], FIRE_AGES = 4, FIRE_SPREAD_CHANCE = 0.22;
 /** World events: the share of nights with a red moon and of days with slime rain (from this day on), the slimes to
  * defeat before the Slime King comes, and seconds between falling slimes. */
 export const RED_NIGHT_CHANCE = 1 / 8;
+/** Once a boss is beaten: the share of nights a meteor falls near the player. */
+export const METEOR_CHANCE = 1 / 6;
 export const SLIME_RAIN_CHANCE = 1 / 10;
 export const EVENTS_FROM_DAY = 2;
 export const SLIME_RAIN_KILLS = 25;
@@ -443,7 +452,20 @@ export const AXE_ARC_RAD = 0.7;
 export const CRIT_CHANCE = 0.08;
 export const CRIT_FACTOR = 1.5;
 /** Knockback of a hit, as a factor of the base, by weapon kind. */
-export const KNOCKBACK_FACTOR: Readonly<Record<string, number>> = { sword: 1.3, axe: 1.7, hand: 0.7 };
+export const KNOCKBACK_FACTOR: Readonly<Record<string, number>> = { sword: 1.3, axe: 1.7, hand: 0.7, spear: 0.8, hammer: 2.6 };
+/** Spears reach this many times further than other weapons and thrust in a narrow cone (radians); hammers hit hard but
+ * recover this many times slower. Base damage of each (tiers add TIER_DAMAGE). */
+export const SPEAR_REACH = 1.6, SPEAR_ARC_RAD = 0.22, HAMMER_SLOW = 1.7, SPEAR_DAMAGE = 3, HAMMER_DAMAGE = 7;
+/** Throwing knives and the boomerang: damage, speed (m/s), and seconds before the boomerang turns back. */
+export const KNIFE_DAMAGE = 5, KNIFE_SPEED_M_S = 24, BOOMERANG_DAMAGE = 5, BOOMERANG_SPEED_M_S = 18, BOOMERANG_OUT_S = 0.45;
+/** Arrows by kind: damage factor; ember arrows set what they hit burning for this long (s). */
+export const ARROW_KINDS: Readonly<Record<string, number>> = { arrow: 1, iron_arrow: 1.5, ember_arrow: 1.3, jade_arrow: 2 };
+export const EMBER_BURN_S = 4;
+/** Dash Boots: a double tap of a direction within DASH_TAP_S dashes at DASH_SPEED_M_S, once per DASH_COOLDOWN_S. */
+export const DASH_SPEED_M_S = 15, DASH_TAP_S = 0.25, DASH_COOLDOWN_S = 1.2;
+/** Glider Wings: a slower glide that carries the player this many times faster across. Rocket Boots: seconds of thrust
+ * (refilled on the ground) and its upward speed (m/s). */
+export const WINGS_FALL_M_S = 1.2, WINGS_SPEED = 1.7, ROCKET_FUEL_S = 1.6, ROCKET_SPEED_M_S = 6;
 /** Mana: the most there is, how fast it refills, and the rest after casting before it starts to. */
 export const MAX_MANA = 20;
 export const MANA_PER_S = 4;

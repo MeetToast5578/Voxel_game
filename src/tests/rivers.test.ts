@@ -41,6 +41,29 @@ describe('rivers', () => {
     expect(chunks.size).toBeGreaterThan(8);
   }, 120000);
 
+  it('carries a boat downstream along a generated river', async () => {
+    const { Rivers } = await import('../worldgen/rivers');
+    const { ClimateSampler } = await import('../worldgen/climate');
+    const { Player } = await import('../game/player');
+    const { BLOCK_SIZE_M } = await import('../config');
+    const gen = new Generator(1), rivers = new Rivers(1, new ClimateSampler(1));
+    // Some wet cell near the start lies in a river's channel and knows which way the river runs.
+    let flow: [number, number] | null = null;
+    for (let r = 0; r < 4000 && !flow; r += 3) for (const [x, z] of [[r, 0], [0, r], [-r, 0], [0, -r], [r, r]] as const) {
+      if (!flow && wet(gen, x, z)) flow = rivers.flowAt((x + 0.5) * BLOCK_SIZE_M, (z + 0.5) * BLOCK_SIZE_M);
+    }
+    expect(flow).not.toBeNull();
+    // A boat on still water in that current, with no paddling, drifts its way.
+    const world = new World();
+    for (let cx = -2; cx <= 2; cx++) for (let cz = -2; cz <= 2; cz++) for (let cy = -1; cy <= 0; cy++) world.add(new Chunk(cx, cy, cz, cy < 0 ? BLOCKS.state('water') : 0));
+    const p = new Player(0.5, 0, 0.5);
+    p.boating = true;
+    const idle = { moveX: 0, moveZ: 0, jump: false, sprint: false, descend: false, consume: () => false } as never;
+    const water = (x: number, y: number, z: number) => BLOCKS.type(world.get(x, y, z)).key === 'water';
+    for (let t = 0; t < 4; t += 1 / 60) p.update(1 / 60, idle, () => 0, water, () => false, (x, y, z) => (water(x, y, z) ? [flow![0], 0, flow![1]] : null));
+    expect(p.body.x * flow![0] + p.body.z * flow![1]).toBeGreaterThan(2);
+  }, 120000);
+
   it('does not depend on the order columns are generated in', () => {
     const a = new Generator(4), b = new Generator(4);
     const cols = [[0, 0], [1, 0], [0, 1], [1, 1], [-1, 0]] as const;

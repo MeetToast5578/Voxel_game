@@ -26,7 +26,7 @@ function statesAround(gen: Generator, x: number, z: number, cy0: number, cy1: nu
 
 describe('structures', () => {
   it('stay within reach of their anchor, so every column that holds a part of one finds it', () => {
-    for (const kind of ['cabin', 'tower', 'camp', 'mine', 'vault', 'shrine', 'house'] as const) {
+    for (const kind of ['cabin', 'tower', 'camp', 'mine', 'vault', 'shrine', 'house', 'sky_island', 'pyramid', 'temple', 'altar'] as const) {
       for (const [dx, , dz] of structureCells(1, kind, 0, 0, 0)) expect(Math.max(Math.abs(dx), Math.abs(dz))).toBeLessThanOrEqual(8);
     }
   });
@@ -55,6 +55,22 @@ describe('structures', () => {
     const gen = new Generator(1), half = Math.round(500 / BLOCK_SIZE_M);
     const standing = sitesNear(1, -half, -half, half, half).filter((s) => gen.structureBase(s.kind, s.x, s.z) !== null);
     for (const kind of ['cabin', 'tower', 'camp', 'mine', 'vault'] as const) expect(standing.filter((s) => s.kind === kind).length, kind).toBeGreaterThan(0);
+  });
+
+  it('floats sky islands and stands altars near the start; pyramids stand in deserts, temples in deep forests', () => {
+    const near = (seed: number, m: number) => {
+      const gen = new Generator(seed), half = Math.round(m / BLOCK_SIZE_M);
+      return { gen, standing: sitesNear(seed, -half, -half, half, half).filter((s) => gen.structureBase(s.kind, s.x, s.z) !== null) };
+    };
+    const { gen, standing } = near(1, 1000);
+    for (const kind of ['sky_island', 'altar'] as const) expect(standing.filter((s) => s.kind === kind).length, kind).toBeGreaterThan(0);
+    // Deserts and deep forests are rarer: seed 8 has both within 2 km.
+    const far = near(8, 2000).standing;
+    for (const kind of ['pyramid', 'temple'] as const) expect(far.filter((s) => s.kind === kind).length, kind).toBeGreaterThan(0);
+    const island = standing.find((s) => s.kind === 'sky_island')!, base = gen.structureBase('sky_island', island.x, island.z)!;
+    expect((base - gen.column(Math.floor(island.x / 16), Math.floor(island.z / 16)).top.reduce((a, b) => Math.max(a, b))) * BLOCK_SIZE_M).toBeGreaterThan(25);
+    const chest = structureCells(1, 'sky_island', island.x, island.z, base).find(([, , , st]) => BLOCKS.type(st).key === 'chest');
+    expect(chest).toBeDefined();
   });
 
   it('builds an ember shrine deep down with its ancient chest', () => {
@@ -97,18 +113,25 @@ describe('loot', () => {
     expect(shrine.some((s) => s?.state === S('beacon_shard'))).toBe(true);
   });
 
-  it('fills a generated chest on first opening, and leaves a placed one empty', () => {
+  it('fills a generated chest on first opening, and leaves any other chest empty (also one from an old save)', () => {
+    // The chest of the cabin nearest seed 9's start, with the player two cells beside it.
+    const cabin = sitesNear(9, -600, -600, 600, 600).find((s) => s.kind === 'cabin')!;
+    const [dx, , dz] = structureCells(9, 'cabin', cabin.x, cabin.z, 0).find(([, , , st]) => BLOCKS.type(st).key === 'chest')!;
+    const cx = cabin.x + dx - 2, cz = cabin.z + dz;
     const world = new World();
-    for (let cx = -1; cx <= 1; cx++) for (let cz = -1; cz <= 1; cz++) for (let cy = -1; cy <= 0; cy++) world.add(new Chunk(cx, cy, cz, cy < 0 ? S('stone') : 0));
+    for (let x = Math.floor(cx / 16) - 1; x <= Math.floor(cx / 16) + 1; x++) for (let z = Math.floor(cz / 16) - 1; z <= Math.floor(cz / 16) + 1; z++)
+      for (let cy = -1; cy <= 0; cy++) world.add(new Chunk(x, cy, z, cy < 0 ? S('stone') : 0));
     const play = new Play(world, (x, y, z, s) => world.set(x, y, z, s), { sound: () => undefined, sleep: () => true }, 'survival');
     play.seed = 9;
-    world.set(2, 0, 0, S('chest', 1));
+    world.set(cx + 2, 0, cz, S('chest', 1));
+    world.set(cx - 2, 0, cz, S('chest', 1));
+    expect((play as unknown as { chestSlots(k: string, s: number): unknown[] }).chestSlots(`${cx - 2},0,${cz}`, S('chest', 1)).every((s) => s === null)).toBe(true);
     const input = { slot: -1, breaking: false, placing: false, consume: (a: string) => a === 'place' } as never;
-    const player = { body: { x: 0.5, y: 0, z: 0.5, vx: 0, vy: 0, vz: 0, halfWidth: 0.4, height: 2.9, onGround: true }, eyeY: 2.7,
+    const player = { body: { x: cx + 0.5, y: 0, z: cz + 0.5, vx: 0, vy: 0, vz: 0, halfWidth: 0.4, height: 2.9, onGround: true }, eyeY: 2.7,
       direction: () => [Math.cos(0.85), -Math.sin(0.85), 0] as [number, number, number] } as never;
     play.update(0, input, player);
     expect(play.screen).toBe('chest');
-    expect(play.chests.get('2,0,0')!.some((s) => s !== null)).toBe(true);
+    expect(play.chests.get(`${cx + 2},0,${cz}`)!.some((s) => s !== null)).toBe(true);
     expect(play.found.has('surface')).toBe(true);
   });
 });

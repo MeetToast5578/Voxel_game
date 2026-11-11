@@ -12,12 +12,13 @@ import { ClimateSampler, detailAmpMeters, heightMeters } from './climate';
 import { treeCells, unpackTreeCell, type TreeSpecies } from './trees';
 import { Rivers, type WaterSample } from './rivers';
 import { Underground } from './underground';
-import { isUnderground, sitesNear, structureCells, undergroundFloor, villageAt, type StructureKind } from './structures';
+import { isUnderground, sitesNear, SKY_ISLAND_M, SKY_ISLAND_MAX_GROUND_M, structureBiomes, structureCells, undergroundFloor, villageAt, type StructureKind } from './structures';
 
 // Imported constants copied locally: hot loops then read a plain constant, not a module binding.
 const N = CHUNK_SIZE;
 const AREA = CHUNK_AREA;
 const B = BLOCK_SIZE_M;
+const CLEARED = new Set<StructureKind>(['altar', 'pyramid', 'temple']);
 const S = (key: string) => BLOCKS.state(key);
 const AIR = S('air'), STONE = S('stone'), DIRT = S('dirt'), GRASS = S('grass'), SAND = S('sand'), GRAVEL = S('gravel');
 const WATER = S('water'), LOG = S('log'), LEAVES = S('leaves'), COBBLE = S('cobblestone'), CLAY = S('clay');
@@ -209,7 +210,7 @@ export class Generator {
     const [c, i] = this.cellBase(x, z), top = c.top[i]!;
     if (top + 1 < c.water[i]! || c.open[i] || c.shore[i] || this.featureAt(x, z)) return null;
     // Not in or against a building on the surface.
-    if (sitesNear(this.seed, x, z, x, z).some((s) => !isUnderground(s.kind) && this.structureBase(s.kind, s.x, s.z) !== null)) return null;
+    if (sitesNear(this.seed, x, z, x, z).some((s) => !isUnderground(s.kind) && s.kind !== 'sky_island' && this.structureBase(s.kind, s.x, s.z) !== null)) return null;
     for (const [dx, dz] of N4) {
       const [d, j] = this.cellBase(x + dx, z + dz);
       if (Math.abs(d.top[j]! - top) > 1 || d.top[j]! + 1 < d.water[j]! || d.open[j]) return null;
@@ -224,6 +225,9 @@ export class Generator {
   structureBase(kind: StructureKind, x: number, z: number): number | null {
     const [c, i] = this.cellBase(x, z), ground = c.top[i]!;
     if (isUnderground(kind)) return undergroundFloor(this.seed, kind, x, z, ground);
+    if (kind === 'sky_island') return ground * B > SKY_ISLAND_MAX_GROUND_M ? null : Math.round(SKY_ISLAND_M / B);
+    const biomes = structureBiomes(kind);
+    if (biomes && !biomes.includes(biomeByIndex(c.biome[i]!).key)) return null;
     if (ground + 1 < c.water[i]! || c.open[i] || c.shore[i]) return null;
     for (const [dx, dz] of [[-3, -3], [3, -3], [-3, 3], [3, 3]] as const) {
       const [d, j] = this.cellBase(x + dx, z + dz);
@@ -243,6 +247,8 @@ export class Generator {
     if (hash2(this.seed + 41, x, z) >= TREE_CHANCE) return null;
     // Villages stand in clearings.
     if (villageAt(this.seed, x, z)) return null;
+    // Altars, pyramids and temples stand in a clearing.
+    if (sitesNear(this.seed, x - 4, z - 4, x + 4, z + 4).some((s) => CLEARED.has(s.kind) && this.structureBase(s.kind, s.x, s.z) !== null)) return null;
     const [c, i] = this.cellBase(x, z);
     const biome = biomeByIndex(c.biome[i]!);
     if (!biome.trees || c.open[i] || c.top[i]! + 1 <= c.water[i]! || c.shore[i]) return null;

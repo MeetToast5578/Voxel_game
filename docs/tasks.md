@@ -283,18 +283,18 @@ All of it stays procedural: no asset files.
 - [x] **12.1 Save migration** (rest of 10.3). A save version with an upgrade step, and a backup made before upgrading.
   Done in 0.7.0 (save version 5; old meta records are kept in an IndexedDB `backups` store).
   **Done when:** a test upgrades a world saved by the version before.
-- [ ] **12.2 Fire.** A fire block that spreads to wood, leaves and grass, burns out, and is put out by rain and water.
+- [x] **12.2 Fire.** Done in 0.8.2. A fire block that spreads to wood, leaves and grass, burns out, and is put out by rain and water.
   Lightning and lava can start it.
   **Done when:** a test burns a wooden hut down and the fire goes out by itself.
-- [ ] **12.3 Rivers push.** Generated rivers carry the player, boats and drops downstream, like flowing water does.
+- [x] **12.3 Rivers push.** Done in 0.8.2. Generated rivers carry the player, boats and drops downstream, like flowing water does.
   **Done when:** a physics test drifts a boat down a generated river.
 - [ ] **12.4 Boats stay.** A boat you step out of stays on the water; hitting it takes it back.
   **Done when:** a test leaves a boat, walks away, comes back and takes it.
-- [ ] **12.5 Catch-up for all growth.** Saplings, grass and regrowth also catch up while their chunk was unloaded.
+- [x] **12.5 Catch-up for all growth.** Done in 0.8.2. Saplings, grass and regrowth also catch up while their chunk was unloaded.
   **Done when:** a test unloads a sapling for a day and finds a tree.
-- [ ] **12.6 Old chests stay empty.** Chests placed in an old world never roll loot.
+- [x] **12.6 Old chests stay empty.** Done in 0.8.2. Chests placed in an old world never roll loot.
   **Done when:** a test loads an old save with a placed chest and it opens empty.
-- [ ] **12.7 The Ember Warden remembers its wounds.** It keeps its health while the player is away.
+- [x] **12.7 The Ember Warden remembers its wounds.** Done in 0.8.2. It keeps its health while the player is away.
   **Done when:** a test leaves and returns and the warden is as hurt as before.
 - [ ] **12.8 Shores by waves.** Stony shores where the coast faces open sea, sandbars in shallow bays and river bends.
   **Done when:** seed 1 shows both where expected.
