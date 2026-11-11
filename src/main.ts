@@ -3,9 +3,10 @@ import { Rivers } from './worldgen/rivers';
 import { ClimateSampler } from './worldgen/climate';
 /** How hard a generated river pushes, as a share of flowing water's push. */
 const RIVER_PUSH = 0.6;
-import { REACH_M, DROP_CAP, NIGHT_BEFORE, AUTOSAVE_S, BLOCK_SIZE_M, CAVE_AIR_C, CHUNK_SIZE, DAY_LENGTH_S, DIFFICULTY, HEAT_REACH_M, HEAT_SOURCES_C, cells, type Difficulty, HORIZON_RECENTER_M, MAX_VIEW_CHUNKS, MIN_VIEW_CHUNKS, SIM_HZ, toCells } from './config';
+import { DEPTHS_TOP_M, REACH_M, DROP_CAP, NIGHT_BEFORE, AUTOSAVE_S, BLOCK_SIZE_M, CAVE_AIR_C, CHUNK_SIZE, DAY_LENGTH_S, DIFFICULTY, HEAT_REACH_M, HEAT_SOURCES_C, cells, type Difficulty, HORIZON_RECENTER_M, MAX_VIEW_CHUNKS, MIN_VIEW_CHUNKS, SIM_HZ, toCells } from './config';
 import { Sounds } from './audio/sounds';
-import { Ambience, type Surroundings } from './audio/ambience';
+import { Ambience, musicPlace, type Surroundings } from './audio/ambience';
+import { villageAt } from './worldgen/structures';
 import { chunkKey, forEachChunkReading, localIndex, unpackChunkKey } from './core/coords';
 import { FixedStepLoop } from './core/loop';
 import { BLOCKS } from './engine/blocks';
@@ -374,6 +375,10 @@ function updateExposure(dt: number): void {
     rain: env.falling === 'rain' && !underground ? (sheltered ? 0.35 : 1) : 0,
     water: Math.min(1, water / 6), underground, day: !night,
     wildlife: !underground && (groundKey === 'grass' || column.skyTop[i]! > column.surface[i]! + 2),
+    place: musicPlace({
+      boss: creatures.list.some((c) => c.species.boss && Math.hypot(c.body.x - x, c.body.z - z) < 48), depthM: y * BLOCK_SIZE_M, depthsTopM: DEPTHS_TOP_M, underground,
+      town: (play.town !== null && Math.hypot(play.town[0] - x, play.town[2] - z) < 40) || villageAt(seed, x, z) !== null, day: !night,
+    }),
   };
   feltC = feltTemperature({
     airC, night: night && !underground, sheltered: sheltered || underground, wet: wetS > 0, windM_S: env.sample?.windSpeed ?? 3,
@@ -886,6 +891,7 @@ const loop = new FixedStepLoop(1 / 60, 0.25, timedUpdate, (alpha, frameDt) => {
   decorationMeshes.update(play.decorations,world,renderer.camera,lightAt);
   for (const d of creatures.dying) if (!d.puffed) {
     d.puffed = true;
+    if (d.c.species.boss) ambience.sting();
     effects.burst('smoke', d.c.body.x, d.c.body.y + d.c.body.height * 0.4, d.c.body.z, Math.max(0.8, d.c.body.height * 0.8));
   }
   creatureMeshes.update(creatures.list, (c) => lightAt(c.body.x, c.body.y + c.body.height * 0.6, c.body.z), now / 1000, creatures.dying);
