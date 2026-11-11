@@ -111,6 +111,23 @@ const ICONS: Readonly<Record<string, Icon>> = {
     '......ssss......',
     '................',
     '................']],
+  wisp_bottle: [{ c: '#8a6040', g: '#b8d4e0', G: '#ffffff', w: '#c8f0ff', W: '#ffffff', b: '#60b0f0' }, [
+    '................',
+    '......cccc......',
+    '......cccc......',
+    '.......gg.......',
+    '......g..g......',
+    '.....g....g.....',
+    '....g..bb..g....',
+    '...g..bwwb..g...',
+    '...g.bwWWwb.g...',
+    '...g.bwWWwb.g...',
+    '...g..bwwb..G...',
+    '...g...bb...G...',
+    '....g......G....',
+    '.....gggggg.....',
+    '................',
+    '................']],
   glow_mushroom: [{ c: '#5ab8f0', C: '#c8f0ff', d: '#2a6aa8', w: '#e8f0f0', W: '#a8c0c8' }, [
     '................',
     '................',
@@ -764,6 +781,7 @@ const POTION_COLOURS: Readonly<Record<string, [string, string, string]>> = {
   healing_potion: ['#e0303c', '#ff9aa0', '#8a1020'], regeneration_potion: ['#f070b0', '#ffc0e0', '#a03070'],
   swiftness_potion: ['#40c8f0', '#c0f0ff', '#1a7aa0'], fire_resistance_potion: ['#f08020', '#ffd090', '#a04010'],
   water_breathing_potion: ['#3060e0', '#a0c0ff', '#183890'], antidote: ['#60c040', '#c8f0a0', '#2e7a20'],
+  night_vision_potion: ['#5a40c0', '#c0b0ff', '#2a1a70'],
   glass_bottle: ['#d6ecf4', '#ffffff', '#a8c8d4'],
 };
 for (const [key, [L, l, D]] of Object.entries(POTION_COLOURS)) (ICONS as Record<string, Icon>)[key] = [{ c: '#8a6040', g: '#b8d4e0', G: '#ffffff', L, l, D }, BOTTLE];

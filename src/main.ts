@@ -873,7 +873,12 @@ const loop = new FixedStepLoop(1 / 60, 0.25, timedUpdate, (alpha, frameDt) => {
   }
   const burning=creatures.list.filter(c=>c.burning>0).map(c=>({kind:'fire' as const,x:c.body.x,y:c.body.y+c.body.height*.45,z:c.body.z,size:c.body.height*.7}));
   const bolts=play.projectiles.list.filter(p=>p.magic&&!p.item).map(p=>({kind:'sparks' as const,x:p.x,y:p.y,z:p.z,size:.5}));
-  effects.update(frameDt,now/1000,[...burning,...emitters,...bolts]);
+  // A wisp circles the player's head and lights the blocks around it; night vision lifts every shadow.
+  const wisp = play.bonus.wisp ? { kind: 'sparks' as const, x: player.body.x + Math.cos(now / 700) * 0.9, y: player.eyeY + 0.4 + Math.sin(now / 450) * 0.2, z: player.body.z + Math.sin(now / 700) * 0.9, size: 0.35 } : null;
+  (renderer.uniforms.glowPos!.value as THREE.Vector3).set(wisp?.x ?? 0, wisp?.y ?? 0, wisp?.z ?? 0);
+  renderer.uniforms.glowRadius!.value = wisp ? 9 : 0;
+  renderer.uniforms.nightVision!.value = play.survival.has('night_vision') ? 1 : 0;
+  effects.update(frameDt,now/1000,[...burning,...emitters,...bolts,...(wisp ? [wisp] : [])]);
   decorationMeshes.update(play.decorations,world,renderer.camera,lightAt);
   for (const d of creatures.dying) if (!d.puffed) {
     d.puffed = true;

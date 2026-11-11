@@ -235,6 +235,8 @@ export interface Accessory {
   readonly regen?: number;
   /** Stings, venom and poisonous bites never poison. */
   readonly antivenom?: boolean;
+  /** A wisp follows the player and lights the blocks around them. */
+  readonly wisp?: boolean;
 }
 
 /** Potions: [key, name, what it does]. Made at an alchemy table from a glass bottle and two ingredients. */
@@ -245,6 +247,7 @@ export const POTIONS: readonly [string, string, NonNullable<BlockType['potion']>
   ['fire_resistance_potion', 'Fire Resistance Potion', { text: 'Fire and lava do not burn for 120 s', effect: 'fire_resistance', seconds: 120 }],
   ['water_breathing_potion', 'Water Breathing Potion', { text: 'Breathe under water for 120 s', effect: 'water_breathing', seconds: 120 }],
   ['antidote', 'Antidote', { text: 'Cures poison and bleeding; keeps them off for 60 s', effect: 'antidote', seconds: 60, cures: true }],
+  ['night_vision_potion', 'Night Vision Potion', { text: 'See in the dark for 120 s', effect: 'night_vision', seconds: 120 }],
 ];
 
 const ACCESSORIES: readonly [string, string, Accessory][] = [
@@ -261,6 +264,7 @@ const ACCESSORIES: readonly [string, string, Accessory][] = [
   ['storm_charm', 'Storm Charm', { effect: 'Jump once more in mid-air, no fall damage', jumps: 1, featherfall: true }],
   ['scarab_charm', 'Scarab Charm', { effect: '10% faster; stops 6% more harm', speed: 0.1, protection: 2 }],
   ['jungle_idol', 'Jungle Idol', { effect: 'Health returns 50% faster; breath lasts twice as long', regen: 1.5, breath: 2 }],
+  ['wisp_bottle', 'Wisp in a Bottle', { effect: 'A wisp follows you and lights the way', wisp: true }],
   ['deep_core', 'Deep Core', { effect: 'Lava and fire do not burn you; health returns twice as fast; stops 9% more harm', fireproof: true, regen: 2, protection: 3 }],
   ['dune_cloak', 'Dune Cloak', { effect: 'Double-tap a direction to dash; 10% faster', dash: true, speed: 0.1 }],
   ['hive_charm', 'Hive Charm', { effect: 'Stings and venom never poison you; 10% faster', antivenom: true, speed: 0.1 }],

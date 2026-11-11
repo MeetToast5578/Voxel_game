@@ -67,6 +67,10 @@ export class Renderer {
       autumn: { value: 0 },
       summer: { value: 0 },
       waterInside: { value: 0 },
+      // A light that moves with the player (a wisp): its place in cells and its reach (0: none); night vision.
+      glowPos: { value: new THREE.Vector3() },
+      glowRadius: { value: 0 },
+      nightVision: { value: 0 },
     };
     this.sky = new Sky(this.scene, seed);
     this.clouds = new Clouds(this.scene, seed);

@@ -1,4 +1,4 @@
-import { DEPTHS_TOP_M, METEOR_CHANCE, NIGHT_GROWTH_MAX, NIGHT_GROWTH_PER_DAY, ARROW_KINDS, BOOMERANG_DAMAGE, BOOMERANG_OUT_S, BOOMERANG_SPEED_M_S, EMBER_BURN_S, HAMMER_DAMAGE, HAMMER_SLOW, KNIFE_DAMAGE, KNIFE_SPEED_M_S, SPEAR_ARC_RAD, SPEAR_DAMAGE, SPEAR_REACH, EVENTS_FROM_DAY, RED_NIGHT_CHANCE, SLIME_RAIN_CHANCE, SLIME_RAIN_EVERY_S, SLIME_RAIN_KILLS, HOOK_RANGE_M, TIER_DAMAGE, ARMOUR_CAP, ARMOUR_PER_POINT, MAX_HEALTH, ACCESSORY_SLOTS, AXE_ARC_RAD, CRIT_CHANCE, CRIT_FACTOR, KNOCKBACK_FACTOR, SWORD_ARC_RAD, LIGHTNING_DAMAGE, LIGHTNING_REACH_M, FISH_MAX_S, FISH_MIN_S, BLOCK_SIZE_M, ARROW_DAMAGE, ARROW_SPEED_M_S, BOLT_SPEED_M_S, BOW_DRAW_S, AXE_DAMAGE, BUILD_CELLS_PER_TICK, CAMPFIRE_COOK_S, CAMPFIRE_SLOTS, DIFFICULTY, PLAYER_ATTACK_COOLDOWN_S, SWORD_DAMAGE, type Difficulty, BUILD_MAX_M, DROP_PICKUP_DELAY_S, DROP_THROW_M_S, HAND_DAMAGE, REACH_M, REPEAT_S, TOOL_DAMAGE, UNDO_STEPS, cells, toCells } from '../config';
+import { RAID_FROM_M, RAID_MIN_HOMES, RAID_SHARE, RAID_SIZE, DEPTHS_TOP_M, METEOR_CHANCE, NIGHT_GROWTH_MAX, NIGHT_GROWTH_PER_DAY, ARROW_KINDS, BOOMERANG_DAMAGE, BOOMERANG_OUT_S, BOOMERANG_SPEED_M_S, EMBER_BURN_S, HAMMER_DAMAGE, HAMMER_SLOW, KNIFE_DAMAGE, KNIFE_SPEED_M_S, SPEAR_ARC_RAD, SPEAR_DAMAGE, SPEAR_REACH, EVENTS_FROM_DAY, RED_NIGHT_CHANCE, SLIME_RAIN_CHANCE, SLIME_RAIN_EVERY_S, SLIME_RAIN_KILLS, HOOK_RANGE_M, TIER_DAMAGE, ARMOUR_CAP, ARMOUR_PER_POINT, MAX_HEALTH, ACCESSORY_SLOTS, AXE_ARC_RAD, CRIT_CHANCE, CRIT_FACTOR, KNOCKBACK_FACTOR, SWORD_ARC_RAD, LIGHTNING_DAMAGE, LIGHTNING_REACH_M, FISH_MAX_S, FISH_MIN_S, BLOCK_SIZE_M, ARROW_DAMAGE, ARROW_SPEED_M_S, BOLT_SPEED_M_S, BOW_DRAW_S, AXE_DAMAGE, BUILD_CELLS_PER_TICK, CAMPFIRE_COOK_S, CAMPFIRE_SLOTS, DIFFICULTY, PLAYER_ATTACK_COOLDOWN_S, SWORD_DAMAGE, type Difficulty, BUILD_MAX_M, DROP_PICKUP_DELAY_S, DROP_THROW_M_S, HAND_DAMAGE, REACH_M, REPEAT_S, TOOL_DAMAGE, UNDO_STEPS, cells, toCells } from '../config';
 import { bagLoot, lootOf, type Creature, type Creatures } from '../creatures/creatures';
 import { AIR, BLOCKS, POTIONS, SET_BONUSES, SOLID, type BlockType } from '../engine/blocks';
 import type { World } from '../engine/world';
@@ -164,8 +164,8 @@ export class Play {
   }
 
   /** What the worn accessories (and a full armour set, and status effects) add up to. */
-  get bonus(): { speed: number; jumps: number; featherfall: boolean; protection: number; breath: number; fireproof: boolean; regen: number; crit: number; thorns: number; dash: boolean; wings: boolean; rocket: boolean; antivenom: boolean } {
-    const b = { speed: 0, jumps: 0, featherfall: false, protection: 0, breath: 1, fireproof: false, regen: 1, crit: 0, thorns: 0, dash: false, wings: false, rocket: false, antivenom: false };
+  get bonus(): { speed: number; jumps: number; featherfall: boolean; protection: number; breath: number; fireproof: boolean; regen: number; crit: number; thorns: number; dash: boolean; wings: boolean; rocket: boolean; antivenom: boolean; wisp: boolean } {
+    const b = { speed: 0, jumps: 0, featherfall: false, protection: 0, breath: 1, fireproof: false, regen: 1, crit: 0, thorns: 0, dash: false, wings: false, rocket: false, antivenom: false, wisp: false };
     const set = this.armourSet && SET_BONUSES[this.armourSet];
     if (set) {
       b.speed += set.speed ?? 0;
@@ -188,6 +188,7 @@ export class Play {
       b.fireproof ||= a.fireproof ?? false;
       b.regen *= a.regen ?? 1;
       b.antivenom ||= a.antivenom ?? false;
+      b.wisp ||= a.wisp ?? false;
     }
     // Potions and other status effects add to what is worn.
     const fx = this.survival;
@@ -547,6 +548,12 @@ export class Play {
     entry.kills++;
     for (const q of QUESTS) if (q.kind === 'defeat' && q.key === c.species.key && this.quests.has(q.id)) this.quests.set(q.id, this.quests.get(q.id)! + 1);
     // Event rewards: red nights pay in coins; enough slimes beaten in slime rain bring their king.
+    if (c.raid && this.raidLeft > 0 && --this.raidLeft === 0) {
+      // The last raider falls: the townsfolk reward their defender.
+      this.drop({ state: BLOCKS.state('trade_coin'), count: 30 }, c.body.x, c.body.y, c.body.z);
+      this.drop({ state: BLOCKS.state('life_crystal'), count: 1 }, c.body.x, c.body.y, c.body.z);
+      this.toast('The town is saved! The townsfolk thank you with a gift.', 5);
+    }
     if (this.event === 'red_night' && c.species.hostile && Math.random() < 0.5) this.drop({ state: BLOCKS.state('trade_coin'), count: 1 + Math.floor(Math.random() * 2) }, c.body.x, c.body.y, c.body.z);
     if (this.event === 'slime_rain' && c.species.key === 'slime' && ++this.eventKills >= SLIME_RAIN_KILLS) {
       this.event = null;
@@ -633,7 +640,8 @@ export class Play {
   turnOfDay(night: boolean): void {
     const ended = this.event;
     this.event = null;
-    if (ended === 'red_night') this.toast('The red moon sets.', 3);
+    if (ended === 'red_night') this.toast(this.raidLeft > 0 ? 'The red moon sets, and the raiders slink away.' : 'The red moon sets.', 3);
+    this.raidLeft = 0;
     if (this.mode !== 'survival' || this.difficulty === 'peaceful' || this.stats.days < EVENTS_FROM_DAY) return;
     const roll = hash2(this.seed ^ 0x5eed, this.stats.days, night ? 1 : 0);
     // Once any boss has fallen, a meteor may come down somewhere near.
@@ -641,11 +649,41 @@ export class Play {
     if (night && roll < RED_NIGHT_CHANCE) {
       this.event = 'red_night';
       this.toast('A red moon rises. Monsters swarm tonight!', 5);
+      // Some red nights the monsters march on the player's town, if they are near it.
+      const town = this.town;
+      if (town && Math.hypot(town[0] - this.feet[0], town[2] - this.feet[2]) < toCells(100) && hash2(this.seed ^ 0x4a1d, this.stats.days, 3) < RAID_SHARE) this.startRaid();
     } else if (!night && roll < SLIME_RAIN_CHANCE) {
       this.event = 'slime_rain';
       this.eventKills = 0;
       this.toast('It is raining slimes!', 5);
     }
+  }
+
+  /** Raiders still standing in a raid on the player's town: the raid is won when none are left. */
+  raidLeft = 0;
+
+  /** The player's town: the middle of the homes they built, when there are at least RAID_MIN_HOMES; else null. */
+  get town(): [number, number, number] | null {
+    const homes = [...this.homes.values()];
+    if (homes.length < RAID_MIN_HOMES) return null;
+    const avg = (k: 'x' | 'y' | 'z') => homes.reduce((a, h) => a + h[k], 0) / homes.length;
+    return [avg('x'), avg('y'), avg('z')];
+  }
+
+  /** Monsters gather RAID_FROM_M from the player's town and march on it; returns whether a raid began. */
+  startRaid(rand = Math.random): boolean {
+    const town = this.town, creatures = this.creatures;
+    if (!town || !creatures) return false;
+    const [tx, ty, tz] = town, a = rand() * Math.PI * 2, r = toCells(RAID_FROM_M);
+    const kinds = ['zombie', 'zombie', 'skulker', 'skeleton', this.stats.days > 10 ? 'brute' : 'zombie'];
+    for (let k = 0; k < RAID_SIZE; k++) {
+      const x = tx + Math.cos(a) * r + (rand() - 0.5) * 6, z = tz + Math.sin(a) * r + (rand() - 0.5) * 6;
+      const s = SPECIES_BY_KEY.get(kinds[k % kinds.length]!)!, ground = this.world.surfaceAt(Math.floor(x), Math.floor(z));
+      creatures.add(s, x, (ground ?? ty) + 1, z, s.health).raid = [tx, tz];
+    }
+    this.raidLeft = RAID_SIZE;
+    this.toast('Monsters march on your town! Defend it!', 6);
+    return true;
   }
 
   /** A meteor lands 40 to 80 cells from the player: a crater with meteorite in its floor and fires around it. */

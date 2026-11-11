@@ -110,3 +110,15 @@ describe('pets and late movement', () => {
     expect(rocket.body.y).toBeGreaterThan(100);
   });
 });
+
+describe('light in the dark', () => {
+  it('a wisp in a bottle, made from geode crystals, gives a wisp; glowing mushrooms brew night vision', () => {
+    const { play } = setup();
+    expect(CRAFTS.some((r) => BLOCKS.type(BLOCKS.state(r.result[0])).key === 'wisp_bottle')).toBe(true);
+    expect(play.bonus.wisp).toBe(false);
+    play.accessories[0] = { state: S('wisp_bottle'), count: 1 };
+    expect(play.bonus.wisp).toBe(true);
+    expect(CRAFTS.some((r) => BLOCKS.type(BLOCKS.state(r.result[0])).key === 'night_vision_potion')).toBe(true);
+    expect(BLOCKS.type(S('night_vision_potion')).potion!.effect).toBe('night_vision');
+  });
+});

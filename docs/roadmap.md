@@ -66,7 +66,7 @@ Every task also passes `npm run check`, `npm run benchmark -- --assert` and `npm
   - well fed (cooked food, which gives slow regeneration).
 
   **Done when:** each effect starts, ticks and ends in a test.
-- [x] **R2.4 Potions and an alchemy table (M).** Done in 0.7.2: six potions; night vision is not done yet. The table is a new station, crafted from planks, glass and a
+- [x] **R2.4 Potions and an alchemy table (M).** Done in 0.7.2: six potions; night vision in 0.12.0. The table is a new station, crafted from planks, glass and a
   cauldron. Potions:
   - healing (instant);
   - regeneration;
@@ -120,7 +120,7 @@ Every task also passes `npm run check`, `npm run benchmark -- --assert` and `npm
 
   Both are announced on screen and can be turned off by difficulty.
   **Done when:** a test triggers each and sees the spawn rate change.
-- [ ] **R3.5 Town raids (M, after R5.1).** On some red nights monsters march on the biggest town. Defending it earns
+- [x] **R3.5 Town raids (M, after R5.1).** Done in 0.12.0. On some red nights monsters march on the biggest town. Defending it earns
   a reward from the townsfolk.
   **Done when:** a test spawns a raid aimed at a town.
 
@@ -251,7 +251,7 @@ Every task also passes `npm run check`, `npm run benchmark -- --assert` and `npm
   Slime King gives a bouncy mount.
   **Decide** whether this is wanted.
   **Done when:** a test rides a mount across a field.
-- [~] **R6.7 Pets and companions (M)** (idea 14 "Tame wolves"). 0.8.4: tame wolves; light pets remain.
+- [x] **R6.7 Pets and companions (M)** (idea 14 "Tame wolves"). Done: tame wolves (0.8.4), the wisp (0.12.0).
   - A wolf tamed with bones follows the player and fights.
   - Light pets (a wisp) follow the player and give light.
 

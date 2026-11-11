@@ -93,6 +93,9 @@ uniform float fogFar;
 uniform float opacity;
 uniform float waterInside;
 uniform float time;
+uniform vec3 glowPos;
+uniform float glowRadius;
+uniform float nightVision;
 in vec2 vUv;
 in vec3 vWorldPosition;
 flat in float vVariationStart;
@@ -140,6 +143,9 @@ void main() {
   vec2 curved = vLight * vLight;
   // A faint floor so unlit caves still show their shapes.
   float light = 0.07 + 0.93 * max(curved.x * daylight, curved.y);
+  // A wisp's glow fades with distance; night vision lifts every shadow.
+  if (glowRadius > 0.0) { float g = clamp(1.0 - distance(vWorldPosition, glowPos) / glowRadius, 0.0, 1.0); light = max(light, 0.85 * g * g); }
+  light = max(light, 0.6 * nightVision);
   vec3 color = tex.rgb * vColor * light;
   // Haze that thickens quickly then levels off, reaching the fog colour exactly at fogFar (same curve as the horizon).
   color = mix(color, fogColor, (1.0 - exp(-3.0 * clamp((vDepth - fogNear) / (fogFar - fogNear), 0.0, 1.0))) / (1.0 - exp(-3.0)));

@@ -424,6 +424,14 @@ export const FIRE_TICK_S: readonly [number, number] = [0.8, 2], FIRE_AGES = 4, F
 /** World events: the share of nights with a red moon and of days with slime rain (from this day on), the slimes to
  * defeat before the Slime King comes, and seconds between falling slimes. */
 export const RED_NIGHT_CHANCE = 1 / 8;
+/**
+ * Town raids: on a red night, with the player near a town of at least RAID_MIN_HOMES homes they built, this share of
+ * red nights sends RAID_SIZE monsters marching on it from RAID_FROM_M away.
+ */
+export const RAID_SHARE = 0.5;
+export const RAID_MIN_HOMES = 2;
+export const RAID_SIZE = 8;
+export const RAID_FROM_M = 30;
 /** Once a boss is beaten: the share of nights a meteor falls near the player. */
 export const METEOR_CHANCE = 1 / 6;
 export const SLIME_RAIN_CHANCE = 1 / 10;

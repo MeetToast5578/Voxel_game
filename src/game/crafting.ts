@@ -22,6 +22,7 @@ const BREWS: readonly [potion: string, a: readonly string[], b: readonly string[
   ['fire_resistance_potion', ['ember_crystal'], ['coal']],
   ['water_breathing_potion', ['raw_fish'], ['reed']],
   ['antidote', ['brown_mushroom'], ['bone_meal']],
+  ['night_vision_potion', ['glow_mushroom'], ['crystal_shard']],
 ];
 
 /** Any rock dug from the ground counts as stone for tools and furnaces: many places have granite or basalt, not stone. */
@@ -45,6 +46,7 @@ export const RECIPES: readonly Recipe[] = [
   { pattern: ['FTF', 'GEG', 'FTF'], key: { F: ['feather'], T: ['torch'], G: ['gel'], E: ['ember_crystal'] }, result: ['moth_lure', 1] },
   { pattern: ['FFF', 'FGF', 'FFF'], key: { F: ['frost_shard'], G: ['gold_ingot'] }, result: ['frost_sigil', 1] },
   { pattern: ['EIE', 'ILI', 'EIE'], key: { E: ['ember_crystal'], I: ['emberite_ingot'], L: ['life_crystal'] }, result: ['heart_of_embers', 1] },
+  { pattern: ['CCC', 'CBC', 'CGC'], key: { C: ['crystal_shard'], B: ['glass_bottle'], G: ['glow_mushroom'] }, result: ['wisp_bottle', 1] },
   { pattern: ['DSD', 'SOS', 'DSD'], key: { D: ['dune_fang'], S: ['sand'], O: ['gold_ingot'] }, result: ['sand_totem', 1] },
   { pattern: ['SGS', 'GOG', 'SGS'], key: { S: ['stinger'], G: ['gel'], O: ['gold_ingot'] }, result: ['royal_bait', 1] },
   { pattern: [' LG', ' SL', 'S  '], key: { L: ['lapis'], G: ['gel'], S: ['stick'] }, result: ['spark_wand', 1] },

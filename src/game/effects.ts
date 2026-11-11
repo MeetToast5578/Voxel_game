@@ -15,6 +15,7 @@ const LIST = {
   fire_resistance: { name: 'Fire resistance' },
   water_breathing: { name: 'Water breathing' },
   antidote: { name: 'Antidote' },
+  night_vision: { name: 'Night vision' },
 } as const satisfies Record<string, EffectInfo>;
 
 export type Effect = keyof typeof LIST;

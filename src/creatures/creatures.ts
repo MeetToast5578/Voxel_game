@@ -55,6 +55,8 @@ export interface Creature {
   windup?: number;
   /** A boss's named attack under way: seconds left in its wind-up, where it aims, and whether it has struck. */
   move?: { kind: BossMove; t: number; aim: [number, number, number]; struck?: boolean };
+  /** A raider: the town it marches on (x, z), going for its townsfolk. */
+  raid?: [number, number];
   /** Seconds until a boss's next named attack, and its phase (2: enraged, below half health). */
   special?: number;
   phase?: number;
@@ -230,6 +232,15 @@ export class Creatures {
     if (s.hostile && ctx.survival && near(p.x, p.z, HUNT_M)) {
       c.mode = 'hunt';
       c.target = 'player';
+      return;
+    }
+    if (c.raid) {
+      // A raider: at the townsfolk when it sees one, else on towards the town.
+      const folk = this.list.find((o) => o.species.villager && near(o.body.x, o.body.z, 10));
+      if (folk) { c.mode = 'hunt'; c.target = folk; return; }
+      c.mode = 'wander';
+      c.target = null;
+      c.goal = [...c.raid];
       return;
     }
     if (s.prey.length) {

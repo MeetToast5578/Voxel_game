@@ -3,6 +3,17 @@
 The newest version comes first. `npm run check` fails if the version at the top here is not the one in
 `package.json`, so the two are changed together.
 
+## 0.12.0 — 2026-11-11
+
+Towns under siege, and light in the dark (roadmap R3.5, R6.7, R2.4).
+
+- **Town raids**: on half of all red nights, if you are near a town of at least two homes you built, eight monsters
+  gather 30 m away and march on it, going for the townsfolk. Beat every raider for the townsfolk's gift: 30 coins and
+  a Life Crystal. At dawn any raiders left slink away.
+- **Wisp in a Bottle** (crystal shards, a glowing mushroom and a bottle): a wisp circles your head and lights the
+  blocks around you.
+- **Night Vision Potion** (a glowing mushroom and a crystal shard): see in the dark for two minutes.
+
 ## 0.11.0 — 2026-11-11
 
 Caves with character (roadmap R4.1).
